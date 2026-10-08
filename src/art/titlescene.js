@@ -34,9 +34,10 @@ export const TITLE_PARTS = 320;       // particle cap
 export const TITLE_GOLD = 90;         // nugget cap
 export const TITLE_FIRE = 600;        // burning terrain cells at once
 export const TCELL = 2;               // the terrain grid's cell (world units)
-export const TITLE_ZLEN = 280;        // one zone's length (world units)
-// the zones it travels through, in order (floor 1's natural and built-up looks)
+export const TITLE_ZLEN = [200, 360]; // a zone's length, the shortest and longest (world units; each zone its own, titlePlan)
+// the zones it travels through (floor 1's natural and built-up looks), in a random order (owner: no repeats)
 export const TITLE_ZONES = ['moss', 'webs', 'timber', 'paved', 'grove'];
+const ZMIX = 40;                      // the roof's and floor's shapes blend this far either side of a zone's border
 export const ZBLEND = 28;             // a zone's border frays this far (world units) each way, by noise
 export const TIMBER_H = 38;           // the timber works' height, floor to roof: the mine frames' height
 export const TITLE_WEBS = 60;         // web lines at once
@@ -110,7 +111,11 @@ export const TITLE_HOME = {
  *   fire: TFire[], dirty: number[][], dirtyAll: boolean, carved: number, burnt: number, swaps: number, groundT: number, flyT: number, kinds: Record<string, number>,
  *   webs: WebLine[], cut: number, lineT: number, silk: { x: number, y: number, ax: number, ay: number, vx: number, vy: number, life: number }[],
  *   nav: { F: any, fx: number, fy: number, t: number }, fireAcc: number, fireN: number, burning: Set<number>, gotN: number, pops: number, lampsPopped: number, kitNames: Set<string>,
- *   digT: number, digs: number, digWhy: Record<string, number>, still?: boolean }} TitleScene */
+ *   digT: number, digs: number, digWhy: Record<string, number>, still?: boolean, zp: TitlePlan }} TitleScene */
+// a zone of the plan (titlePlan): its kind, x0..x1, i its place in the plan; its roof's and floor's offset (co, fo), hills' height (ca, fa),
+// stretch (cf, ff) and phases (ph); dens its plants and webs
+/** @typedef {{ z: string, x0: number, x1: number, i: number, ph: number[], ca: number, fa: number, cf: number, ff: number, co: number, fo: number, dens: number }} TZone */
+/** @typedef {{ R: () => number, z: TZone[] }} TitlePlan */
 // (still: the players stand where they are, for a test of something they'd otherwise saw through or shoot)
 
 /** @param {number} seed @returns {() => number} a seeded random 0..1 (mulberry32) */
@@ -125,15 +130,56 @@ export function titleRng(seed) {
   };
 }
 
+// The zone plan (owner, v0.0.168: the zones were one fixed loop): made from the scene's seed as the
+// scroll needs it, each zone a random kind (none of the last two), its own length (TITLE_ZLEN), and its
+// own roof and floor (how high, how hilly, how stretched, where the hills fall: `ph`), its plants'
+// and webs' density `dens`. Pure; S.zp. A band given without one (a test's { top, bot }) uses seed 7's
+/** @param {number} seed @returns {TitlePlan} */
+export function titlePlan(seed) {
+  return { R: titleRng((seed * 7919 + 13) >>> 0), z: [] };
+}
+/** @param {TitlePlan} P @param {number} wx @returns {TZone} the zone at world x (the plan grown to it) */
+function zoneIn(P, wx) {
+  const Z = P.z, R = P.R;
+  if (!Z.length) Z.push(mkZone(R, -300, []));
+  while (Z[Z.length - 1].x1 <= wx) Z.push(mkZone(R, Z[Z.length - 1].x1, Z));
+  let lo = 0, hi = Z.length - 1;
+  if (wx < Z[0].x0) return Z[0];
+  while (lo < hi) { const m = (lo + hi + 1) >> 1; if (Z[m].x0 <= wx) lo = m; else hi = m - 1; }
+  return Z[lo];
+}
+/** @param {() => number} R @param {number} x0 @param {TZone[]} Z the zones so far @returns {TZone} */
+function mkZone(R, x0, Z) {
+  const last = Z.slice(-2).map(q => q.z), can = TITLE_ZONES.filter(z => !last.includes(z));
+  const z = can[Math.floor(R() * can.length)], len = TITLE_ZLEN[0] + R() * (TITLE_ZLEN[1] - TITLE_ZLEN[0]);
+  return { z, x0, x1: x0 + len, i: Z.length, ph: [R() * 99, R() * 99, R() * 99, R() * 99, R() * 99],
+    ca: 0.5 + R() * 0.9, fa: 0.5 + R() * 0.9, cf: 0.6 + R() * 0.8, ff: 0.6 + R() * 0.8, co: -6 + R() * 16, fo: -10 + R() * 16, dens: 0.6 + R() * 0.8 };
+}
+const DEF_PLAN = titlePlan(7);
+/** @param {{ zp?: TitlePlan }} [B] */
+const planOf = B => (B && B.zp) || DEF_PLAN;
+/** @param {number} wx @param {{ zp?: TitlePlan }} [B] the scene (its plan) @returns {TZone} */
+export const titleZoneSpan = (wx, B) => zoneIn(planOf(B), wx);
+/** @param {TZone} Z @param {number} i @param {{ zp?: TitlePlan }} [B] @returns {TZone} the zone i on from Z (−1: the one before) */
+const zoneNext = (Z, i, B) => { const P = planOf(B); zoneIn(P, Z.x1 + 1); return P.z[Math.max(0, Z.i + i)]; };
 // which zone a world x is in, and how built-up it is there (0 natural .. 1 in a works, ramped at the ends)
-/** @param {number} wx @returns {string} */
-export const titleZone = wx => TITLE_ZONES[((Math.floor(wx / TITLE_ZLEN) % TITLE_ZONES.length) + TITLE_ZONES.length) % TITLE_ZONES.length];
-/** @param {number} wx @param {string} [only] just this zone's (else timber or paved) */
-const built = (wx, only) => {
-  const z = titleZone(wx);
-  if (only ? z !== only : z !== 'timber' && z !== 'paved') return 0;
-  const u = wx - Math.floor(wx / TITLE_ZLEN) * TITLE_ZLEN;
-  return Math.max(0, Math.min(1, Math.min(u, TITLE_ZLEN - u) / 36));
+/** @param {number} wx @param {{ zp?: TitlePlan }} [B] @returns {string} */
+export const titleZone = (wx, B) => titleZoneSpan(wx, B).z;
+/** @param {number} wx @param {{ zp?: TitlePlan }} [B] */
+const built = (wx, B) => {
+  const Z = titleZoneSpan(wx, B);
+  if (Z.z !== 'timber' && Z.z !== 'paved') return 0;
+  return Math.max(0, Math.min(1, Math.min(wx - Z.x0, Z.x1 - wx) / 36));
+};
+// a shape that's each zone's own, blended into the next zone's over ZMIX either side of their border
+/** @param {number} wx @param {{ zp?: TitlePlan }} B @param {(wx: number, Z: TZone) => number} f */
+const zoneMix = (wx, B, f) => {
+  const Z = titleZoneSpan(wx, B), u = wx - Z.x0, v = Z.x1 - wx;
+  /** @param {number} t */
+  const sm = t => t * t * (3 - 2 * t);
+  if (u < ZMIX && Z.i > 0) { const t = sm((u + ZMIX) / (2 * ZMIX)); return f(wx, zoneNext(Z, -1, B)) * (1 - t) + f(wx, Z) * t; }
+  if (v < ZMIX) { const t = sm((v + ZMIX) / (2 * ZMIX)); return f(wx, zoneNext(Z, 1, B)) * (1 - t) + f(wx, Z) * t; }
+  return f(wx, Z);
 };
 // smooth value noise, about 0..1, one bump a unit (pure)
 /** @param {number} x @param {number} y */
@@ -147,17 +193,17 @@ export function titleNoise(x, y) {
 }
 // the zone at a point, with a ragged border: pushed up to ZBLEND either way by noise (big lumps and a
 // fine fray), so one zone's rock, moss, bricks and back wall break up into the next instead of a cut
-/** @param {number} wx @param {number} y */
-export const titleZoneAt = (wx, y) => titleZone(wx + (titleNoise(wx / 24, y / 14) - 0.5) * 2 * ZBLEND + (titleNoise(wx / 4, y / 4) - 0.5) * 12);
+/** @param {number} wx @param {number} y @param {{ zp?: TitlePlan }} [B] */
+export const titleZoneAt = (wx, y, B) => titleZone(wx + (titleNoise(wx / 24, y / 14) - 0.5) * 2 * ZBLEND + (titleNoise(wx / 4, y / 4) - 0.5) * 12, B);
 // the cave's roof and floor as made (world x; B the band: top, bot in world units, under the title, over the menu).
 // The timber works come down to TIMBER_H over the floor, the height of their frames
-/** @param {number} wx @param {{ top: number, bot: number }} B */
+/** @param {number} wx @param {{ top: number, bot: number, zp?: TitlePlan }} B */
 export const titleCeil = (wx, B) => {
-  const nat = B.top - 4 + Math.sin(wx * 0.018 + 6) * 10 + Math.sin(wx * 0.049 + 3) * 6 + Math.sin(wx * 0.11) * 2;
+  const nat = B.top - 4 + zoneMix(wx, B, (x, Z) => Z.co + (Math.sin(x * 0.018 * Z.cf + Z.ph[0]) * 10 + Math.sin(x * 0.049 * Z.cf + Z.ph[1]) * 6) * Z.ca) + Math.sin(wx * 0.11) * 2;
   // the layer's roof comes down over a natural slope (owner, v0.0.165: the old short step was too steep and
   // straight): an S-curve about TIMBER_RAMP long, starting a little before the works, where it starts shifted
   // by noise, the rock along it lumpy (big lumps and a fine fray, none once it's down)
-  const d = timberD(wx);
+  const d = timberD(wx, B);
   if (d < -TIMBER_RAMP) return nat;
   const q = Math.max(0, Math.min(1, (d + TIMBER_RAMP - 30 + (titleNoise(wx / 40, 44) - 0.5) * 20) / TIMBER_RAMP)), bt = q * q * (3 - 2 * q);
   if (!bt) return nat;
@@ -166,21 +212,22 @@ export const titleCeil = (wx, B) => {
 };
 const TIMBER_RAMP = 120;              // the timber works' roof slope's length (world units; it ends ~30 into the works)
 // how far world x is into a timber works zone (its nearer end; negative before it, -Infinity away from one)
-/** @param {number} wx */
-const timberD = wx => {
-  const u = wx - Math.floor(wx / TITLE_ZLEN) * TITLE_ZLEN, z = titleZone(wx);
-  if (z === 'timber') return Math.min(u, TITLE_ZLEN - u);
-  if (titleZone(wx + TITLE_ZLEN) === 'timber') return -(TITLE_ZLEN - u);
-  if (titleZone(wx - TITLE_ZLEN) === 'timber') return -u;
-  return -Infinity;
+/** @param {number} wx @param {{ zp?: TitlePlan }} B */
+const timberD = (wx, B) => {
+  const Z = titleZoneSpan(wx, B);
+  if (Z.z === 'timber') return Math.min(wx - Z.x0, Z.x1 - wx);
+  let d = -Infinity;
+  if (zoneNext(Z, 1, B).z === 'timber') d = -(Z.x1 - wx);
+  if (Z.i > 0 && zoneNext(Z, -1, B).z === 'timber') d = Math.max(d, -(wx - Z.x0));
+  return d;
 };
 // a web line's point at fraction u: straight a0..b0, sagging in the middle (as world/sway.js webAt)
 /** @param {WebLine} L @param {number} u */
 export const titleWebAt = webAt;   // (and bent where a player pushed through it)
-/** @param {number} wx @param {{ top: number, bot: number }} B */
+/** @param {number} wx @param {{ top: number, bot: number, zp?: TitlePlan }} B */
 export const titleFloor = (wx, B) => {
-  const nat = B.bot - 22 + Math.sin(wx * 0.021 + 4) * 7 + Math.sin(wx * 0.057 + 2) * 4 + Math.sin(wx * 0.13) * 1.5;
-  const b = built(wx);
+  const nat = B.bot - 22 + zoneMix(wx, B, (x, Z) => Z.fo + (Math.sin(x * 0.021 * Z.ff + Z.ph[2]) * 7 + Math.sin(x * 0.057 * Z.ff + Z.ph[3]) * 4) * Z.fa) + Math.sin(wx * 0.13) * 1.5;
+  const b = built(wx, B);
   return nat * (1 - b) + (B.bot - 20) * b;
 };
 
@@ -211,13 +258,13 @@ function dirty(S, c0, c1, r0, r1) {
 // make one terrain column (and the plants on it)
 /** @param {TitleScene} S @param {number} c */
 function genCol(S, c) {
-  const wx = c * TCELL, z = titleZone(wx), b = built(wx), R = S.rnd;
+  const wx = c * TCELL, Zn = titleZoneSpan(wx, S), z = Zn.z, b = built(wx, S), R = S.rnd;
   const cy = titleCeil(wx, S), fy = titleFloor(wx, S), base = ci(S, c, 0);
   // the built-up layers' timber frames, as strata.js timberFrame makes them: two posts (lit on the
   // left), a cap beam two rows deep running a little past them, a knee brace inside each post's top,
   // a footing under each post
   const u = ((wx % FRAME_GAP) + FRAME_GAP) % FRAME_GAP, uc = u > FRAME_GAP - 5 ? u - FRAME_GAP : u;
-  const frame = z === 'timber' && uc < FRAME_W + 4 && built(wx - uc - 4) > 0.95 && built(wx - uc + FRAME_W + 4) > 0.95;   // whole frames only
+  const frame = z === 'timber' && uc < FRAME_W + 4 && built(wx - uc - 4, S) > 0.95 && built(wx - uc + FRAME_W + 4, S) > 0.95;   // whole frames only
   // moss patches on the floor (thicker moss, bright grass tufts on top), as decorate.js bakes them
   const patch = titleNoise(wx / 14, 11) > 0.52, tuft = patch && h2(c, 5) < 0.4 ? (h2(c, 6) < 0.4 ? 2 : 1) : 0;
   const mossDeep = 2 + (patch ? 1 + Math.floor(h2(c, 7) * 3) : 0);
@@ -227,12 +274,12 @@ function genCol(S, c) {
   // a small brick ledge out in the air of a natural cave (the level's built ledges)
   const lk = Math.floor(wx / 90), lx0 = lk * 90 + 15 + h2(lk, 8) * 35, lw = 14 + h2(lk, 9) * 14;
   const lmid = lx0 + lw / 2, lc = titleCeil(lmid, S), lf = titleFloor(lmid, S), ly = lc + 14 + h2(lk, 10) * Math.max(0, lf - lc - 52);
-  const ledge = (z === 'moss' || z === 'grove' || z === 'webs') && built(lmid) === 0 && h2(lk, 11) < 0.5 && wx >= lx0 && wx < lx0 + lw && lf - lc > 60;
+  const ledge = (z === 'moss' || z === 'grove' || z === 'webs') && built(lmid, S) === 0 && h2(lk, 11) < 0.5 && wx >= lx0 && wx < lx0 + lw && lf - lc > 60;
   // the layers stack (strataCave): over the shelf you run under, another open band with its own frames
-  const shelf = z === 'timber' && built(wx) > 0.9 ? 18 + titleNoise(wx / 20, 50) * 6 : 0, upBot = cy - shelf, upTop = upBot - 34;
+  const shelf = z === 'timber' && b > 0.9 ? 18 + titleNoise(wx / 20, 50) * 6 : 0, upBot = cy - shelf, upTop = upBot - 34;
   const fu = ((wx + FRAME_GAP / 2) % FRAME_GAP + FRAME_GAP) % FRAME_GAP, upPost = shelf && (fu < 4 || (fu >= FRAME_W - 4 && fu < FRAME_W));
   for (let r = 0; r < S.rows; r++) {
-    const y = (r + 0.5) * TCELL, zc = titleZoneAt(wx, y);   // the skin (moss or bricks) frays at a border
+    const y = (r + 0.5) * TCELL, zc = titleZoneAt(wx, y, S);   // the skin (moss or bricks) frays at a border
     let m = TM.AIR;
     if (shelf && y >= upTop && y < upBot) m = upPost || (fu < FRAME_W + 4 && y < upTop + 4) ? TM.BEAMD : TM.AIR;
     else if (y < cy) m = TM.ROCK;
@@ -254,15 +301,15 @@ function genCol(S, c) {
     S.cells[base + r] = m;
   }
   // a lantern hanging on its chain under the layers' roof: between the frames, and some inside them
-  if (z === 'timber' && built(wx) > 0.95 && (Math.abs(u - (FRAME_W + FRAME_GAP) / 2) < 1 || Math.abs(u - FRAME_W / 2) < 1) && R() < 0.75)
+  if (z === 'timber' && b > 0.95 && (Math.abs(u - (FRAME_W + FRAME_GAP) / 2) < 1 || Math.abs(u - FRAME_W / 2) < 1) && R() < 0.75)
     lamp(S, c, wx, cy + 10, 4 + R() * 8);
   // and in the band above, and down long chains from the brick works' high roof
   if (shelf && Math.abs(fu - FRAME_W / 2) < 1 && R() < 0.6)
     lamp(S, c, wx, upTop + 10, 3 + R() * 6);
-  if (z === 'paved' && built(wx) > 0.9 && Math.abs(u - FRAME_GAP / 2) < 1 && R() < 0.8)
+  if (z === 'paved' && b > 0.9 && Math.abs(u - FRAME_GAP / 2) < 1 && R() < 0.8)
     lamp(S, c, wx, cy + 10, 14 + R() * 30);
   // the spiders' zone: web lines everywhere, roof to floor (slanting either way) and roof to roof (sagging)
-  if (z === 'webs' && b === 0 && !(c % 4) && R() < 0.42 && S.webs.length < TITLE_WEBS) {
+  if (z === 'webs' && b === 0 && !(c % 4) && R() < 0.42 * Zn.dens && S.webs.length < TITLE_WEBS) {
     const down = R() < 0.55, bx = down ? wx + (R() - 0.35) * 70 : wx + 18 + R() * 44;
     const by = down ? titleFloor(bx, S) - 0.5 : titleCeil(bx, S) + 0.5;
     /** @type {WebLine} */
@@ -276,10 +323,10 @@ function genCol(S, c) {
   const nat = 1 - b, grove = z === 'grove';
   // the grove's vine arches (decorate.js arches, drawn by art/props.js drawArch): roof to roof, sagging,
   // thick with leaves, strands hanging off them
-  const zu = wx - Math.floor(wx / TITLE_ZLEN) * TITLE_ZLEN;
+  const zu = wx - Zn.x0, zl = Zn.x1 - Zn.x0;
   // A cluster every 80: the arch knobs' (ARCH_KNOBS) arches per cluster, span (capped to the screen), sag
   // (slack), stems, strands per 10 px and their length, and open air under each (else it hangs less)
-  if (grove && zu > 20 && zu < TITLE_ZLEN - 90 && ((wx % 80) + 80) % 80 < TCELL) {
+  if (grove && zu > 20 && zu < zl - 90 && ((wx % 80) + 80) % 80 < TCELL) {
     const na = Math.max(1, Math.round(kru('arCluster', R())));
     for (let a = 0; a < na; a++) {
       const ax = wx + (R() - 0.3) * 60, span = kru('arSpan', R()) * TCELL * 0.6, bx = ax + span;   // the knob's spans, scaled to the title's narrow screen
@@ -303,8 +350,8 @@ function genCol(S, c) {
     }
   }
   if (grove && !(c % 2)) {
-    const mid = Math.min(1, Math.min(zu, TITLE_ZLEN - zu) / 70);
-    if (R() < 0.12 + 0.2 * mid) {
+    const mid = Math.min(1, Math.min(zu, zl - zu) / 70);
+    if (R() < (0.12 + 0.2 * mid) * Zn.dens) {
       const room = fy - cy, st = R() < 0.82 ? 'vine' : R() < 0.5 ? 'root' : 'myc';
       S.props.push({ k: 'climb', st, ox: wx, x: 0, y: cy, len: room * (0.2 + R() * (0.35 + 0.45 * mid)), seed: R(), side: 1, burn: 0,
         ac: c, ar: Math.floor((cy - 1) / TCELL) });
@@ -313,7 +360,7 @@ function genCol(S, c) {
   }
   if (c % 3) return;
   const p = R();
-  if (!grove && p < (z === 'moss' ? 0.2 : 0.04) * Math.max(nat, 0.2)) {
+  if (!grove && p < (z === 'moss' ? 0.2 : 0.04) * Math.max(nat, 0.2) * Zn.dens) {
     const st = R() < 0.5 ? 'vine' : R() < 0.5 ? 'myc' : 'root';
     S.props.push({ k: 'climb', st, ox: wx, x: 0, y: cy, len: 10 + R() * (z === 'moss' ? 40 : 24), seed: R(), side: 1, burn: 0,
       ac: c, ar: Math.floor((cy - 1) / TCELL) });
@@ -378,7 +425,7 @@ function kitOf(shot, mods, art) {
 export function titleScene(vh, seed = 7, top = vh * 0.3, bot = vh * 0.62) {
   const rnd = titleRng(seed), rows = Math.ceil(vh / TCELL) + 1, ncol = Math.ceil((TITLE_VW + 90) / TCELL);
   /** @type {TitleScene} */
-  const S = { t: 0, vh, top, bot, seed, rnd, scroll: 0, shake: 0, spawn: 0, kills: 0, gold: 0, got: 0, runner: null, runners: [], foes: [], shots: [],
+  const S = { t: 0, vh, top, bot, seed, rnd, zp: titlePlan(seed), scroll: 0, shake: 0, spawn: 0, kills: 0, gold: 0, got: 0, runner: null, runners: [], foes: [], shots: [],
     parts: [], coins: [], booms: [], zaps: [], flash: 0, rows, ncol, cells: new Uint8Array(rows * ncol), gen: -25, props: [],
     fire: [], dirty: [], dirtyAll: true, carved: 0, burnt: 0, swaps: 0, groundT: 0, flyT: 0, kinds: {}, webs: [], cut: 0, lineT: 0,
     silk: [], nav: { F: null, fx: 0, fy: 0, t: -9 }, fireAcc: 0, fireN: 0, burning: new Set(), gotN: 0, pops: 0, lampsPopped: 0, kitNames: new Set(), digT: 0, digs: 0, digWhy: {} };
@@ -414,14 +461,14 @@ const wsolid = S => { const C = csolid(S); return (x, y) => !!C(Math.floor(x / C
 /** @param {TitleScene} S @param {number} [x] */
 function addFoe(S, x) {
   const R = S.rnd, wx = (x === undefined ? TITLE_VW + 16 : x) + S.scroll;
-  const home = TITLE_HOME[titleZone(wx)];
+  const home = TITLE_HOME[titleZone(wx, S)];
   let roll = R() * home.reduce((a, h) => a + h[1], 0), id = home[0][0];
   for (const [q, w] of home) { if (roll < w) { id = q; break; } roll -= w; }
   S.kinds[id] = (S.kinds[id] || 0) + 1;
   const n = id === 'rotta' ? 3 + Math.floor(R() * 4) : id === 'hamahakki' ? 1 + Math.floor(R() * 2) : 1;
   for (let i = 0; i < n && S.foes.length < TITLE_FOES; i++) {
     const ex = wx + i * (8 + R() * 8), k = enemyFor(id, 1), cy = titleCeil(ex, S), fy = titleFloor(ex, S);
-    if (i && titleZone(ex) !== titleZone(wx)) break;          // a swarm stops at its zone's end
+    if (i && titleZone(ex, S) !== titleZone(wx, S)) break;          // a swarm stops at its zone's end
     const ey = id === 'meduusa' ? cy + (fy - cy) * (0.25 + 0.45 * R()) : id === 'hamahakki' && R() < 0.5 ? cy + k.r : fy - k.r - 1;
     S.foes.push({ x: ex, y: ey, ty: ey, r: k.r, phase: R() * 6.28, hp: k.hp, hpMax: k.hp, cd: 1 + R() * 2, flash: 0, lx: 0, ly: 1,
       hx: ex, hy: ey, tgt: null, rest: R() * 3, k, touch: 0, charge: 0 });
@@ -740,11 +787,11 @@ export function titleStep(S, dt) {
   if (S.parts.length < TITLE_PARTS - 40) {
     if (R() < dt * 3) {
       const x = R() * TITLE_VW, wx = x + S.scroll;
-      if (built(wx) === 0) S.parts.push({ x, y: titleCeil(wx, S) + 1.5, vx: 0, vy: 0, life: 4, max: 4, r: 1, col: '#7ab8ff', kind: 'drip' });
+      if (built(wx, S) === 0) S.parts.push({ x, y: titleCeil(wx, S) + 1.5, vx: 0, vy: 0, life: 4, max: 4, r: 1, col: '#7ab8ff', kind: 'drip' });
     }
     if (R() < dt * 5) {
       const x = R() * TITLE_VW, wx = x + S.scroll, l = 5 + R() * 3;
-      if (built(wx) === 0) S.parts.push({ x, y: titleCeil(wx, S) + 10 + R() * (titleFloor(wx, S) - titleCeil(wx, S) - 20), vx: (R() - 0.5) * 8, vy: -2 - R() * 3,
+      if (built(wx, S) === 0) S.parts.push({ x, y: titleCeil(wx, S) + 10 + R() * (titleFloor(wx, S) - titleCeil(wx, S) - 20), vx: (R() - 0.5) * 8, vy: -2 - R() * 3,
         life: l, max: l, r: 1.3, col: 'rgb(' + THEMES[0].moss[1].join(',') + ')', kind: 'spore' });
     }
   }
@@ -1140,7 +1187,7 @@ function stepFoes(S, dt) {
 /** @param {TitleScene} S @param {Enemy} e @param {boolean} hunting @param {Pt} goal @param {number} sees @param {(cx: number, cy: number) => number} CS @param {number} dt */
 function jellyAct(S, e, hunting, goal, sees, CS, dt) {
   const R = S.rnd;
-  jellyStep(e, { solidCell: CS, hunting, goal, rnd: R, speedMul: 1, rangeMul: sees, stay: x => built(x) === 0 }, dt);
+  jellyStep(e, { solidCell: CS, hunting, goal, rnd: R, speedMul: 1, rangeMul: sees, stay: x => built(x, S) === 0 }, dt);
   const J = e.je;
   if (hunting && J && J.inRange && J.aimed && e.cd <= 0) {
     e.cd = 0.25;                                // no clear line: look again shortly
@@ -1407,6 +1454,49 @@ function spreadFrom(S, wx, y) {
     if (L.fu || R() > TITLE_JUMPP) continue;
     for (let i = 0; i <= 8; i++) { const w = titleWebAt(L, i / 8); if (Math.hypot(w.x - wx, w.y - y) < J) { catchWeb(S, L, i / 8); break; } }
   }
+}
+
+// The title's camera (owner, v0.0.168): pinch to zoom (1 = the whole screen, up to TITLE_ZMAX), drag to pan,
+// tap a player to follow them (tap again to let go); it never shows past the box seen at zoom 1: TITLE_VW
+// across, the screen's top down to `by` (the menu's top). It zooms about the action band's middle (screen
+// x TITLE_VW / 2, y `ay`), so a followed player sits there, between the title and the menu. x, y: the scene
+// point at that middle (screen units, as the runners' x, y); lock: the followed player's id, -1 none;
+// zt: a zoom it eases to (a lock zooms in to TITLE_ZLOCK)
+export const TITLE_ZMAX = 4;
+export const TITLE_ZLOCK = 2;
+/** @typedef {{ z: number, x: number, y: number, lock: number, zt: number, ay: number, by: number }} TitleCam */
+/** @param {number} ay the band's middle @param {number} by the box's bottom (screen units) @returns {TitleCam} */
+export const titleCam = (ay, by) => ({ z: 1, x: TITLE_VW / 2, y: ay, lock: -1, zt: 0, ay, by });
+/** @param {TitleCam} C keep the view inside the box */
+export function camClamp(C) {
+  C.z = Math.max(1, Math.min(TITLE_ZMAX, C.z));
+  const hw = TITLE_VW / 2 / C.z;
+  C.x = Math.max(hw, Math.min(TITLE_VW - hw, C.x));
+  C.y = Math.max(C.ay / C.z, Math.min(C.by - (C.by - C.ay) / C.z, C.y));
+}
+// the scene point under a screen point (sx, sy in screen units: css px / the screen's scale)
+/** @param {TitleCam} C @param {number} sx @param {number} sy */
+export const camAt = (C, sx, sy) => ({ x: C.x + (sx - TITLE_VW / 2) / C.z, y: C.y + (sy - C.ay) / C.z });
+// follow the locked player (eased), ease to zt
+/** @param {TitleCam} C @param {TitleScene} S @param {number} dt */
+export function camStep(C, S, dt) {
+  const e = 1 - Math.exp(-8 * dt), r = C.lock >= 0 ? S.runners[C.lock] : null;
+  if (C.zt) { C.z += (C.zt - C.z) * e; if (Math.abs(C.zt - C.z) < 0.01) { C.z = C.zt; C.zt = 0; } }
+  if (r) { C.x += (r.x + PW / 2 - C.x) * e; C.y += (r.y + PH / 2 - C.y) * e; }
+  camClamp(C);
+}
+// a tap at a scene point: on a player, follow them (or let go if it's the one followed); null: no player there
+/** @param {TitleCam} C @param {TitleScene} S @param {number} x @param {number} y @param {number} reach how far off a tap still counts (screen units) */
+export function camTap(C, S, x, y, reach) {
+  let best = null, bd = Infinity;
+  for (const r of S.runners) {
+    const d = Math.hypot(r.x + PW / 2 - x, r.y + PH / 2 - y);
+    if (d < PH / 2 + reach / C.z && d < bd) { bd = d; best = r; }
+  }
+  if (!best) return null;
+  C.lock = C.lock === best.id ? -1 : best.id;
+  if (C.lock >= 0 && C.z < TITLE_ZLOCK * 0.8) C.zt = TITLE_ZLOCK;
+  return best;
 }
 
 // The big title: CAVE over RUNNER in the game's blocky pixel font, each letter bobbing on its own

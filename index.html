@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v0.0.167</title>
-<!-- VERSION = 'v167' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v0.0.168</title>
+<!-- VERSION = 'v168' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -903,7 +903,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v0.0.167';</script>
+<script>const VERSION = 'v0.0.168';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -10253,8 +10253,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var TITLE_GOLD = 90;
   var TITLE_FIRE = 600;
   var TCELL = 2;
-  var TITLE_ZLEN = 280;
+  var TITLE_ZLEN = [200, 360];
   var TITLE_ZONES = ["moss", "webs", "timber", "paved", "grove"];
+  var ZMIX = 40;
   var ZBLEND = 28;
   var TIMBER_H = 38;
   var TITLE_WEBS = 60;
@@ -10340,12 +10341,66 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       return ((t ^ t >>> 14) >>> 0) / 4294967296;
     };
   }
-  var titleZone = (wx) => TITLE_ZONES[(Math.floor(wx / TITLE_ZLEN) % TITLE_ZONES.length + TITLE_ZONES.length) % TITLE_ZONES.length];
-  var built = (wx, only) => {
-    const z = titleZone(wx);
-    if (only ? z !== only : z !== "timber" && z !== "paved") return 0;
-    const u = wx - Math.floor(wx / TITLE_ZLEN) * TITLE_ZLEN;
-    return Math.max(0, Math.min(1, Math.min(u, TITLE_ZLEN - u) / 36));
+  function titlePlan(seed) {
+    return { R: titleRng(seed * 7919 + 13 >>> 0), z: [] };
+  }
+  function zoneIn(P2, wx) {
+    const Z = P2.z, R = P2.R;
+    if (!Z.length) Z.push(mkZone(R, -300, []));
+    while (Z[Z.length - 1].x1 <= wx) Z.push(mkZone(R, Z[Z.length - 1].x1, Z));
+    let lo = 0, hi = Z.length - 1;
+    if (wx < Z[0].x0) return Z[0];
+    while (lo < hi) {
+      const m = lo + hi + 1 >> 1;
+      if (Z[m].x0 <= wx) lo = m;
+      else hi = m - 1;
+    }
+    return Z[lo];
+  }
+  function mkZone(R, x0, Z) {
+    const last = Z.slice(-2).map((q) => q.z), can = TITLE_ZONES.filter((z2) => !last.includes(z2));
+    const z = can[Math.floor(R() * can.length)], len = TITLE_ZLEN[0] + R() * (TITLE_ZLEN[1] - TITLE_ZLEN[0]);
+    return {
+      z,
+      x0,
+      x1: x0 + len,
+      i: Z.length,
+      ph: [R() * 99, R() * 99, R() * 99, R() * 99, R() * 99],
+      ca: 0.5 + R() * 0.9,
+      fa: 0.5 + R() * 0.9,
+      cf: 0.6 + R() * 0.8,
+      ff: 0.6 + R() * 0.8,
+      co: -6 + R() * 16,
+      fo: -10 + R() * 16,
+      dens: 0.6 + R() * 0.8
+    };
+  }
+  var DEF_PLAN = titlePlan(7);
+  var planOf = (B) => B && B.zp || DEF_PLAN;
+  var titleZoneSpan = (wx, B) => zoneIn(planOf(B), wx);
+  var zoneNext = (Z, i, B) => {
+    const P2 = planOf(B);
+    zoneIn(P2, Z.x1 + 1);
+    return P2.z[Math.max(0, Z.i + i)];
+  };
+  var titleZone = (wx, B) => titleZoneSpan(wx, B).z;
+  var built = (wx, B) => {
+    const Z = titleZoneSpan(wx, B);
+    if (Z.z !== "timber" && Z.z !== "paved") return 0;
+    return Math.max(0, Math.min(1, Math.min(wx - Z.x0, Z.x1 - wx) / 36));
+  };
+  var zoneMix = (wx, B, f) => {
+    const Z = titleZoneSpan(wx, B), u = wx - Z.x0, v = Z.x1 - wx;
+    const sm = (t) => t * t * (3 - 2 * t);
+    if (u < ZMIX && Z.i > 0) {
+      const t = sm((u + ZMIX) / (2 * ZMIX));
+      return f(wx, zoneNext(Z, -1, B)) * (1 - t) + f(wx, Z) * t;
+    }
+    if (v < ZMIX) {
+      const t = sm((v + ZMIX) / (2 * ZMIX));
+      return f(wx, zoneNext(Z, 1, B)) * (1 - t) + f(wx, Z) * t;
+    }
+    return f(wx, Z);
   };
   var h2 = (x, y) => {
     const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453;
@@ -10357,10 +10412,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const a = h2(xi, yi), b = h2(xi + 1, yi), c = h2(xi, yi + 1), d = h2(xi + 1, yi + 1);
     return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
   }
-  var titleZoneAt = (wx, y) => titleZone(wx + (titleNoise(wx / 24, y / 14) - 0.5) * 2 * ZBLEND + (titleNoise(wx / 4, y / 4) - 0.5) * 12);
+  var titleZoneAt = (wx, y, B) => titleZone(wx + (titleNoise(wx / 24, y / 14) - 0.5) * 2 * ZBLEND + (titleNoise(wx / 4, y / 4) - 0.5) * 12, B);
   var titleCeil = (wx, B) => {
-    const nat = B.top - 4 + Math.sin(wx * 0.018 + 6) * 10 + Math.sin(wx * 0.049 + 3) * 6 + Math.sin(wx * 0.11) * 2;
-    const d = timberD(wx);
+    const nat = B.top - 4 + zoneMix(wx, B, (x, Z) => Z.co + (Math.sin(x * 0.018 * Z.cf + Z.ph[0]) * 10 + Math.sin(x * 0.049 * Z.cf + Z.ph[1]) * 6) * Z.ca) + Math.sin(wx * 0.11) * 2;
+    const d = timberD(wx, B);
     if (d < -TIMBER_RAMP) return nat;
     const q = Math.max(0, Math.min(1, (d + TIMBER_RAMP - 30 + (titleNoise(wx / 40, 44) - 0.5) * 20) / TIMBER_RAMP)), bt = q * q * (3 - 2 * q);
     if (!bt) return nat;
@@ -10368,17 +10423,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return nat + (Math.max(nat, titleFloor(wx, B) - TIMBER_H) - nat) * bt + lump;
   };
   var TIMBER_RAMP = 120;
-  var timberD = (wx) => {
-    const u = wx - Math.floor(wx / TITLE_ZLEN) * TITLE_ZLEN, z = titleZone(wx);
-    if (z === "timber") return Math.min(u, TITLE_ZLEN - u);
-    if (titleZone(wx + TITLE_ZLEN) === "timber") return -(TITLE_ZLEN - u);
-    if (titleZone(wx - TITLE_ZLEN) === "timber") return -u;
-    return -Infinity;
+  var timberD = (wx, B) => {
+    const Z = titleZoneSpan(wx, B);
+    if (Z.z === "timber") return Math.min(wx - Z.x0, Z.x1 - wx);
+    let d = -Infinity;
+    if (zoneNext(Z, 1, B).z === "timber") d = -(Z.x1 - wx);
+    if (Z.i > 0 && zoneNext(Z, -1, B).z === "timber") d = Math.max(d, -(wx - Z.x0));
+    return d;
   };
   var titleWebAt = webAt;
   var titleFloor = (wx, B) => {
-    const nat = B.bot - 22 + Math.sin(wx * 0.021 + 4) * 7 + Math.sin(wx * 0.057 + 2) * 4 + Math.sin(wx * 0.13) * 1.5;
-    const b = built(wx);
+    const nat = B.bot - 22 + zoneMix(wx, B, (x, Z) => Z.fo + (Math.sin(x * 0.021 * Z.ff + Z.ph[2]) * 7 + Math.sin(x * 0.057 * Z.ff + Z.ph[3]) * 4) * Z.fa) + Math.sin(wx * 0.13) * 1.5;
+    const b = built(wx, B);
     return nat * (1 - b) + (B.bot - 20) * b;
   };
   var ci = (S2, c, r) => (c % S2.ncol + S2.ncol) % S2.ncol * S2.rows + r;
@@ -10402,21 +10458,21 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (!S2.dirtyAll) S2.dirty.push([c0, c1, r0, r1]);
   }
   function genCol(S2, c) {
-    const wx = c * TCELL, z = titleZone(wx), b = built(wx), R = S2.rnd;
+    const wx = c * TCELL, Zn = titleZoneSpan(wx, S2), z = Zn.z, b = built(wx, S2), R = S2.rnd;
     const cy = titleCeil(wx, S2), fy = titleFloor(wx, S2), base = ci(S2, c, 0);
     const u = (wx % FRAME_GAP + FRAME_GAP) % FRAME_GAP, uc = u > FRAME_GAP - 5 ? u - FRAME_GAP : u;
-    const frame = z === "timber" && uc < FRAME_W + 4 && built(wx - uc - 4) > 0.95 && built(wx - uc + FRAME_W + 4) > 0.95;
+    const frame = z === "timber" && uc < FRAME_W + 4 && built(wx - uc - 4, S2) > 0.95 && built(wx - uc + FRAME_W + 4, S2) > 0.95;
     const patch = titleNoise(wx / 14, 11) > 0.52, tuft = patch && h2(c, 5) < 0.4 ? h2(c, 6) < 0.4 ? 2 : 1 : 0;
     const mossDeep = 2 + (patch ? 1 + Math.floor(h2(c, 7) * 3) : 0);
     const rk = Math.floor(wx / 60), rcx = rk * 60 + 10 + h2(rk, 1) * 40, rw = 6 + h2(rk, 2) * 6, rd = (wx - rcx) / rw;
     const rub = z !== "paved" && h2(rk, 3) < 0.45 && Math.abs(rd) < 1 ? (2 + h2(rk, 4) * 2.5) * (1 - rd * rd) : 0;
     const lk = Math.floor(wx / 90), lx0 = lk * 90 + 15 + h2(lk, 8) * 35, lw = 14 + h2(lk, 9) * 14;
     const lmid = lx0 + lw / 2, lc = titleCeil(lmid, S2), lf = titleFloor(lmid, S2), ly = lc + 14 + h2(lk, 10) * Math.max(0, lf - lc - 52);
-    const ledge = (z === "moss" || z === "grove" || z === "webs") && built(lmid) === 0 && h2(lk, 11) < 0.5 && wx >= lx0 && wx < lx0 + lw && lf - lc > 60;
-    const shelf = z === "timber" && built(wx) > 0.9 ? 18 + titleNoise(wx / 20, 50) * 6 : 0, upBot = cy - shelf, upTop = upBot - 34;
+    const ledge = (z === "moss" || z === "grove" || z === "webs") && built(lmid, S2) === 0 && h2(lk, 11) < 0.5 && wx >= lx0 && wx < lx0 + lw && lf - lc > 60;
+    const shelf = z === "timber" && b > 0.9 ? 18 + titleNoise(wx / 20, 50) * 6 : 0, upBot = cy - shelf, upTop = upBot - 34;
     const fu = ((wx + FRAME_GAP / 2) % FRAME_GAP + FRAME_GAP) % FRAME_GAP, upPost = shelf && (fu < 4 || fu >= FRAME_W - 4 && fu < FRAME_W);
     for (let r = 0; r < S2.rows; r++) {
-      const y = (r + 0.5) * TCELL, zc = titleZoneAt(wx, y);
+      const y = (r + 0.5) * TCELL, zc = titleZoneAt(wx, y, S2);
       let m = TM.AIR;
       if (shelf && y >= upTop && y < upBot) m = upPost || fu < FRAME_W + 4 && y < upTop + 4 ? TM.BEAMD : TM.AIR;
       else if (y < cy) m = TM.ROCK;
@@ -10437,13 +10493,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (m === TM.AIR && y >= fy - tuft * TCELL && y < fy && zc !== "paved") m = TM.GRASS;
       S2.cells[base + r] = m;
     }
-    if (z === "timber" && built(wx) > 0.95 && (Math.abs(u - (FRAME_W + FRAME_GAP) / 2) < 1 || Math.abs(u - FRAME_W / 2) < 1) && R() < 0.75)
+    if (z === "timber" && b > 0.95 && (Math.abs(u - (FRAME_W + FRAME_GAP) / 2) < 1 || Math.abs(u - FRAME_W / 2) < 1) && R() < 0.75)
       lamp(S2, c, wx, cy + 10, 4 + R() * 8);
     if (shelf && Math.abs(fu - FRAME_W / 2) < 1 && R() < 0.6)
       lamp(S2, c, wx, upTop + 10, 3 + R() * 6);
-    if (z === "paved" && built(wx) > 0.9 && Math.abs(u - FRAME_GAP / 2) < 1 && R() < 0.8)
+    if (z === "paved" && b > 0.9 && Math.abs(u - FRAME_GAP / 2) < 1 && R() < 0.8)
       lamp(S2, c, wx, cy + 10, 14 + R() * 30);
-    if (z === "webs" && b === 0 && !(c % 4) && R() < 0.42 && S2.webs.length < TITLE_WEBS) {
+    if (z === "webs" && b === 0 && !(c % 4) && R() < 0.42 * Zn.dens && S2.webs.length < TITLE_WEBS) {
       const down = R() < 0.55, bx = down ? wx + (R() - 0.35) * 70 : wx + 18 + R() * 44;
       const by = down ? titleFloor(bx, S2) - 0.5 : titleCeil(bx, S2) + 0.5;
       const L3 = { ax: wx, ay: cy + 0.5, bx, by, a0x: wx, a0y: cy + 0.5, b0x: bx, b0y: by, ain: { x: wx, y: cy - 1 }, bin: { x: bx, y: down ? by + 1.5 : by - 1.5 }, owner: null, sag: 0 };
@@ -10451,8 +10507,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       S2.webs.push(L3);
     }
     const nat = 1 - b, grove = z === "grove";
-    const zu = wx - Math.floor(wx / TITLE_ZLEN) * TITLE_ZLEN;
-    if (grove && zu > 20 && zu < TITLE_ZLEN - 90 && (wx % 80 + 80) % 80 < TCELL) {
+    const zu = wx - Zn.x0, zl = Zn.x1 - Zn.x0;
+    if (grove && zu > 20 && zu < zl - 90 && (wx % 80 + 80) % 80 < TCELL) {
       const na = Math.max(1, Math.round(kru("arCluster", R())));
       for (let a = 0; a < na; a++) {
         const ax = wx + (R() - 0.3) * 60, span = kru("arSpan", R()) * TCELL * 0.6, bx = ax + span;
@@ -10494,8 +10550,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
     }
     if (grove && !(c % 2)) {
-      const mid = Math.min(1, Math.min(zu, TITLE_ZLEN - zu) / 70);
-      if (R() < 0.12 + 0.2 * mid) {
+      const mid = Math.min(1, Math.min(zu, zl - zu) / 70);
+      if (R() < (0.12 + 0.2 * mid) * Zn.dens) {
         const room = fy - cy, st = R() < 0.82 ? "vine" : R() < 0.5 ? "root" : "myc";
         S2.props.push({
           k: "climb",
@@ -10515,7 +10571,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     if (c % 3) return;
     const p = R();
-    if (!grove && p < (z === "moss" ? 0.2 : 0.04) * Math.max(nat, 0.2)) {
+    if (!grove && p < (z === "moss" ? 0.2 : 0.04) * Math.max(nat, 0.2) * Zn.dens) {
       const st = R() < 0.5 ? "vine" : R() < 0.5 ? "myc" : "root";
       S2.props.push({
         k: "climb",
@@ -10628,6 +10684,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       bot,
       seed,
       rnd: rnd2,
+      zp: titlePlan(seed),
       scroll: 0,
       shake: 0,
       spawn: 0,
@@ -10727,7 +10784,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   };
   function addFoe(S2, x) {
     const R = S2.rnd, wx = (x === void 0 ? TITLE_VW + 16 : x) + S2.scroll;
-    const home = TITLE_HOME[titleZone(wx)];
+    const home = TITLE_HOME[titleZone(wx, S2)];
     let roll = R() * home.reduce((a, h4) => a + h4[1], 0), id = home[0][0];
     for (const [q, w] of home) {
       if (roll < w) {
@@ -10740,7 +10797,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const n = id === "rotta" ? 3 + Math.floor(R() * 4) : id === "hamahakki" ? 1 + Math.floor(R() * 2) : 1;
     for (let i = 0; i < n && S2.foes.length < TITLE_FOES; i++) {
       const ex = wx + i * (8 + R() * 8), k = enemyFor(id, 1), cy = titleCeil(ex, S2), fy = titleFloor(ex, S2);
-      if (i && titleZone(ex) !== titleZone(wx)) break;
+      if (i && titleZone(ex, S2) !== titleZone(wx, S2)) break;
       const ey = id === "meduusa" ? cy + (fy - cy) * (0.25 + 0.45 * R()) : id === "hamahakki" && R() < 0.5 ? cy + k.r : fy - k.r - 1;
       S2.foes.push({
         x: ex,
@@ -11101,11 +11158,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (S2.parts.length < TITLE_PARTS - 40) {
       if (R() < dt * 3) {
         const x = R() * TITLE_VW, wx = x + S2.scroll;
-        if (built(wx) === 0) S2.parts.push({ x, y: titleCeil(wx, S2) + 1.5, vx: 0, vy: 0, life: 4, max: 4, r: 1, col: "#7ab8ff", kind: "drip" });
+        if (built(wx, S2) === 0) S2.parts.push({ x, y: titleCeil(wx, S2) + 1.5, vx: 0, vy: 0, life: 4, max: 4, r: 1, col: "#7ab8ff", kind: "drip" });
       }
       if (R() < dt * 5) {
         const x = R() * TITLE_VW, wx = x + S2.scroll, l = 5 + R() * 3;
-        if (built(wx) === 0) S2.parts.push({
+        if (built(wx, S2) === 0) S2.parts.push({
           x,
           y: titleCeil(wx, S2) + 10 + R() * (titleFloor(wx, S2) - titleCeil(wx, S2) - 20),
           vx: (R() - 0.5) * 8,
@@ -11626,7 +11683,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   function jellyAct(S2, e, hunting, goal, sees, CS, dt) {
     const R = S2.rnd;
-    jellyStep(e, { solidCell: CS, hunting, goal, rnd: R, speedMul: 1, rangeMul: sees, stay: (x) => built(x) === 0 }, dt);
+    jellyStep(e, { solidCell: CS, hunting, goal, rnd: R, speedMul: 1, rangeMul: sees, stay: (x) => built(x, S2) === 0 }, dt);
     const J = e.je;
     if (hunting && J && J.inRange && J.aimed && e.cd <= 0) {
       e.cd = 0.25;
@@ -11984,6 +12041,45 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
       }
     }
+  }
+  var TITLE_ZMAX = 4;
+  var TITLE_ZLOCK = 2;
+  var titleCam = (ay, by) => ({ z: 1, x: TITLE_VW / 2, y: ay, lock: -1, zt: 0, ay, by });
+  function camClamp(C) {
+    C.z = Math.max(1, Math.min(TITLE_ZMAX, C.z));
+    const hw = TITLE_VW / 2 / C.z;
+    C.x = Math.max(hw, Math.min(TITLE_VW - hw, C.x));
+    C.y = Math.max(C.ay / C.z, Math.min(C.by - (C.by - C.ay) / C.z, C.y));
+  }
+  var camAt = (C, sx, sy) => ({ x: C.x + (sx - TITLE_VW / 2) / C.z, y: C.y + (sy - C.ay) / C.z });
+  function camStep(C, S2, dt) {
+    const e = 1 - Math.exp(-8 * dt), r = C.lock >= 0 ? S2.runners[C.lock] : null;
+    if (C.zt) {
+      C.z += (C.zt - C.z) * e;
+      if (Math.abs(C.zt - C.z) < 0.01) {
+        C.z = C.zt;
+        C.zt = 0;
+      }
+    }
+    if (r) {
+      C.x += (r.x + PW / 2 - C.x) * e;
+      C.y += (r.y + PH / 2 - C.y) * e;
+    }
+    camClamp(C);
+  }
+  function camTap(C, S2, x, y, reach2) {
+    let best = null, bd = Infinity;
+    for (const r of S2.runners) {
+      const d = Math.hypot(r.x + PW / 2 - x, r.y + PH / 2 - y);
+      if (d < PH / 2 + reach2 / C.z && d < bd) {
+        bd = d;
+        best = r;
+      }
+    }
+    if (!best) return null;
+    C.lock = C.lock === best.id ? -1 : best.id;
+    if (C.lock >= 0 && C.z < TITLE_ZLOCK * 0.8) C.zt = TITLE_ZLOCK;
+    return best;
   }
   function titleText(ctx, t, cw, top) {
     const lines = ["CAVE", "RUNNER"];
@@ -20792,7 +20888,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (ch) C.cx.putImageData(C.img, 0, 0);
     return C.cv;
   }
-  function titleDraw(ctx, S2, cw, ch) {
+  function titleDraw(ctx, S2, cw, ch, cam) {
     const k = cw / TITLE_VW;
     ctx.fillStyle = "rgb(" + T.bg.join(",") + ")";
     ctx.fillRect(0, 0, cw, ch);
@@ -20800,6 +20896,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const sx = (S2.rnd() - 0.5) * S2.shake * k, sy = (S2.rnd() - 0.5) * S2.shake * k;
     ctx.translate(sx, sy);
     ctx.scale(k, k);
+    if (cam && cam.z !== 1) {
+      ctx.translate(TITLE_VW / 2, cam.ay);
+      ctx.scale(cam.z, cam.z);
+      ctx.translate(-cam.x, -cam.y);
+    }
     const cv = terrain(S2), N = S2.ncol, c0 = Math.floor(S2.scroll / TCELL) - 2, n = Math.ceil(TITLE_VW / TCELL) + 4;
     ctx.imageSmoothingEnabled = false;
     for (let c = c0; c < c0 + n; ) {
@@ -34607,7 +34708,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const c = cvs.current;
       if (!c) return void 0;
       const ctx = c.getContext("2d");
-      let S2 = null, raf = 0, last = performance.now(), cw = 0, chh = 0;
+      let S2 = null, C = null, raf = 0, last = performance.now(), cw = 0, chh = 0;
+      const seed = window.__TEST ? window.__TITLE_SEED || 7 : 1 + Math.floor(Math.random() * 1e6);
       const frame = () => {
         raf = requestAnimationFrame(frame);
         const dpr = Math.min(3, window.devicePixelRatio || 1), w = window.innerWidth, hh = window.innerHeight;
@@ -34617,19 +34719,78 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           c.width = Math.round(w * dpr);
           c.height = Math.round(hh * dpr);
           const k = w / TITLE_VW, mt = menu.current ? menu.current.getBoundingClientRect().top : hh * 0.6;
-          S2 = titleScene(hh / k, 7, (titleBottom(w, TOP(hh)) + 14) / k, (mt - 10) / k);
+          S2 = titleScene(hh / k, seed, (titleBottom(w, TOP(hh)) + 14) / k, (mt - 10) / k);
+          C = titleCam((S2.top + S2.bot) / 2, S2.bot + 10 / k);
+          if (window.__TEST) window.__title = { S: S2, C };
           for (let i = 0; i < 40; i++) titleStep(S2, 1 / 30);
         }
         const now = performance.now(), dt = (now - last) / 1e3;
         last = now;
         titleStep(S2, dt);
+        camStep(C, S2, Math.min(dt, 0.1));
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        titleDraw(ctx, S2, w, hh);
+        titleDraw(ctx, S2, w, hh, C);
         titleText(ctx, S2.t, w, TOP(hh));
         c.dataset.kills = String(S2.kills);
+        c.dataset.cam = [C.z.toFixed(2), C.x.toFixed(1), C.y.toFixed(1), C.lock].join(" ");
       };
       raf = requestAnimationFrame(frame);
-      return () => cancelAnimationFrame(raf);
+      const P2 = /* @__PURE__ */ new Map();
+      let pinch = null, moved = false;
+      const sk = () => cw / TITLE_VW;
+      const down = (e) => {
+        e.preventDefault();
+        P2.set(e.pointerId, { x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY, t: performance.now() });
+        if (P2.size === 1) moved = false;
+        if (P2.size === 2 && C) {
+          const [a, b] = [...P2.values()], mx = (a.x + b.x) / 2 / sk(), my = (a.y + b.y) / 2 / sk();
+          pinch = { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, z: C.z, at: camAt(C, mx, my) };
+          moved = true;
+        }
+      };
+      const move = (e) => {
+        const p = P2.get(e.pointerId);
+        if (!p || !C) return;
+        const dx = e.clientX - p.x, dy = e.clientY - p.y;
+        p.x = e.clientX;
+        p.y = e.clientY;
+        if (Math.hypot(p.x - p.x0, p.y - p.y0) > 10) moved = true;
+        if (pinch && P2.size >= 2) {
+          const [a, b] = [...P2.values()], mx = (a.x + b.x) / 2 / sk(), my = (a.y + b.y) / 2 / sk();
+          C.z = pinch.z * Math.hypot(a.x - b.x, a.y - b.y) / pinch.d;
+          C.zt = 0;
+          camClamp(C);
+          if (C.lock < 0) {
+            C.x = pinch.at.x - (mx - TITLE_VW / 2) / C.z;
+            C.y = pinch.at.y - (my - C.ay) / C.z;
+          }
+          camClamp(C);
+        } else if (P2.size === 1 && moved && C.lock < 0) {
+          C.x -= dx / sk() / C.z;
+          C.y -= dy / sk() / C.z;
+          camClamp(C);
+        }
+      };
+      const up = (e) => {
+        const p = P2.get(e.pointerId);
+        P2.delete(e.pointerId);
+        if (P2.size < 2) pinch = null;
+        if (p && !moved && !P2.size && C && performance.now() - p.t < 400) {
+          const q = camAt(C, p.x / sk(), p.y / sk());
+          camTap(C, S2, q.x, q.y, 16 / sk());
+        }
+      };
+      c.addEventListener("pointerdown", down);
+      c.addEventListener("pointermove", move);
+      c.addEventListener("pointerup", up);
+      c.addEventListener("pointercancel", up);
+      return () => {
+        cancelAnimationFrame(raf);
+        c.removeEventListener("pointerdown", down);
+        c.removeEventListener("pointermove", move);
+        c.removeEventListener("pointerup", up);
+        c.removeEventListener("pointercancel", up);
+      };
     }, []);
     const pick = (n) => {
       setSel(n);
