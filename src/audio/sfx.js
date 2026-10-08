@@ -10,12 +10,15 @@ import { DEV } from '../dev/knobs.js';
 // The engine. Nothing in here runs until the game calls it, and every call is wrapped so a
 // browser without Web Audio (or one that refuses it) just plays in silence.
 export const VOL_KEY = 'caverunner-volume';
+export const FXVOL_KEY = 'caverunner-vol-fx';         // the settings' FX slider (v0.0.174): sound effects and ambience
+export const MUSVOL_KEY = 'caverunner-vol-music';     // … and its Music slider (the music bus)
 export const SFX = (() => {
-  let ac = null, master = null, sfxBus = null, ambBus = null, noiseBuf = null, crackBuf = null, comp = null, tap = null;
+  let ac = null, master = null, sfxBus = null, ambBus = null, musicBus = null, noiseBuf = null, crackBuf = null, comp = null, tap = null;
   let voices = 0, hooked = false;
   // the whole game's volume (the pause menu's slider), 0..1, kept in localStorage VOL_KEY (shared by the slots)
-  let vol = 1;
-  try { const v = parseFloat(localStorage.getItem(VOL_KEY)); if (Number.isFinite(v)) vol = Math.max(0, Math.min(1, v)); } catch (_) {}
+  /** @param {string} key */
+  const stored = key => { try { const v = parseFloat(localStorage.getItem(key)); if (Number.isFinite(v)) return Math.max(0, Math.min(1, v)); } catch (_) {} return 1; };
+  let vol = stored(VOL_KEY), fxVol = stored(FXVOL_KEY), musVol = stored(MUSVOL_KEY);
   const MAX_VOICES = 28, HEAR = 650;
   const gates = {};
   const ear = { x: 0, y: 0 };
@@ -43,9 +46,10 @@ export const SFX = (() => {
         comp.threshold.value = -16; comp.knee.value = 12; comp.ratio.value = 5;
         comp.attack.value = 0.003; comp.release.value = 0.25;
         master = ac.createGain(); master.gain.value = vol;
-        sfxBus = ac.createGain(); sfxBus.gain.value = DEV.vol;
-        ambBus = ac.createGain(); ambBus.gain.value = DEV.vol * DEV.amb;
-        sfxBus.connect(master); ambBus.connect(master);
+        sfxBus = ac.createGain(); sfxBus.gain.value = DEV.vol * fxVol;
+        ambBus = ac.createGain(); ambBus.gain.value = DEV.vol * DEV.amb * fxVol;
+        musicBus = ac.createGain(); musicBus.gain.value = musVol;
+        sfxBus.connect(master); ambBus.connect(master); musicBus.connect(master);
         master.connect(comp); comp.connect(ac.destination);
         // two seconds of white noise, and of crackle: silence broken by sparse sharp pops
         const n = ac.sampleRate * 2;
@@ -836,7 +840,7 @@ export const SFX = (() => {
   // every frame, running or paused: the volume knobs, and silence for loops nobody is feeding
   function tick() {
     if (!ac) return;
-    sfxBus.gain.value = DEV.vol; ambBus.gain.value = DEV.vol * DEV.amb;
+    sfxBus.gain.value = DEV.vol * fxVol; ambBus.gain.value = DEV.vol * DEV.amb * fxVol;
     // unlocking finishes a moment after the tap, so the floor's ambience starts from here
     if (ambWant && !amb && live()) setAmbience(ambWant);
     const t = now();
@@ -865,6 +869,21 @@ export const SFX = (() => {
       try { localStorage.setItem(VOL_KEY, String(vol)); } catch (_) {}
     },
     get volume() { return vol; },
+    /** @param {number} v sound effects' and ambience's volume, 0..1 (kept) */
+    setFxVolume: v => {
+      fxVol = Math.max(0, Math.min(1, Number(v) || 0));
+      try { localStorage.setItem(FXVOL_KEY, String(fxVol)); } catch (_) {}
+    },
+    get fxVolume() { return fxVol; },
+    /** @param {number} v the music's volume, 0..1 (kept) */
+    setMusicVolume: v => {
+      musVol = Math.max(0, Math.min(1, Number(v) || 0));
+      try { if (musicBus) musicBus.gain.value = musVol; } catch (_) {}
+      try { localStorage.setItem(MUSVOL_KEY, String(musVol)); } catch (_) {}
+    },
+    get musicVolume() { return musVol; },
+    get ctx() { return ac; },              // the context and the music bus, for audio/music.js
+    get musicOut() { return musicBus; },
     get ready() { return !!live(); },
     get ambience() { return amb ? amb.name : null; },
     get loops() { return loops.size; },

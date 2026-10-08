@@ -2,16 +2,19 @@
 // The title screen (LIST4 #4): the page opens on it. A full-screen canvas runs the action scene
 // (art/titlescene.js) on one requestAnimationFrame, stopped when the title closes; over it the big
 // CAVE RUNNER and a menu window: three save slots (each a summary of its run, or empty; 🗑️ then a
-// red "Delete?" empties one) and Start (continues the slot's run, or starts a new one in it).
+// red "Delete?" empties one), ▶ (continues the slot's run, or starts a new one in it) and ⚙ (the window turns
+// into the settings: master, FX and music volume, × back; v0.0.174).
 // Root picks the title or the game: the Game is only mounted after Start.
 // The scene's camera (v0.0.168): pinch to zoom, drag to pan, tap a player to follow them, again to let go
 // (art/titlescene.js titleCam); each visit its own seed, so its own zones.
+// Its sound (v0.0.174): everything on screen with the game's own sounds (ui/titlesound.js).
 
 import { SFX } from '../audio/sfx.js';
 import { TITLE_VW, camAt, camClamp, camStep, camTap, titleBottom, titleCam, titleScene, titleStep, titleText } from '../art/titlescene.js';
 import { titleDraw } from '../game/render/titledraw.js';
 import { SLOTS, deleteSlot, getSlot, loadSlotSummary, setSlot } from '../save/save.js';
 import { App } from './app.js';
+import { titleSound, titleSoundStop } from './titlesound.js';
 import { h, useEffect, useRef, useState } from './h.js';
 import { fmtGold } from './hud.js';
 
@@ -26,11 +29,14 @@ export function Title({ onStart }) {
   const [slot, setSel] = useState(getSlot);
   const [sums, setSums] = useState(() => Array.from({ length: SLOTS }, (_, i) => loadSlotSummary(i + 1)));
   const [del, setDel] = useState(0);           // the slot whose 🗑️ was tapped once (asking "Delete?")
+  const [setup, setSetup] = useState(false);   // the window shows the settings
   useEffect(() => {
     const c = cvs.current;
     if (!c) return undefined;
     const ctx = c.getContext('2d');
     let S = null, C = null, raf = 0, last = performance.now(), cw = 0, chh = 0;
+    const loops = {};
+    SFX.unlock();                                // the app plays at once; a browser waits for the first tap
     const seed = window.__TEST ? window.__TITLE_SEED || 7 : 1 + Math.floor(Math.random() * 1e6);
     const frame = () => {
       raf = requestAnimationFrame(frame);
@@ -49,6 +55,7 @@ export function Title({ onStart }) {
       last = now;
       titleStep(S, dt);
       camStep(C, S, Math.min(dt, 0.1));
+      titleSound(S, C, loops, Math.min(dt, 0.1));
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       titleDraw(ctx, S, w, hh, C);
       titleText(ctx, S.t, w, TOP(hh));
@@ -64,6 +71,7 @@ export function Title({ onStart }) {
     /** @param {PointerEvent} e */
     const down = e => {
       e.preventDefault();
+      SFX.unlock();
       P.set(e.pointerId, { x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY, t: performance.now() });
       if (P.size === 1) moved = false;
       if (P.size === 2 && C) {
@@ -97,7 +105,9 @@ export function Title({ onStart }) {
       if (P.size < 2) pinch = null;
       if (p && !moved && !P.size && C && performance.now() - p.t < 400) {
         const q = camAt(C, p.x / sk(), p.y / sk());
+        const was = C.lock;
         camTap(C, S, q.x, q.y, 16 / sk());
+        if (C.lock !== was) SFX.fx(C.lock < 0 ? 'close' : 'open');
       }
     };
     c.addEventListener('pointerdown', down);
@@ -106,39 +116,78 @@ export function Title({ onStart }) {
     c.addEventListener('pointercancel', up);
     return () => {
       cancelAnimationFrame(raf);
+      titleSoundStop(loops);
       c.removeEventListener('pointerdown', down); c.removeEventListener('pointermove', move);
       c.removeEventListener('pointerup', up); c.removeEventListener('pointercancel', up);
     };
   }, []);
   const pick = n => { setSel(n); setDel(0); SFX.unlock(); SFX.fx('switch'); };
   const trash = n => {
-    if (del !== n) { setDel(n); return; }
+    if (del !== n) { setDel(n); SFX.ui('poor'); return; }
+    SFX.fx('shatter', null, null, 'stone');
     deleteSlot(n);
     setSums(s => s.map((v, i) => (i + 1 === n ? null : v)));
     setDel(0);
   };
-  const start = () => { SFX.unlock(); setSlot(slot); onStart(); };
+  const start = () => { SFX.unlock(); SFX.fx('portalIn'); setSlot(slot); onStart(); };
+  const gear = on => { SFX.unlock(); SFX.fx(on ? 'open' : 'close'); setSetup(on); setDel(0); };
   const sum = sums[slot - 1];
   /** @param {(e: any) => void} fn */
   const tap = fn => e => { e.preventDefault(); fn(e); };
   return h('div', { className: 'title' },
     h('canvas', { ref: cvs, className: 'titlecvs' }),
-    h('div', { className: 'titlemenu', ref: menu },
-      h('div', { className: 'tmhead' }, 'SAVE SLOT'),
-      Array.from({ length: SLOTS }, (_, i) => {
-        const n = i + 1, s = sums[i];
-        return h('div', { key: n, className: 'tslot' + (slot === n ? ' on' : '') + (s ? '' : ' empty'), 'data-slot': n,
-          onPointerDown: tap(() => pick(n)) },
-          h('b', { className: 'tsn' }, n),
-          h('div', { className: 'tsinfo' },
-            s ? h('span', null, 'Floor ' + s.floor) : null,
-            s ? h('span', { className: 'tsgold' }, fmtGold(s.gold) + 'g') : null,
-            s ? h('span', null, s.guns + (s.guns === 1 ? ' gun' : ' guns')) : null,
-            s ? null : h('span', null, 'Empty — new run')),
-          s ? h('button', { className: 'tdel' + (del === n ? ' ask' : ''), 'data-del': n,
-            onPointerDown: e => { e.preventDefault(); e.stopPropagation(); trash(n); } }, del === n ? 'Delete?' : '🗑️') : null);
-      }),
-      h('button', { className: 'tstart', onPointerDown: tap(start) }, sum ? '▶ CONTINUE' : '▶ START')));
+    h('div', { className: 'titlemenu' + (setup ? ' setup' : ''), ref: menu },
+      setup ? h(Settings, { close: () => gear(false) }) : [
+        h('div', { key: 'h', className: 'tmhead' }, 'SAVE SLOT'),
+        ...Array.from({ length: SLOTS }, (_, i) => {
+          const n = i + 1, s = sums[i];
+          return h('div', { key: n, className: 'tslot' + (slot === n ? ' on' : '') + (s ? '' : ' empty'), 'data-slot': n,
+            onPointerDown: tap(() => pick(n)) },
+            h('b', { className: 'tsn' }, n),
+            h('div', { className: 'tsinfo' },
+              s ? h('span', null, 'Floor ' + s.floor) : null,
+              s ? h('span', { className: 'tsgold' }, fmtGold(s.gold) + 'g') : null,
+              s ? h('span', null, s.guns + (s.guns === 1 ? ' gun' : ' guns')) : null,
+              s ? null : h('span', null, 'Empty — new run')),
+            s ? h('button', { className: 'tdel' + (del === n ? ' ask' : ''), 'data-del': n,
+              onPointerDown: e => { e.preventDefault(); e.stopPropagation(); trash(n); } }, del === n ? 'Delete?' : '🗑️') : null);
+        }),
+        h('div', { key: 'b', className: 'tbtns' },
+          h('button', { className: 'tbig tgear', title: 'Settings', onPointerDown: tap(() => gear(true)) }, h(Cog)),
+          h('button', { className: 'tbig tstart', title: sum ? 'Continue' : 'Start', 'data-new': sum ? '0' : '1', onPointerDown: tap(start) }, h(PlayIcon)))]));
+}
+
+// the bold play triangle and the cog, drawn (the emoji differ phone to phone)
+const PlayIcon = () => h('svg', { viewBox: '0 0 40 40', width: 38, height: 38, 'aria-hidden': true },
+  h('path', { d: 'M12 6 L34 20 L12 34 Z', fill: 'currentColor', stroke: 'currentColor', strokeWidth: 5, strokeLinejoin: 'round' }));
+const Cog = () => h('svg', { viewBox: '0 0 40 40', width: 38, height: 38, 'aria-hidden': true },
+  h('g', { fill: 'currentColor' },
+    ...Array.from({ length: 8 }, (_, i) => h('rect', { key: i, x: 16.5, y: 2, width: 7, height: 10, rx: 1.5, transform: 'rotate(' + i * 45 + ' 20 20)' }))),
+  h('circle', { cx: 20, cy: 20, r: 12.5, fill: 'currentColor' }),
+  h('circle', { cx: 20, cy: 20, r: 5.5, fill: '#2a1a3e' }));
+
+// The settings (v0.0.174): the three volumes, each kept (audio/sfx.js), × back to the slots
+/** @param {{ close: () => void }} props */
+function Settings({ close }) {
+  const [v, setV] = useState(() => ({ master: SFX.volume, fx: SFX.fxVolume, music: SFX.musicVolume }));
+  const SET = { master: SFX.setVolume, fx: SFX.setFxVolume, music: SFX.setMusicVolume };
+  /** @param {'master' | 'fx' | 'music'} k @param {string} label */
+  const row = (k, label) => {
+    /** @param {any} e */
+    const slide = e => {
+      const x = Number(e.target.value) / 100;
+      SET[k](x);
+      setV(o => ({ ...o, [k]: x }));
+      if (k !== 'music') SFX.fx('reelTick');
+    };
+    return h('label', { key: k, className: 'pvol tvol', 'data-vol': k },
+      h('span', null, label, h('b', null, Math.round(v[k] * 100) + '%')),
+      h('input', { type: 'range', min: 0, max: 100, step: 1, value: Math.round(v[k] * 100), className: 'volslider', onInput: slide, onChange: slide }));
+  };
+  return [
+    h('div', { key: 'h', className: 'tmhead tsethead' }, 'SETTINGS',
+      h('button', { className: 'tclose', title: 'Close', onPointerDown: e => { e.preventDefault(); close(); } }, '×')),
+    row('master', 'Master'), row('fx', 'FX'), row('music', 'Music')];
 }
 
 // The page: the title first (every load), then the game. The browser test page skips the title

@@ -74,6 +74,35 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   await page.waitForTimeout(100);
   check('a tap on them again lets go', (await cam()).lock === -1);
 
+  // the title's sound (v0.0.174): the touches unlocked it; the scene's sounds play, none break, the loops run
+  let snd = null;
+  for (let i = 0; i < 20; i++) {
+    await page.waitForTimeout(150);
+    snd = await page.evaluate(() => ({ ready: SFX.ready, played: SFX.stats.played, errors: SFX.stats.errors.slice(), loops: SFX.loops, amb: SFX.ambience, music: Music.playing, mstep: Music.step }));
+    if (snd.ready && snd.played > 5) break;
+  }
+  check('the title plays its sounds (the scene\'s, the game\'s voices)', snd.ready && snd.played > 5 && !snd.errors.length, snd);
+  check('the jetpacks and the cave\'s ambience run', snd.loops >= 4 && snd.amb === 'Mossy caves', snd);
+  check('the title track plays', snd.music && snd.mstep > 0, snd);
+
+  // the buttons (v0.0.174): ▶ and ⚙ square, ⚙ left, ▶ right; ⚙ turns the window into the settings
+  const bx = await page.evaluate(() => ['.tgear', '.tstart'].map(s => { const r = document.querySelector(s).getBoundingClientRect(); return [r.left, r.width, r.height]; }));
+  check('▶ and ⚙ are square, ⚙ left of ▶', Math.abs(bx[0][1] - bx[0][2]) < 0.5 && Math.abs(bx[1][1] - bx[1][2]) < 0.5 && bx[0][0] < bx[1][0], bx);
+  await down('.tgear');
+  await page.waitForTimeout(80);
+  check('⚙ opens the settings: three sliders, no slots', (await page.$$('.titlemenu .tvol')).length === 3 && !(await page.$('.tslot')));
+  await page.evaluate(() => {
+    const el = document.querySelector('.tvol[data-vol="fx"] input');
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, '30');
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await page.waitForTimeout(50);
+  check('the FX slider sets and keeps its volume', await page.evaluate(() => Math.abs(SFX.fxVolume - 0.3) < 1e-9) && (await ls('caverunner-vol-fx')) === '0.3');
+  await down('.tclose');
+  await page.waitForTimeout(80);
+  check('× goes back to the slots', (await page.$$('.title .tslot')).length === 3 && !(await page.$('.tvol')));
+  await page.evaluate(() => localStorage.removeItem('caverunner-vol-fx'));
+
   // delete: one tap asks, the second empties it
   await down('.tdel[data-del="3"]');
   await page.waitForTimeout(80);

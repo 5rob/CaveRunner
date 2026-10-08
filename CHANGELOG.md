@@ -5,6 +5,25 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v0.0.174 — the title: sound, music, ▶ / ⚙ buttons and settings
+Released 2026-10-09 (owner OK'd; a minor update).
+- **Sound for everything on the title** (owner: match the game): the scene queues sounds (`S.snd`, `snd()` in
+  art/titlescene.js) and `ui/titlesound.js` plays them with the game's own: casts by the gun's spell voice (the saw while
+  digging), hits, rock, bounces, blasts, debris, lightning arcs, chain hops, creature alert / idle / hurt / die / bite / spit /
+  silk, lash, fizzle, whoosh as things catch, the fire loop, lantern glass, gold pickups and nugget landings, steps, landings,
+  gun swaps, a jetpack loop per player, vine and web rustles (`rustleStep`), drips, the Mossy caves ambience. Heard from the
+  camera's middle (the title at half the game's scale, nearer when zoomed). Follow / let go and the menu buttons click too.
+- **The menu** (owner): a square bold ▶ (right) for Start / Continue and a matching ⚙ (left, `.tbig`, drawn icons). ⚙ turns
+  the window into **Settings**: Master, FX and Music sliders (`SFX.setFxVolume`: the sfx and ambience buses;
+  `SFX.setMusicVolume`: a new music bus; kept in localStorage `caverunner-vol-fx` / `-music`), × back.
+- **Title music** (owner's brief: dark synthwave, pumping bass, 80s kick, 4 chords, building to a harmonised guitar solo):
+  `audio/song.js` (the song as data: A minor, Am F Dm E, 100 bpm, 40 bars, looping from bar 8; `songStep`, the solo in note
+  text, `harmonyOf`) played by `audio/music.js` (`makeMusic`: kick, snare, hats, riser, pumping bass, detuned pads, arps, and a
+  guitar made of a modelled plucked string through an amp and cabinet; notes ring on and fade under the next, `REL`; reverb and
+  echo made in code; `Music` start/stop live on the music bus). Three rounds with the owner (guitar more real, up an octave,
+  notes blended). `node tools/musicwav.js` renders it to .wav/.m4a.
+- Tests: `song` (new), `title` (+ sounds play without errors, the track plays, the buttons, the settings). `tools/settingsshots.js`.
+
 ## v0.0.173 — the title: the jellyfish glow's twinkle moves with the cave
 Released 2026-10-08 (owner's report; a minor update).
 - `titlePlantGlow` handed `plantGlowFill` screen coordinates, so its twinkle (a pattern by position) stood still on the

@@ -24,6 +24,7 @@ import { losClear } from '../world/vision.js';
 import { archCurve } from '../world/decorate.js';
 import { bendAwake, bendPush, bendStep, swingStep, swings, tailStep, vinePt, webAt } from '../world/sway.js';
 import { MODS } from '../spells/mods.js';
+import { rustleStep } from '../audio/recipes.js';
 import { pixText, pixWidth } from './pixfont.js';
 import { GUN_HELD, gunMuzzle } from './sprites.js';
 import { GUN_ART } from './gunart.js';
@@ -94,10 +95,10 @@ export const TITLE_HOME = {
  *   mode: string, modeT: number, tx: number, ty: number, retarget: number, gait: number, ground: boolean, swapT: number, swap: number, wvx: number, wvy: number,
  *   dig: number, clearT: number, keep: TKit | null, dx: number, dy: number, digY: number, sawT: number, switches: number[],
  *   bursty: number, burst: boolean, jet: boolean, jetT: number, jetCd: number, pace: number, spd: number,
- *   nav: { F: any, fx: number, fy: number, t: number } }} TRunner */
+ *   nav: { F: any, fx: number, fy: number, t: number }, stepT?: number, sawS?: number, rst?: { t?: number }, rub?: string, rubWas?: boolean }} TRunner */
 /** @typedef {{ x: number, y: number, vx: number, vy: number, size: number, col: string, look: string, life: number, foe: boolean, spin: number,
  *   grav: number, drag: number, explode: number, pit: number, fire: number, bounce: number, bounceE: number, pierce: number, dmg: number,
- *   homing?: number, accel?: number, vmax?: number, chain?: number }} TShot */
+ *   homing?: number, accel?: number, vmax?: number, chain?: number, hitFoe?: boolean }} TShot */
 /** @typedef {{ x: number, y: number, vx: number, vy: number, life: number, max: number, r: number, col: string, kind: string }} TPart */
 /** @typedef {{ x: number, y: number, r: number, t: number, max: number }} TBoom */
 /** @typedef {{ pts: { x: number, y: number }[], t: number, col: string }} TZap */
@@ -113,7 +114,10 @@ export const TITLE_HOME = {
  *   fire: TFire[], dirty: number[][], dirtyAll: boolean, carved: number, burnt: number, swaps: number, groundT: number, flyT: number, kinds: Record<string, number>,
  *   webs: WebLine[], cut: number, lineT: number, silk: { x: number, y: number, ax: number, ay: number, vx: number, vy: number, life: number }[],
  *   nav: { F: any, fx: number, fy: number, t: number }, fireAcc: number, fireN: number, burning: Set<number>, gotN: number, pops: number, lampsPopped: number, kitNames: Set<string>,
- *   digT: number, digs: number, digWhy: Record<string, number>, still?: boolean, zp: TitlePlan }} TitleScene */
+ *   digT: number, digs: number, digWhy: Record<string, number>, still?: boolean, zp: TitlePlan, snd: TSnd[] }} TitleScene */
+// a sound the scene asks for this frame (v0.0.174): ui/titlesound.js plays it with the game's own voice. k its name, x, y where (screen
+// units), a what it needs (a creature's kind, a shot, a radius)
+/** @typedef {{ k: string, x: number, y: number, a?: any }} TSnd */
 // a zone of the plan (titlePlan): its kind, x0..x1, i its place in the plan; its roof's and floor's offset (co, fo), hills' height (ca, fa),
 // stretch (cf, ff) and phases (ph); dens its plants and webs
 /** @typedef {{ z: string, x0: number, x1: number, i: number, ph: number[], ca: number, fa: number, cf: number, ff: number, co: number, fo: number, dens: number, mine?: TMine }} TZone */
@@ -532,7 +536,7 @@ export function titleScene(vh, seed = 7, top = vh * 0.3, bot = vh * 0.62) {
   const S = { t: 0, vh, top, bot, seed, rnd, zp: titlePlan(seed), scroll: 0, shake: 0, spawn: 0, kills: 0, gold: 0, got: 0, runner: null, runners: [], foes: [], shots: [],
     parts: [], coins: [], booms: [], zaps: [], flash: 0, rows, ncol, cells: new Uint8Array(rows * ncol), gen: -25, props: [],
     fire: [], dirty: [], dirtyAll: true, carved: 0, burnt: 0, swaps: 0, groundT: 0, flyT: 0, kinds: {}, webs: [], cut: 0, lineT: 0,
-    silk: [], nav: { F: null, fx: 0, fy: 0, t: -9 }, fireAcc: 0, fireN: 0, burning: new Set(), gotN: 0, pops: 0, lampsPopped: 0, kitNames: new Set(), digT: 0, digs: 0, digWhy: {} };
+    silk: [], nav: { F: null, fx: 0, fy: 0, t: -9 }, fireAcc: 0, fireN: 0, burning: new Set(), gotN: 0, pops: 0, lampsPopped: 0, kitNames: new Set(), digT: 0, digs: 0, digWhy: {}, snd: [] };
   genTo(S);
   // four players, spread along the left side, each on its own clock (S.runner: player 1)
   for (let i = 0; i < TITLE_RUNNERS; i++) {
@@ -550,6 +554,9 @@ export function titleScene(vh, seed = 7, top = vh * 0.3, bot = vh * 0.62) {
 // the terrain is made this far past the screen's right edge (v0.0.170: was 40, and a rat swarm coming in
 // at the edge spread past it, into what wasn't made yet, and sank into the rock)
 const AHEAD = 130;
+// a sound for the title's player (ui/titlesound.js), at screen point (x, y); a frame's are played and cleared there
+/** @param {TitleScene} S @param {string} k @param {number} x @param {number} y @param {any} [a] */
+const snd = (S, k, x, y, a) => { if (S.snd.length < 80) S.snd.push({ k, x, y, a }); };
 /** @param {TitleScene} S */
 function genTo(S) {
   while (S.gen * TCELL < S.scroll + TITLE_VW + AHEAD) { genCol(S, S.gen); S.gen++; }
@@ -620,6 +627,7 @@ function popLamp(S, p) {
   if (p.gone) return;
   p.gone = true; S.lampsPopped++;
   const R = S.rnd, x = p.x, y = p.y + p.len + 4.5;
+  snd(S, 'lamp', x, y);
   burst(S, x, y, 6, '#fff2c0', 80, 'spark', 0.3);
   for (let k = 0; k < 16 && S.parts.length < TITLE_PARTS; k++) {
     const a = -Math.PI / 2 + (R() - 0.5) * 3.4, v = 50 + R() * 120;
@@ -699,14 +707,14 @@ function fireNear(S, wx, y, r) {
 }
 // a plant catches: it burns up from its tip toward the rock (game/systems/fire.js catchPlant)
 /** @param {TitleScene} S @param {TProp} p */
-function catchPlant(S, p) { if (!p.burn && !p.gone) { p.burn = 1; S.burnt++; } }
+function catchPlant(S, p) { if (!p.burn && !p.gone) { p.burn = 1; S.burnt++; snd(S, 'whoosh', p.x, p.y + p.len); } }
 // an arched vine catches at fraction u: it burns through there (owner, v0.0.165), and each side hangs
 // from its end, swinging down, burning up from the cut (cutArch)
 /** @param {TitleScene} S @param {TProp} p @param {number} u */
-function catchArch(S, p, u) { if (!p.burn && !p.gone) { S.burnt++; cutArch(S, p, u, true, true); } }
+function catchArch(S, p, u) { if (!p.burn && !p.gone) { S.burnt++; snd(S, 'whoosh', p.x + (p.span || 0) * u, p.y); cutArch(S, p, u, true, true); } }
 // a web line catches at fraction u: the same, the two halves of silk hanging from its ends (cutWeb)
 /** @param {TitleScene} S @param {WebLine} L @param {number} u */
-function catchWeb(S, L, u) { if (!L.fu && !L.out) { S.burnt++; cutWeb(S, L, u, true); } }
+function catchWeb(S, L, u) { if (!L.fu && !L.out) { S.burnt++; const w = titleWebAt(L, u); snd(S, 'whoosh', w.x - S.scroll, w.y); cutWeb(S, L, u, true); } }
 
 // ---- cut lines (owner, v0.0.165): a vine or web line held at both ends, cut, hangs from each end that still
 // holds, a rope of TITLE_LINKS links (world/sway.js tailStep: the game's hanging-vine tail) swinging down from
@@ -786,6 +794,7 @@ const canSwing = p => p.k === 'climb' && !p.arc && !!p.len;
 // (bendPush) and springs back (bendStep). Cut pieces swing down under their own weight the same way
 /** @param {TitleScene} S @param {number} dt */
 function stepSway(S, dt) {
+  for (const r of S.runners) r.rub = '';
   for (const p of S.props) {
     if (p.gone || p.k !== 'climb') continue;
     const x = p.ox - S.scroll;
@@ -799,7 +808,7 @@ function stepSway(S, dt) {
         if (cx < p.ox - 8 || cx > p.ox + (p.span || 0) + 8) continue;
         let best = -1, bd = 7;
         for (let k = 0; k <= n; k++) { const d = Math.hypot(p.ox + p.arc[k][0] - cx, p.y + p.arc[k][1] - cy); if (d < bd) { bd = d; best = k; } }
-        if (best >= 0) bendPush(pa, best / n, r.wvx, r.wvy, DEV.bendPush, dt);
+        if (best >= 0) { bendPush(pa, best / n, r.wvx, r.wvy, DEV.bendPush, dt); r.rub = p.st === 'root' ? 'root' : 'vine'; }
       }
       if (bendAwake(pa)) bendStep(pa, 0, 0, DEV.bendK, DEV.bendDamp, DEV.bendMax, dt);
       continue;
@@ -812,6 +821,7 @@ function stepSway(S, dt) {
       if (Math.abs(x + q.x - (r.x + PW / 2)) < PW / 2 + 1) {
         const k = Math.min(1, 10 * dt);
         p.swv = (p.swv || 0) + (r.wvx * DEV.vinePush / Math.max(12, p.len) - (p.swv || 0)) * k;
+        r.rub = p.st === 'silk' ? 'myc' : p.st === 'root' ? 'root' : 'vine';
       }
     }
     if (p.sw || p.swv) swingStep(pa, p.len * 0.6, GRAVITY * DEV.vineGrav, DEV.vineDamp, DEV.vineMax, dt);
@@ -827,9 +837,14 @@ function stepSway(S, dt) {
       if (cx < Math.min(L.a0x, L.b0x) - 6 || cx > Math.max(L.a0x, L.b0x) + 6) continue;
       const vx = L.b0x - L.a0x, vy = L.b0y - L.a0y, u = Math.max(0, Math.min(1, ((cx - L.a0x) * vx + (cy - L.a0y) * vy) / (vx * vx + vy * vy || 1)));
       const w = titleWebAt(L, u);
-      if (Math.hypot(w.x - cx, w.y - cy) < 6) bendPush(L, u, r.wvx, r.wvy, DEV.bendPush, dt);
+      if (Math.hypot(w.x - cx, w.y - cy) < 6) { bendPush(L, u, r.wvx, r.wvy, DEV.bendPush, dt); r.rub = 'myc'; }
     }
     if (bendAwake(L)) bendStep(L, 0, 0, DEV.bendK, DEV.bendDamp, DEV.bendMax, dt);
+  }
+  for (const r of S.runners) {
+    const str = rustleStep(r.rst || (r.rst = {}), dt, r.rub, r.rub && !r.rubWas, Math.hypot(r.wvx, r.wvy) * 2, S.rnd);
+    r.rubWas = !!r.rub;
+    if (str) snd(S, 'rustle', r.x + PW / 2, r.y + PH / 2, { st: r.rub, v: str });
   }
 }
 
@@ -838,6 +853,8 @@ function killFoe(S, f) {
   f.hp = 0;
   S.kills++;
   const big = f.k.id !== 'rotta', x = f.x - S.scroll, y = f.ty;
+  snd(S, 'die', x, y, f.k);
+  if (big) snd(S, 'boom', x, y, f.r * 3);
   S.booms.push({ x, y, r: f.r * (big ? 3 : 1.6), t: 0, max: 0.4 });
   burst(S, x, y, big ? 22 : 8, '#ffd27a', 110, 'fire', 0.55);
   burst(S, x, y, 8, '#ffffff', 190, 'spark', 0.3);
@@ -856,6 +873,7 @@ function killFoe(S, f) {
 function hitFoe(S, f, dmg, col) {
   if (f.hp <= 0) return;
   f.hp -= dmg; f.flash = 0.08;
+  if (f.hp > 0 && dmg >= 0.5) snd(S, 'hurt', f.x - S.scroll, f.ty, f.k);
   if (f.k.kp) f.aggro = true;          // as in the game: hurt a spider, a jelly or a rat and it comes for you
   burst(S, f.x - S.scroll, f.ty, 4, col, 80, 'spark', 0.25);
   if (f.hp <= 0) killFoe(S, f);
@@ -867,6 +885,7 @@ function shotEnd(S, s) {
   s.life = 0;
   if (s.explode) {
     const r = s.explode * 0.42;
+    snd(S, 'boom', s.x, s.y, s.explode);
     S.booms.push({ x: s.x, y: s.y, r: r * 1.6, t: 0, max: 0.38 });
     burst(S, s.x, s.y, 14, '#ffb02e', 90, 'fire', 0.5);
     burst(S, s.x, s.y, 4, '#3a3346', 25, 'smoke', 1.2);
@@ -874,7 +893,8 @@ function shotEnd(S, s) {
     titleCarve(S, s.x, s.y, r);
     for (const g of S.foes) if (Math.hypot(g.x - S.scroll - s.x, g.ty - s.y) < r + g.r) hitFoe(S, g, 4, s.col);
     for (const p of S.props) if (p.k === 'lamp' && !p.gone && lampHit(p, s.x, s.y, r)) popLamp(S, p);
-  } else if (s.pit) titleCarve(S, s.x, s.y, s.pit * 0.7);
+  } else if (s.pit) { titleCarve(S, s.x, s.y, s.pit * 0.7); snd(S, 'debris', s.x, s.y); }
+  else if (!s.hitFoe) snd(S, 'rock', s.x, s.y);
   // fire reaches past a blast's charred rim, into the moss, timber and plants round it
   if (s.fire || s.explode) titleIgnite(S, s.x, s.y, (s.fire ? 7 : 0) + (s.explode ? s.explode * 0.42 + 5 : 0));
   burst(S, s.x, s.y, 3, s.col, 50, 'spark', 0.25);
@@ -912,7 +932,7 @@ export function titleStep(S, dt) {
     if (p.kind === 'drip') {
       // falls with the rock (the scroll carries it), until it lands: a splash
       p.vy += GRAV * dt; p.y += p.vy * dt; p.x -= SCROLL * dt;
-      if (titleSolid(S, p.x, p.y + 1)) { p.life = 0; burst(S, p.x, p.y, 2, '#7ab8ff', 25, 'spark', 0.2); }
+      if (titleSolid(S, p.x, p.y + 1)) { p.life = 0; burst(S, p.x, p.y, 2, '#7ab8ff', 25, 'spark', 0.2); snd(S, 'drip', p.x, p.y); }
       continue;
     }
     if (p.kind === 'ember') {
@@ -955,6 +975,7 @@ export function titleStep(S, dt) {
       if (p.y > S.vh) p.gone = true;
       else if (titleSolid(S, p.x, p.y + 1)) {
         p.gone = true; burst(S, p.x, p.y, 3, p.st === 'silk' ? '#eef0f6' : '#5a8a3a', 40, 'chunk', 0.6);
+        snd(S, 'rustle', p.x, p.y, { st: p.st === 'silk' ? 'myc' : 'vine', v: 0.4 });
         if (p.burn) lightArea(S, p.ox, p.y, 6, 0.8);
       }
       continue;
@@ -1100,7 +1121,7 @@ function runStep(S, r, dt) {
   if (ground < r.y + PH - 8) { r.ground = false; startDig(S, r, 1, 0, 'feet'); return; }
   if (ground > r.y + PH + 1.5) {
     r.vy += GRAV * dt; r.y += r.vy * dt; r.ground = false;
-    if (r.y + PH >= ground) { r.y = ground - PH; r.vy = 0; r.ground = true; }
+    if (r.y + PH >= ground) { if (r.vy > 100) snd(S, 'land', cx, ground, r.vy * 2); r.y = ground - PH; r.vy = 0; r.ground = true; }
   } else { r.y = ground - PH; r.vy = 0; r.ground = true; }
   // a wall ahead too tall to step, or a roof too low: saw a tunnel straight on
   const ahead = titleSurf(S, cx + 7, r.y + PH - 9, 1);
@@ -1108,6 +1129,7 @@ function runStep(S, r, dt) {
   if (boxRock(S, r.x, r.y, false) || boxRock(S, r.x + vx * dt + 2, r.y, false)) { startDig(S, r, 1, 0, 'roof'); return; }
   r.x += vx * dt;
   r.gait += (SCROLL + vx) * dt * 0.38;
+  if ((r.stepT = (r.stepT || 0) - dt * Math.abs(SCROLL + vx) / 20) <= 0) { r.stepT = 1; snd(S, 'step', cx, r.y + PH); }
   if (r.modeT <= 0) { setMode(S, r, 'fly', flyTime(R)); pickTarget(S, r); r.vy = -40; r.ground = false; r.burst = R() < r.bursty; r.jet = r.burst; r.jetT = 0.3; r.jetCd = 0; }
 }
 /** @param {TitleScene} S @param {TRunner} r @param {number} dt */
@@ -1144,7 +1166,7 @@ function flyStep(S, r, dt) {
   if (g0 < r.y + PH && g0 >= r.y + PH - 9 && !boxRock(S, r.x, g0 - PH)) r.y = g0 - PH;
   if (boxRock(S, r.x, r.y)) { startDig(S, r, r.vx + SCROLL, r.vy, 'came'); return; }
   // coming down to land: once his feet are at the floor, he's running
-  if (landing && g0 - (r.y + PH) < 1.5) { r.y = g0 - PH; r.vy = 0; setMode(S, r, 'run', runTime(R)); r.vx = 0; r.ground = true; r.retarget = 0; return; }
+  if (landing && g0 - (r.y + PH) < 1.5) { if (r.vy > 100) snd(S, 'land', cx, g0, r.vy * 2); r.y = g0 - PH; r.vy = 0; setMode(S, r, 'run', runTime(R)); r.vx = 0; r.ground = true; r.retarget = 0; return; }
   const nx = r.x + r.vx * dt, ny = r.y + r.vy * dt;
   if (!boxRock(S, nx, ny)) { r.x = nx; r.y = ny; return; }
   // the floor under him, going down and not aiming into it: he lands on it (or skims it, on his way)
@@ -1200,6 +1222,7 @@ function stepRunnerGun(S, r, dt) {
     r.sawT -= dt;
     const mz = gunMuzzle(cx() + Math.cos(r.ang) * 2.5, r.y + PH * 0.45, r.ang, GUN_HELD, r.kit.art), bx = mz.x + Math.cos(r.ang) * 3, by = mz.y + Math.sin(r.ang) * 3;
     if (R() < dt * 25) burst(S, bx, by, 1, R() < 0.5 ? '#ffd27a' : '#fff2c0', 70, 'spark', 0.15);
+    if ((r.sawS = (r.sawS || 0) - dt) <= 0) { r.sawS = r.kit.cd; snd(S, 'cast', bx, by, r.kit); }
     if (r.sawT <= 0) for (const f of S.foes) if (f.hp > 0 && Math.hypot(f.x - S.scroll - bx, f.ty - by) < f.r + 6) { hitFoe(S, f, MODS.saw.dmg * 0.5, '#d9dde4'); r.sawT = 0.15; }
     return;
   }
@@ -1218,6 +1241,7 @@ function stepRunnerGun(S, r, dt) {
   if (r.swapT <= 0) {
     r.kit = titleKit(R); S.kitNames.add(r.kit.name);
     r.swapT = 3.5 + R() * 2.5; r.swap = 0.3; r.cd = 0.35; S.swaps++;
+    snd(S, 'swap', cx(), r.y + PH / 2);
   }
   r.cd -= dt;
   if (!best || r.cd > 0 || r.swap > 0) return;
@@ -1226,12 +1250,13 @@ function stepRunnerGun(S, r, dt) {
   const n = Math.min(12, K.n);
   if (K.shot === 'zap') {
     // lightning: an arc into the creature (more of them: the next nearest), and one throwing off into the rock below it
+    snd(S, 'cast', gx, gy, K);
     const near = S.foes.filter(f => f.hp > 0 && f.x - S.scroll < TITLE_VW).sort((a, b) => Math.hypot(a.x - best.x, a.ty - best.ty) - Math.hypot(b.x - best.x, b.ty - best.ty));
     for (const f of near.slice(0, Math.min(4, n))) {
       const bx = f.x - S.scroll, by = f.ty;
       zapArc(S, gx, gy, bx, by, K.col);
       const fl = titleSurf(S, bx, by + f.r, 1);
-      if (fl - by < 50 && R() < 0.6) { zapArc(S, bx, by, bx + (R() - 0.5) * 16, fl + 1, K.col); titleCarve(S, bx, fl + 1, 2.5); titleIgnite(S, bx, fl + 1, 4); }
+      if (fl - by < 50 && R() < 0.6) { snd(S, 'arc', bx, fl); zapArc(S, bx, by, bx + (R() - 0.5) * 16, fl + 1, K.col); titleCarve(S, bx, fl + 1, 2.5); titleIgnite(S, bx, fl + 1, 4); }
       hitFoe(S, f, 3 * K.dmg / 2.2, K.col);
     }
     return;
@@ -1245,6 +1270,7 @@ function stepRunnerGun(S, r, dt) {
       bounce: K.bounce, bounceE: K.bounceE, pierce: K.pierce, dmg: K.dmg, homing: K.homing, accel: K.accel, vmax: K.vmax * SP, chain: K.chain });
   }
   burst(S, gx, gy, 3, K.col, 40, 'spark', 0.12);
+  snd(S, 'cast', gx, gy, K);
 }
 
 // a lightning arc from one point to another (drawn with the game's drawBolt)
@@ -1286,7 +1312,7 @@ function stepFoes(S, dt) {
     e.lx = dx / dist; e.ly = dy / dist;
     if (k.kp && ((e.aggroT = (e.aggroT || 0) - dt) <= 0)) { e.aggroM = kr(k.kp + 'Aggro', R); e.aggroT = 1; }
     const reach = k.aggro * sees * DEV.aggro * carrotAt('caAggro', 0) * (k.kp ? e.aggroM : 1);
-    if (!e.aggro) { if (dist < reach && losClear(e.x, e.ty, pcx, pcy, CS)) e.aggro = true; }
+    if (!e.aggro) { if (dist < reach && losClear(e.x, e.ty, pcx, pcy, CS)) { e.aggro = true; snd(S, 'alert', e.x - S.scroll, e.ty, k); } }
     else if (dist > reach * DEV.loseAggro) e.aggro = false;
     const hunting = !!e.aggro;
     if (k.act === 'jelly') jellyAct(S, e, hunting, goal, sees, CS, dt);
@@ -1294,9 +1320,10 @@ function stepFoes(S, dt) {
     else if (k.act === 'rat') ratAct(S, e, ru, hunting, CS, dt);
     e.ty = e.y;
     // a bite when it reaches him (he takes no harm here: a puff where it lands)
-    if (hunting && dist < e.r + 14 && e.touch <= 0) { e.touch = kr(k.kp + 'BiteCd', R); burst(S, ru.x + PW / 2, ru.y + PH / 2, 4, '#ff6a5a', 50, 'spark', 0.2); }
+    if (!hunting && R() < 0.07 * dt) snd(S, 'idle', e.x - S.scroll, e.ty, k);
+    if (hunting && dist < e.r + 14 && e.touch <= 0) { e.touch = kr(k.kp + 'BiteCd', R); snd(S, 'bite', e.x - S.scroll, e.ty, k); burst(S, ru.x + PW / 2, ru.y + PH / 2, 4, '#ff6a5a', 50, 'spark', 0.2); }
     // on fire (game/systems/fire.js): it catches from burning cells, burns for a while, hurt as it goes
-    if (!(e.burn > 0) && S.fire.length && fireNear(S, e.x, e.ty, e.r * 0.7)) e.burn = kr('fireBurn', R);
+    if (!(e.burn > 0) && S.fire.length && fireNear(S, e.x, e.ty, e.r * 0.7)) { e.burn = kr('fireBurn', R); snd(S, 'whoosh', e.x - S.scroll, e.ty); }
     if (e.burn > 0) {
       e.burn -= dt;
       if (R() < dt * 40) flameAt(S, e.x - S.scroll + (R() - 0.5) * e.r, e.ty + (R() - 0.5) * e.r);
@@ -1312,7 +1339,8 @@ function stepFoes(S, dt) {
     const n = Math.ceil(Math.hypot(b.vx, b.vy) * dt / 2);
     for (let s = 0; s < n && b.life > 0; s++) {
       b.x += b.vx * dt / n; b.y += b.vy * dt / n;
-      if (CS(Math.floor(b.x / CELL), Math.floor(b.y / CELL)) || S.runners.some(q => Math.abs(b.x - S.scroll - q.x - PW / 2) < PW / 2 + 3 && Math.abs(b.y - q.y - PH / 2) < PH / 2 + 3)) b.life = 0;
+      if (CS(Math.floor(b.x / CELL), Math.floor(b.y / CELL))) b.life = 0;
+      else if (S.runners.some(q => Math.abs(b.x - S.scroll - q.x - PW / 2) < PW / 2 + 3 && Math.abs(b.y - q.y - PH / 2) < PH / 2 + 3)) { b.life = 0; snd(S, 'lash', b.x - S.scroll, b.y); }
     }
   }
   S.silk = S.silk.filter(b => b.life > 0);
@@ -1327,6 +1355,7 @@ function jellyAct(S, e, hunting, goal, sees, CS, dt) {
     const hx = e.x + Math.cos(J.hd) * e.r * 0.9, hy = e.y + Math.sin(J.hd) * e.r * 0.9;
     if (losClear(hx, hy, goal.x, goal.y, CS)) {
       e.cd = kr('jeShotCd', R);
+      snd(S, 'fire', hx - S.scroll, hy, e.k);
       const a = Math.atan2(goal.y - hy, goal.x - hx) + (R() * 2 - 1) * kr('jeSpread', R) * Math.PI / 180, v = kr('jeShotSpd', R), P = jellyPal(J.u.col);
       S.shots.push({ x: hx - S.scroll, y: hy, vx: Math.cos(a) * v, vy: Math.sin(a) * v, size: kr('jeShotSize', R), col: P.spit, look: 'glob', life: 3, foe: true, spin: 0,
         grav: 0, drag: 0, explode: 0, pit: 0, fire: 0, bounce: 0, bounceE: 0, pierce: 0, dmg: 0 });
@@ -1338,7 +1367,7 @@ function spiderAct(S, e, hunting, goal, sees, dist, dx, dy, CS, dt) {
   const R = S.rnd;
   // on a line it rides the line's sag, which spiderStep doesn't know about: last frame's off, this frame's on
   if (e.wox || e.woy) { e.x -= e.wox || 0; e.y -= e.woy || 0; e.wox = e.woy = 0; }
-  spiderStep(e, { solidCell: CS, webs: S.webs, hunting, goal, rnd: R, speedMul: 1 }, dt);
+  if (spiderStep(e, { solidCell: CS, webs: S.webs, hunting, goal, rnd: R, speedMul: 1 }, dt) === 'web') snd(S, 'lash', e.x - S.scroll, e.y);
   const P = e.sp;
   if (P && P.mode === 'line' && P.line) {
     S.lineT += dt;
@@ -1351,6 +1380,7 @@ function spiderAct(S, e, hunting, goal, sees, dist, dx, dy, CS, dt) {
     if (losClear(e.x, e.y, goal.x, goal.y, CS)) {
       e.silkT = spr('spSilkCd', R); e.silkR = spr('spSilk', R);
       const v = spr('spSilkSpd', R);
+      snd(S, 'fire', e.x - S.scroll, e.y, e.k);
       S.silk.push({ x: e.x, y: e.y, ax: e.x, ay: e.y, vx: dx / dist * v, vy: dy / dist * v, life: 400 / v * 1.3 + 0.1 });
     }
   }
@@ -1374,8 +1404,8 @@ function ratAct(S, e, ru, hunting, CS, dt) {
     const F = navYou(S, ru, goal, CS), w = F && navWay(F, e.x, e.y, 1);
     if (w) { way = w.dist > 2 ? w : goal; follow = true; air = !!w.air && w.dist > 2; }
   }
-  ratStep(e, { solidCell: CS, rnd: R, goal: way, hunting, home: false, path: undefined, follow, air, onWeb: onWeb(S),
-    speedMul: 1, arrive: way === goal && hunting ? e.arrive : 3, jump }, dt);
+  if (ratStep(e, { solidCell: CS, rnd: R, goal: way, hunting, home: false, path: undefined, follow, air, onWeb: onWeb(S),
+    speedMul: 1, arrive: way === goal && hunting ? e.arrive : 3, jump }, dt) === 'jump') snd(S, 'alert', e.x - S.scroll, e.y, e.k);
 }
 // the way to a player, as the rats' distance field (world/nav.js navField), made again when he's moved
 // on or every 0.4 s (game/creatures/rat.js navFor); one per player
@@ -1418,10 +1448,10 @@ function stepGold(S, dt) {
       g.vx = (g.vx || 0) + (dx / d) * grab * dt * 6; g.vy = (g.vy || 0) + (dy / d) * grab * dt * 6;
       g.vx *= 0.88; g.vy *= 0.88;
       g.x += g.vx * dt; g.y += g.vy * dt;
-      if (d < 12) { S.got += g.amount; S.gotN++; S.coins.splice(i, 1); }
+      if (d < 12) { S.got += g.amount; S.gotN++; S.coins.splice(i, 1); snd(S, 'coin', g.x - S.scroll, g.y); }
       continue;
     }
-    stepNugget(g, dt, solid);
+    if (stepNugget(g, dt, solid)) snd(S, 'coinland', g.x - S.scroll, g.y);
     if (g.x - S.scroll < -30) S.coins.splice(i, 1);
   }
   collideNuggets(S.coins, solid);
@@ -1446,8 +1476,8 @@ function stepShots(S, dt) {
     s.x += s.vx * dt; s.y += s.vy * dt; s.life -= dt; s.spin += dt * 10;
     if (s.look === 'flame' && S.rnd() < dt * 20) burst(S, s.x, s.y, 1, '#ff7a1a', 15, 'fire', 0.3);
     if (s.foe) {
-      if (S.runners.some(ru => Math.abs(ru.x + PW / 2 - s.x) < 7 && Math.abs(ru.y + PH / 2 - s.y) < 11)) { s.life = 0; burst(S, s.x, s.y, 6, s.col, 60, 'spark', 0.25); }
-      if (titleSolid(S, s.x, s.y)) { s.life = 0; burst(S, s.x, s.y, 4, s.col, 40, 'spark', 0.3); }
+      if (S.runners.some(ru => Math.abs(ru.x + PW / 2 - s.x) < 7 && Math.abs(ru.y + PH / 2 - s.y) < 11)) { s.life = 0; burst(S, s.x, s.y, 6, s.col, 60, 'spark', 0.25); snd(S, 'hit', s.x, s.y); }
+      else if (titleSolid(S, s.x, s.y)) { s.life = 0; burst(S, s.x, s.y, 4, s.col, 40, 'spark', 0.3); snd(S, 'fizzle', s.x, s.y); }
       continue;
     }
     for (const p of S.props) if (p.k === 'lamp' && !p.gone && lampHit(p, s.x, s.y, s.size)) {
@@ -1458,6 +1488,7 @@ function stepShots(S, dt) {
     for (const f of S.foes) {
       if (f.hp > 0 && Math.hypot(f.x - S.scroll - s.x, f.ty - s.y) < f.r + s.size) {
         hitFoe(S, f, s.dmg * 1.5, s.col);
+        snd(S, 'hit', s.x, s.y);
         if (s.fire) f.burn = Math.max(f.burn || 0, kr('fireBurn', S.rnd));
         // a chain bolt leaps on to the next creature
         if (s.chain && !s.explode) {
@@ -1466,10 +1497,10 @@ function stepShots(S, dt) {
           if (nx) {
             s.chain--; const sp = Math.hypot(s.vx, s.vy) || 1, a = Math.atan2(nx.ty - s.y, nx.x - S.scroll - s.x);
             s.vx = Math.cos(a) * sp; s.vy = Math.sin(a) * sp; s.x += s.vx * dt * 2; s.y += s.vy * dt * 2;
-            zapArc(S, f.x - S.scroll, f.ty, nx.x - S.scroll, nx.ty, s.col); break;
+            zapArc(S, f.x - S.scroll, f.ty, nx.x - S.scroll, nx.ty, s.col); snd(S, 'chainhop', s.x, s.y); break;
           }
         }
-        if (s.explode || s.pierce <= 0) { shotEnd(S, s); break; }
+        if (s.explode || s.pierce <= 0) { s.hitFoe = true; shotEnd(S, s); break; }
         s.pierce--;
       }
     }
@@ -1477,6 +1508,7 @@ function stepShots(S, dt) {
     if (titleSolid(S, s.x, s.y)) {
       if (s.bounce > 0) {
         s.bounce--;
+        snd(S, 'bounce', s.x, s.y);
         // back out and flip whichever way it came in
         s.x -= s.vx * dt; s.y -= s.vy * dt;
         if (titleSolid(S, s.x, s.y + s.vy * dt)) s.vy = -s.vy * s.bounceE; else s.vx = -s.vx * s.bounceE;
