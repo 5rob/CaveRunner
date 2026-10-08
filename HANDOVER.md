@@ -3,7 +3,7 @@
 Where things stand, for a fresh session. Read `CLAUDE.md` first (the owner's working style, the
 release loop, testing), then the README of the `src/` folder you're working in.
 
-## v0.0.163 — gun sprites one scale, gun in hand ×2, squirts turned, title fire + runner pop: on branch `gunsfire`, WAITING ON THE OWNER'S OK (screenshots sent 2026-10-08)
+## v0.0.163 — gun sprites one scale, gun in hand ×2, squirts turned, title fire + runner pop + lanterns: on branch `gunsfire`, WAITING ON THE OWNER'S OK (screenshots sent 2026-10-08)
 
 CHANGELOG v0.0.163.
 

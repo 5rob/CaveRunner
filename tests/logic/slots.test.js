@@ -128,6 +128,43 @@ check('blasts and fire cut web lines', S.cut > 0, S.cut);
   titleStep(T, 1 / 60);
   check('pushed under the floor, he\'s popped back up onto it', T.runner.y + 22 <= G.titleFloor(T.scroll + T.runner.x + 6, T) + 4 && T.pops > 0, { y: T.runner.y, floor: G.titleFloor(T.scroll + T.runner.x + 6, T) });
 }
+// the lanterns (owner, v0.0.163): each chain hangs from rock or a frame's timber, right at its edge; a
+// shot pops one into burning oil (the game's popLamp) that sets the fuel alight; one whose hold is
+// blasted away falls and pops where it lands
+{
+  const holds = m => m === TM.ROCK || m === TM.MOSS || m === TM.BRICK || m === TM.WOOD || m === TM.CHAR || m === TM.BEAM || m === TM.BEAMD;
+  const L = titleScene(470, 7, 139, 295);
+  let lamps = 0, loose = 0;
+  const seenL = new Set();
+  for (let i = 0; i < 60 * 30; i++) {
+    L.foes.length = 0; L.spawn = 99; L.runner.cd = 9; titleStep(L, 1 / 60);
+    for (const p of L.props) if (p.k === 'lamp' && !seenL.has(p)) {
+      seenL.add(p); lamps++;
+      const c = p.ac, r = Math.floor(p.y / TCELL);
+      if (!holds(titleCell(L, c, r - 1)) || holds(titleCell(L, c, r))) loose++;
+    }
+  }
+  check('every lantern\'s chain meets rock or a beam', lamps > 4 && loose === 0, { lamps, loose });
+  // shoot one
+  const lp = L.props.find(p => p.k === 'lamp' && p.x > 20 && p.x < 200);
+  const burnt0 = L.burnt;
+  if (lp) L.shots.push({ x: lp.x, y: lp.y + lp.len + 4, vx: 1, vy: 0, size: 2, col: '#fff', look: '', life: 1, foe: false, spin: 0, grav: 0, drag: 0, explode: 0, pit: 0, fire: 0, bounce: 0, bounceE: 0, pierce: 0, dmg: 1 });
+  titleStep(L, 1 / 60);
+  const embers = L.parts.filter(q => q.kind === 'ember').length;
+  for (let i = 0; i < 90; i++) { L.foes.length = 0; L.runner.cd = 9; titleStep(L, 1 / 60); }
+  check('a shot pops a lantern into burning oil that lights the fuel', !!lp && lp.gone && embers >= 8 && L.lampsPopped > 0 && L.burnt > burnt0, { found: !!lp, gone: lp && lp.gone, embers, burnt0, burnt: L.burnt });
+  // blast its hold away
+  const L2 = titleScene(470, 7, 139, 295);
+  let lq = null;
+  for (let i = 0; i < 60 * 40 && !lq; i++) {
+    L2.foes.length = 0; L2.spawn = 99; L2.runner.cd = 9; titleStep(L2, 1 / 60);
+    lq = L2.props.find(p => p.k === 'lamp' && !p.gone && p.x > 60 && p.x < 200) || null;
+  }
+  if (lq) G.titleCarve(L2, lq.x, lq.y - 1, 5);
+  let fell = false;
+  for (let i = 0; i < 120 && lq && !lq.gone; i++) { L2.foes.length = 0; L2.runner.cd = 9; titleStep(L2, 1 / 60); if (lq.fall) fell = true; }
+  check('its hold blasted away, a lantern falls and pops', !!lq && fell && lq.gone, { found: !!lq, fell, gone: lq && lq.gone });
+}
 check('shots carve the terrain', S.carved > 30, S.carved);
 check('and fire burns', S.burnt > 10, S.burnt);
 // a blast by hand: a hole in the floor where it was

@@ -213,7 +213,7 @@ export function titleDraw(ctx, S, cw, ch) {
     }
   }
   for (const p of S.parts) if (p.kind !== 'smoke' && p.kind !== 'fsmoke') {
-    if (p.kind === 'flame') {          // the game's flame specks (a glowing dpart: bright until its last third)
+    if (p.kind === 'flame' || p.kind === 'ember') {   // the game's flame specks and a lantern's burning oil (glowing dparts: bright until their last third)
       ctx.globalAlpha = Math.min(1, p.life / (p.max * 0.3)); ctx.fillStyle = p.col;
       ctx.fillRect(p.x - p.r / 2, p.y - p.r / 2, p.r, p.r);
       continue;

@@ -19,6 +19,10 @@ Names are as they were at the time (before the refactor Game's state had loose n
   floor line (the owner saw him stuck shooting from inside it). The fire is drawn as the game draws it: burning cells
   in `FIRE_COLS` (a flicker each tick, embers when nearly spent), the warm wash and glows, `flameAt` specks
   (2.5 a second a burning cell, ≤ 20 a frame) and `fireSmoke` puffs; the old white blobs went.
+- **Title lanterns**: each chain hangs from what's really above it, the roof's underside or a frame's cap (`lamp`,
+  `HOLDS`), no gap. As in the game (game/systems/props.js): a shot or a blast pops one (`popLamp`: a white spray,
+  16 blobs of burning oil that light the fuel they pass through and where they land, the spot itself catches); its
+  hold blasted or burnt away, it falls and pops where it lands.
 
 ## v0.0.162 — the title's creatures, gold and fire are the game's own
 Released 2026-10-08 (owner OK'd the screenshots; a minor update).

@@ -10366,11 +10366,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       S2.cells[base + r] = m;
     }
     if (z === "timber" && built(wx) > 0.95 && (Math.abs(u - (FRAME_W + FRAME_GAP) / 2) < 1 || Math.abs(u - FRAME_W / 2) < 1) && R() < 0.75)
-      S2.props.push({ k: "lamp", st: "hanglamp", ox: wx, x: 0, y: cy + 4, len: 4 + R() * 8, seed: R(), side: 1, burn: 0, ac: c, ar: Math.floor((cy - 1) / TCELL) });
+      lamp(S2, c, wx, cy + 10, 4 + R() * 8);
     if (shelf && Math.abs(fu - FRAME_W / 2) < 1 && R() < 0.6)
-      S2.props.push({ k: "lamp", st: "hanglamp", ox: wx, x: 0, y: upTop + 4, len: 3 + R() * 6, seed: R(), side: 1, burn: 0, ac: c, ar: Math.floor((upTop - 1) / TCELL) });
+      lamp(S2, c, wx, upTop + 10, 3 + R() * 6);
     if (z === "paved" && built(wx) > 0.9 && Math.abs(u - FRAME_GAP / 2) < 1 && R() < 0.8)
-      S2.props.push({ k: "lamp", st: "hanglamp", ox: wx, x: 0, y: cy, len: 14 + R() * 30, seed: R(), side: 1, burn: 0, ac: c, ar: Math.floor((cy - 1) / TCELL) });
+      lamp(S2, c, wx, cy + 10, 14 + R() * 30);
     if (z === "webs" && b === 0 && !(c % 4) && R() < 0.42 && S2.webs.length < TITLE_WEBS) {
       const down = R() < 0.55, bx = down ? wx + (R() - 0.35) * 70 : wx + 18 + R() * 44;
       const by = down ? titleFloor(bx, S2) - 0.5 : titleCeil(bx, S2) + 0.5;
@@ -10464,6 +10464,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       S2.props.push({ k: "pad", st: "", ox: wx, x: 0, y: fy, len: 0, seed: R(), side: 1, burn: 0, ac: c, ar: Math.floor((fy + 1) / TCELL) });
     }
   }
+  function lamp(S2, c, wx, y0, len) {
+    const base = ci(S2, c, 0);
+    let r = Math.floor(y0 / TCELL);
+    while (r > 0 && !HOLDS[S2.cells[base + r]]) r--;
+    S2.props.push({ k: "lamp", st: "hanglamp", ox: wx, x: 0, y: (r + 1) * TCELL, len, seed: S2.rnd(), side: 1, burn: 0, ac: c, ar: r });
+  }
+  var HOLDS = TITLE_SOLID.map((v, m) => v || m === TM.BEAM || m === TM.BEAMD ? 1 : 0);
   function titleScene(vh, seed = 7, top = vh * 0.3, bot = vh * 0.62) {
     const rnd2 = titleRng(seed), rows = Math.ceil(vh / TCELL) + 1, ncol = Math.ceil((TITLE_VW + 90) / TCELL);
     const S2 = {
@@ -10510,7 +10517,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       fireN: 0,
       burning: /* @__PURE__ */ new Set(),
       gotN: 0,
-      pops: 0
+      pops: 0,
+      lampsPopped: 0
     };
     genTo(S2);
     const x = 60, y = titleSurf(S2, x + PW / 2, (top + bot) / 2, 1) - PH;
@@ -10623,6 +10631,29 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const R = S2.rnd;
     S2.parts.push({ x, y, vx: (R() - 0.5) * 12, vy: -25 - R() * 20, life: 1.4, max: 1.4, r: 2 + R() * 2.5, col: "#2a2624", kind: "fsmoke" });
   }
+  function popLamp(S2, p) {
+    if (p.gone) return;
+    p.gone = true;
+    S2.lampsPopped++;
+    const R = S2.rnd, x = p.x, y = p.y + p.len + 4.5;
+    burst(S2, x, y, 6, "#fff2c0", 80, "spark", 0.3);
+    for (let k = 0; k < 16 && S2.parts.length < TITLE_PARTS; k++) {
+      const a = -Math.PI / 2 + (R() - 0.5) * 3.4, v = 50 + R() * 120;
+      S2.parts.push({
+        x,
+        y,
+        vx: Math.cos(a) * v,
+        vy: Math.sin(a) * v - 20,
+        life: 1.2 + R() * 0.8,
+        max: 2,
+        r: 1.2 + R() * 0.9,
+        col: FIRE_COLS[Math.floor(R() * 3)],
+        kind: "ember"
+      });
+    }
+    titleIgnite(S2, x, y, 6, 0.8);
+  }
+  var lampHit = (p, x, y, r) => x > p.x - 3.5 - r && x < p.x + 3.5 + r && y > p.y + p.len - r && y < p.y + p.len + 9 + r;
   function titleCarve(S2, sx, y, r) {
     const wx = sx + S2.scroll, c0 = Math.floor((wx - r - 2) / TCELL), c1 = Math.floor((wx + r + 2) / TCELL);
     const r0 = Math.max(0, Math.floor((y - r - 2) / TCELL)), r1 = Math.min(S2.rows - 1, Math.floor((y + r + 2) / TCELL));
@@ -10726,6 +10757,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       S2.shake = Math.min(7, S2.shake + 2);
       titleCarve(S2, s.x, s.y, r);
       for (const g of S2.foes) if (Math.hypot(g.x - S2.scroll - s.x, g.ty - s.y) < r + g.r) hitFoe(S2, g, 4, s.col);
+      for (const p of S2.props) if (p.k === "lamp" && !p.gone && lampHit(p, s.x, s.y, r)) popLamp(S2, p);
     } else if (s.pit) titleCarve(S2, s.x, s.y, s.pit * 0.7);
     if (s.fire || s.explode) titleIgnite(S2, s.x, s.y, (s.fire ? 7 : 0) + (s.explode ? s.explode * 0.42 + 5 : 0));
     burst(S2, s.x, s.y, 3, s.col, 50, "spark", 0.25);
@@ -10779,6 +10811,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
         continue;
       }
+      if (p.kind === "ember") {
+        p.vy += GRAVITY * 0.45 * dt;
+        p.x += (p.vx - SCROLL) * dt;
+        p.y += p.vy * dt;
+        const c = Math.floor((p.x + S2.scroll) / TCELL), r = Math.floor(p.y / TCELL), m = titleCell(S2, c, r);
+        if (FUEL[m]) lightArea(S2, p.x + S2.scroll, p.y, 2, 0.6);
+        if (SOLID[m]) {
+          lightArea(S2, p.x + S2.scroll - p.vx * dt, p.y - p.vy * dt, 4, 0.85);
+          p.life = 0;
+        }
+        continue;
+      }
       if (p.kind === "flame") {
         p.vy += GRAVITY * -0.03 * dt;
         p.x += (p.vx - SCROLL) * dt;
@@ -10817,6 +10861,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     for (const p of S2.props) {
       p.x = p.ox - S2.scroll;
       if (p.burn || p.gone) continue;
+      if (p.k === "lamp") {
+        if (p.fall) {
+          p.vy = (p.vy || 0) + GRAVITY * 0.5 * dt;
+          p.y += p.vy * dt;
+          if (titleSolid(S2, p.x, p.y + p.len + 9)) popLamp(S2, p);
+        } else if (p.x > -10 && p.x < TITLE_VW + 10 && !HOLDS[titleCell(S2, p.ac, p.ar)]) {
+          p.fall = true;
+          p.vy = 0;
+        }
+        continue;
+      }
       if (p.host && p.host.gone && !p.host.burn || p.x > -10 && p.x < TITLE_VW + 10 && !SOLID[titleCell(S2, p.ac, p.ar)]) {
         p.gone = true;
         burst(S2, p.x, p.y, 3, "#5a8a3a", 40, "chunk", 0.7);
@@ -11225,6 +11280,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
         continue;
       }
+      for (const p of S2.props) if (p.k === "lamp" && !p.gone && lampHit(p, s.x, s.y, s.size)) {
+        popLamp(S2, p);
+        if (!s.pierce) {
+          s.life = 0;
+          burst(S2, s.x, s.y, 3, s.col, 50, "spark", 0.2);
+        }
+      }
+      if (s.life <= 0) continue;
       for (const f of S2.foes) {
         if (f.hp > 0 && Math.hypot(f.x - S2.scroll - s.x, f.ty - s.y) < f.r + s.size) {
           hitFoe(S2, f, s.dmg * 1.5, s.col);
@@ -16659,7 +16722,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     burst2(W, pr.x, pr.y + (pr.t0 + pr.b) / 2, n || 10, propCol(pr, themeFor(W.floor)));
     pr.gone = true;
   }
-  function popLamp(W, G, pr) {
+  function popLamp2(W, G, pr) {
     if (pr.gone) return;
     pr.gone = true;
     let x = pr.x, y = pr.y;
@@ -16694,7 +16757,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       return;
     }
     if (pr.k === "lamp" && pr.st !== "cap") {
-      popLamp(W, G, pr);
+      popLamp2(W, G, pr);
       return;
     }
     const stands = !pr.hang && !pr.side && (pr.k === "cover" || pr.k === "pad" || pr.k === "noise" || pr.k === "spike" || pr.k === "lamp" || pr.k === "tendril" || pr.k === "vent");
@@ -16804,7 +16867,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           continue;
         }
         if (pr.k === "lamp") {
-          popLamp(W, G, pr);
+          popLamp2(W, G, pr);
           continue;
         }
         if (pr.k === "noise" && pr.st === "stone") {
@@ -20268,7 +20331,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
     }
     for (const p of S2.parts) if (p.kind !== "smoke" && p.kind !== "fsmoke") {
-      if (p.kind === "flame") {
+      if (p.kind === "flame" || p.kind === "ember") {
         ctx.globalAlpha = Math.min(1, p.life / (p.max * 0.3));
         ctx.fillStyle = p.col;
         ctx.fillRect(p.x - p.r / 2, p.y - p.r / 2, p.r, p.r);
@@ -28953,7 +29016,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var fcY = (v) => FC.bot - v * (FC.bot - FC.top);
   function FadeCurve() {
     const [, bump] = useState(0);
-    const svg = useRef(null), dot = useRef(null), lamp = useRef(null), drag = useRef(-1);
+    const svg = useRef(null), dot = useRef(null), lamp2 = useRef(null), drag = useRef(-1);
     useEffect(() => {
       let raf, t0 = performance.now(), seen = "";
       const tick = (now) => {
@@ -28970,7 +29033,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           dot.current.setAttribute("cx", String(fcX(u)));
           dot.current.setAttribute("cy", String(fcY(v)));
         }
-        if (lamp.current) lamp.current.setAttribute("opacity", b.toFixed(3));
+        if (lamp2.current) lamp2.current.setAttribute("opacity", b.toFixed(3));
       };
       raf = requestAnimationFrame(tick);
       return () => cancelAnimationFrame(raf);
@@ -29034,7 +29097,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         h("path", { d: path, className: "fcline" }),
         h("circle", { ref: dot, r: 2.5, className: "fcdot" }),
         H.map((q, i) => h("circle", { key: i, cx: q.x, cy: q.y, r: 5, className: "fchandle" })),
-        h("rect", { ref: lamp, x: FC.x1 - 22, y: 4, width: 20, height: 14, rx: 2, fill: "#ff0000" })
+        h("rect", { ref: lamp2, x: FC.x1 - 22, y: 4, width: 20, height: 14, rx: 2, fill: "#ff0000" })
       ),
       h("button", { className: "devreset fcreset", "aria-label": "Default curve", onPointerDown: (e) => {
         e.preventDefault();
