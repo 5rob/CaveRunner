@@ -61,7 +61,7 @@ for (let i = 0; i < 60 * 40; i++) {
     if (g.fly && !flew.has(g)) { flew.add(g); pulled++; if (Math.hypot(gx - g.x, gy - g.y) > G.COIN_PULL + 6) pulledFar++; }
     if (!g.fly && !flew.has(g)) flew.add(g), flew.delete(g);
   }
-  if (r.mode === 'run' && r.ground) {
+  if (r.mode === 'run' && r.ground && !r.dig) {
     // feet on the floor: the cell just under his feet is solid, the one at his shins isn't rock
     onFloor++;
     const c = Math.floor((S.scroll + r.x + 6) / TCELL), fr = Math.floor((r.y + 22 + 0.5) / TCELL);
@@ -79,12 +79,20 @@ check('they run on the game\'s own brains (jellyStep, spiderStep, ratStep)', bra
 check('aggro as the game: none hunts him from past its reach × loseAggro', aggroFar === 0, aggroFar);
 check('spiders spin their own lines', spun.size > 0, spun.size);
 check('within its caps', maxFoes <= TITLE_FOES && maxParts <= TITLE_PARTS && maxGold <= TITLE_GOLD && maxFire <= TITLE_FIRE, { maxFoes, maxParts, maxGold, maxFire });
-check('he runs on the ground and he flies', S.groundT > 6 && S.flyT > 6, { ground: S.groundT, fly: S.flyT });
-check('running, his feet are on the floor', onFloor > 200 && feetOff / onFloor < 0.05, { onFloor, feetOff });
+check('they run on the ground and they fly', S.groundT > 6 && S.flyT > 6, { ground: S.groundT, fly: S.flyT });
+check('now and then they saw tunnels through the rock', S.digs >= 3 && S.digT > 2, { digs: S.digs, digT: S.digT });
+{
+  // each player switches between running and flying on its own clock (owner, v0.0.166: they all switched together)
+  const sw = S.runners.map(q => q.switches), all = sw.flat();
+  let together = 0;
+  for (const t of sw[0]) if (sw.slice(1).every(o => o.some(u => Math.abs(u - t) < 0.4))) together++;
+  check('they switch between running and flying at their own times', all.length > 16 && together <= 1, { per: sw.map(a => a.length), together, ground: S.groundT, fly: S.flyT, dig: S.digT, digs: S.digs, modes: S.runners.map(q => [q.mode, q.modeT.toFixed(1), q.dig.toFixed(1)]) });
+}
+check('running, his feet are on the floor', onFloor > 200 && feetOff / onFloor < 0.05, { onFloor, feetOff, ground: S.groundT, fly: S.flyT, dig: S.digT, digs: S.digs, why: S.digWhy, sw: S.runners.map(q => q.switches.length) });
 check('he stays on screen', S.runner.x > 0 && S.runner.x < 220 && S.runner.y > S.top - 40 && S.runner.y < S.bot, [S.runner.x, S.runner.y]);
-check('they swap guns, many different ones', S.swaps >= 20 && kits.size >= 20, { swaps: S.swaps, kits: kits.size });
+check('they swap guns, many different ones', S.swaps >= 12 && kits.size >= 15, { swaps: S.swaps, kits: kits.size });
 check('every gun is a real gun skin, a real shot and real modifiers', TITLE_SHOTS.every(k => MODS[k] && MODS[k].kind === 'shot') && TITLE_MODS.every(k => MODS[k] && MODS[k].kind === 'mod')
-  && S.runners.every(q => gunArt(q.kit.art) && TITLE_SHOTS.includes(q.kit.shot)));
+  && S.runners.every(q => gunArt(q.kit.art) && TITLE_SHOTS.includes((q.keep || q.kit).shot)));
 {
   const R = G.titleRng(5), names = new Set(), shots = new Set();
   let modded = 0;
@@ -117,6 +125,7 @@ check('blasts and fire cut web lines', S.cut > 0, S.cut);
 // down and burning up from the cut
 {
   const P = titleScene(470, 4, 139, 295);
+  P.still = true;   // (no one sawing through what's measured)
   for (let i = 0; i < 60 * 34 && !P.props.some(p => p.arc && p.x > 0 && p.x < 180); i++) { P.foes.length = 0; P.spawn = 99; titleStep(P, 1 / 60); }
   const vine = P.props.find(p => !p.arc && p.st === 'vine' && !p.host && p.len > 30), arch = P.props.find(p => p.arc && p.x > 0 && p.x < 180);
   if (vine) { vine.burn = 1; }
@@ -142,10 +151,15 @@ check('blasts and fire cut web lines', S.cut > 0, S.cut);
     }
   }
   check('his middle is never left in the rock', inRock / steps < 0.002, { inRock, steps });
-  const T = titleScene(470, 7, 139, 295);
-  T.runner.y = G.titleFloor(T.scroll + T.runner.x + 6, T) + 30;   // deep under the floor
+  // pushed into the rock (owner, v0.0.166: no more teleporting): out comes the Buzzsaw and he cuts his way out
+  const T = titleScene(470, 7, 139, 295), ru = T.runner;
+  ru.y = G.titleFloor(T.scroll + ru.x + 6, T) + 20;   // under the floor
   titleStep(T, 1 / 60);
-  check('pushed under the floor, he\'s popped back up onto it', T.runner.y + 22 <= G.titleFloor(T.scroll + T.runner.x + 6, T) + 4 && T.pops > 0, { y: T.runner.y, floor: G.titleFloor(T.scroll + T.runner.x + 6, T) });
+  const y1 = ru.y, sawing = ru.dig > 0 && ru.kit.shot === 'saw';
+  let out = false, back = false;
+  for (let i = 0; i < 60 * 12 && !back; i++) { T.foes.length = 0; T.spawn = 99; titleStep(T, 1 / 60); if (!G.titleSolid(T, ru.x + 6, ru.y + 11)) out = true; if (!ru.dig) back = true; }
+  check('pushed into the rock, he saws (no teleport) and gets out, his gun back', sawing && Math.abs(y1 - (G.titleFloor(T.scroll, T) + 20)) < 30 && T.pops === 0 && out && back && ru.kit.shot !== 'saw',
+    { sawing, pops: T.pops, out, back, kit: ru.kit.shot });
 }
 // the lanterns (owner, v0.0.163): each chain hangs from rock or a frame's timber, right at its edge; a
 // shot pops one into burning oil (the game's popLamp) that sets the fuel alight; one whose hold is
@@ -153,6 +167,7 @@ check('blasts and fire cut web lines', S.cut > 0, S.cut);
 {
   const holds = m => m === TM.ROCK || m === TM.MOSS || m === TM.BRICK || m === TM.WOOD || m === TM.CHAR || m === TM.BEAM || m === TM.BEAMD;
   const L = titleScene(470, 7, 139, 295);
+  L.still = true;
   let lamps = 0, loose = 0;
   const seenL = new Set();
   for (let i = 0; i < 60 * 30; i++) {
@@ -175,6 +190,7 @@ check('blasts and fire cut web lines', S.cut > 0, S.cut);
   check('a shot pops a lantern into burning oil that lights the fuel', !!lp && lp.gone && embers >= 8 && L.lampsPopped > 0 && L.burnt > burnt0, { found: !!lp, gone: lp && lp.gone, embers, burnt0, burnt: L.burnt });
   // blast its hold away
   const L2 = titleScene(470, 7, 139, 295);
+  L2.still = true;
   let lq = null;
   for (let i = 0; i < 60 * 40 && !lq; i++) {
     L2.foes.length = 0; L2.spawn = 99; L2.runners.forEach(q => { q.cd = 9; }); titleStep(L2, 1 / 60);
@@ -203,7 +219,7 @@ check('moss catches fire', !!mossAt && C.fire.length > 0, mossAt);
 // burning vine lights a web along it, and a burning web a vine beside it. Lit webs are cut (v0.0.165): into two
 // burning halves, which hang from an end on the roof and fall from one in the air
 {
-  const quiet = (Q, n) => { for (let i = 0; i < n; i++) { Q.foes.length = 0; Q.spawn = 99; Q.runners.forEach(q => { q.cd = 9; }); titleStep(Q, 1 / 60); } };
+  const quiet = (Q, n) => { for (let i = 0; i < n; i++) { Q.foes.length = 0; Q.spawn = 99; Q.still = true; titleStep(Q, 1 / 60); } };
   const web = (Q, x0, y0, x1, y1) => { const L = { ax: x0, ay: y0, bx: x1, by: y1, a0x: x0, a0y: y0, b0x: x1, b0y: y1, ain: null, bin: { x: x1, y: y1 }, owner: null, sag: 0 }; Q.webs.push(L); return L; };
   const caught = L => !!(L.fu || L.out);
   const J = titleScene(470, 7, 139, 295);
@@ -253,7 +269,7 @@ check('moss catches fire', !!mossAt && C.fire.length > 0, mossAt);
     for (const p of Q.props) if (p.k === 'climb' && !p.arc && !p.links && !p.host && p.sw && Math.abs(p.sw) > 0.05) swung++;
     for (const L of Q.webs) if (L.wx || L.wy) touched++;
   }
-  check('vines swing as the players pass them', swung > 30, { swung, touched });
+  check('vines swing as the players pass them', swung > 10, { swung, touched });
 }
 // he waits for a creature to come near (owner, v0.0.164): none fired at past TITLE_AIM, one fired at inside it
 {

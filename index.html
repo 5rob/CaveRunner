@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v0.0.165</title>
-<!-- VERSION = 'v165' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v0.0.166</title>
+<!-- VERSION = 'v166' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -903,7 +903,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v0.0.165';</script>
+<script>const VERSION = 'v0.0.166';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -10544,11 +10544,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var HOLDS = TITLE_SOLID.map((v, m) => v || m === TM.BEAM || m === TM.BEAMD ? 1 : 0);
   function titleKit(R) {
     const pick = (a) => a[Math.floor(R() * a.length)];
-    const shot = pick(TITLE_SHOTS), M = MODS[shot], nm = R() < 0.2 ? 0 : R() < 0.55 ? 1 : 2, mods = [];
+    const shot = pick(TITLE_SHOTS), nm = R() < 0.2 ? 0 : R() < 0.55 ? 1 : 2, mods = [];
     for (let i = 0; i < nm; i++) {
       const m = pick(TITLE_MODS);
       if (!mods.includes(m)) mods.push(m);
     }
+    return kitOf(shot, mods, pick(GUN_ART.map((a) => a.id)));
+  }
+  var TITLE_SAW = "irongatling";
+  var TITLE_DIGR = 13;
+  var DIGV = 30;
+  function kitOf(shot, mods, art) {
+    const M = MODS[shot];
     const s = {
       dmg: M.dmg || 1,
       speed: M.speed || 300,
@@ -10583,7 +10590,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     if (s.bore) s.pit = Math.max(s.pit, s.bore);
     if (M.fuse) s.life = Math.min(s.life, M.fuse + 0.5);
-    const art = pick(GUN_ART.map((a) => a.id));
     return {
       art,
       shot,
@@ -10661,7 +10667,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       gotN: 0,
       pops: 0,
       lampsPopped: 0,
-      kitNames: /* @__PURE__ */ new Set()
+      kitNames: /* @__PURE__ */ new Set(),
+      digT: 0,
+      digs: 0,
+      digWhy: {}
     };
     genTo(S2);
     for (let i = 0; i < TITLE_RUNNERS; i++) {
@@ -10679,7 +10688,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         id: i,
         col: TITLE_COLS[i],
         mode: "run",
-        modeT: 1.5 + i * 1.3 + rnd2() * 2,
+        modeT: runTime(rnd2),
         tx: x,
         ty: y,
         retarget: 0,
@@ -10689,6 +10698,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         swap: 0,
         wvx: 0,
         wvy: 0,
+        dig: 0,
+        clearT: 0,
+        keep: null,
+        dx: 1,
+        dy: 0,
+        digY: 0,
+        sawT: 0,
+        switches: [],
         nav: { F: null, fx: 0, fy: 0, t: -9 }
       });
     }
@@ -10722,6 +10739,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const n = id === "rotta" ? 3 + Math.floor(R() * 4) : id === "hamahakki" ? 1 + Math.floor(R() * 2) : 1;
     for (let i = 0; i < n && S2.foes.length < TITLE_FOES; i++) {
       const ex = wx + i * (8 + R() * 8), k = enemyFor(id, 1), cy = titleCeil(ex, S2), fy = titleFloor(ex, S2);
+      if (i && titleZone(ex) !== titleZone(wx)) break;
       const ey = id === "meduusa" ? cy + (fy - cy) * (0.25 + 0.45 * R()) : id === "hamahakki" && R() < 0.5 ? cy + k.r : fy - k.r - 1;
       S2.foes.push({
         x: ex,
@@ -10805,7 +10823,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     titleIgnite(S2, x, y, 6, 0.8);
   }
   var lampHit = (p, x, y, r) => x > p.x - 3.5 - r && x < p.x + 3.5 + r && y > p.y + p.len - r && y < p.y + p.len + 9 + r;
-  function titleCarve(S2, sx, y, r) {
+  function titleCarve(S2, sx, y, r, rim = true) {
     const wx = sx + S2.scroll, c0 = Math.floor((wx - r - 2) / TCELL), c1 = Math.floor((wx + r + 2) / TCELL);
     const r0 = Math.max(0, Math.floor((y - r - 2) / TCELL)), r1 = Math.min(S2.rows - 1, Math.floor((y + r + 2) / TCELL));
     let n = 0;
@@ -10817,7 +10835,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           n++;
           S2.burning.delete(c * S2.rows + rr2);
         }
-      } else if (d <= r + 2 && SOLID[m] && m !== TM.CHAR) S2.cells[i] = TM.CHAR;
+      } else if (rim && d <= r + 2 && SOLID[m] && m !== TM.CHAR) S2.cells[i] = TM.CHAR;
     }
     if (n) {
       S2.carved += n;
@@ -11072,7 +11090,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       addFoe(S2);
       S2.spawn = 0.4 + R() * 0.6;
     }
-    for (const r of S2.runners) stepRunner(S2, r, dt);
+    if (!S2.still) for (const r of S2.runners) stepRunner(S2, r, dt);
     stepFoes(S2, dt);
     stepShots(S2, dt);
     stepFire(S2, dt);
@@ -11216,111 +11234,213 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     r.wvy += (Math.max(-250, Math.min(250, (r.y - y0) / Math.max(dt, 1e-3))) - r.wvy) * k;
     stepRunnerGun(S2, r, dt);
   }
+  var boxRock = (S2, x, y, feet = true) => {
+    for (let i = 0; i <= 2; i++) for (let j = 0; j <= (feet ? 4 : 3); j++) if (titleSolid(S2, x + 1 + (PW - 2) * i / 2, y + 1 + (PH - 2) * j / 4)) return true;
+    return false;
+  };
+  var runTime = (R) => 1.2 + R() * 5.5;
+  var flyTime = (R) => 1.5 + R() * 5;
+  function pickTarget(S2, r) {
+    const R = S2.rnd;
+    r.tx = 18 + R() * (TITLE_VW * 0.5);
+    const twx = r.tx + PW / 2 + S2.scroll + 20, c = titleCeil(twx, S2), f = titleFloor(twx, S2), roll = R();
+    if (roll < 0.09) r.ty = f - PH + 8 + R() * 22;
+    else if (roll < 0.15) r.ty = c - 10 - R() * 22;
+    else r.ty = c + 4 + R() * Math.max(0, f - c - PH - 8);
+    r.ty = Math.max(S2.top - 32, Math.min(S2.bot + 6, r.ty));
+    r.retarget = 0.8 + R() * 1.6;
+  }
+  function startDig(S2, r, dx, dy, why) {
+    if (!r.dig) {
+      r.keep = r.kit;
+      r.kit = kitOf("saw", [], TITLE_SAW);
+      r.swap = 0.2;
+      S2.digs++;
+      r.digY = r.y;
+      S2.digWhy[why] = (S2.digWhy[why] || 0) + 1;
+    }
+    const d = Math.hypot(dx, dy) || 1;
+    r.dig = Math.max(r.dig, 1e-3);
+    r.clearT = 0;
+    r.dx = dx / d;
+    r.dy = dy / d;
+  }
+  function setMode(S2, r, mode, t) {
+    if (r.mode !== mode) r.switches.push(S2.t);
+    r.mode = mode;
+    r.modeT = t;
+  }
   function stepRunnerMove(S2, r, dt) {
-    const R = S2.rnd, cx = () => r.x + PW / 2;
-    {
-      const wx = cx() + S2.scroll, fl = titleFloor(wx, S2);
-      if (titleSolid(S2, cx(), r.y + PH * 0.5) || r.y + PH > fl + 16) {
-        r.y = titleSurf(S2, cx(), titleCeil(wx, S2) + 4, 1) - PH;
-        r.vy = 0;
-        S2.pops++;
+    r.modeT -= dt;
+    r.retarget -= dt;
+    if (r.dig) digStep(S2, r, dt);
+    else if (r.mode === "run") runStep(S2, r, dt);
+    else flyStep(S2, r, dt);
+    for (const o of S2.runners) if (o !== r && Math.abs(o.x - r.x) < 16 && Math.abs(o.y - r.y) < PH) {
+      const push = (16 - Math.abs(o.x - r.x)) * 3 * dt * (r.x < o.x || r.x === o.x && r.id < o.id ? -1 : 1);
+      if (!boxRock(S2, r.x + push, r.y)) {
+        r.x += push;
+        if (r.mode === "run") r.tx += push;
       }
     }
-    r.modeT -= dt;
-    const ground = titleSurf(S2, cx(), r.y + PH - 9, 1);
-    if (r.mode === "run") {
-      S2.groundT += dt;
-      r.flame = 0;
-      r.retarget -= dt;
-      if (r.retarget <= 0) {
-        r.tx = 25 + R() * 80;
-        r.retarget = 1 + R() * 1.5;
-      }
-      const vx = Math.max(-26, Math.min(26, (r.tx - r.x) * 1.2));
-      r.x += vx * dt;
-      r.gait += (SCROLL + vx) * dt * 0.38;
-      if (ground < r.y + PH - 8) {
-        r.mode = "fly";
-        r.modeT = 2 + R() * 2;
-        r.vy = -40;
-        r.ground = false;
-        return;
-      }
-      if (ground > r.y + PH + 1.5) {
-        r.vy += GRAV * dt;
-        r.y += r.vy * dt;
-        r.ground = false;
-        if (r.y + PH >= ground) {
-          r.y = ground - PH;
-          r.vy = 0;
-          r.ground = true;
-        }
-      } else {
+    r.x = Math.max(8, Math.min(TITLE_VW * 0.62, r.x));
+    r.y = Math.max(S2.top - 40, Math.min(S2.bot + 10, r.y));
+  }
+  function runStep(S2, r, dt) {
+    const R = S2.rnd, cx = r.x + PW / 2;
+    S2.groundT += dt;
+    r.flame = 0;
+    if (r.retarget <= 0) {
+      r.tx = 18 + R() * 90;
+      r.retarget = 1 + R() * 1.5;
+    }
+    const vx = Math.max(-26, Math.min(26, (r.tx - r.x) * 1.2));
+    const ground = titleSurf(S2, cx, r.y + PH - 9, 1);
+    if (ground < r.y + PH - 8) {
+      r.ground = false;
+      startDig(S2, r, 1, 0, "feet");
+      return;
+    }
+    if (ground > r.y + PH + 1.5) {
+      r.vy += GRAV * dt;
+      r.y += r.vy * dt;
+      r.ground = false;
+      if (r.y + PH >= ground) {
         r.y = ground - PH;
         r.vy = 0;
         r.ground = true;
       }
-      const ahead = titleSurf(S2, cx() + 6, r.y + PH - 9, 1), low = built(cx() + S2.scroll + 40, "timber") > 0;
-      if (low && r.modeT <= 0) r.modeT = 0.5;
-      if (r.modeT <= 0 || ahead < r.y + PH - 7 || ground - (r.y + PH) > 20) {
-        r.mode = "fly";
-        r.modeT = 2.2 + R() * 2;
-        r.retarget = 0;
-        r.vy = -40;
-        r.ground = false;
-      }
     } else {
-      S2.flyT += dt;
-      r.retarget -= dt;
-      const land = r.modeT <= 0 || built(cx() + S2.scroll + 30, "timber") > 0;
-      if (!land && (r.retarget <= 0 || Math.hypot(r.tx - r.x, r.ty - r.y) < 6)) {
-        r.tx = 20 + R() * (TITLE_VW * 0.5);
-        r.ty = S2.top + (S2.bot - S2.top) * (0.02 + R() * 0.45);
-        r.retarget = 0.8 + R() * 1.4;
-      }
-      if (land) {
-        r.tx = r.x;
-        r.ty = ground - PH + 2;
-      }
-      const ax = (r.tx - r.x) * 2.2 - r.vx * 1.6, ay = (r.ty - r.y) * (land ? 1.2 : 2.2) - r.vy * 1.6;
-      r.vx += ax * dt;
-      r.vy += ay * dt;
-      r.x += r.vx * dt;
-      r.y += r.vy * dt;
-      r.flame = Math.max(0, Math.min(1, -ay / 60 + (land ? 0.1 : 0.35)));
-      const roof = titleSurf(S2, cx(), r.y + 6, -1);
-      if (r.y < roof) {
-        r.y = roof;
-        r.vy = Math.abs(r.vy) * 0.3;
-      }
-      const g2 = titleSurf(S2, cx(), r.y + PH - 9, 1);
-      if (r.y + PH > g2 && g2 >= r.y + PH - 8) {
-        r.y = g2 - PH;
-        r.vy = 0;
-        if (land) {
-          r.mode = "run";
-          r.modeT = 2.5 + R() * 2.5;
-          r.vx = 0;
-          r.ground = true;
-          r.retarget = 0;
-        }
-      }
-      if (land && r.modeT < -3) {
-        r.mode = "run";
-        r.modeT = 2.5 + R() * 2.5;
-        r.y = g2 - PH;
-      }
-      r.ground = r.mode === "run";
+      r.y = ground - PH;
+      r.vy = 0;
+      r.ground = true;
     }
-    for (const o of S2.runners) if (o !== r && Math.abs(o.x - r.x) < 16 && Math.abs(o.y - r.y) < PH) {
-      const push = (16 - Math.abs(o.x - r.x)) * 3 * dt * (r.x < o.x || r.x === o.x && r.id < o.id ? -1 : 1);
-      r.x += push;
-      if (r.mode === "run") r.tx += push;
+    const ahead = titleSurf(S2, cx + 7, r.y + PH - 9, 1);
+    if (ahead < r.y + PH - 7) {
+      startDig(S2, r, 1, 0, "wall");
+      return;
     }
-    r.x = Math.max(8, Math.min(TITLE_VW * 0.62, r.x));
+    if (boxRock(S2, r.x, r.y, false) || boxRock(S2, r.x + vx * dt + 2, r.y, false)) {
+      startDig(S2, r, 1, 0, "roof");
+      return;
+    }
+    r.x += vx * dt;
+    r.gait += (SCROLL + vx) * dt * 0.38;
+    if (r.modeT <= 0) {
+      setMode(S2, r, "fly", flyTime(R));
+      pickTarget(S2, r);
+      r.vy = -40;
+      r.ground = false;
+    }
+  }
+  function flyStep(S2, r, dt) {
+    const R = S2.rnd, cx = r.x + PW / 2;
+    S2.flyT += dt;
+    r.ground = false;
+    const landing = r.modeT <= 0;
+    if (landing && r.modeT < -4) r.modeT = flyTime(R);
+    if (!landing && (r.retarget <= 0 || Math.hypot(r.tx - r.x, r.ty - r.y) < 6)) pickTarget(S2, r);
+    if (landing) {
+      r.tx = r.x;
+      r.ty = Math.min(S2.bot + 6, titleSurf(S2, cx, r.y + PH - 9, 1) - PH + 2);
+    }
+    const ax = (r.tx - r.x) * 2.2 - r.vx * 1.6, ay = (r.ty - r.y) * (landing ? 1.2 : 2.2) - r.vy * 1.6;
+    r.vx += ax * dt;
+    r.vy += ay * dt;
+    r.flame = Math.max(0, Math.min(1, -ay / 60 + (landing ? 0.1 : 0.35)));
+    const g0 = titleSurf(S2, cx, r.y + PH - 9, 1);
+    if (g0 < r.y + PH && g0 >= r.y + PH - 9 && !boxRock(S2, r.x, g0 - PH)) r.y = g0 - PH;
+    if (boxRock(S2, r.x, r.y)) {
+      startDig(S2, r, r.vx + SCROLL, r.vy, "came");
+      return;
+    }
+    if (landing && g0 - (r.y + PH) < 1.5) {
+      r.y = g0 - PH;
+      r.vy = 0;
+      setMode(S2, r, "run", runTime(R));
+      r.vx = 0;
+      r.ground = true;
+      r.retarget = 0;
+      return;
+    }
+    const nx = r.x + r.vx * dt, ny = r.y + r.vy * dt;
+    if (!boxRock(S2, nx, ny)) {
+      r.x = nx;
+      r.y = ny;
+      return;
+    }
+    const g2 = titleSurf(S2, nx + PW / 2, r.y + PH - 9, 1), into = r.ty + PH > g2 + 4;
+    if (!into && g2 >= r.y + PH - 9 && g2 - (r.y + PH) < 6 && !boxRock(S2, nx, g2 - PH)) {
+      r.x = nx;
+      r.y = g2 - PH;
+      r.vy = 0;
+      if (landing) {
+        setMode(S2, r, "run", runTime(R));
+        r.vx = 0;
+        r.ground = true;
+        r.retarget = 0;
+      }
+      return;
+    }
+    startDig(S2, r, r.vx + SCROLL, r.vy, into ? "aim" : "fly");
+  }
+  function digStep(S2, r, dt) {
+    const R = S2.rnd;
+    S2.digT += dt;
+    r.dig += dt;
+    if (r.mode === "fly" && (r.retarget <= 0 || Math.hypot(r.tx - r.x, r.ty - r.y) < 6)) pickTarget(S2, r);
+    if (r.dig > 6 && r.mode === "fly") {
+      const twx = r.x + PW / 2 + S2.scroll, c = titleCeil(twx, S2), f = titleFloor(twx, S2);
+      r.ty = c + (f - c) * 0.4;
+      r.tx = r.x;
+    }
+    const ty = r.mode === "run" ? Math.min(r.digY, titleFloor(r.x + PW / 2 + S2.scroll, S2) - PH - 1) : r.ty;
+    r.vx += ((r.tx - r.x) * 1.5 - r.vx * 1.6) * dt;
+    r.vy += ((ty - r.y) * 1.5 - r.vy * 1.6) * dt;
+    const v = Math.hypot(r.vx, r.vy);
+    if (v > DIGV) {
+      r.vx *= DIGV / v;
+      r.vy *= DIGV / v;
+    }
+    r.x += r.vx * dt;
+    r.y += r.vy * dt;
+    r.flame = r.mode === "fly" ? 0.3 : 0;
+    r.ground = false;
+    if (r.mode === "run") r.gait += (SCROLL + r.vx) * dt * 0.3;
+    const dx = r.vx + SCROLL, dy = r.vy, d = Math.hypot(dx, dy) || 1;
+    r.dx = dx / d;
+    r.dy = dy / d;
+    titleCarve(S2, r.x + PW / 2 + r.dx * 4, r.y + PH / 2 + r.dy * 4, TITLE_DIGR, false);
+    if (!boxRock(S2, r.x, r.y, false) && !boxRock(S2, r.x + r.dx * 7, r.y + r.dy * 7, false)) r.clearT += dt;
+    else r.clearT = 0;
+    if (r.clearT > 0.25) {
+      r.dig = 0;
+      r.clearT = 0;
+      r.swap = 0.3;
+      if (r.keep) r.kit = r.keep;
+      r.keep = null;
+      if (r.mode === "fly" && R() < 0.5) pickTarget(S2, r);
+    }
   }
   function stepRunnerGun(S2, r, dt) {
     const R = S2.rnd, cx = () => r.x + PW / 2;
+    r.swap = Math.max(0, r.swap - dt);
+    if (r.dig) {
+      let d = Math.atan2(r.dy, r.dx) - r.ang;
+      d = Math.atan2(Math.sin(d), Math.cos(d));
+      r.ang += d * Math.min(1, dt * 10);
+      r.face = Math.cos(r.ang) >= 0 ? 1 : -1;
+      r.sawT -= dt;
+      const mz2 = gunMuzzle(cx() + Math.cos(r.ang) * 2.5, r.y + PH * 0.45, r.ang, GUN_HELD, r.kit.art), bx = mz2.x + Math.cos(r.ang) * 3, by = mz2.y + Math.sin(r.ang) * 3;
+      if (R() < dt * 25) burst(S2, bx, by, 1, R() < 0.5 ? "#ffd27a" : "#fff2c0", 70, "spark", 0.15);
+      if (r.sawT <= 0) {
+        for (const f of S2.foes) if (f.hp > 0 && Math.hypot(f.x - S2.scroll - bx, f.ty - by) < f.r + 6) {
+          hitFoe(S2, f, MODS.saw.dmg * 0.5, "#d9dde4");
+          r.sawT = 0.15;
+        }
+      }
+      return;
+    }
     let best = null, bd = TITLE_AIM;
     for (const f of S2.foes) {
       const fx = f.x - S2.scroll, d = Math.hypot(fx - r.x, f.ty - r.y);
@@ -11338,7 +11458,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     } else r.ang += (0 - r.ang) * Math.min(1, dt * 4);
     r.face = Math.cos(r.ang) >= 0 ? 1 : -1;
     r.swapT -= dt;
-    r.swap = Math.max(0, r.swap - dt);
     if (r.swapT <= 0) {
       r.kit = titleKit(R);
       S2.kitNames.add(r.kit.name);
@@ -11453,7 +11572,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         e.burn -= dt;
         if (R() < dt * 40) flameAt(S2, e.x - S2.scroll + (R() - 0.5) * e.r, e.ty + (R() - 0.5) * e.r);
         if (R() < dt * 6) fireSmoke(S2, e.x - S2.scroll, e.ty - e.r);
-        hitFoe(S2, e, kr("fireDps", R) * dt, "#ff9a2e");
+        e.burnAcc = (e.burnAcc || 0) + kr("fireDps", R) * dt;
+        if (e.burnAcc >= 0.5 || e.burn <= 0) {
+          const d = e.burnAcc;
+          e.burnAcc = 0;
+          hitFoe(S2, e, d, "#ff9a2e");
+        }
       }
     }
     S2.foes = S2.foes.filter((e) => e.hp > 0 && e.x - S2.scroll > -40 && e.y < S2.vh + 20);
@@ -12399,6 +12523,27 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       ctx.arc(x, y, e.r + 4 + e.charge * 10, 0, Math.PI * 2);
       ctx.stroke();
       ctx.globalAlpha = 1;
+    }
+  }
+
+  // src/art/crackle.js
+  var fhash = (c, r, tick) => Math.imul(c * 977 + r, 2654435761) + tick * 40503 >>> 30;
+  function crackleAt(ctx, x, y, cell, tick, ember) {
+    const c = Math.floor(x / cell), r = Math.floor(y / cell), h4 = fhash(c, r, tick);
+    ctx.fillStyle = FIRE_COLS[ember ? 3 : h4 === 0 ? 0 : h4 === 3 ? 2 : 1];
+    ctx.fillRect(c * cell, r * cell, cell, cell);
+  }
+  function crackleBody(ctx, x, y, r, cell, tick) {
+    const c0 = Math.floor((x - r) / cell), c1 = Math.floor((x + r) / cell);
+    const r0 = Math.floor((y - r * 1.8) / cell), r1 = Math.floor((y + r) / cell);
+    for (let c = c0; c <= c1; c++) for (let q = r0; q <= r1; q++) {
+      const px = (c + 0.5) * cell - x, py = (q + 0.5) * cell - y, h4 = fhash(c, q, tick), g = fhash(q * 7 + 3, c * 13 + 1, tick);
+      let keep2;
+      if (py >= -r * 0.4) keep2 = px * px + py * py <= r * r && g >= 2;
+      else keep2 = Math.abs(px) < r * 0.7 * (1 + (py + r * 0.4) / (r * 1.4)) && g === 3 && h4 !== 2;
+      if (!keep2) continue;
+      ctx.fillStyle = FIRE_COLS[py < -r * 0.2 ? h4 & 1 : h4 === 3 ? 2 : h4 === 0 ? 0 : 1];
+      ctx.fillRect(c * cell, q * cell, cell, cell);
     }
   }
 
@@ -20670,12 +20815,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     for (const p of S2.props) {
       if (!p.burn || p.gone || p.arc || p.x < -20 || p.x > TITLE_VW + 20) continue;
       const pr = p, bent = p.sw || p.tl, reach2 = p.st === "silk" ? 3 : 7;
+      ctx.save();
+      ctx.translate(-S2.scroll, 0);
       for (let k2 = Math.max(0, p.len - reach2); k2 <= p.len; k2 += TCELL * 0.75) {
-        const q = bent ? vinePt(pr, k2) : { x: 0, y: k2 }, c = Math.floor((p.ox + q.x) / TCELL), r = Math.floor((p.y + q.y) / TCELL);
-        const h4 = Math.imul(c * 977 + r, 2654435761) + S2.fireN * 40503 >>> 30;
-        ctx.fillStyle = FIRE_COLS[p.len - k2 < 1.5 ? 3 : h4 === 0 ? 0 : h4 === 3 ? 2 : 1];
-        ctx.fillRect(c * TCELL - S2.scroll, r * TCELL, TCELL, TCELL);
+        const q = bent ? vinePt(pr, k2) : { x: 0, y: k2 };
+        crackleAt(ctx, p.ox + q.x, p.y + q.y, TCELL, S2.fireN, p.len - k2 < 1.5);
       }
+      ctx.restore();
     }
     ctx.strokeStyle = "#eef0f6";
     ctx.globalAlpha = 0.55;
@@ -20739,7 +20885,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ctx.globalAlpha = 1;
     ctx.save();
     ctx.translate(-S2.scroll, 0);
-    for (const f of S2.foes) drawEnemy(ctx, f, S2.t);
+    for (const f of S2.foes) {
+      drawEnemy(ctx, f, S2.t);
+      if (f.burn > 0) crackleBody(ctx, f.x, f.ty, f.r * 0.85, TCELL, S2.fireN);
+    }
     ctx.restore();
     for (const r of S2.runners) drawTitleRunner(ctx, S2, r);
     ctx.globalCompositeOperation = "lighter";
@@ -20829,6 +20978,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       drawRunner(c, r.x, r.y, PW, PH, r.face, gait, r.mode !== "run", r.flame, false, hands, null, r.col);
       drawGun(c, pcx + ax * 2.5, gy, r.ang, GUN_HELD, K.art);
     });
+    if (r.dig) {
+      const mz = gunMuzzle(pcx + ax * 2.5, gy, r.ang, GUN_HELD, K.art);
+      const blade = { look: "disc", x: mz.x + ax * 3, y: mz.y + ay * 3, vx: ax, vy: ay, size: 3.2, spin: S2.t * 9, col: "#d9dde4" };
+      const W = { time: S2.t };
+      const G = { ctx };
+      drawLook(W, G, blade);
+    }
   }
 
   // src/game/dpr.js
@@ -22477,6 +22633,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
       }
       drawEnemy(G.ctx, e, W.time);
+      if (e.burn > 0) crackleBody(G.ctx, e.x, ey, e.r * 0.85, CELL, W.fireN);
       if ((e.home || e.nest || e.al) && e.hp >= e.hpMax) continue;
       const hw = 20, hx = e.x - hw / 2, hy = ey - e.r - 9;
       G.ctx.fillStyle = COL.barBg;
@@ -22982,6 +23139,23 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     for (const pr of W.props)
       if (pr.x + pr.r > W.camX - 70 && pr.x + pr.l < W.camX + vw + 70 && pr.y + pr.b > W.camY - 90 && pr.y + pr.t0 < W.camY + vh + 90)
         drawProp(G.ctx, pr, W.time, TH2);
+    for (const pr of W.firePlants) {
+      if (!pr.burn || pr.gone || !F2.onView(pr.x, pr.y + pr.len, 30)) continue;
+      const bent = swings(pr) && !!(pr.sw || pr.on || pr.tl);
+      for (let k = Math.max(0, pr.len - 7); k <= pr.len; k += CELL * 0.75) {
+        const q = bent ? vinePt(pr, k) : { x: 0, y: k };
+        crackleAt(G.ctx, pr.x + q.x, pr.y + q.y, CELL, W.fireN, pr.len - k < 1.5);
+      }
+    }
+    for (const pr of W.fireArches) {
+      if (!pr.burn || pr.gone || !F2.onView(pr.x, pr.y, 140)) continue;
+      const du = 1.5 / Math.max(10, pr.alen || 10);
+      for (let k = 0; k < 5; k++) for (const u of [pr.u0 - k * du, pr.u1 + k * du]) {
+        if (u < 0 || u > 1) continue;
+        const q = archAt(pr, u);
+        crackleAt(G.ctx, q.x, q.y, CELL, W.fireN, k === 0);
+      }
+    }
     for (const q of W.dparts) {
       if (q.glow) continue;
       G.ctx.globalAlpha = Math.min(1, q.life / q.max * 3);

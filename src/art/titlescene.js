@@ -89,6 +89,7 @@ export const TITLE_HOME = {
  *   accel: number, vmax: number, chain: number, col: string, look: string }} TKit */
 /** @typedef {{ x: number, y: number, vx: number, vy: number, face: number, ang: number, cd: number, kit: TKit, flame: number, id: number, col: string,
  *   mode: string, modeT: number, tx: number, ty: number, retarget: number, gait: number, ground: boolean, swapT: number, swap: number, wvx: number, wvy: number,
+ *   dig: number, clearT: number, keep: TKit | null, dx: number, dy: number, digY: number, sawT: number, switches: number[],
  *   nav: { F: any, fx: number, fy: number, t: number } }} TRunner */
 /** @typedef {{ x: number, y: number, vx: number, vy: number, size: number, col: string, look: string, life: number, foe: boolean, spin: number,
  *   grav: number, drag: number, explode: number, pit: number, fire: number, bounce: number, bounceE: number, pierce: number, dmg: number,
@@ -107,7 +108,9 @@ export const TITLE_HOME = {
  *   booms: TBoom[], zaps: TZap[], flash: number, rows: number, ncol: number, cells: Uint8Array, gen: number, props: TProp[],
  *   fire: TFire[], dirty: number[][], dirtyAll: boolean, carved: number, burnt: number, swaps: number, groundT: number, flyT: number, kinds: Record<string, number>,
  *   webs: WebLine[], cut: number, lineT: number, silk: { x: number, y: number, ax: number, ay: number, vx: number, vy: number, life: number }[],
- *   nav: { F: any, fx: number, fy: number, t: number }, fireAcc: number, fireN: number, burning: Set<number>, gotN: number, pops: number, lampsPopped: number, kitNames: Set<string> }} TitleScene */
+ *   nav: { F: any, fx: number, fy: number, t: number }, fireAcc: number, fireN: number, burning: Set<number>, gotN: number, pops: number, lampsPopped: number, kitNames: Set<string>,
+ *   digT: number, digs: number, digWhy: Record<string, number>, still?: boolean }} TitleScene */
+// (still: the players stand where they are, for a test of something they'd otherwise saw through or shoot)
 
 /** @param {number} seed @returns {() => number} a seeded random 0..1 (mulberry32) */
 export function titleRng(seed) {
@@ -338,8 +341,18 @@ const HOLDS = TITLE_SOLID.map((v, m) => (v || m === TM.BEAM || m === TM.BEAMD ? 
 /** @param {() => number} R @returns {TKit} */
 export function titleKit(R) {
   const pick = (/** @type {string[]} */ a) => a[Math.floor(R() * a.length)];
-  const shot = pick(TITLE_SHOTS), M = MODS[shot], nm = R() < 0.2 ? 0 : R() < 0.55 ? 1 : 2, mods = [];
+  const shot = pick(TITLE_SHOTS), nm = R() < 0.2 ? 0 : R() < 0.55 ? 1 : 2, mods = [];
   for (let i = 0; i < nm; i++) { const m = pick(TITLE_MODS); if (!mods.includes(m)) mods.push(m); }
+  return kitOf(shot, mods, pick(GUN_ART.map(a => a.id)));
+}
+// the gun a player swaps to when rock is in its way (owner, v0.0.166): the Buzzsaw, cutting a tunnel
+export const TITLE_SAW = 'irongatling';
+export const TITLE_DIGR = 13;         // the tunnel's radius (world units; he's 12 × 22)
+const DIGV = 30;                      // the most he moves while sawing (world units / s, the scroll on top)
+// that gun from its shot, modifiers and skin
+/** @param {string} shot @param {string[]} mods @param {string} art @returns {TKit} */
+function kitOf(shot, mods, art) {
+  const M = MODS[shot];
   /** @type {any} */
   const s = { dmg: M.dmg || 1, speed: M.speed || 300, spread: M.spread || 0, size: M.size || 2, life: M.life || 1, count: M.count || 1, recoil: 0,
     grav: M.grav || 0, drag: M.drag || 0, explode: M.explode || 0, pit: Math.max(M.pit || 0, M.bore || 0), fire: M.fire || 0,
@@ -354,7 +367,6 @@ export function titleKit(R) {
   }
   if (s.bore) s.pit = Math.max(s.pit, s.bore);
   if (M.fuse) s.life = Math.min(s.life, M.fuse + 0.5);
-  const art = pick(GUN_ART.map(a => a.id));
   return { art, shot, mods, name: [shot, ...mods].join('+'), cd: Math.max(0.06, d * 1.7) * (n > 1 ? 1.3 : 1), n: s.count * n,
     dmg: s.dmg, speed: s.speed, spread: s.spread + (n > 1 ? 6 : 0), size: Math.min(8, s.size), life: Math.min(4, s.life), grav: s.grav, drag: s.drag,
     explode: Math.min(40, s.explode), pit: Math.min(10, s.pit), fire: s.fire, bounce: s.bounce, bounceE: s.bounceE, pierce: s.pierce, homing: s.homing,
@@ -368,13 +380,14 @@ export function titleScene(vh, seed = 7, top = vh * 0.3, bot = vh * 0.62) {
   const S = { t: 0, vh, top, bot, seed, rnd, scroll: 0, shake: 0, spawn: 0, kills: 0, gold: 0, got: 0, runner: null, runners: [], foes: [], shots: [],
     parts: [], coins: [], booms: [], zaps: [], flash: 0, rows, ncol, cells: new Uint8Array(rows * ncol), gen: -25, props: [],
     fire: [], dirty: [], dirtyAll: true, carved: 0, burnt: 0, swaps: 0, groundT: 0, flyT: 0, kinds: {}, webs: [], cut: 0, lineT: 0,
-    silk: [], nav: { F: null, fx: 0, fy: 0, t: -9 }, fireAcc: 0, fireN: 0, burning: new Set(), gotN: 0, pops: 0, lampsPopped: 0, kitNames: new Set() };
+    silk: [], nav: { F: null, fx: 0, fy: 0, t: -9 }, fireAcc: 0, fireN: 0, burning: new Set(), gotN: 0, pops: 0, lampsPopped: 0, kitNames: new Set(), digT: 0, digs: 0, digWhy: {} };
   genTo(S);
   // four players, spread along the left side, each on its own clock (S.runner: player 1)
   for (let i = 0; i < TITLE_RUNNERS; i++) {
     const x = 18 + i * 30, y = titleSurf(S, x + PW / 2, (top + bot) / 2, 1) - PH;
     S.runners.push({ x, y, vx: 0, vy: 0, face: 1, ang: 0, cd: 0.5 + i * 0.2, kit: titleKit(rnd), flame: 0, id: i, col: TITLE_COLS[i],
-      mode: 'run', modeT: 1.5 + i * 1.3 + rnd() * 2, tx: x, ty: y, retarget: 0, gait: i * 1.7, ground: true, swapT: 2 + i * 1.2 + rnd() * 2, swap: 0, wvx: 0, wvy: 0,
+      mode: 'run', modeT: runTime(rnd), tx: x, ty: y, retarget: 0, gait: i * 1.7, ground: true, swapT: 2 + i * 1.2 + rnd() * 2, swap: 0, wvx: 0, wvy: 0,
+      dig: 0, clearT: 0, keep: null, dx: 1, dy: 0, digY: 0, sawT: 0, switches: [],
       nav: { F: null, fx: 0, fy: 0, t: -9 } });
   }
   S.runner = S.runners[0];
@@ -407,6 +420,7 @@ function addFoe(S, x) {
   const n = id === 'rotta' ? 3 + Math.floor(R() * 4) : id === 'hamahakki' ? 1 + Math.floor(R() * 2) : 1;
   for (let i = 0; i < n && S.foes.length < TITLE_FOES; i++) {
     const ex = wx + i * (8 + R() * 8), k = enemyFor(id, 1), cy = titleCeil(ex, S), fy = titleFloor(ex, S);
+    if (i && titleZone(ex) !== titleZone(wx)) break;          // a swarm stops at its zone's end
     const ey = id === 'meduusa' ? cy + (fy - cy) * (0.25 + 0.45 * R()) : id === 'hamahakki' && R() < 0.5 ? cy + k.r : fy - k.r - 1;
     S.foes.push({ x: ex, y: ey, ty: ey, r: k.r, phase: R() * 6.28, hp: k.hp, hpMax: k.hp, cd: 1 + R() * 2, flash: 0, lx: 0, ly: 1,
       hx: ex, hy: ey, tgt: null, rest: R() * 3, k, touch: 0, charge: 0 });
@@ -460,15 +474,15 @@ function popLamp(S, p) {
 const lampHit = (p, x, y, r) => x > p.x - 3.5 - r && x < p.x + 3.5 + r && y > p.y + p.len - r && y < p.y + p.len + 9 + r;
 
 // blow a hole: every cell within r of (sx, y) goes, the rock round its rim chars, plants on it fall
-/** @param {TitleScene} S @param {number} sx @param {number} y @param {number} r */
-export function titleCarve(S, sx, y, r) {
+/** @param {TitleScene} S @param {number} sx @param {number} y @param {number} r @param {boolean} [rim] blasted: the rock round it chars (not a saw's cut) */
+export function titleCarve(S, sx, y, r, rim = true) {
   const wx = sx + S.scroll, c0 = Math.floor((wx - r - 2) / TCELL), c1 = Math.floor((wx + r + 2) / TCELL);
   const r0 = Math.max(0, Math.floor((y - r - 2) / TCELL)), r1 = Math.min(S.rows - 1, Math.floor((y + r + 2) / TCELL));
   let n = 0;
   for (let c = Math.max(c0, S.gen - S.ncol); c <= Math.min(c1, S.gen - 1); c++) for (let rr = r0; rr <= r1; rr++) {
     const d = Math.hypot((c + 0.5) * TCELL - wx, (rr + 0.5) * TCELL - y), i = ci(S, c, rr), m = S.cells[i];
     if (d <= r) { if (m !== TM.AIR) { S.cells[i] = TM.AIR; n++; S.burning.delete(c * S.rows + rr); } }
-    else if (d <= r + 2 && SOLID[m] && m !== TM.CHAR) S.cells[i] = TM.CHAR;
+    else if (rim && d <= r + 2 && SOLID[m] && m !== TM.CHAR) S.cells[i] = TM.CHAR;
   }
   if (n) {
     S.carved += n;
@@ -717,7 +731,7 @@ export function titleStep(S, dt) {
   S.flash = Math.max(0, S.flash - dt * 1.6);
   S.spawn -= dt;
   if (S.spawn <= 0 && S.foes.length < TITLE_FOES - 10) { addFoe(S); S.spawn = 0.4 + R() * 0.6; }
-  for (const r of S.runners) stepRunner(S, r, dt);
+  if (!S.still) for (const r of S.runners) stepRunner(S, r, dt);
   stepFoes(S, dt);
   stepShots(S, dt);
   stepFire(S, dt);
@@ -821,70 +835,161 @@ function stepRunner(S, r, dt) {
   r.wvy += (Math.max(-250, Math.min(250, (r.y - y0) / Math.max(dt, 1e-3))) - r.wvy) * k;
   stepRunnerGun(S, r, dt);
 }
+// is any of the body's box (screen x, y: its top left) in rock? (a grid of points just inside it)
+// (feet: false leaves out the bottom row, so a step under his feet isn't rock in his way)
+/** @param {TitleScene} S @param {number} x @param {number} y @param {boolean} [feet] */
+const boxRock = (S, x, y, feet = true) => {
+  for (let i = 0; i <= 2; i++) for (let j = 0; j <= (feet ? 4 : 3); j++) if (titleSolid(S, x + 1 + (PW - 2) * i / 2, y + 1 + (PH - 2) * j / 4)) return true;
+  return false;
+};
+// how long a player runs, and flies, before switching (each its own roll: owner, v0.0.166)
+/** @param {() => number} R */
+const runTime = R => 1.2 + R() * 5.5;
+/** @param {() => number} R */
+const flyTime = R => 1.5 + R() * 5;
+// where a flying player heads next: mostly somewhere in the open, now and then into the ground under the
+// floor or up into the roof (it saws its way there: tunnels)
+/** @param {TitleScene} S @param {TRunner} r */
+function pickTarget(S, r) {
+  const R = S.rnd;
+  r.tx = 18 + R() * (TITLE_VW * 0.5);
+  const twx = r.tx + PW / 2 + S.scroll + 20, c = titleCeil(twx, S), f = titleFloor(twx, S), roll = R();
+  if (roll < 0.09) r.ty = f - PH + 8 + R() * 22;
+  else if (roll < 0.15) r.ty = c - 10 - R() * 22;
+  else r.ty = c + 4 + R() * Math.max(0, f - c - PH - 8);
+  r.ty = Math.max(S.top - 32, Math.min(S.bot + 6, r.ty));
+  r.retarget = 0.8 + R() * 1.6;
+}
+// rock in his way: out comes the Buzzsaw (TITLE_SAW), and he cuts through until he's in the open again
+/** @param {TitleScene} S @param {TRunner} r @param {number} dx @param {number} dy @param {string} why (counted in S.digWhy) */
+function startDig(S, r, dx, dy, why) {
+  if (!r.dig) { r.keep = r.kit; r.kit = kitOf('saw', [], TITLE_SAW); r.swap = 0.2; S.digs++; r.digY = r.y; S.digWhy[why] = (S.digWhy[why] || 0) + 1; }
+  const d = Math.hypot(dx, dy) || 1;
+  r.dig = Math.max(r.dig, 1e-3); r.clearT = 0; r.dx = dx / d; r.dy = dy / d;
+}
+/** @param {TitleScene} S @param {TRunner} r @param {string} mode @param {number} t */
+function setMode(S, r, mode, t) {
+  if (r.mode !== mode) r.switches.push(S.t);
+  r.mode = mode; r.modeT = t;
+}
+
+// A player's move (owner, v0.0.166): running and flying each last its own random while; nothing moves him
+// but his own steering, gravity on the ground and the floor under his feet: rock in the way (a wall ahead,
+// a low roof, the ground he's aiming into, or the rock the scroll brings to him) and he saws through it
 /** @param {TitleScene} S @param {TRunner} r @param {number} dt */
 function stepRunnerMove(S, r, dt) {
-  const R = S.rnd, cx = () => r.x + PW / 2;
-  // first, a safety net (owner saw him stuck under the floor, shooting from inside it): his middle in rock, or
-  // his feet well below the cave's floor line (down a blast hole that closed over him), and he's
-  // popped back up onto the first surface under the roof
-  {
-    const wx = cx() + S.scroll, fl = titleFloor(wx, S);
-    if (titleSolid(S, cx(), r.y + PH * 0.5) || r.y + PH > fl + 16) {
-      r.y = titleSurf(S, cx(), titleCeil(wx, S) + 4, 1) - PH; r.vy = 0; S.pops++;
-    }
-  }
-  r.modeT -= dt;
-  const ground = titleSurf(S, cx(), r.y + PH - 9, 1);
-  if (r.mode === 'run') {
-    S.groundT += dt;
-    r.flame = 0;
-    // run along the floor (the world scrolls under him: he keeps pace, drifting about the left half)
-    r.retarget -= dt;
-    if (r.retarget <= 0) { r.tx = 25 + R() * 80; r.retarget = 1 + R() * 1.5; }
-    const vx = Math.max(-26, Math.min(26, (r.tx - r.x) * 1.2));
-    r.x += vx * dt;
-    r.gait += (SCROLL + vx) * dt * 0.38;
-    if (ground < r.y + PH - 8) { r.mode = 'fly'; r.modeT = 2 + R() * 2; r.vy = -40; r.ground = false; return; }
-    if (ground > r.y + PH + 1.5) {                       // a hole: he drops into it
-      r.vy += GRAV * dt; r.y += r.vy * dt; r.ground = false;
-      if (r.y + PH >= ground) { r.y = ground - PH; r.vy = 0; r.ground = true; }
-    } else { r.y = ground - PH; r.vy = 0; r.ground = true; }
-    // a wall ahead too tall to step up, a deep hole, or his time's up: up he goes (not on time
-    // under the timber works' low roof: he runs them)
-    const ahead = titleSurf(S, cx() + 6, r.y + PH - 9, 1), low = built(cx() + S.scroll + 40, 'timber') > 0;
-    if (low && r.modeT <= 0) r.modeT = 0.5;
-    if (r.modeT <= 0 || ahead < r.y + PH - 7 || ground - (r.y + PH) > 20) {
-      r.mode = 'fly'; r.modeT = 2.2 + R() * 2; r.retarget = 0; r.vy = -40; r.ground = false;
-    }
-  } else {
-    S.flyT += dt;
-    r.retarget -= dt;
-    const land = r.modeT <= 0 || built(cx() + S.scroll + 30, 'timber') > 0;   // the timber works coming: down he comes
-    if (!land && (r.retarget <= 0 || Math.hypot(r.tx - r.x, r.ty - r.y) < 6)) {
-      r.tx = 20 + R() * (TITLE_VW * 0.5); r.ty = S.top + (S.bot - S.top) * (0.02 + R() * 0.45); r.retarget = 0.8 + R() * 1.4;
-    }
-    if (land) { r.tx = r.x; r.ty = ground - PH + 2; }
-    const ax = (r.tx - r.x) * 2.2 - r.vx * 1.6, ay = (r.ty - r.y) * (land ? 1.2 : 2.2) - r.vy * 1.6;
-    r.vx += ax * dt; r.vy += ay * dt;
-    r.x += r.vx * dt; r.y += r.vy * dt;
-    r.flame = Math.max(0, Math.min(1, -ay / 60 + (land ? 0.1 : 0.35)));
-    const roof = titleSurf(S, cx(), r.y + 6, -1);
-    if (r.y < roof) { r.y = roof; r.vy = Math.abs(r.vy) * 0.3; }
-    const g2 = titleSurf(S, cx(), r.y + PH - 9, 1);
-    if (r.y + PH > g2 && g2 >= r.y + PH - 8) { r.y = g2 - PH; r.vy = 0; if (land) { r.mode = 'run'; r.modeT = 2.5 + R() * 2.5; r.vx = 0; r.ground = true; r.retarget = 0; } }
-    if (land && r.modeT < -3) { r.mode = 'run'; r.modeT = 2.5 + R() * 2.5; r.y = g2 - PH; }
-    r.ground = r.mode === 'run';
-  }
+  r.modeT -= dt; r.retarget -= dt;
+  if (r.dig) digStep(S, r, dt);
+  else if (r.mode === 'run') runStep(S, r, dt);
+  else flyStep(S, r, dt);
   // the players keep out of each other's way: one too close alongside, and they ease apart
   for (const o of S.runners) if (o !== r && Math.abs(o.x - r.x) < 16 && Math.abs(o.y - r.y) < PH) {
     const push = (16 - Math.abs(o.x - r.x)) * 3 * dt * (r.x < o.x || (r.x === o.x && r.id < o.id) ? -1 : 1);
-    r.x += push; if (r.mode === 'run') r.tx += push;
+    if (!boxRock(S, r.x + push, r.y)) { r.x += push; if (r.mode === 'run') r.tx += push; }
   }
   r.x = Math.max(8, Math.min(TITLE_VW * 0.62, r.x));
+  r.y = Math.max(S.top - 40, Math.min(S.bot + 10, r.y));
+}
+/** @param {TitleScene} S @param {TRunner} r @param {number} dt */
+function runStep(S, r, dt) {
+  const R = S.rnd, cx = r.x + PW / 2;
+  S.groundT += dt;
+  r.flame = 0;
+  // run along the floor (the world scrolls under him: he keeps pace, drifting about the left half)
+  if (r.retarget <= 0) { r.tx = 18 + R() * 90; r.retarget = 1 + R() * 1.5; }
+  const vx = Math.max(-26, Math.min(26, (r.tx - r.x) * 1.2));
+  // his feet: a step up to 8 he takes in his stride; a hole he drops into; rock higher than that at his feet
+  // (the scroll brought a wall into him) he saws
+  const ground = titleSurf(S, cx, r.y + PH - 9, 1);
+  if (ground < r.y + PH - 8) { r.ground = false; startDig(S, r, 1, 0, 'feet'); return; }
+  if (ground > r.y + PH + 1.5) {
+    r.vy += GRAV * dt; r.y += r.vy * dt; r.ground = false;
+    if (r.y + PH >= ground) { r.y = ground - PH; r.vy = 0; r.ground = true; }
+  } else { r.y = ground - PH; r.vy = 0; r.ground = true; }
+  // a wall ahead too tall to step, or a roof too low: saw a tunnel straight on
+  const ahead = titleSurf(S, cx + 7, r.y + PH - 9, 1);
+  if (ahead < r.y + PH - 7) { startDig(S, r, 1, 0, 'wall'); return; }
+  if (boxRock(S, r.x, r.y, false) || boxRock(S, r.x + vx * dt + 2, r.y, false)) { startDig(S, r, 1, 0, 'roof'); return; }
+  r.x += vx * dt;
+  r.gait += (SCROLL + vx) * dt * 0.38;
+  if (r.modeT <= 0) { setMode(S, r, 'fly', flyTime(R)); pickTarget(S, r); r.vy = -40; r.ground = false; }
+}
+/** @param {TitleScene} S @param {TRunner} r @param {number} dt */
+function flyStep(S, r, dt) {
+  const R = S.rnd, cx = r.x + PW / 2;
+  S.flyT += dt;
+  r.ground = false;
+  const landing = r.modeT <= 0;
+  if (landing && r.modeT < -4) r.modeT = flyTime(R);     // nowhere to land: fly on
+  if (!landing && (r.retarget <= 0 || Math.hypot(r.tx - r.x, r.ty - r.y) < 6)) pickTarget(S, r);
+  if (landing) { r.tx = r.x; r.ty = Math.min(S.bot + 6, titleSurf(S, cx, r.y + PH - 9, 1) - PH + 2); }
+  const ax = (r.tx - r.x) * 2.2 - r.vx * 1.6, ay = (r.ty - r.y) * (landing ? 1.2 : 2.2) - r.vy * 1.6;
+  r.vx += ax * dt; r.vy += ay * dt;
+  r.flame = Math.max(0, Math.min(1, -ay / 60 + (landing ? 0.1 : 0.35)));
+  // the floor rising under his feet (skimming it) he rides up over; the rock otherwise come to him (it scrolls) he saws
+  const g0 = titleSurf(S, cx, r.y + PH - 9, 1);
+  if (g0 < r.y + PH && g0 >= r.y + PH - 9 && !boxRock(S, r.x, g0 - PH)) r.y = g0 - PH;
+  if (boxRock(S, r.x, r.y)) { startDig(S, r, r.vx + SCROLL, r.vy, 'came'); return; }
+  // coming down to land: once his feet are at the floor, he's running
+  if (landing && g0 - (r.y + PH) < 1.5) { r.y = g0 - PH; r.vy = 0; setMode(S, r, 'run', runTime(R)); r.vx = 0; r.ground = true; r.retarget = 0; return; }
+  const nx = r.x + r.vx * dt, ny = r.y + r.vy * dt;
+  if (!boxRock(S, nx, ny)) { r.x = nx; r.y = ny; return; }
+  // the floor under him, going down and not aiming into it: he lands on it (or skims it, on his way)
+  const g2 = titleSurf(S, nx + PW / 2, r.y + PH - 9, 1), into = r.ty + PH > g2 + 4;
+  if (!into && g2 >= r.y + PH - 9 && g2 - (r.y + PH) < 6 && !boxRock(S, nx, g2 - PH)) {
+    r.x = nx; r.y = g2 - PH; r.vy = 0;
+    if (landing) { setMode(S, r, 'run', runTime(R)); r.vx = 0; r.ground = true; r.retarget = 0; }
+    return;
+  }
+  startDig(S, r, r.vx + SCROLL, r.vy, into ? 'aim' : 'fly');
+}
+// sawing through: slower, steered as he was going (running: straight on at the height he started), the
+// tunnel cut round him and ahead; once he's been clear of rock a moment, his gun comes back
+/** @param {TitleScene} S @param {TRunner} r @param {number} dt */
+function digStep(S, r, dt) {
+  const R = S.rnd;
+  S.digT += dt; r.dig += dt;
+  if (r.mode === 'fly' && (r.retarget <= 0 || Math.hypot(r.tx - r.x, r.ty - r.y) < 6)) pickTarget(S, r);
+  if (r.dig > 6 && r.mode === 'fly') {                   // long enough underground: up to the open air
+    const twx = r.x + PW / 2 + S.scroll, c = titleCeil(twx, S), f = titleFloor(twx, S);
+    r.ty = c + (f - c) * 0.4; r.tx = r.x;
+  }
+  // running: straight on at the height he started, but never below the floor's line (out of a hole he was pushed into)
+  const ty = r.mode === 'run' ? Math.min(r.digY, titleFloor(r.x + PW / 2 + S.scroll, S) - PH - 1) : r.ty;
+  r.vx += ((r.tx - r.x) * 1.5 - r.vx * 1.6) * dt; r.vy += ((ty - r.y) * 1.5 - r.vy * 1.6) * dt;
+  const v = Math.hypot(r.vx, r.vy);
+  if (v > DIGV) { r.vx *= DIGV / v; r.vy *= DIGV / v; }
+  r.x += r.vx * dt; r.y += r.vy * dt;
+  r.flame = r.mode === 'fly' ? 0.3 : 0;
+  r.ground = false;
+  if (r.mode === 'run') r.gait += (SCROLL + r.vx) * dt * 0.3;
+  // his way through the rock (it scrolls past at SCROLL), and the tunnel round him and ahead
+  const dx = r.vx + SCROLL, dy = r.vy, d = Math.hypot(dx, dy) || 1;
+  r.dx = dx / d; r.dy = dy / d;
+  titleCarve(S, r.x + PW / 2 + r.dx * 4, r.y + PH / 2 + r.dy * 4, TITLE_DIGR, false);
+  if (!boxRock(S, r.x, r.y, false) && !boxRock(S, r.x + r.dx * 7, r.y + r.dy * 7, false)) r.clearT += dt; else r.clearT = 0;
+  if (r.clearT > 0.25) {
+    r.dig = 0; r.clearT = 0; r.swap = 0.3;
+    if (r.keep) r.kit = r.keep;
+    r.keep = null;
+    if (r.mode === 'fly' && R() < 0.5) pickTarget(S, r);
+  }
 }
 /** @param {TitleScene} S @param {TRunner} r @param {number} dt */
 function stepRunnerGun(S, r, dt) {
   const R = S.rnd, cx = () => r.x + PW / 2;
+  r.swap = Math.max(0, r.swap - dt);
+  if (r.dig) {
+    // sawing: the blade the way he's cutting; a creature it reaches is cut too
+    let d = Math.atan2(r.dy, r.dx) - r.ang; d = Math.atan2(Math.sin(d), Math.cos(d));
+    r.ang += d * Math.min(1, dt * 10);
+    r.face = Math.cos(r.ang) >= 0 ? 1 : -1;
+    r.sawT -= dt;
+    const mz = gunMuzzle(cx() + Math.cos(r.ang) * 2.5, r.y + PH * 0.45, r.ang, GUN_HELD, r.kit.art), bx = mz.x + Math.cos(r.ang) * 3, by = mz.y + Math.sin(r.ang) * 3;
+    if (R() < dt * 25) burst(S, bx, by, 1, R() < 0.5 ? '#ffd27a' : '#fff2c0', 70, 'spark', 0.15);
+    if (r.sawT <= 0) for (const f of S.foes) if (f.hp > 0 && Math.hypot(f.x - S.scroll - bx, f.ty - by) < f.r + 6) { hitFoe(S, f, MODS.saw.dmg * 0.5, '#d9dde4'); r.sawT = 0.15; }
+    return;
+  }
   // aim at the nearest creature within TITLE_AIM, well on screen (owner: they come into view before he blasts them)
   let best = null, bd = TITLE_AIM;
   for (const f of S.foes) { const fx = f.x - S.scroll, d = Math.hypot(fx - r.x, f.ty - r.y); if (f.hp > 0 && fx < TITLE_VW - 24 && fx > cx() - 30 && d < bd) { bd = d; best = f; } }
@@ -896,7 +1001,7 @@ function stepRunnerGun(S, r, dt) {
   } else r.ang += (0 - r.ang) * Math.min(1, dt * 4);
   r.face = Math.cos(r.ang) >= 0 ? 1 : -1;
   // every few seconds: another gun
-  r.swapT -= dt; r.swap = Math.max(0, r.swap - dt);
+  r.swapT -= dt;
   if (r.swapT <= 0) {
     r.kit = titleKit(R); S.kitNames.add(r.kit.name);
     r.swapT = 3.5 + R() * 2.5; r.swap = 0.3; r.cd = 0.35; S.swaps++;
@@ -983,7 +1088,8 @@ function stepFoes(S, dt) {
       e.burn -= dt;
       if (R() < dt * 40) flameAt(S, e.x - S.scroll + (R() - 0.5) * e.r, e.ty + (R() - 0.5) * e.r);
       if (R() < dt * 6) fireSmoke(S, e.x - S.scroll, e.ty - e.r);
-      hitFoe(S, e, kr('fireDps', R) * dt, '#ff9a2e');
+      e.burnAcc = (e.burnAcc || 0) + kr('fireDps', R) * dt;   // hurt in chunks (as the game): a flash now and then, not white all the time
+      if (e.burnAcc >= 0.5 || e.burn <= 0) { const d = e.burnAcc; e.burnAcc = 0; hitFoe(S, e, d, '#ff9a2e'); }
     }
   }
   S.foes = S.foes.filter(e => e.hp > 0 && e.x - S.scroll > -40 && e.y < S.vh + 20);
