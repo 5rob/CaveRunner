@@ -3,7 +3,11 @@
 Where things stand, for a fresh session. Read `CLAUDE.md` first (the owner's working style, the
 release loop, testing), then the README of the `src/` folder you're working in.
 
-## NEXT (as of v0.0.170, 2026-10-08)
+## NEXT (as of v0.0.171, 2026-10-08)
+
+- **v0.0.171 is on branch `title-fly`, waiting on the owner's OK** (`node tools/pixelshots.js`, the c-burst shots): no
+  outline, shots pixelated, jetpack with gravity + bursts, run pace. Once OK'd: merge to `main`, confirm Pages. Known: more
+  sawing than before (~120 starts a minute vs ~75).
 
 - **v0.0.170 released** (owner OK'd; `node tools/mineshots.js`, `node tools/pixelshots.js`): rats fixed, random hewn mine
   layouts, jellyfish glow on vines (reach × `TITLE_PLANTR` 0.25), pixel look on everything (title only). Open question for

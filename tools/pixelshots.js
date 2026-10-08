@@ -1,6 +1,7 @@
 // Screenshots for the owner (v0.0.170), phone size (412 x 880 @2.625), the real title through the test page:
 // the plants, webs, gold and creatures in the players' pixel look, and a jellyfish's green glow on the vines
 // and moss round it (the game's plant glow). Whole screen, then the camera zoomed in on the jellyfish.
+// (v0.0.171) Then a player flying in full-blast bursts, mid-burst, with shots in the air: zoomed in, no outlines.
 //   node tools/pixelshots.js [outdir]      (default tests/build/pixelshots)
 // Not a test: it takes the pictures and prints what each shows.
 const { launch } = require('../tests/chromium');
@@ -39,6 +40,22 @@ require('../tests/build')();
       await page.waitForTimeout(60);
       await page.screenshot({ path: path.join(OUT, `${seed}-b-zoom.png`) });
       said.push(`${seed}-b-zoom.png    …zoomed in 3x on it: the green glow on the vines and moss, the pixel look`);
+    }
+    // a burst flyer, its jet on, shots in the air near it (up to 30 s)
+    let B = null;
+    for (let i = 0; i < 120 && !B; i++) {
+      await page.waitForTimeout(250);
+      B = await page.evaluate(() => {
+        const { S } = window.__title;
+        const r = S.runners.find(q => q.mode === 'fly' && !q.dig && q.burst && q.jet && q.x > 30 && q.x < 170 && S.shots.some(s => Math.hypot(s.x - q.x, s.y - q.y) < 50));
+        return r ? { x: r.x + 6, y: r.y + 11, id: r.id } : null;
+      });
+    }
+    if (B) {
+      await page.evaluate(B => { const { C } = window.__title; Object.assign(C, { z: 2.5, x: B.x, y: B.y, zt: 0, lock: B.id }); }, B);
+      await page.waitForTimeout(40);
+      await page.screenshot({ path: path.join(OUT, `${seed}-c-burst.png`) });
+      said.push(`${seed}-c-burst.png   …player ${B.id + 1} mid-burst (full flame), shots in the air, zoomed 2.5x: no outlines, shots in the pixel look`);
     }
     await ctx.close();
   }

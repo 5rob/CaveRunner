@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v0.0.170</title>
-<!-- VERSION = 'v170' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v0.0.171</title>
+<!-- VERSION = 'v171' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -903,7 +903,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v0.0.170';</script>
+<script>const VERSION = 'v0.0.171';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -9979,7 +9979,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     t.setTransform(1, 0, 0, 1, 0, 0);
     t.clearRect(0, 0, c.width, c.height);
     t.setTransform(1 / px, 0, 0, 1 / px, -x0 / px, -y0 / px);
+    t.save();
     paint3(t);
+    t.restore();
     t.setTransform(1, 0, 0, 1, 0, 0);
     const im = t.getImageData(0, 0, cw, ch), d = im.data, n = cw * ch;
     const on = new Uint8Array(n);
@@ -10673,6 +10675,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   var TITLE_SAW = "irongatling";
   var TITLE_DIGR = 13;
+  var JET2 = GRAV * 2.4;
   var DIGV = 30;
   function kitOf(shot, mods, art) {
     const M = MODS[shot];
@@ -10827,6 +10830,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         digY: 0,
         sawT: 0,
         switches: [],
+        bursty: [0.75, 0.15, 0.5, 0.3][i],
+        burst: false,
+        jet: false,
+        jetT: 0,
+        jetCd: 0,
+        pace: 0.75 + rnd2() * 0.5,
+        spd: 1,
         nav: { F: null, fx: 0, fy: 0, t: -9 }
       });
     }
@@ -11445,10 +11455,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     S2.groundT += dt;
     r.flame = 0;
     if (r.retarget <= 0) {
-      r.tx = 18 + R() * 90;
-      r.retarget = 1 + R() * 1.5;
+      const roll = R();
+      r.spd = roll < 0.25 ? -(0.3 + R() * 0.25) : roll < 0.45 ? 1.6 + R() * 0.4 : 1;
+      r.tx = r.spd < 0 ? 8 : 18 + R() * 90;
+      r.retarget = r.spd === 1 ? 1 + R() * 1.5 : 0.8 + R() * 1.2;
     }
-    const vx = Math.max(-26, Math.min(26, (r.tx - r.x) * 1.2));
+    const vx = r.spd < 0 ? Math.max(r.spd * SCROLL, (8 - r.x) * 2) : Math.max(-26 * r.pace, Math.min(26 * r.pace * r.spd, (r.tx - r.x) * 1.2));
     const ground = titleSurf(S2, cx, r.y + PH - 9, 1);
     if (ground < r.y + PH - 8) {
       r.ground = false;
@@ -11485,6 +11497,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       pickTarget(S2, r);
       r.vy = -40;
       r.ground = false;
+      r.burst = R() < r.bursty;
+      r.jet = r.burst;
+      r.jetT = 0.3;
+      r.jetCd = 0;
     }
   }
   function flyStep(S2, r, dt) {
@@ -11498,10 +11514,31 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       r.tx = r.x;
       r.ty = Math.min(S2.bot + 6, titleSurf(S2, cx, r.y + PH - 9, 1) - PH + 2);
     }
-    const ax = (r.tx - r.x) * 2.2 - r.vx * 1.6, ay = (r.ty - r.y) * (landing ? 1.2 : 2.2) - r.vy * 1.6;
+    const ax = (r.tx - r.x) * 2.2 - r.vx * 1.6;
     r.vx += ax * dt;
-    r.vy += ay * dt;
-    r.flame = Math.max(0, Math.min(1, -ay / 60 + (landing ? 0.1 : 0.35)));
+    let thr = 0;
+    if (landing) {
+      r.tx = r.x;
+      thr = r.vy > 70 && titleSurf(S2, cx, r.y + PH - 9, 1) - (r.y + PH) < 26 ? 1 : 0;
+    } else if (r.burst) {
+      if (r.jet) {
+        r.jetT -= dt;
+        if (r.jetT <= 0 || r.y < r.ty - 14 || r.y - titleSurf(S2, cx, r.y + 2, -1) < 10 - r.vy * 0.06) {
+          r.jet = false;
+          r.jetCd = 0.05 + R() * 0.3;
+        }
+      } else if ((r.jetCd -= dt) <= 0 && (r.y > r.ty - 2 || r.vy > 70)) {
+        r.jet = true;
+        r.jetT = 0.1 + R() * 0.25;
+      }
+      thr = r.jet ? 1 : 0;
+    } else {
+      const want = (r.ty - r.y) * 2.2 - r.vy * 1.6;
+      thr = Math.max(0, Math.min(1, (GRAV - want) / JET2));
+    }
+    r.vy += (GRAV - JET2 * thr) * dt;
+    r.vy = Math.max(-170, Math.min(240, r.vy));
+    r.flame = thr;
     const g0 = titleSurf(S2, cx, r.y + PH - 9, 1);
     if (g0 < r.y + PH && g0 >= r.y + PH - 9 && !boxRock(S2, r.x, g0 - PH)) r.y = g0 - PH;
     if (boxRock(S2, r.x, r.y)) {
@@ -11524,7 +11561,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       return;
     }
     const g2 = titleSurf(S2, nx + PW / 2, r.y + PH - 9, 1), into = r.ty + PH > g2 + 4;
-    if (!into && g2 >= r.y + PH - 9 && g2 - (r.y + PH) < 6 && !boxRock(S2, nx, g2 - PH)) {
+    if (!into && g2 >= r.y + PH - 9 && g2 - (r.y + PH) < 6 + Math.max(0, r.vy) * dt && !boxRock(S2, nx, g2 - PH)) {
       r.x = nx;
       r.y = g2 - PH;
       r.vy = 0;
@@ -21032,7 +21069,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const sx2 = f.x - S2.scroll;
       if (sx2 < -60 || sx2 > TITLE_VW + 60) continue;
       const e = f.r * 3 + 20;
-      pixelSprite(ctx, sx2 - e, f.ty - e, 2 * e, 2 * e + 30, 1, true, (c) => {
+      pixelSprite(ctx, sx2 - e, f.ty - e, 2 * e, 2 * e + 30, 1, false, (c) => {
         c.translate(-S2.scroll, 0);
         drawEnemy(c, f, S2.t);
       });
@@ -21046,21 +21083,25 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     for (const r of S2.runners) drawTitleRunner(ctx, S2, r);
     ctx.globalCompositeOperation = "lighter";
     for (const f of S2.foes) if (f.je && f.x - S2.scroll > -40 && f.x - S2.scroll < TITLE_VW + 40) titlePlantGlow(ctx, S2, f);
-    for (const z of S2.zaps) drawBolt(G, z.pts, z.col, 1, z.t / 0.16);
-    for (const s of S2.shots) {
-      const b = s;
-      if (!drawLook(W, G, b)) {
-        const sp = Math.hypot(s.vx, s.vy) || 1, tl = Math.min(10, sp * 0.025);
-        ctx.globalAlpha = 1;
-        ctx.strokeStyle = s.col;
-        ctx.lineWidth = s.size;
-        ctx.lineCap = "round";
-        ctx.beginPath();
-        ctx.moveTo(s.x - s.vx / sp * tl, s.y - s.vy / sp * tl);
-        ctx.lineTo(s.x, s.y);
-        ctx.stroke();
+    if (S2.shots.length || S2.zaps.length) pixelSprite(ctx, gx, 0, TITLE_VW + 100, S2.vh, 1, false, (c) => {
+      const G2 = { ctx: c };
+      c.globalCompositeOperation = "lighter";
+      for (const z of S2.zaps) drawBolt(G2, z.pts, z.col, 1, z.t / 0.16);
+      for (const s of S2.shots) {
+        const b = s;
+        if (!drawLook(W, G2, b)) {
+          const sp = Math.hypot(s.vx, s.vy) || 1, tl = Math.min(10, sp * 0.025);
+          c.globalAlpha = 1;
+          c.strokeStyle = s.col;
+          c.lineWidth = s.size;
+          c.lineCap = "round";
+          c.beginPath();
+          c.moveTo(s.x - s.vx / sp * tl, s.y - s.vy / sp * tl);
+          c.lineTo(s.x, s.y);
+          c.stroke();
+        }
       }
-    }
+    });
     ctx.globalAlpha = 1;
     for (const b of S2.booms) {
       const q = b.t / b.max;
@@ -21128,7 +21169,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       pixelSprite(ctx, ox2 - 10, oy2, PW + 48, PH + 40, 1, false, (c) => jetFlame(c, bx, by, 0, 1, len, S2.t));
     }
     const gait = r.mode === "run" ? r.gait : null;
-    pixelHeld(ctx, ox2 + 14, oy2 + 8, 1, true, (c) => {
+    pixelHeld(ctx, ox2 + 14, oy2 + 8, 1, false, (c) => {
       drawRunner(c, r.x, r.y, PW, PH, r.face, gait, r.mode !== "run", r.flame, false, hands, null, r.col);
       drawGun(c, pcx + ax * 2.5, gy, r.ang, GUN_HELD, K.art);
     });
@@ -21137,7 +21178,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const blade = { look: "disc", x: mz.x + ax * 3, y: mz.y + ay * 3, vx: ax, vy: ay, size: 3.2, spin: S2.t * 9, col: "#d9dde4" };
       const W = { time: S2.t };
       const G = { ctx };
-      drawLook(W, G, blade);
+      pixelSprite(ctx, blade.x - 6, blade.y - 6, 12, 12, 1, false, (c) => {
+        G.ctx = c;
+        drawLook(W, G, blade);
+      });
     }
   }
   function worldLayer(c, S2) {

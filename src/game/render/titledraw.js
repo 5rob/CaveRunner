@@ -173,7 +173,7 @@ export function titleDraw(ctx, S, cw, ch, cam) {
     const sx = f.x - S.scroll;
     if (sx < -60 || sx > TITLE_VW + 60) continue;
     const e = f.r * 3 + 20;
-    pixelSprite(ctx, sx - e, f.ty - e, 2 * e, 2 * e + 30, 1, true, c => { c.translate(-S.scroll, 0); drawEnemy(c, f, S.t); });
+    pixelSprite(ctx, sx - e, f.ty - e, 2 * e, 2 * e + 30, 1, false, c => { c.translate(-S.scroll, 0); drawEnemy(c, f, S.t); });
     if (f.burn > 0) { ctx.save(); ctx.translate(-S.scroll, 0); crackleBody(ctx, f.x, f.ty, f.r * 0.85, TCELL, S.fireN); ctx.restore(); }   // on fire: the burning pixels' crackle over it
   }
   // the four players: body and jet flame on the 1-unit pixel grid like the game's drawPlayer, the gun in it
@@ -183,16 +183,22 @@ export function titleDraw(ctx, S, cw, ch, cam) {
   ctx.globalCompositeOperation = 'lighter';
   // each jellyfish's green glow on the plants and moss round it, as the game's (systems/plantglow.js, plantGlowFill)
   for (const f of S.foes) if (f.je && f.x - S.scroll > -40 && f.x - S.scroll < TITLE_VW + 40) titlePlantGlow(ctx, S, f);
-  for (const z of S.zaps) drawBolt(G, z.pts, z.col, 1, z.t / 0.16);
-  for (const s of S.shots) {
+  // the shots and lightning in the pixel look too (owner, v0.0.171): one layer on the world's grid, added as before
+  if (S.shots.length || S.zaps.length) pixelSprite(ctx, gx, 0, TITLE_VW + 100, S.vh, 1, false, c => {
     /** @type {any} */
-    const b = s;
-    if (!drawLook(W, G, b)) {
-      const sp = Math.hypot(s.vx, s.vy) || 1, tl = Math.min(10, sp * 0.025);
-      ctx.globalAlpha = 1; ctx.strokeStyle = s.col; ctx.lineWidth = s.size; ctx.lineCap = 'round';
-      ctx.beginPath(); ctx.moveTo(s.x - s.vx / sp * tl, s.y - s.vy / sp * tl); ctx.lineTo(s.x, s.y); ctx.stroke();
+    const G2 = { ctx: c };
+    c.globalCompositeOperation = 'lighter';
+    for (const z of S.zaps) drawBolt(G2, z.pts, z.col, 1, z.t / 0.16);
+    for (const s of S.shots) {
+      /** @type {any} */
+      const b = s;
+      if (!drawLook(W, G2, b)) {
+        const sp = Math.hypot(s.vx, s.vy) || 1, tl = Math.min(10, sp * 0.025);
+        c.globalAlpha = 1; c.strokeStyle = s.col; c.lineWidth = s.size; c.lineCap = 'round';
+        c.beginPath(); c.moveTo(s.x - s.vx / sp * tl, s.y - s.vy / sp * tl); c.lineTo(s.x, s.y); c.stroke();
+      }
     }
-  }
+  });
   ctx.globalAlpha = 1;
   for (const b of S.booms) {
     const q = b.t / b.max;
@@ -255,7 +261,7 @@ function drawTitleRunner(ctx, S, r) {
     pixelSprite(ctx, ox - 10, oy, PW + 48, PH + 40, 1, false, c => jetFlame(c, bx, by, 0, 1, len, S.t));
   }
   const gait = r.mode === 'run' ? r.gait : null;
-  pixelHeld(ctx, ox + 14, oy + 8, 1, true, c => {
+  pixelHeld(ctx, ox + 14, oy + 8, 1, false, c => {   // no outline (owner, v0.0.171)
     drawRunner(c, r.x, r.y, PW, PH, r.face, gait, r.mode !== 'run', r.flame, false, hands, null, r.col);
     drawGun(c, pcx + ax * 2.5, gy, r.ang, GUN_HELD, K.art);
   });
@@ -268,7 +274,7 @@ function drawTitleRunner(ctx, S, r) {
     const W = { time: S.t };
     /** @type {any} */
     const G = { ctx };
-    drawLook(W, G, blade);
+    pixelSprite(ctx, blade.x - 6, blade.y - 6, 12, 12, 1, false, c => { G.ctx = c; drawLook(W, G, blade); });   // the pixel look, on a grid pinned to it
   }
 }
 

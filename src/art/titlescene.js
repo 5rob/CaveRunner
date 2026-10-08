@@ -92,6 +92,7 @@ export const TITLE_HOME = {
 /** @typedef {{ x: number, y: number, vx: number, vy: number, face: number, ang: number, cd: number, kit: TKit, flame: number, id: number, col: string,
  *   mode: string, modeT: number, tx: number, ty: number, retarget: number, gait: number, ground: boolean, swapT: number, swap: number, wvx: number, wvy: number,
  *   dig: number, clearT: number, keep: TKit | null, dx: number, dy: number, digY: number, sawT: number, switches: number[],
+ *   bursty: number, burst: boolean, jet: boolean, jetT: number, jetCd: number, pace: number, spd: number,
  *   nav: { F: any, fx: number, fy: number, t: number } }} TRunner */
 /** @typedef {{ x: number, y: number, vx: number, vy: number, size: number, col: string, look: string, life: number, foe: boolean, spin: number,
  *   grav: number, drag: number, explode: number, pit: number, fire: number, bounce: number, bounceE: number, pierce: number, dmg: number,
@@ -473,6 +474,7 @@ export function titleKit(R) {
 // the gun a player swaps to when rock is in its way (owner, v0.0.166): the Buzzsaw, cutting a tunnel
 export const TITLE_SAW = 'irongatling';
 export const TITLE_DIGR = 13;         // the tunnel's radius (world units; he's 12 × 22)
+const JET = GRAV * 2.4;                // the jetpack's push, full blast (v0.0.171: gravity pulls a flying player too)
 const DIGV = 30;                      // the most he moves while sawing (world units / s, the scroll on top)
 // that gun from its shot, modifiers and skin
 /** @param {string} shot @param {string[]} mods @param {string} art @returns {TKit} */
@@ -513,6 +515,7 @@ export function titleScene(vh, seed = 7, top = vh * 0.3, bot = vh * 0.62) {
     S.runners.push({ x, y, vx: 0, vy: 0, face: 1, ang: 0, cd: 0.5 + i * 0.2, kit: titleKit(rnd), flame: 0, id: i, col: TITLE_COLS[i],
       mode: 'run', modeT: runTime(rnd), tx: x, ty: y, retarget: 0, gait: i * 1.7, ground: true, swapT: 2 + i * 1.2 + rnd() * 2, swap: 0, wvx: 0, wvy: 0,
       dig: 0, clearT: 0, keep: null, dx: 1, dy: 0, digY: 0, sawT: 0, switches: [],
+      bursty: [0.75, 0.15, 0.5, 0.3][i], burst: false, jet: false, jetT: 0, jetCd: 0, pace: 0.75 + rnd() * 0.5, spd: 1,
       nav: { F: null, fx: 0, fy: 0, t: -9 } });
   }
   S.runner = S.runners[0];
@@ -1057,8 +1060,13 @@ function runStep(S, r, dt) {
   S.groundT += dt;
   r.flame = 0;
   // run along the floor (the world scrolls under him: he keeps pace, drifting about the left half)
-  if (r.retarget <= 0) { r.tx = 18 + R() * 90; r.retarget = 1 + R() * 1.5; }
-  const vx = Math.max(-26, Math.min(26, (r.tx - r.x) * 1.2));
+  // (owner, v0.0.171) each at its own pace, and now and then walking (dropping back: the world goes by faster) or sprinting
+  if (r.retarget <= 0) {
+    const roll = R();
+    r.spd = roll < 0.25 ? -(0.3 + R() * 0.25) : roll < 0.45 ? 1.6 + R() * 0.4 : 1;
+    r.tx = r.spd < 0 ? 8 : 18 + R() * 90; r.retarget = r.spd === 1 ? 1 + R() * 1.5 : 0.8 + R() * 1.2;
+  }
+  const vx = r.spd < 0 ? Math.max(r.spd * SCROLL, (8 - r.x) * 2) : Math.max(-26 * r.pace, Math.min(26 * r.pace * r.spd, (r.tx - r.x) * 1.2));
   // his feet: a step up to 8 he takes in his stride; a hole he drops into; rock higher than that at his feet
   // (the scroll brought a wall into him) he saws
   const ground = titleSurf(S, cx, r.y + PH - 9, 1);
@@ -1073,7 +1081,7 @@ function runStep(S, r, dt) {
   if (boxRock(S, r.x, r.y, false) || boxRock(S, r.x + vx * dt + 2, r.y, false)) { startDig(S, r, 1, 0, 'roof'); return; }
   r.x += vx * dt;
   r.gait += (SCROLL + vx) * dt * 0.38;
-  if (r.modeT <= 0) { setMode(S, r, 'fly', flyTime(R)); pickTarget(S, r); r.vy = -40; r.ground = false; }
+  if (r.modeT <= 0) { setMode(S, r, 'fly', flyTime(R)); pickTarget(S, r); r.vy = -40; r.ground = false; r.burst = R() < r.bursty; r.jet = r.burst; r.jetT = 0.3; r.jetCd = 0; }
 }
 /** @param {TitleScene} S @param {TRunner} r @param {number} dt */
 function flyStep(S, r, dt) {
@@ -1084,9 +1092,26 @@ function flyStep(S, r, dt) {
   if (landing && r.modeT < -4) r.modeT = flyTime(R);     // nowhere to land: fly on
   if (!landing && (r.retarget <= 0 || Math.hypot(r.tx - r.x, r.ty - r.y) < 6)) pickTarget(S, r);
   if (landing) { r.tx = r.x; r.ty = Math.min(S.bot + 6, titleSurf(S, cx, r.y + PH - 9, 1) - PH + 2); }
-  const ax = (r.tx - r.x) * 2.2 - r.vx * 1.6, ay = (r.ty - r.y) * (landing ? 1.2 : 2.2) - r.vy * 1.6;
-  r.vx += ax * dt; r.vy += ay * dt;
-  r.flame = Math.max(0, Math.min(1, -ay / 60 + (landing ? 0.1 : 0.35)));
+  // (owner, v0.0.171) gravity always pulls; the jetpack pushes up against it. Some fly on a steady throttle, some
+  // (r.burst: rolled each flight, more often for the bursty) fire it full in short bursts and bob about; jet off,
+  // they fall as anything falls. Coming in to land: off, a burst to brake if they're dropping fast near the floor
+  const ax = (r.tx - r.x) * 2.2 - r.vx * 1.6;
+  r.vx += ax * dt;
+  let thr = 0;
+  if (landing) {
+    r.tx = r.x;
+    thr = r.vy > 70 && titleSurf(S, cx, r.y + PH - 9, 1) - (r.y + PH) < 26 ? 1 : 0;
+  } else if (r.burst) {
+    if (r.jet) { r.jetT -= dt; if (r.jetT <= 0 || r.y < r.ty - 14 || r.y - titleSurf(S, cx, r.y + 2, -1) < 10 - r.vy * 0.06) { r.jet = false; r.jetCd = 0.05 + R() * 0.3; } }
+    else if ((r.jetCd -= dt) <= 0 && (r.y > r.ty - 2 || r.vy > 70)) { r.jet = true; r.jetT = 0.1 + R() * 0.25; }
+    thr = r.jet ? 1 : 0;
+  } else {
+    const want = (r.ty - r.y) * 2.2 - r.vy * 1.6;                 // the pull toward where he's going (down +)
+    thr = Math.max(0, Math.min(1, (GRAV - want) / JET));
+  }
+  r.vy += (GRAV - JET * thr) * dt;
+  r.vy = Math.max(-170, Math.min(240, r.vy));
+  r.flame = thr;
   // the floor rising under his feet (skimming it) he rides up over; the rock otherwise come to him (it scrolls) he saws
   const g0 = titleSurf(S, cx, r.y + PH - 9, 1);
   if (g0 < r.y + PH && g0 >= r.y + PH - 9 && !boxRock(S, r.x, g0 - PH)) r.y = g0 - PH;
@@ -1097,7 +1122,7 @@ function flyStep(S, r, dt) {
   if (!boxRock(S, nx, ny)) { r.x = nx; r.y = ny; return; }
   // the floor under him, going down and not aiming into it: he lands on it (or skims it, on his way)
   const g2 = titleSurf(S, nx + PW / 2, r.y + PH - 9, 1), into = r.ty + PH > g2 + 4;
-  if (!into && g2 >= r.y + PH - 9 && g2 - (r.y + PH) < 6 && !boxRock(S, nx, g2 - PH)) {
+  if (!into && g2 >= r.y + PH - 9 && g2 - (r.y + PH) < 6 + Math.max(0, r.vy) * dt && !boxRock(S, nx, g2 - PH)) {   // (falling fast: the floor's further in a frame)
     r.x = nx; r.y = g2 - PH; r.vy = 0;
     if (landing) { setMode(S, r, 'run', runTime(R)); r.vx = 0; r.ground = true; r.retarget = 0; }
     return;
