@@ -31,8 +31,9 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   check('the title shows, three slots', (await page.$$('.title .tslot')).length === 3);
   check('no game behind it', await page.evaluate(() => !window.__lvl));
   const k0 = Number(await page.$eval('.titlecvs', c => c.dataset.kills || '0'));
-  await page.waitForTimeout(1500);
-  const k1 = Number(await page.$eval('.titlecvs', c => c.dataset.kills || '0'));
+  // the real creatures (their own health and moves) take a while to die: up to 8 s
+  let k1 = k0;
+  for (let i = 0; i < 16 && k1 <= k0; i++) { await page.waitForTimeout(500); k1 = Number(await page.$eval('.titlecvs', c => c.dataset.kills || '0')); }
   check('the action scene runs (creatures die)', k1 > k0, [k0, k1]);
   check('slot 3 shows its run', (await page.textContent('.tslot[data-slot="3"]')).includes('Floor 5'));
   check('slot 2 is empty', (await page.textContent('.tslot[data-slot="2"]')).includes('Empty'));

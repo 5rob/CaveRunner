@@ -5,6 +5,21 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v0.0.162 — the title's creatures, gold and fire are the game's own
+2026-10-08 (owner's ask; a minor update).
+- **Real creatures**: made by `enemyFor` (floor 1's kinds) in world coordinates and moved by their real brains
+  (`jellyStep`, `spiderStep`, `ratStep`, `roamStep`, the rats' `navField`/`navWay` paths), with the game's aggro
+  (reach × zoom × `DEV.aggro` × their own roll, on a sightline, kept until `loseAggro`), jellyfish spit, spider
+  strings and lines they spin, rat bites (he isn't hurt), burning. Drawn by the game's `drawEnemy`. Rats have no
+  nests here, so they don't steal gold. The title's own spider walk and silk drop went (the real spiders spin lines).
+- **Real gold**: `spillGold` (25 / 5 / 1 nuggets), `stepNugget` (fall, bounce, roll), `collideNuggets`; pulled to
+  him only within `COIN_PULL`, collected at 12, by the game's formula.
+- **Real fire**: the title's fire runs `fireStep`'s rule (FIRE_TICK steps, `fireSpread`, `FIRE_UPW`, `FIRE_CATCH`,
+  each fuel's burn time); vines and mycelium only (`FLAMMABLE`) burn from the tip at `firePlant`, arches outward at
+  `fireArch` lighting their strands. Before, the title faded a whole plant at once (the game was never broken).
+- Found: the owner's v0.0.161 Dev report set `fireSpreadHi` 0.2 → 1, so fire in the game spreads ~3× faster
+  (moss: 83 px in 5 s against 27). Raised with the owner.
+
 ## v0.0.161 — a new title scene (a tour of the real Mossy Caves); every gun wears pixel art; the owner's Dev defaults
 Released 2026-10-08 (owner OK'd the screenshots; a minor update).
 - **Title scene** (built by a time-boxed agent): one runner who runs along the floor (steps up ledges, drops into
