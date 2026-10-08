@@ -5,6 +5,32 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v0.0.171 — the title: the game's dark and lights; no outline on the pixel look, shots in it too; jetpacks against gravity, bursts, varied pace
+Released 2026-10-08 (owner OK'd; a minor update).
+- **The dark** (owner): `titleDark` (titledraw): the cave at the game's `DEV.fogDim`, cut by lights that only reach as far as they
+  can see (`visPoly` from world/vision.js on the title's cells, `titleSolidCell`: the rock throws shadows): each player's gun
+  light at the game's sizes (cone `DEV.beamDeg` wide out to the old torch's reach × `DEV.beamReach`, soft sides; the round glow
+  `DEV.beamNear`), lanterns (`TITLE_LAMPR` 60, warm pools with shadows), fire (sampled cells), burning creatures and plants,
+  jellyfish. A small layer at the terrain's grid (lights unioned, source-over, cut out of the dark, blurred 1.5 px), smoothed up;
+  the glows and shots over it. Owner's round 1: light reaches `TITLE_EDGE` (6) into the rock it falls on and the edge is blurred
+  (the dark fades in from the edge); fire lights small pools at up to 80 of its cells (the big summed pools made one disc); the
+  visible beam, the game's `drawBeam` (`titleBeam`: three soft cones from the muzzle, the lens, the spill). Round 2: the beam at
+  `TITLE_BEAMA` (0.25) of the game's (four added up to white), fading in from the muzzle (against a wall, where a player sees
+  only a sliver, its bright start filled that as a square), no lens when the muzzle is in rock.
+- No dark outline on the players and creatures (titledraw: `pixelHeld` / `pixelSprite` line off).
+- Shots and lightning in the pixel look: one layer on the world's grid, drawn 'lighter' as before; the Buzzsaw's blade
+  its own, pinned to it.
+- `pixelSprite` (art/sprites.js) now saves and restores its shared layer's state round each paint (the shots' 'lighter'
+  leaked into the players' next paint: white blobs). Affects the game's pixel look too (no change there but safety).
+- **Flying** (titlescene `flyStep`): gravity always pulls (`GRAV`), the jetpack pushes up (`JET` = 2.4 × gravity);
+  jet off, they fall at gravity. Each player's `bursty` (0.75, 0.15, 0.5, 0.3) is the chance a flight is in full-blast
+  bursts (0.1–0.35 s, gaps 0.05–0.35: bobbing; a burst stops short of the roof), else a steady throttle toward where
+  it's going. Landing: jet off, a braking burst if dropping fast near the floor. A fast fall lands on the floor instead of sawing.
+- **Running**: each player's `pace` (0.75–1.25 × speed); now and then walking (dropping back as the world passes faster)
+  or sprinting (1.6–2 ×), `spd`.
+- Measured (seed 7, 60 s): sawing went from ~75 to ~120 starts a minute (4 players), mostly running in their own tunnels.
+- Tests: slots (+ falls at gravity, bursts bob, walk/sprint, pace per player). Screenshots `node tools/pixelshots.js` (c-burst).
+
 ## v0.0.170 — the title: rats no longer sink into the rock; every mine works its own layout; jellyfish glow on the vines; the pixel look on everything
 Released 2026-10-08 (owner OK'd; a minor update).
 - **Rats in the rock** (owner): a swarm comes in at the screen's edge and spreads up to ~110 to the right, but the terrain

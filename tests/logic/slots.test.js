@@ -164,6 +164,28 @@ check('it travels through the zones', passed.size >= 3 && [...passed].every(z =>
 check('each creature comes only into its own zones', badHome.length === 0 && born.size > 20, { bad: badHome.slice(0, 5), born: born.size });
 check('jellyfish stay out of the works', jellyWorks / jellyIn < 0.02, { jellyWorks, jellyIn });
 check('rats on screen are never inside the rock', ratSeen > 500 && ratRock === 0, { ratSeen, ratRock });
+// (v0.0.171, owner) the jetpack against gravity: jet off, a flying player falls at gravity; some fly in full-blast bursts
+// (bobbing: the jet on and off often); on the ground each at its own pace, walking (dropping back) and sprinting now and then
+{
+  const F = titleScene(470, 7, 139, 295), dt = 1 / 60, prev = F.runners.map(r => ({ vy: r.vy, fl: r.flame, mode: r.mode, dig: r.dig, y: r.y }));
+  let off = 0, offOk = 0, toggles = 0, burstT = 0, walkT = 0, sprintT = 0;
+  for (let i = 0; i < 60 * 40; i++) {
+    titleStep(F, dt);
+    F.runners.forEach((r, k) => {
+      const p = prev[k];
+      if (r.mode === 'fly' && !r.dig && p.mode === 'fly' && !p.dig) {
+        if (r.burst) { burstT += dt; if ((r.flame > 0.99) !== (p.fl > 0.99)) toggles++; }
+        if (r.flame === 0 && r.vy < 240 && Math.abs(r.y - p.y - r.vy * dt) < 0.01) { off++; if (Math.abs(r.vy - p.vy - 260 * dt) < 0.5) offOk++; }
+      }
+      if (r.mode === 'run' && !r.dig) { if (r.spd < 0) walkT += dt; else if (r.spd > 1) sprintT += dt; }
+      Object.assign(p, { vy: r.vy, fl: r.flame, mode: r.mode, dig: r.dig, y: r.y });
+    });
+  }
+  check('jet off, a flying player falls at gravity', off > 200 && offOk === off, { off, offOk });
+  check('some fly in full-blast bursts, bobbing', burstT > 5 && toggles / burstT > 1.5, { burstT, toggles });
+  check('they walk and sprint now and then', walkT > 3 && sprintT > 3, { walkT, sprintT });
+  check('pace differs player to player', new Set(F.runners.map(r => r.pace.toFixed(2))).size === 4 && new Set(F.runners.map(r => r.bursty)).size === 4);
+}
 // (v0.0.170, owner) each mine works its own layout: 1–3 tunnels, in and out at different heights, walled ends, holes between
 {
   const P = titleScene(470, 21, 139, 295), ms = [];

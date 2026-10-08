@@ -222,7 +222,7 @@ export function pixelSprite(ctx, x0, y0, w, h, px, line, paint) {
   t.setTransform(1, 0, 0, 1, 0, 0);
   t.clearRect(0, 0, c.width, c.height);
   t.setTransform(1 / px, 0, 0, 1 / px, -x0 / px, -y0 / px);
-  paint(t);
+  t.save(); paint(t); t.restore();          // (the layer is shared: what one paint sets, the next mustn't inherit)
   t.setTransform(1, 0, 0, 1, 0, 0);
   const im = t.getImageData(0, 0, cw, ch), d = im.data, n = cw * ch;
   const on = new Uint8Array(n);
