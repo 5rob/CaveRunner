@@ -3,7 +3,7 @@
 // pick, or the one its colour gives it: gunArtId; v0.0.161, no more Default, the drawn gun is gone).
 // A tap sets the selected gun's `art` and closes (the save keeps it: save.js cleanGun).
 
-import { GUN_ART, gunArtCanvas, gunArtId } from '../art/gunart.js';
+import { GUN_ART, GUN_ART_MAXH, GUN_ART_MAXW, gunArtCanvas, gunArtId } from '../art/gunart.js';
 import { h, useEffect, useRef } from './h.js';
 
 const TW = 112, TH = 54;   // a tile's picture, CSS px
@@ -18,8 +18,8 @@ function ArtTile({ id }) {
     const x = c.getContext('2d'); if (!x) return;
     x.clearRect(0, 0, c.width, c.height);
     const im = gunArtCanvas(id); if (!im) return;
-    // a whole number of device pixels per art pixel, centred: crisp
-    const k = Math.max(1, Math.floor(Math.min((c.width - 8) / im.width, (c.height - 8) / im.height)));
+    // a whole number of device pixels per art pixel, the same for every gun (the biggest fits), centred: crisp
+    const k = Math.max(1, Math.floor(Math.min((c.width - 8) / GUN_ART_MAXW, (c.height - 8) / GUN_ART_MAXH)));
     x.imageSmoothingEnabled = false;
     x.drawImage(im, Math.round((c.width - im.width * k) / 2), Math.round((c.height - im.height * k) / 2), im.width * k, im.height * k);
   }, [id]);

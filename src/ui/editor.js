@@ -3,7 +3,7 @@
 // (GunIcon), the slot grid lit by the live fire preview (SlotGrid), the mod bag, and the
 // ScrollBox grab bars both grids scroll with.
 
-import { drawGun, drawRunner, pixelSprite } from '../art/sprites.js';
+import { GUN_HELD, drawGun, drawRunner, gunMuzzle, pixelSprite } from '../art/sprites.js';
 import { gunArtFit, gunArtId } from '../art/gunart.js';
 import { SFX } from '../audio/sfx.js';
 import { PH, PW } from '../core/consts.js';
@@ -113,8 +113,8 @@ export const GF_WALL = 5;
 // GF_DPS_S: the seconds the DPS over the dummy's head averages over (owner: red, hidden at 0)
 export const GF_DPS_S = 3;
 // you, at the far left, holding the gun as the aim sways (owner: Follow Me has somewhere to come back to): your box
-// GF_YOU_X in from the left; the gun held at the game's own size (GF_GUN = actors.js's 0.55)
-export const GF_YOU_X = 3, GF_GUN = 0.55;
+// GF_YOU_X in from the left; the gun held at the game's own size (GF_GUN = GUN_HELD, as render/actors.js)
+export const GF_YOU_X = 3, GF_GUN = GUN_HELD;
 // Follow Me / Follow This pull this much harder in the window than in the game: the window is ~80 units across,
 // less than a fast shot travels before the pull stops it, so without it they'd hit the wall before coming back
 export const GF_FOLLOW_K = 3;
@@ -200,7 +200,7 @@ export function GunFire({ gun, sim }) {
       const aUp = Math.atan2(hW * GF_SWAY - home.y, reach), aDn = Math.atan2(hW * (1 - GF_SWAY) - home.y, reach);
       const aim = (aUp + aDn) / 2 + (aDn - aUp) / 2 * Math.sin(fw.time * 2 * Math.PI / GF_SWAY_S), ca = Math.cos(aim), sa = Math.sin(aim);
       const hx = home.x + ca * 2.5, hy = youY + PH * 0.52;      // the gun hand, at the game's gun height (render/actors.js drawAim)
-      const mx = hx + (14.2 * ca + 3.2 * sa) * GF_GUN, my = hy + (14.2 * sa - 3.2 * ca) * GF_GUN;   // the muzzle
+      const mz = gunMuzzle(hx, hy, aim, GF_GUN, gunArtId(g)), mx = mz.x, my = mz.y;   // the muzzle of its sprite
       ahead.x = home.x + ca * FOLLOW_AHEAD; ahead.y = home.y + sa * FOLLOW_AHEAD; youAt.x = home.x; youAt.y = home.y;
       if (S !== seenS) { seenS = S; seen = S ? S.fired : -1; }
       if (S && S.fired !== seen) {                    // a pull went off: its shots leave the muzzle

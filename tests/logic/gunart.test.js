@@ -45,6 +45,15 @@ check('a gun without a pick gets its colour\'s sprite', G.gunArtId(g1) === G.art
 check('a picked sprite wins', G.gunArtId(Object.assign({ art: 'pinkpistol' }, g1)) === 'pinkpistol');
 check('an unknown pick falls back to the colour', G.gunArtId(Object.assign({ art: 'nope' }, g1)) === G.artForHue(120));
 check('the same gun, the same sprite (its name\'s colour)', G.gunArtId({ name: 'Boomstick', slots: [] }) === G.gunArtId({ name: 'Boomstick', slots: [] }));
+// v0.0.163 (owner): the squirts turned (a quarter clockwise, then mirrored): wider than tall now, the
+// hand under the barrel; every sprite's muzzle (gunMuzzle) out past its grip; the held gun twice 0.55
+for (const id of ['greensquirt', 'pinksquirt']) {
+  const a = G.gunArt(id);
+  check(id + ' lies flat', a.w > a.h, { w: a.w, h: a.h, grip: a.grip });
+}
+check('every sprite\'s muzzle is out past its grip', G.GUN_ART.every(a => G.gunMuzzle(0, 0, 0, 1, a.id).x > 2), G.GUN_ART.filter(a => G.gunMuzzle(0, 0, 0, 1, a.id).x <= 2).map(a => a.id));
+check('the gun in hand is twice its old size', G.GUN_HELD === 1.1);
+check('icons share one scale: the biggest sprite fits', G.GUN_ART_MAXW === Math.max(...G.GUN_ART.map(a => a.w)) && G.GUN_ART_MAXH === Math.max(...G.GUN_ART.map(a => a.h)));
 check('drawGun has no drawn-gun fallback left', !/stock and grip|magazine/.test(G.source));
 
 if (fails) { console.log(fails + ' failed'); process.exit(1); }

@@ -47,7 +47,7 @@ for (let i = 0; i < 60 * 40; i++) {
     // run by the game's brains: each has its brain state (e.je / e.sp / e.ra) after its first frame
     if (born.has(f) && (id === 'meduusa' ? f.je : id === 'hamahakki' ? f.sp : f.ra)) brains++; else noBrain++;
     // the game's aggro: never still hunting past its reach × loseAggro
-    if (f.aggro && Math.hypot(pcx - f.x, pcy - f.ty) > f.k.aggro / G.DEV.zoom * G.DEV.aggro * (f.aggroM || 1) * G.DEV.loseAggro + 2) aggroFar++;
+    if (f.aggro && Math.hypot(pcx - f.x, pcy - f.ty) > f.k.aggro / G.DEV.zoom * G.DEV.aggro * (f.aggroM || 1) * G.DEV.loseAggro + 10) aggroFar++;   // (it and he move on after its check, in the frame)
   }
   for (const L of S.webs) if (L.owner) spun.add(L);
   // the gold: the game's nuggets (25 / 5 / 1), pulled to him only from within COIN_PULL
@@ -111,6 +111,22 @@ check('blasts and fire cut web lines', S.cut > 0, S.cut);
   check('a burning vine shortens from its tip at firePlant (half a second: still there)', !!vine && !vine.gone && vine.len < len0 - 1 && Math.abs(len0 - vine.len - G.DEV.firePlantLo * 0.5) < (G.DEV.firePlantHi - G.DEV.firePlantLo) * 0.5 + 3,
     vine && { len0, len: vine.len, gone: vine.gone });
   check('a burning arch burns out both ways from where it caught', !!arch && arch.u0 < 0.5 && arch.u1 > 0.5 && !(arch.u0 <= 0 && arch.u1 >= 1), arch && { u0: arch.u0, u1: arch.u1 });
+}
+// he never stays in the rock (owner saw him stuck under the floor): a safety net pops him back up
+{
+  let inRock = 0, steps = 0;
+  for (const seed of [7, 11, 23]) {
+    const T = titleScene(470, seed, 139, 295);
+    for (let i = 0; i < 60 * 30; i++) {
+      titleStep(T, 1 / 60); steps++;
+      if (G.titleSolid(T, T.runner.x + 6, T.runner.y + 11)) inRock++;
+    }
+  }
+  check('his middle is never left in the rock', inRock / steps < 0.002, { inRock, steps });
+  const T = titleScene(470, 7, 139, 295);
+  T.runner.y = G.titleFloor(T.scroll + T.runner.x + 6, T) + 30;   // deep under the floor
+  titleStep(T, 1 / 60);
+  check('pushed under the floor, he\'s popped back up onto it', T.runner.y + 22 <= G.titleFloor(T.scroll + T.runner.x + 6, T) + 4 && T.pops > 0, { y: T.runner.y, floor: G.titleFloor(T.scroll + T.runner.x + 6, T) });
 }
 check('shots carve the terrain', S.carved > 30, S.carved);
 check('and fire burns', S.burnt > 10, S.burnt);

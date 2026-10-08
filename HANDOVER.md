@@ -3,6 +3,10 @@
 Where things stand, for a fresh session. Read `CLAUDE.md` first (the owner's working style, the
 release loop, testing), then the README of the `src/` folder you're working in.
 
+## v0.0.163 — gun sprites one scale, gun in hand ×2, squirts turned, title fire + runner pop: on branch `gunsfire`, WAITING ON THE OWNER'S OK (screenshots sent 2026-10-08)
+
+CHANGELOG v0.0.163.
+
 ## v0.0.162 — the title's creatures, gold and fire are the game's own: RELEASED on `main` 2026-10-08 (owner OK'd)
 
 CHANGELOG v0.0.162. Fire spread (`fireSpreadHi`) back to 0.2 (owner's choice; their v0.0.161 report had set 1, ~3×
