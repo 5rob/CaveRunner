@@ -6,7 +6,7 @@ Names are as they were at the time (before the refactor Game's state had loose n
 `W.mat`, and so on). Versions before v39: `git log`.
 
 ## v0.0.167 — the title's players collide and keep a little apart
-Not yet released (branch `title-sep`, waiting on the owner's OK).
+Released 2026-10-08 (owner OK'd; a minor update).
 - `separate` (after every player's step): within `TITLE_SEP` (24, height counted at 0.6) they're eased apart (sideways
   on the ground, any way in the air), and two bodies that overlap are pushed out along the shallower way (sideways
   for one on the ground), half each, or all on the one with room; never into rock. Replaces the old sideways nudge.
