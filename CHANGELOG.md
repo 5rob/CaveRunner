@@ -5,6 +5,15 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v0.0.172 — the title: a sixth zone, the winding caves
+Released 2026-10-08 (owner OK'd; a minor update).
+- `winding` in `TITLE_ZONES` (owner: the natural caves that aren't big and open): rock, a narrow tunnel snaking up and down
+  through it (`windMid`, its half height `windHalf` 15–26: the zone's roof and floor, blended into its neighbours by
+  `zoneMix`), now and then a side branch above or below and pockets of air in the rock round it (`windAir`, fading in from the
+  zone's ends). Home to jellyfish, spiders and rats (`TITLE_HOME.winding`); natural-cave plants, drips and spores.
+- Tests: slots (+ a narrow tunnel that snakes, air off it); three seed-bound tests now pick a seed with what they need (the
+  zone order changed with a sixth kind). Screenshots `node tools/windshots.js`.
+
 ## v0.0.171 — the title: the game's dark and lights; no outline on the pixel look, shots in it too; jetpacks against gravity, bursts, varied pace
 Released 2026-10-08 (owner OK'd; a minor update).
 - **The dark** (owner): `titleDark` (titledraw): the cave at the game's `DEV.fogDim`, cut by lights that only reach as far as they

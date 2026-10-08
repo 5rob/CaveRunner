@@ -36,7 +36,7 @@ export const TITLE_FIRE = 600;        // burning terrain cells at once
 export const TCELL = 2;               // the terrain grid's cell (world units)
 export const TITLE_ZLEN = [200, 360]; // a zone's length, the shortest and longest (world units; each zone its own, titlePlan)
 // the zones it travels through (floor 1's natural and built-up looks), in a random order (owner: no repeats)
-export const TITLE_ZONES = ['moss', 'webs', 'timber', 'paved', 'grove'];
+export const TITLE_ZONES = ['moss', 'webs', 'timber', 'paved', 'grove', 'winding'];   // winding: v0.0.172 (owner)
 const ZMIX = 40;                      // the roof's and floor's shapes blend this far either side of a zone's border
 export const ZBLEND = 28;             // a zone's border frays this far (world units) each way, by noise
 export const TIMBER_H = 38;           // the timber works' height, floor to roof: the mine frames' height
@@ -84,6 +84,7 @@ export const TITLE_HOME = {
   timber: [['rotta', 3], ['hamahakki', 1]],   // spiders turn up in the layers too (the level's roster spawns anywhere)
   paved: [['rotta', 1]],
   grove: [['meduusa', 3], ['rotta', 1]],
+  winding: [['meduusa', 2], ['hamahakki', 1], ['rotta', 1]],
 };
 
 /** @typedef {{ art: string, shot: string, mods: string[], name: string, cd: number, n: number, dmg: number, speed: number, spread: number, size: number,
@@ -244,11 +245,33 @@ export function titleNoise(x, y) {
 // fine fray), so one zone's rock, moss, bricks and back wall break up into the next instead of a cut
 /** @param {number} wx @param {number} y @param {{ zp?: TitlePlan }} [B] */
 export const titleZoneAt = (wx, y, B) => titleZone(wx + (titleNoise(wx / 24, y / 14) - 0.5) * 2 * ZBLEND + (titleNoise(wx / 4, y / 4) - 0.5) * 12, B);
+// The winding caves (owner, v0.0.172: the natural caves that aren't big and open): rock, a narrow tunnel snaking up
+// and down through it (its middle windMid, its half height windHalf: 15–26), now and then a side branch off it above or
+// below, and pockets of air in the rock round it (windAir), fading in from the zone's ends
+/** @param {number} x @param {TZone} Z @param {{ top: number, bot: number }} B */
+const windMid = (x, Z, B) => Math.max(B.top + 26, Math.min(B.bot - 32, (B.top + B.bot) / 2 + 4
+  + (titleNoise(x / 70 + Z.ph[0], 3.7) - 0.5) * 80 + (titleNoise(x / 23 + Z.ph[1], 5.1) - 0.5) * 16));
+/** @param {number} x @param {TZone} Z */
+const windHalf = (x, Z) => 15 + titleNoise(x / 28 + Z.ph[2], 7.3) * 11;
+/** open air off the main tunnel at (x, y): a side branch or a pocket @param {number} x @param {number} y @param {TZone} Z @param {{ top: number, bot: number }} B */
+function windAir(x, y, Z, B) {
+  if (y < B.top - 6 || y > B.bot + 2) return false;
+  const edge = Math.min(x - Z.x0, Z.x1 - x);
+  if (edge < 12) return false;
+  const fade = Math.max(0, (40 - edge) / 40) * 0.3;
+  if (titleNoise(x / 16 + Z.ph[3], y / 11) > 0.7 + fade) return true;          // pockets
+  const on = titleNoise(x / 55 + Z.ph[4], 11.3) - fade;                         // a branch, while 'on'
+  if (on <= 0.5) return false;
+  const mid = windMid(x, Z, B), half = windHalf(x, Z), side = titleNoise(x / 90 + Z.ph[4], 2.2) > 0.5 ? -1 : 1;
+  const m2 = mid + side * (half + 14 + titleNoise(x / 30 + Z.ph[0], 13) * 16);
+  return Math.abs(y - m2) < (on - 0.5) * 2 * 11;
+}
 // the cave's roof and floor as made (world x; B the band: top, bot in world units, under the title, over the menu).
 // The timber works come down to TIMBER_H over the floor, the height of their frames
 /** @param {number} wx @param {{ top: number, bot: number, zp?: TitlePlan }} B */
 export const titleCeil = (wx, B) => {
-  const nat = B.top - 4 + zoneMix(wx, B, (x, Z) => Z.co + (Math.sin(x * 0.018 * Z.cf + Z.ph[0]) * 10 + Math.sin(x * 0.049 * Z.cf + Z.ph[1]) * 6) * Z.ca) + Math.sin(wx * 0.11) * 2;
+  const nat = zoneMix(wx, B, (x, Z) => (Z.z === 'winding' ? windMid(x, Z, B) - windHalf(x, Z)
+    : B.top - 4 + Z.co + (Math.sin(x * 0.018 * Z.cf + Z.ph[0]) * 10 + Math.sin(x * 0.049 * Z.cf + Z.ph[1]) * 6) * Z.ca)) + Math.sin(wx * 0.11) * 2;
   // the layer's roof comes down over a natural slope (owner, v0.0.165: the old short step was too steep and
   // straight): an S-curve about TIMBER_RAMP long, starting a little before the works, where it starts shifted
   // by noise, the rock along it lumpy (big lumps and a fine fray, none once it's down)
@@ -287,7 +310,8 @@ const timberD = (wx, B) => {
 export const titleWebAt = webAt;   // (and bent where a player pushed through it)
 /** @param {number} wx @param {{ top: number, bot: number, zp?: TitlePlan }} B */
 export const titleFloor = (wx, B) => {
-  const nat = B.bot - 22 + zoneMix(wx, B, (x, Z) => Z.fo + (Math.sin(x * 0.021 * Z.ff + Z.ph[2]) * 7 + Math.sin(x * 0.057 * Z.ff + Z.ph[3]) * 4) * Z.fa) + Math.sin(wx * 0.13) * 1.5;
+  const nat = zoneMix(wx, B, (x, Z) => (Z.z === 'winding' ? windMid(x, Z, B) + windHalf(x, Z)
+    : B.bot - 22 + Z.fo + (Math.sin(x * 0.021 * Z.ff + Z.ph[2]) * 7 + Math.sin(x * 0.057 * Z.ff + Z.ph[3]) * 4) * Z.fa)) + Math.sin(wx * 0.13) * 1.5;
   const b = built(wx, B), base = nat * (1 - b) + (B.bot - 20) * b, T = mineNear(wx, B);
   return T ? base + (T.band.f - base) * T.bt : base;
 };
@@ -378,6 +402,7 @@ function genCol(S, c) {
     else if (ledge && y >= ly - 2 && y < ly && tuft) m = TM.GRASS;
     if (m === TM.AIR && y >= fy - rub && y < fy) m = y < fy - rub + 2 && h2(c, r) < 0.7 ? TM.RUBM : TM.RUB;
     if (m === TM.AIR && y >= fy - tuft * TCELL && y < fy && zc !== 'paved') m = TM.GRASS;
+    if (z === 'winding' && TITLE_SOLID[m] && windAir(wx, y, Zn, S)) m = TM.AIR;
     S.cells[base + r] = m;
   }
   // a lantern hanging on its chain under each tunnel's roof: between the frames, and some inside them
