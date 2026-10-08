@@ -62,7 +62,7 @@ swaps all have small UI sounds. Volume knobs are in the ⚙️ panel under Sound
 explosions, bullet hits, enemy fire, creature voices, world/props, drips, footsteps and UI.
 
 **Title screen and save slots.** The game opens on a title screen with **3 save slots**: pick one
-and press Start (or Continue). Each slot is its own run with its own unlocked mods and perks; 🗑️
+and press ▶ (Start, or Continue). Each slot is its own run with its own unlocked mods and perks; 🗑️
 then "Delete?" wipes a slot. Your run from before this update is slot 1. Behind it, four players (blue, red,
 green, yellow; they bump into each other and keep a little apart) tour Mossy Caves sideways (its natural caves, spider caves, the built-up layers with the mine
 works' sloping roof, brick works and the vine grove), sawing tunnels with a Buzzsaw when rock is in their way, fighting the real creatures with guns made up at random
@@ -72,6 +72,8 @@ The cave behind the title is different every visit (its zones come in a random o
 drag to look around, and tap a player to follow them (tap them again to stop). Winding natural caves are among its zones too. Every mine there is dug its own way
 (one to three tunnels, in and out at different heights), jellyfish make the vines near them glow, and everything has the players' pixel look. It's dark like the game: the players' gun lights, lanterns, fire and jellyfish light it up, with shadows.
 The gun in your hands has the same chunky pixel look as you, in the game, the Bag and the title.
+The title has its own sound (everything you see on it, with the game's sounds) and music: a dark synthwave track with a guitar solo.
+⚙ next to ▶ opens Settings: Master, FX and Music volume.
 
 **Pause.** ⏸ (top right) pauses: Resume, Save, a Volume slider for the whole game, and Exit
 to main menu (it saves first). **Hold ⏸ for 5 seconds** to show or hide the dev tools: the ⚙️ panel
