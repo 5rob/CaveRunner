@@ -147,7 +147,7 @@ check('it travels through the zones', passed.size >= 3 && [...passed].every(z =>
   const o2 = []; for (let Z = titleZoneSpan(0, Bs); o2.length < 10; Z = titleZoneSpan(Z.x1 + 1, Bs)) o2.push(Z.z);
   check('another seed, another order', o2.join(' ') !== zs.slice(0, 10).map(Z => Z.z).join(' '), o2);
   // two moss zones' roof lines differ (their own hills), and the roof and floor stay joined across every border
-  const mz = zs.filter(Z => Z.z === 'moss').slice(0, 2), prof = Z => Array.from({ length: 20 }, (_, i) => titleCeil(Z.x0 + 50 + i * 5, A) - titleCeil(Z.x0 + 50, A));
+  const mz = zs.filter(Z => Z.z === 'moss').slice(0, 2), prof = Z => Array.from({ length: 30 }, (_, i) => titleCeil(Z.x0 + 42 + i * 5, A) - titleCeil(Z.x0 + 42, A));
   const diff = mz.length === 2 ? prof(mz[0]).reduce((a, v, i) => a + Math.abs(v - prof(mz[1])[i]), 0) : 0;
   // (the way through a mine works steps to another tunnel at a hole: a jump there is meant)
   const steps = zs.flatMap(Z => (Z.mine ? Z.mine.steps.map(s => s.x) : []));
@@ -186,6 +186,24 @@ check('rats on screen are never inside the rock', ratSeen > 500 && ratRock === 0
   check('they walk and sprint now and then', walkT > 3 && sprintT > 3, { walkT, sprintT });
   check('pace differs player to player', new Set(F.runners.map(r => r.pace.toFixed(2))).size === 4 && new Set(F.runners.map(r => r.bursty)).size === 4);
 }
+// (v0.0.172, owner) the winding caves: a narrow tunnel snaking up and down (room to fly, never a big open cave), and air
+// off it in the rock (pockets, branches)
+{
+  let ws = 1;
+  const findW = Q => { for (let Z = G.titleZoneSpan(0, Q); Z.x0 < 2000; Z = G.titleZoneSpan(Z.x1 + 1, Q)) if (Z.z === 'winding') return Z; return null; };
+  while (!findW(titleScene(470, ws, 139, 295))) ws++;
+  const K = titleScene(470, ws, 139, 295), Z = findW(K);
+  let lo = Infinity, hi = 0, mids = [], extra = 0, cols = 0;
+  while (K.scroll < Z.x0 + 60) { K.foes.length = 0; K.spawn = 99; K.still = true; titleStep(K, 1 / 30); }
+  for (let wx = Z.x0 + 50; wx < Math.min(Z.x1 - 50, K.gen * TCELL - 4); wx += 2) {
+    const c = G.titleCeil(wx, K), f = G.titleFloor(wx, K);
+    lo = Math.min(lo, f - c); hi = Math.max(hi, f - c); mids.push((c + f) / 2); cols++;
+    for (let y = K.top; y < K.bot; y += 2) if ((y < c - 3 || y > f + 3) && !G.TITLE_SOLID[titleCell(K, Math.floor(wx / TCELL), Math.floor(y / TCELL))]) { extra++; break; }
+  }
+  const wander = Math.max(...mids) - Math.min(...mids);
+  check('winding caves: a narrow tunnel, room to fly, snaking up and down', cols > 20 && lo >= 28 && hi <= 54 && wander > 15, { lo, hi, wander, cols });
+  check('…with pockets and branches of air off it', extra / cols > 0.15, { extra, cols });
+}
 // (v0.0.170, owner) each mine works its own layout: 1–3 tunnels, in and out at different heights, walled ends, holes between
 {
   const P = titleScene(470, 21, 139, 295), ms = [];
@@ -209,7 +227,10 @@ check('blasts and fire cut web lines', S.cut > 0, S.cut);
 // a tenth), not all at once; an arch that catches is cut there (v0.0.165), each side hanging from its end, swinging
 // down and burning up from the cut
 {
-  const P = titleScene(470, 4, 139, 295);
+  // (a seed with a vine grove early on: the zones are random)
+  let ps = 4;
+  while (!(() => { const Q = titleScene(470, ps, 139, 295); for (let Z = G.titleZoneSpan(0, Q); Z.x0 < 700; Z = G.titleZoneSpan(Z.x1 + 1, Q)) if (Z.z === 'grove') return true; return false; })()) ps++;
+  const P = titleScene(470, ps, 139, 295);
   P.still = true;   // (no one sawing through what's measured)
   for (let i = 0; i < 60 * 34 && !P.props.some(p => p.arc && p.x > 0 && p.x < 180); i++) { P.foes.length = 0; P.spawn = 99; titleStep(P, 1 / 60); }
   const vine = P.props.find(p => !p.arc && p.st === 'vine' && !p.host && p.len > 30), arch = P.props.find(p => p.arc && p.x > 0 && p.x < 180);
@@ -330,7 +351,9 @@ check('moss catches fire', !!mossAt && C.fire.length > 0, mossAt);
   check('a lit web is cut into two burning halves', R1.out && A1.out && roof.length === 2 && roof.every(p => p.burn), roof.map(p => ({ y: p.y, burn: p.burn, drop: p.drop })));
   check('…held at the roof they hang; in the air they fall', roof.every(p => !p.drop) && air.length === 2 && air.every(p => p.drop), { roof: roof.map(p => p.drop), air: air.map(p => p.drop) });
   // vines: two hanging ones in view, unburnt, apart
-  const V = titleScene(470, 7, 139, 295);
+  let vs = 7;
+  while (!['moss', 'grove'].some(z => [150, 400].some(x => titleZone(x, titleScene(470, vs, 139, 295)) === z))) vs++;
+  const V = titleScene(470, vs, 139, 295);
   let vines = [];
   for (let i = 0; i < 60 * 40 && vines.length < 2; i++) {   // (as far as the grove if need be)
     quiet(V, 1);

@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v0.0.171</title>
-<!-- VERSION = 'v171' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v0.0.172</title>
+<!-- VERSION = 'v172' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -903,7 +903,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v0.0.171';</script>
+<script>const VERSION = 'v0.0.172';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -10256,7 +10256,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var TITLE_FIRE = 600;
   var TCELL = 2;
   var TITLE_ZLEN = [200, 360];
-  var TITLE_ZONES = ["moss", "webs", "timber", "paved", "grove"];
+  var TITLE_ZONES = ["moss", "webs", "timber", "paved", "grove", "winding"];
   var ZMIX = 40;
   var ZBLEND = 28;
   var TIMBER_H = 38;
@@ -10331,7 +10331,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     timber: [["rotta", 3], ["hamahakki", 1]],
     // spiders turn up in the layers too (the level's roster spawns anywhere)
     paved: [["rotta", 1]],
-    grove: [["meduusa", 3], ["rotta", 1]]
+    grove: [["meduusa", 3], ["rotta", 1]],
+    winding: [["meduusa", 2], ["hamahakki", 1], ["rotta", 1]]
   };
   function titleRng(seed) {
     let a = seed >>> 0;
@@ -10449,8 +10450,22 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
   }
   var titleZoneAt = (wx, y, B) => titleZone(wx + (titleNoise(wx / 24, y / 14) - 0.5) * 2 * ZBLEND + (titleNoise(wx / 4, y / 4) - 0.5) * 12, B);
+  var windMid = (x, Z, B) => Math.max(B.top + 26, Math.min(B.bot - 32, (B.top + B.bot) / 2 + 4 + (titleNoise(x / 70 + Z.ph[0], 3.7) - 0.5) * 80 + (titleNoise(x / 23 + Z.ph[1], 5.1) - 0.5) * 16));
+  var windHalf = (x, Z) => 15 + titleNoise(x / 28 + Z.ph[2], 7.3) * 11;
+  function windAir(x, y, Z, B) {
+    if (y < B.top - 6 || y > B.bot + 2) return false;
+    const edge = Math.min(x - Z.x0, Z.x1 - x);
+    if (edge < 12) return false;
+    const fade = Math.max(0, (40 - edge) / 40) * 0.3;
+    if (titleNoise(x / 16 + Z.ph[3], y / 11) > 0.7 + fade) return true;
+    const on = titleNoise(x / 55 + Z.ph[4], 11.3) - fade;
+    if (on <= 0.5) return false;
+    const mid = windMid(x, Z, B), half = windHalf(x, Z), side = titleNoise(x / 90 + Z.ph[4], 2.2) > 0.5 ? -1 : 1;
+    const m2 = mid + side * (half + 14 + titleNoise(x / 30 + Z.ph[0], 13) * 16);
+    return Math.abs(y - m2) < (on - 0.5) * 2 * 11;
+  }
   var titleCeil = (wx, B) => {
-    const nat = B.top - 4 + zoneMix(wx, B, (x, Z) => Z.co + (Math.sin(x * 0.018 * Z.cf + Z.ph[0]) * 10 + Math.sin(x * 0.049 * Z.cf + Z.ph[1]) * 6) * Z.ca) + Math.sin(wx * 0.11) * 2;
+    const nat = zoneMix(wx, B, (x, Z) => Z.z === "winding" ? windMid(x, Z, B) - windHalf(x, Z) : B.top - 4 + Z.co + (Math.sin(x * 0.018 * Z.cf + Z.ph[0]) * 10 + Math.sin(x * 0.049 * Z.cf + Z.ph[1]) * 6) * Z.ca) + Math.sin(wx * 0.11) * 2;
     const T2 = mineNear(wx, B);
     if (!T2) return nat;
     const lump = Math.sin(Math.PI * T2.bt) * ((titleNoise(wx / 16, 47) - 0.5) * 22 + (titleNoise(wx / 6, 40) - 0.5) * 9 + (titleNoise(wx / 2.5, 43) - 0.5) * 3);
@@ -10477,7 +10492,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   };
   var titleWebAt = webAt;
   var titleFloor = (wx, B) => {
-    const nat = B.bot - 22 + zoneMix(wx, B, (x, Z) => Z.fo + (Math.sin(x * 0.021 * Z.ff + Z.ph[2]) * 7 + Math.sin(x * 0.057 * Z.ff + Z.ph[3]) * 4) * Z.fa) + Math.sin(wx * 0.13) * 1.5;
+    const nat = zoneMix(wx, B, (x, Z) => Z.z === "winding" ? windMid(x, Z, B) + windHalf(x, Z) : B.bot - 22 + Z.fo + (Math.sin(x * 0.021 * Z.ff + Z.ph[2]) * 7 + Math.sin(x * 0.057 * Z.ff + Z.ph[3]) * 4) * Z.fa) + Math.sin(wx * 0.13) * 1.5;
     const b = built(wx, B), base = nat * (1 - b) + (B.bot - 20) * b, T2 = mineNear(wx, B);
     return T2 ? base + (T2.band.f - base) * T2.bt : base;
   };
@@ -10556,6 +10571,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       else if (ledge && y >= ly - 2 && y < ly && tuft) m = TM.GRASS;
       if (m === TM.AIR && y >= fy - rub && y < fy) m = y < fy - rub + 2 && h2(c, r) < 0.7 ? TM.RUBM : TM.RUB;
       if (m === TM.AIR && y >= fy - tuft * TCELL && y < fy && zc !== "paved") m = TM.GRASS;
+      if (z === "winding" && TITLE_SOLID[m] && windAir(wx, y, Zn, S2)) m = TM.AIR;
       S2.cells[base + r] = m;
     }
     if (b > 0.95) {
