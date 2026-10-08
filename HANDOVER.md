@@ -3,11 +3,14 @@
 Where things stand, for a fresh session. Read `CLAUDE.md` first (the owner's working style, the
 release loop, testing), then the README of the `src/` folder you're working in.
 
-## v0.0.161 — new title scene + pixel-art on every gun: on branch `title2`, WAITING ON THE OWNER'S OK (screenshots sent 2026-10-08)
+## v0.0.161 — title scene (a tour of the real floor 1) + pixel-art on every gun + the owner's Dev report as defaults: on branch `title2`, WAITING ON THE OWNER'S OK (round-3 screenshots sent 2026-10-08)
 
-CHANGELOG v0.0.161. Once OK'd: merge `title2` to `main`, push, confirm `version.txt` shows `161 v0.0.161`.
-Known (from the agent): the natural zone's back wall is dark and blocky; the timber zone's roof beam barely shows;
-the gun is game-size (small); spiders only walk (no silk drop); not yet timed on a phone.
+CHANGELOG v0.0.161. The owner gave three feedback rounds on the title (zones blend, low timber, spider webs, jelly
+tentacles, dense vines, home zones, then "a sideways tour of our actual Mossy Caves level": surveyed the real floor
+(tools: a phone-size shot at a prop / zone, the whole floor zoomed out with the hologram off) and painted it by the
+level's rules). Once OK'd: merge `title2` to `main`, push, confirm `version.txt` shows `161 v0.0.161`.
+Known: the gun is game-size (small); spiders don't drop on silk; fire can burn the layers' frames away quickly;
+not yet timed on a phone. The browser suite last ran before rounds 2–3 (logic + `title` + `slots` pass now).
 
 ## v0.0.160 — dev mode (hold ⏸ 5 s), ⏸ / ⚙️ swapped: RELEASED on `main` 2026-10-08 (owner OK'd)
 

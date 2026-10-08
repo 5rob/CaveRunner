@@ -12,9 +12,9 @@ import { THEMES } from '../../data/themes.js';
 import { drawJelly } from '../../creatures/jelly.js';
 import { drawRat } from '../../creatures/rat.js';
 import { drawSpider } from '../../creatures/spider.js';
-import { drawProp } from '../../art/props.js';
+import { drawProp, propGlow } from '../../art/props.js';
 import { drawGun, drawNugget, drawRunner, jetFlame, pixelSprite } from '../../art/sprites.js';
-import { TCELL, TITLE_KITS, TITLE_VW, TM, titleNoise, titleWebAt, titleZoneAt } from '../../art/titlescene.js';
+import { TCELL, TITLE_KITS, TITLE_SOLID, TITLE_VW, TM, titleNoise, titleWebAt } from '../../art/titlescene.js';
 import { drawBolt, drawLook } from './looks.js';
 
 const T = THEMES[0];                                   // Mossy caves
@@ -25,27 +25,36 @@ const CACHE = new WeakMap();
 const hash = (c, r) => { const s = Math.sin(c * 12.9898 + r * 78.233) * 43758.5453; return s - Math.floor(s); };
 /** @param {number[]} a @param {number[]} b @param {number} t @param {number} [k] brightness */
 const mixc = (a, b, t, k = 1) => [(a[0] + (b[0] - a[0]) * t) * k, (a[1] + (b[1] - a[1]) * t) * k, (a[2] + (b[2] - a[2]) * t) * k];
-const WOOD = [[96, 64, 38], [138, 96, 58]];
-// a brick's mortar line, for the paved works' bricks and their back wall
-/** @param {number} c @param {number} r */
-const mortar = (c, r) => r % 3 === 0 || (c + (Math.floor(r / 3) % 2) * 3) % 6 === 0;
-
-// one cell's colour: its material, its zone's back wall where it's air
-/** @param {number} m @param {number} c @param {number} r */
-function cellRGB(m, c, r) {
-  const h = hash(c, r), hb = hash(Math.floor((c + (Math.floor(r / 3) % 2) * 3) / 6), Math.floor(r / 3));
-  if (m === TM.ROCK) return mixc(T.rock[0], T.rock[1], h * 0.6 + hash(c >> 2, r >> 2) * 0.4);
-  if (m === TM.MOSS) return mixc(T.moss[0], T.moss[1], h);
-  if (m === TM.BRICK) return mortar(c, r) ? T.mortar : mixc(T.brick[0], T.brick[1], hb * 0.8 + h * 0.2);
-  if (m === TM.WOOD || m === TM.BEAM) return mixc(WOOD[0], WOOD[1], (c % 3 === 0 ? 0.1 : 0.6) + h * 0.3, m === TM.BEAM ? 0.8 : 1);
+const TIMBER = [112, 80, 50];                          // strata.js timberFrame's wood
+/** @param {number} x @param {number} y fbm-ish: two octaves of the title's noise */
+const fbm = (x, y) => titleNoise(x, y) * 0.65 + titleNoise(x * 2.1 + 17, y * 2.1 + 5) * 0.35;
+// one cell's colour, painted as world/level.js and decorate.js paint the level: rock mottled on a
+// smooth lattice, moss where the rock faces up (a cell or two under open air), bricks in courses, the
+// bright grass tufts and rubble of the moss patches, the timber frames' wood (lit and shaded); the
+// back wall (air) dark, its pattern and its big slow blotches of shadow as the level's.
+// `up` is open air one or two cells above
+/** @param {number} m @param {number} c @param {number} r @param {boolean} up */
+function cellRGB(m, c, r, up) {
+  const h = hash(c, r), j = (h - 0.5) * 10;
+  /** @param {number[]} q */
+  const J = q => [q[0] + j, q[1] + j, q[2] + j];
+  if (m === TM.ROCK) return J(up ? mixc(T.moss[0], T.moss[1], h) : mixc(T.rock[0], T.rock[1], fbm(c / 6 + 100, r / 6 + 100)));
+  if (m === TM.MOSS) return J(mixc(T.moss[0], T.moss[1], h));
+  if (m === TM.BRICK) {
+    const k = c + (r % 2) * 3;
+    if (k % 6 === 0) return J(T.mortar);
+    const q = mixc(T.brick[0], T.brick[1], hash(Math.floor(k / 6), r));
+    return J(up ? q.map(v => v * 1.18) : q);
+  }
+  if (m === TM.GRASS || m === TM.RUBM) return mixc(T.moss[1], T.moss[1], 0, 0.9 + h * 0.25);
+  if (m === TM.RUB) return J(h < 0.2 ? T.mortar : mixc(T.brick[0], T.brick[1], hash(c * 3, r * 5)));
+  if (m === TM.BEAM || m === TM.WOOD) return J(mixc(TIMBER, TIMBER, 0, 0.95));
+  if (m === TM.BEAMD) return J(mixc(TIMBER, TIMBER, 0, 0.7));
   if (m === TM.CHAR) return mixc([30, 26, 26], [52, 44, 40], h);
-  const z = titleZoneAt(c * TCELL, (r + 0.5) * TCELL);   // frays into the next zone's, as the rock does
-  if (z === 'paved') return mortar(c, r) ? mixc(T.mortar, T.bg, 0.5) : mixc(T.brick[0], T.bg, 0.62 + hb * 0.12);
-  if (z === 'timber') return mixc(T.bg, T.bg2, (c % 5 === 0 ? 0.15 : 0.55) + h * 0.15);
-  // the natural back wall: soft lumps of shade (noise), a little grain
-  const n = titleNoise(c / 7, r / 7) * 0.45 + titleNoise(c / 2.5, r / 2.5) * 0.2 + h * 0.15;
-  if (z === 'webs') return mixc(mixc(T.bg, T.bg2, n * 0.8), [92, 96, 110], 0.1);   // the spiders' caves: bare, a little grey
-  return mixc(mixc(T.bg, T.bg2, n), T.moss[0], z === 'grove' ? 0.18 : 0);
+  // the back wall: the level's is a quarter-size picture (one pixel = 4 cells), so the same scale here
+  const bx = c / 4, by = r / 4, t = Math.pow(fbm(bx / 10 + 300, by / 10 + 300), 1.6);
+  const big = fbm(bx / 34 + 700, by / 34 + 500), shade = 1 - 0.55 * Math.max(0, Math.min(1, (big - 0.35) / 0.3));
+  return mixc(T.bg, T.bg2, Math.min(1, t * 1.3), shade).map(v => v + (h - 0.5) * 4);
 }
 
 /** @param {import('../../art/titlescene.js').TitleScene} S */
@@ -61,7 +70,9 @@ function terrain(S) {
   const D = C.img.data, N = S.ncol;
   /** @param {number} c @param {number} r */
   const paint = (c, r) => {
-    const x = ((c % N) + N) % N, m = S.cells[x * S.rows + r], [cr, cg, cb] = cellRGB(m, c, r), o = (r * N + x) * 4;
+    const x = ((c % N) + N) % N, col = x * S.rows, m = S.cells[col + r];
+    const up = r > 1 && (!TITLE_SOLID[S.cells[col + r - 1]] || !TITLE_SOLID[S.cells[col + r - 2]]);
+    const [cr, cg, cb] = cellRGB(m, c, r, up), o = (r * N + x) * 4;
     D[o] = cr; D[o + 1] = cg; D[o + 2] = cb; D[o + 3] = 255;
   };
   let ch = false;
@@ -99,7 +110,7 @@ export function titleDraw(ctx, S, cw, ch) {
   const G = { ctx };
   // plants: burning ones go dark as they burn
   for (const p of S.props) {
-    if (p.x < -40 || p.x > TITLE_VW + 40) continue;
+    if (p.x + (p.span || 0) < -40 || p.x > TITLE_VW + 40) continue;
     ctx.globalAlpha = p.burn > 0 ? Math.max(0.15, p.burn / 1.4) : 1;
     /** @type {any} */
     const pr = p;
@@ -164,9 +175,16 @@ export function titleDraw(ctx, S, cw, ch) {
     gr.addColorStop(1, 'rgba(200,30,0,0)');
     ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(b.x, b.y, b.r * (0.4 + q), 0, Math.PI * 2); ctx.fill();
   }
+  // the lanterns' warm light (art/props.js propGlow, as the game adds it after the fog)
+  for (const p of S.props) if (p.k === 'lamp' && p.x > -60 && p.x < TITLE_VW + 60) {
+    /** @type {any} */
+    const pr = p;
+    propGlow(ctx, pr, S.t, T, 0, 1);
+  }
   for (const p of S.parts) if (p.kind !== 'smoke') {
     const q = p.life / p.max;
-    ctx.globalAlpha = q;
+    // spores fade in and out (the level's luminescent spores); drips are solid water
+    ctx.globalAlpha = p.kind === 'spore' ? Math.sin(Math.PI * q) * 0.8 : p.kind === 'drip' ? 0.8 : q;
     ctx.fillStyle = p.kind === 'fire' ? (q > 0.6 ? '#fff0b0' : q > 0.3 ? '#ff9a2e' : '#c8301a') : p.col;
     const rr = p.kind === 'fire' ? p.r * (0.5 + q) : p.r;
     ctx.fillRect(p.x - rr / 2, p.y - rr / 2, rr, rr);

@@ -11,7 +11,9 @@
 
 import { PW, PH } from '../core/consts.js';
 import { CREATURES, ROSTERS } from '../data/creatures.js';
+import { THEMES } from '../data/themes.js';
 import { DEV, kru } from '../dev/knobs.js';
+import { archCurve } from '../world/decorate.js';
 import { MODS } from '../spells/mods.js';
 import { pixText, pixWidth } from './pixfont.js';
 
@@ -27,11 +29,16 @@ export const TITLE_ZONES = ['moss', 'webs', 'timber', 'paved', 'grove'];
 export const ZBLEND = 28;             // a zone's border frays this far (world units) each way, by noise
 export const TIMBER_H = 38;           // the timber works' height, floor to roof: the mine frames' height
 export const TITLE_WEBS = 60;         // web lines at once
-// cell materials: air (the back wall shows), rock, moss (burns, chars), brick, wood (burns away),
-// char (burnt or blasted rock), beam (timber posts and beams: not solid, burns away)
-export const TM = { AIR: 0, ROCK: 1, MOSS: 2, BRICK: 3, WOOD: 4, CHAR: 5, BEAM: 6 };
-const SOLID = [0, 1, 1, 1, 1, 1, 0];
-const FUEL = [0, 0, 1, 0, 1, 0, 1];
+// cell materials: air (the back wall shows), rock (painted as the game paints it: moss where it faces
+// up), moss (burns, chars), brick, wood (burns away), char (burnt or blasted rock); not solid: beam and
+// beamD (a timber frame's lit and shaded wood, burn away), grass (the bright tufts on a moss patch),
+// rub and rubM (a rubble mound, its mossy top)
+export const TM = { AIR: 0, ROCK: 1, MOSS: 2, BRICK: 3, WOOD: 4, CHAR: 5, BEAM: 6, BEAMD: 7, GRASS: 8, RUB: 9, RUBM: 10 };
+export const TITLE_SOLID = [0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0];
+const SOLID = TITLE_SOLID;
+const FUEL = [0, 0, 1, 0, 1, 0, 1, 1, 1, 0, 1];
+export const FRAME_GAP = 72;          // the built-up layers: a timber frame every this far (world units)
+export const FRAME_W = 36;            // its width, post to post
 const SCROLL = 34;                    // the world's scroll speed (world units / s)
 const GRAV = 260;
 const SP = 0.5;                       // the game's shot speeds, scaled to the title's screen
@@ -54,7 +61,7 @@ export const TITLE_KINDS = [...ROSTERS[0], 'rotta'];
 export const TITLE_HOME = {
   moss: [['meduusa', 3], ['rotta', 1]],
   webs: [['hamahakki', 4], ['meduusa', 1]],
-  timber: [['rotta', 1]],
+  timber: [['rotta', 3], ['hamahakki', 1]],   // spiders turn up in the layers too (the level's roster spawns anywhere)
   paved: [['rotta', 1]],
   grove: [['meduusa', 3], ['rotta', 1]],
 };
@@ -69,7 +76,8 @@ export const TITLE_HOME = {
 /** @typedef {{ x: number, y: number, vx: number, vy: number, r: number, seed: number, ang: number, spin: number, life: number, ground: boolean, pull: number }} TGold */
 /** @typedef {{ x: number, y: number, r: number, t: number, max: number }} TBoom */
 /** @typedef {{ pts: { x: number, y: number }[], t: number, col: string }} TZap */
-/** @typedef {{ k: string, st: string, wx: number, x: number, y: number, len: number, seed: number, side: number, burn: number, ac: number, ar: number }} TProp */
+/** @typedef {{ k: string, st: string, wx: number, x: number, y: number, len: number, seed: number, side: number, burn: number, ac: number, ar: number,
+ *   arc?: number[][], thick?: number, t?: number, span?: number, host?: TProp }} TProp */
 /** @typedef {{ c: number, r: number, t: number }} TFire */
 /** @typedef {{ a0x: number, a0y: number, b0x: number, b0y: number, sag: number }} TWeb a web line, world x (the spiders' zone) */
 /** @typedef {{ t: number, vh: number, top: number, bot: number, seed: number, rnd: () => number, scroll: number, shake: number, spawn: number,
@@ -98,7 +106,7 @@ const built = (wx, only) => {
   const z = titleZone(wx);
   if (only ? z !== only : z !== 'timber' && z !== 'paved') return 0;
   const u = wx - Math.floor(wx / TITLE_ZLEN) * TITLE_ZLEN;
-  return Math.max(0, Math.min(1, Math.min(u, TITLE_ZLEN - u) / 60));
+  return Math.max(0, Math.min(1, Math.min(u, TITLE_ZLEN - u) / 36));
 };
 // smooth value noise, about 0..1, one bump a unit (pure)
 /** @param {number} x @param {number} y */
@@ -119,8 +127,10 @@ export const titleZoneAt = (wx, y) => titleZone(wx + (titleNoise(wx / 24, y / 14
 /** @param {number} wx @param {{ top: number, bot: number }} B */
 export const titleCeil = (wx, B) => {
   const nat = B.top - 4 + Math.sin(wx * 0.018 + 6) * 10 + Math.sin(wx * 0.049 + 3) * 6 + Math.sin(wx * 0.11) * 2;
-  const bt = built(wx, 'timber');
-  return bt ? nat + (Math.max(nat, titleFloor(wx, B) - TIMBER_H) - nat) * bt : nat;
+  // the layer's roof comes down in a short step, not a long slope (the level's shelves end in a rough edge)
+  const bt = Math.max(0, Math.min(1, (built(wx, 'timber') - 0.2) / 0.35));
+  const edge = bt > 0 && bt < 1 ? (titleNoise(wx / 3, 40) - 0.5) * 6 : 0;
+  return bt ? nat + (Math.max(nat, titleFloor(wx, B) - TIMBER_H) - nat) * bt + edge : nat;
 };
 // a web line's point at fraction u: straight a0..b0, sagging in the middle (as world/sway.js webAt)
 /** @param {TWeb} L @param {number} u */
@@ -161,28 +171,54 @@ function dirty(S, c0, c1, r0, r1) {
 function genCol(S, c) {
   const wx = c * TCELL, z = titleZone(wx), b = built(wx), R = S.rnd;
   const cy = titleCeil(wx, S), fy = titleFloor(wx, S), base = ci(S, c, 0);
-  // the timber works' mine frames: a post every 40, a cap beam under the roof, a brace each side of a post's top
-  const frame = z === 'timber' && b > 0.5, pd = Math.abs((((wx + 20) % 40) + 40) % 40 - 20);
+  // the built-up layers' timber frames, as strata.js timberFrame makes them: two posts (lit on the
+  // left), a cap beam two rows deep running a little past them, a knee brace inside each post's top,
+  // a footing under each post
+  const u = ((wx % FRAME_GAP) + FRAME_GAP) % FRAME_GAP, uc = u > FRAME_GAP - 5 ? u - FRAME_GAP : u;
+  const frame = z === 'timber' && uc < FRAME_W + 4 && built(wx - uc - 4) > 0.95 && built(wx - uc + FRAME_W + 4) > 0.95;   // whole frames only
+  // moss patches on the floor (thicker moss, bright grass tufts on top), as decorate.js bakes them
+  const patch = titleNoise(wx / 14, 11) > 0.52, tuft = patch && h2(c, 5) < 0.4 ? (h2(c, 6) < 0.4 ? 2 : 1) : 0;
+  const mossDeep = 2 + (patch ? 1 + Math.floor(h2(c, 7) * 3) : 0);
+  // rubble: a low mound of broken brick, moss over its top (decorate.js rubble), now and then on a floor
+  const rk = Math.floor(wx / 60), rcx = rk * 60 + 10 + h2(rk, 1) * 40, rw = 6 + h2(rk, 2) * 6, rd = (wx - rcx) / rw;
+  const rub = z !== 'paved' && h2(rk, 3) < 0.45 && Math.abs(rd) < 1 ? (2 + h2(rk, 4) * 2.5) * (1 - rd * rd) : 0;
+  // a small brick ledge out in the air of a natural cave (the level's built ledges)
+  const lk = Math.floor(wx / 90), lx0 = lk * 90 + 15 + h2(lk, 8) * 35, lw = 14 + h2(lk, 9) * 14;
+  const lmid = lx0 + lw / 2, lc = titleCeil(lmid, S), lf = titleFloor(lmid, S), ly = lc + 14 + h2(lk, 10) * Math.max(0, lf - lc - 52);
+  const ledge = (z === 'moss' || z === 'grove' || z === 'webs') && built(lmid) === 0 && h2(lk, 11) < 0.5 && wx >= lx0 && wx < lx0 + lw && lf - lc > 60;
+  // the layers stack (strataCave): over the shelf you run under, another open band with its own frames
+  const shelf = z === 'timber' && built(wx) > 0.9 ? 18 + titleNoise(wx / 20, 50) * 6 : 0, upBot = cy - shelf, upTop = upBot - 34;
+  const fu = ((wx + FRAME_GAP / 2) % FRAME_GAP + FRAME_GAP) % FRAME_GAP, upPost = shelf && (fu < 4 || (fu >= FRAME_W - 4 && fu < FRAME_W));
   for (let r = 0; r < S.rows; r++) {
-    const y = (r + 0.5) * TCELL, zc = titleZoneAt(wx, y);   // the skin (moss, bricks, planks) frays at a border
+    const y = (r + 0.5) * TCELL, zc = titleZoneAt(wx, y);   // the skin (moss or bricks) frays at a border
     let m = TM.AIR;
-    if (y < cy) {
+    if (shelf && y >= upTop && y < upBot) m = upPost || (fu < FRAME_W + 4 && y < upTop + 4) ? TM.BEAMD : TM.AIR;
+    else if (y < cy) m = TM.ROCK;
+    else if (y >= fy) {
       m = TM.ROCK;
-      if ((zc === 'moss' || zc === 'grove') && y > cy - (zc === 'grove' ? 5 : 3)) m = TM.MOSS;
-      if (zc === 'webs' && y > cy - 1.5 && titleNoise(wx / 6, 3) > 0.55) m = TM.MOSS;
-      if (zc === 'paved' && b > 0.3 && y > cy - 8) m = TM.BRICK;
-    } else if (y >= fy) {
-      m = TM.ROCK;
-      if ((zc === 'moss' || zc === 'grove') && y < fy + (zc === 'grove' ? 6 : 3.5)) m = TM.MOSS;
-      if (zc === 'webs' && y < fy + 2 && titleNoise(wx / 6, 7) > 0.5) m = TM.MOSS;
       if (zc === 'paved' && b > 0.3 && y < fy + 6) m = TM.BRICK;
-      if (zc === 'timber' && b > 0.3 && y < fy + 2.5) m = TM.WOOD;
-    } else if (frame) {
-      const under = y - cy - 4;                              // below the cap beam
-      if (under < 0 || pd < 2 || (pd >= 2 && pd <= 10 && Math.abs(under - (10 - pd)) < 1.4)) m = TM.BEAM;
+      else if (y < fy + mossDeep * TCELL) m = TM.MOSS;
+    } else if (ledge && y >= ly && y < ly + 4) m = TM.BRICK;
+    else if (ledge && y >= ly - 2 && y < ly && tuft) m = TM.GRASS;
+    else if (frame) {
+      const under = y - cy, post = (uc >= 0 && uc < 4) || (uc >= FRAME_W - 4 && uc < FRAME_W);
+      if (uc >= -4 && uc < FRAME_W + 4 && under < 4) m = under < 2 ? TM.BEAM : TM.BEAMD;
+      else if (post) m = (uc < 2 || (uc >= FRAME_W - 4 && uc < FRAME_W - 2)) ? TM.BEAM : TM.BEAMD;
+      else if ((uc >= 4 && uc <= 12 && Math.abs(under - 4 - (12 - uc)) < 1) || (uc >= FRAME_W - 12 && uc < FRAME_W - 4 && Math.abs(under - 4 - (uc - (FRAME_W - 12))) < 1)) m = TM.BEAMD;
+      else if (y >= fy - 2 && ((uc >= -1 && uc < 5) || (uc >= FRAME_W - 5 && uc < FRAME_W + 1))) m = TM.BEAMD;
     }
+    if (m === TM.AIR && y >= fy - rub && y < fy) m = y < fy - rub + 2 && h2(c, r) < 0.7 ? TM.RUBM : TM.RUB;
+    if (m === TM.AIR && y >= fy - tuft * TCELL && y < fy && zc !== 'paved') m = TM.GRASS;
     S.cells[base + r] = m;
   }
+  // a lantern hanging on its chain under the layers' roof: between the frames, and some inside them
+  if (z === 'timber' && built(wx) > 0.95 && (Math.abs(u - (FRAME_W + FRAME_GAP) / 2) < 1 || Math.abs(u - FRAME_W / 2) < 1) && R() < 0.75)
+    S.props.push({ k: 'lamp', st: 'hanglamp', wx, x: 0, y: cy + 4, len: 4 + R() * 8, seed: R(), side: 1, burn: 0, ac: c, ar: Math.floor((cy - 1) / TCELL) });
+  // and in the band above, and down long chains from the brick works' high roof
+  if (shelf && Math.abs(fu - FRAME_W / 2) < 1 && R() < 0.6)
+    S.props.push({ k: 'lamp', st: 'hanglamp', wx, x: 0, y: upTop + 4, len: 3 + R() * 6, seed: R(), side: 1, burn: 0, ac: c, ar: Math.floor((upTop - 1) / TCELL) });
+  if (z === 'paved' && built(wx) > 0.9 && Math.abs(u - FRAME_GAP / 2) < 1 && R() < 0.8)
+    S.props.push({ k: 'lamp', st: 'hanglamp', wx, x: 0, y: cy, len: 14 + R() * 30, seed: R(), side: 1, burn: 0, ac: c, ar: Math.floor((cy - 1) / TCELL) });
   // the spiders' zone: web lines everywhere, roof to floor (slanting either way) and roof to roof (sagging)
   if (z === 'webs' && b === 0 && !(c % 4) && R() < 0.42 && S.webs.length < TITLE_WEBS) {
     const down = R() < 0.55, bx = down ? wx + (R() - 0.35) * 70 : wx + 18 + R() * 44;
@@ -194,9 +230,36 @@ function genCol(S, c) {
   // the grove: a curtain of long vines, every other column, some down near the floor (thick in its
   // middle, thinning to its ends)
   const nat = 1 - b, grove = z === 'grove';
+  // the grove's vine arches (decorate.js arches, drawn by art/props.js drawArch): roof to roof, sagging,
+  // thick with leaves, strands hanging off them
+  const zu = wx - Math.floor(wx / TITLE_ZLEN) * TITLE_ZLEN;
+  // A cluster every 80: the arch knobs' (ARCH_KNOBS) arches per cluster, span (capped to the screen), sag
+  // (slack), stems, strands per 10 px and their length, and open air under each (else it hangs less)
+  if (grove && zu > 20 && zu < TITLE_ZLEN - 90 && ((wx % 80) + 80) % 80 < TCELL) {
+    const na = Math.max(1, Math.round(kru('arCluster', R())));
+    for (let a = 0; a < na; a++) {
+      const ax = wx + (R() - 0.3) * 60, span = Math.min(170, kru('arSpan', R()) * TCELL), bx = ax + span;
+      const ay = titleCeil(ax, S) + 1, by = titleCeil(bx, S) + 1, n = Math.max(8, Math.min(40, Math.round(span / 6)));
+      let slack = kru('arSlack', R()), pts = archCurve(ax, ay, bx, by, slack, n);
+      const clear = kru('arClear', R()) * TCELL, low = () => pts.reduce((m, p) => (p.y > m.y ? p : m), pts[0]);
+      for (let k = 0; k < 4 && titleFloor(low().x, S) - low().y < clear + PH; k++) { slack = 1 + (slack - 1) * 0.6; pts = archCurve(ax, ay, bx, by, slack, n); }
+      if (titleFloor(low().x, S) - low().y < clear) continue;
+      const arch = { k: 'climb', st: 'vine', wx: ax, x: 0, y: ay, len: 0, seed: R(), side: 1, burn: 0, ac: Math.floor(ax / TCELL), ar: Math.floor((ay - 2) / TCELL),
+        arc: pts.map(p => [p.x - ax, p.y - ay]), thick: Math.round(kru('arThick', R())), t: R() * 10, span };
+      S.props.push(arch);
+      let alen = 0;
+      for (let k = 0; k < n; k++) alen += Math.hypot(pts[k + 1].x - pts[k].x, pts[k + 1].y - pts[k].y);
+      const ns = Math.round(kru('arStrands', R()) * alen / (10 * TCELL));
+      for (let s = 0; s < ns; s++) {
+        const q = pts[Math.min(n - 1, Math.floor(R() * n))], room = titleFloor(q.x, S) - q.y;
+        const len = Math.min(kru('arStrandLen', R()) * TCELL, room * 0.7);
+        if (len >= 4) S.props.push({ k: 'climb', st: 'vine', wx: q.x, x: 0, y: q.y, len, seed: R(), side: 1, burn: 0, ac: arch.ac, ar: arch.ar, host: arch });
+      }
+    }
+  }
   if (grove && !(c % 2)) {
-    const u = wx - Math.floor(wx / TITLE_ZLEN) * TITLE_ZLEN, mid = Math.min(1, Math.min(u, TITLE_ZLEN - u) / 70);
-    if (R() < 0.25 + 0.45 * mid) {
+    const mid = Math.min(1, Math.min(zu, TITLE_ZLEN - zu) / 70);
+    if (R() < 0.12 + 0.2 * mid) {
       const room = fy - cy, st = R() < 0.82 ? 'vine' : R() < 0.5 ? 'root' : 'myc';
       S.props.push({ k: 'climb', st, wx, x: 0, y: cy, len: room * (0.2 + R() * (0.35 + 0.45 * mid)), seed: R(), side: 1, burn: 0,
         ac: c, ar: Math.floor((cy - 1) / TCELL) });
@@ -311,11 +374,12 @@ export function titleIgnite(S, sx, y, r) {
   const r0 = Math.max(0, Math.floor((y - r) / TCELL)), r1 = Math.min(S.rows - 1, Math.floor((y + r) / TCELL));
   for (let c = Math.max(c0, S.gen - S.ncol); c <= Math.min(c1, S.gen - 1); c++) for (let rr = r0; rr <= r1; rr++)
     if (Math.hypot((c + 0.5) * TCELL - wx, (rr + 0.5) * TCELL - y) <= r) light(S, c, rr);
-  for (const p of S.props) if (!p.burn && p.st !== 'chain' && near(p, wx, y, r)) { p.burn = 1.4; S.burnt++; }
+  for (const p of S.props) if (!p.burn && p.st !== 'chain' && p.k !== 'lamp' && near(p, wx, y, r)) { p.burn = 1.4; S.burnt++; }
   cutWebs(S, wx, y, r);
 }
 /** @param {TProp} p @param {number} wx @param {number} y @param {number} r */
-const near = (p, wx, y, r) => Math.abs(p.wx - wx) < r + 4 && y > Math.min(p.y, p.y + (p.k === 'pad' ? -9 : p.len)) - r && y < Math.max(p.y, p.y + (p.k === 'pad' ? 0 : p.len)) + r;
+const near = (p, wx, y, r) => p.arc ? p.arc.some(q => Math.hypot(p.wx + q[0] - wx, p.y + q[1] - y) < r + 3)
+  : Math.abs(p.wx - wx) < r + 4 && y > Math.min(p.y, p.y + (p.k === 'pad' ? -9 : p.len)) - r && y < Math.max(p.y, p.y + (p.k === 'pad' ? 0 : p.len)) + r;
 /** @param {TitleScene} S @param {number} c @param {number} r */
 function light(S, c, r) {
   if (S.fire.length >= TITLE_FIRE || c < S.gen - S.ncol || c >= S.gen || r < 0 || r >= S.rows) return;
@@ -385,9 +449,28 @@ export function titleStep(S, dt) {
   stepFoes(S, dt);
   stepShots(S, dt);
   stepFire(S, dt);
+  // the natural caves' ambience, as the level has it: water dripping from the roof, luminescent spores drifting
+  if (S.parts.length < TITLE_PARTS - 40) {
+    if (R() < dt * 3) {
+      const x = R() * TITLE_VW, wx = x + S.scroll;
+      if (built(wx) === 0) S.parts.push({ x, y: titleCeil(wx, S) + 1.5, vx: 0, vy: 0, life: 4, max: 4, r: 1, col: '#7ab8ff', kind: 'drip' });
+    }
+    if (R() < dt * 5) {
+      const x = R() * TITLE_VW, wx = x + S.scroll, l = 5 + R() * 3;
+      if (built(wx) === 0) S.parts.push({ x, y: titleCeil(wx, S) + 10 + R() * (titleFloor(wx, S) - titleCeil(wx, S) - 20), vx: (R() - 0.5) * 8, vy: -2 - R() * 3,
+        life: l, max: l, r: 1.3, col: 'rgb(' + THEMES[0].moss[1].join(',') + ')', kind: 'spore' });
+    }
+  }
   // particles
   for (const p of S.parts) {
     p.life -= dt;
+    if (p.kind === 'drip') {
+      // falls with the rock (the scroll carries it), until it lands: a splash
+      p.vy += GRAV * dt; p.y += p.vy * dt; p.x -= SCROLL * dt;
+      if (titleSolid(S, p.x, p.y + 1)) { p.life = 0; burst(S, p.x, p.y, 2, '#7ab8ff', 25, 'spark', 0.2); }
+      continue;
+    }
+    if (p.kind === 'spore') { p.x += (p.vx + Math.sin(S.t * 1.7 + p.max * 9) * 3 - SCROLL) * dt; p.y += p.vy * dt; continue; }
     p.x += p.vx * dt; p.y += p.vy * dt;
     const drag = p.kind === 'smoke' ? 1.5 : 3;
     p.vx -= p.vx * drag * dt; p.vy -= p.vy * drag * dt;
@@ -424,9 +507,10 @@ export function titleStep(S, dt) {
       if (R() < dt * 4) titleIgnite(S, p.x, p.k === 'pad' ? p.y : p.y + R() * p.len, 4);
       if (p.burn <= 0) p.burn = -1;
     }
+    if (p.burn === 0 && p.host && p.host.burn !== 0) { p.burn = Math.max(0.3, p.host.burn); S.burnt++; }   // its arch burns: the strand goes with it
     if (p.burn === 0 && p.x > -10 && p.x < TITLE_VW + 10 && !SOLID[titleCell(S, p.ac, p.ar)]) { p.burn = -1; burst(S, p.x, p.y, 3, '#5a8a3a', 40, 'chunk', 0.7); }
   }
-  S.props = S.props.filter(p => p.burn !== -1 && p.wx - S.scroll > -60);
+  S.props = S.props.filter(p => p.burn !== -1 && p.wx + (p.span || 0) - S.scroll > -60);
   S.webs = S.webs.filter(L => Math.max(L.a0x, L.b0x) - S.scroll > -40);
 }
 
@@ -701,11 +785,11 @@ function stepFire(S, dt) {
     if (R() < dt * 6) burst(S, x, y, 1, '#ff9a2e', 12, 'fire', 0.45);
     if (R() < dt * 0.8) burst(S, x, y, 1, '#3a3346', 10, 'smoke', 1.2);
     if (R() < dt * 5) { const d = Math.floor(R() * 8), dc = [1, -1, 0, 0, 1, -1, 1, -1][d], dr = [0, 0, 1, -1, 1, 1, -1, -1][d]; light(S, f.c + dc, f.r + dr); }
-    if (R() < dt * 1.5) for (const p of S.props) if (!p.burn && p.st !== 'chain' && near(p, x + S.scroll, y, 3)) { p.burn = 1.4; S.burnt++; }
+    if (R() < dt * 1.5) for (const p of S.props) if (!p.burn && p.st !== 'chain' && p.k !== 'lamp' && near(p, x + S.scroll, y, 3)) { p.burn = 1.4; S.burnt++; }
     if (f.t > 0) { keep.push(f); continue; }
     const i = ci(S, f.c, f.r), m = S.cells[i];
     S.cells[i] = m === TM.MOSS ? TM.CHAR : TM.AIR;
-    dirty(S, f.c, f.c, f.r, f.r);
+    dirty(S, f.c, f.c, f.r, f.r + 2);   // and the rock under it, which may face up now (moss)
   }
   S.fire = keep;
 }

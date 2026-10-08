@@ -16,6 +16,19 @@ Names are as they were at the time (before the refactor Game's state had loose n
   game's `drawLook` / `drawBolt`. Only floor 1's creatures: jellyfish, spiders (floor and roof), rat swarms (3–6,
   no nests). Kills drop gold that flies to him and is vacuumed up. The pure step stays in `art/titlescene.js`; the
   drawing moved to `game/render/titledraw.js` (it needs `drawLook`). `slots` suite covers it.
+- **Title, owner's feedback rounds 2–3** ("a sideways tour of our actual Mossy Caves level"; the real floor surveyed
+  first): zone borders fray by noise instead of a cut; zones are natural moss → the spiders' web caves → the built-up
+  layers (low roof, stacked bands, strata.js's timber frames, hanging lanterns) → brick works (lanterns on long chains)
+  → the grove (the level's vine arches from `ARCH_KNOBS`, strands). Painted by the level's rules (rock mottle, moss on
+  upward faces, grass tufts, rubble, brick ledges, dark blotchy back wall), drips and spores. Creatures only in their
+  home zones (`TITLE_HOME`: jellyfish natural only, rats in the works, spiders in the web caves and the layers);
+  spiders walk web lines and rock, blasts and fire cut lines; jellyfish tentacles from the jellyfish knobs.
+- **The owner's Dev report (v0.0.159) as the new defaults**: zoom 1.7, torch 0.7, darker outside the torch, quieter
+  jetpack and drips, a bigger hologram glow, floor 1 due in a day, 50 enemies +20 a floor, no player outline, the
+  menu pointer and snap, 2500 kbit/s video, more web sag, 4–8 built-up nests, bigger caverns, tougher/bigger elites
+  in yellow, a dark-violet elite flame, fire spreads faster, the carrot perk's ranges. Tests that measured the old
+  numbers are pinned to them (`rats`, `dark`, `furnish`, `tomb`) or updated (`brood`, `deadline`, `ramps`,
+  `perkstats`; `creatures` now checks each elite at its own roll).
 - **Every gun wears a pixel-art sprite**: the old drawn gun is gone. A gun without a pick gets the `GUN_ART` sprite
   nearest its colour (`gunArtId`, `artForHue`, `artHue` in `art/gunart.js`), so it matches its HUD slot. `drawGun`
   takes the art id (no accent). The 🖼️ gallery's Default tile is gone; the gun machine's hologram is a sprite.
