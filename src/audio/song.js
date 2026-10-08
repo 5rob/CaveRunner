@@ -22,14 +22,14 @@ export const CHORDS = [
 ];
 
 // The solo, four 4-bar phrases (one bar a chord), in 16ths. A note: name+octave:length, then b (bent up into it
-// from a tone below) and ~ (vibrato); '-' a rest. Written an octave up, played at SOLO_SHIFT (a guitar's range).
+// from a tone below) and ~ (vibrato); '-' a rest. Played SOLO_SHIFT semitones from where it's written.
 export const SOLO = [
   '-:4 A4:2 C5:2 D5:4 E5:4 | G5:3 E5:1 F5:4b C5:8~ | D5:2 F5:2 A5:4 G5:2 F5:2 E5:2 D5:2 | E5:2 G#5:2 B5:12b~',
   'A5:2 C6:2 B5:2 A5:2 E5:4 A5:4b | C6:6~ A5:2 F5:4 A5:4 | D6:4b C6:2 A5:2 F5:2 A5:2 D5:4 | G#5:4 B5:4 D6:4 E6:4b',
   'E6:8b~ D6:1 C6:1 B5:1 A5:1 G5:1 E5:1 D5:1 C5:1 | A4:1 C5:1 F5:1 A5:1 C6:1 F6:1 E6:2 C6:4~ A5:4 | F5:1 A5:1 D6:1 F6:1 E6:2 D6:2 A5:4b F5:4 | B5:1 G#5:1 E5:1 G#5:1 B5:1 E6:1 G#6:2 E6:8~',
   'A6:6b~ G6:2 E6:4 C6:4 | A5:4 C6:4 F6:8~ | F6:2 E6:2 D6:2 C6:2 A5:4 F5:4 | E5:4b G#5:4 B5:8~',
 ];
-export const SOLO_SHIFT = -12;
+export const SOLO_SHIFT = 0;           // (v0.0.174, owner: up an octave; was -12)
 export const SOLO_BAR = 24;           // the solo's first bar
 export const HARM_BAR = 32;           // the second guitar joins here
 
