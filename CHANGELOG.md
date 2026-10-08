@@ -5,6 +5,12 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v0.0.169 — the title's players: the pixel grid rides with them
+Released 2026-10-08 (owner's bug report; a minor update).
+- `drawTitleRunner` (game/render/titledraw.js) rounded the player's position for the pixel grid while drawing the body
+  at the exact one, so the grid slid over the body and gun as they moved. Now pinned to the exact position, as the
+  game's `drawPlayer` does (jet flame too).
+
 ## v0.0.168 — the title: random zones each visit; pinch zoom, pan, tap a player to follow
 Released 2026-10-08 (owner OK'd; a minor update).
 - **Zones** (art/titlescene.js `titlePlan`, `S.zp`): made from the scene's seed as it scrolls, each zone a random kind

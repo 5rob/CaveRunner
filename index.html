@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v0.0.168</title>
-<!-- VERSION = 'v168' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v0.0.169</title>
+<!-- VERSION = 'v169' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -903,7 +903,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v0.0.168';</script>
+<script>const VERSION = 'v0.0.169';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -21101,7 +21101,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const K = r.kit, pcx = r.x + PW / 2, ax = Math.cos(r.ang), ay = Math.sin(r.ang);
     const lower = r.swap > 0 ? Math.sin(r.swap / 0.3 * Math.PI) * 4 : 0, gy = r.y + PH * 0.45 + lower;
     const hands = { gun: { x: pcx + ax * 2.5, y: gy }, torch: { x: pcx + ax * 7, y: gy + ay * 5 - 0.5 } };
-    const ox2 = Math.round(r.x) - 14, oy2 = Math.round(r.y) - 8;
+    const ox2 = r.x - 14, oy2 = r.y - 8;
     if (r.mode === "fly") {
       const len = 6 + r.flame * 14 + S2.rnd() * 3, bx = pcx - r.face * 4.5, by = r.y + PH * 0.55;
       pixelSprite(ctx, ox2 - 10, oy2, PW + 48, PH + 40, 1, false, (c) => jetFlame(c, bx, by, 0, 1, len, S2.t));

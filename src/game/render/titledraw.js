@@ -278,7 +278,7 @@ function drawTitleRunner(ctx, S, r) {
   const K = r.kit, pcx = r.x + PW / 2, ax = Math.cos(r.ang), ay = Math.sin(r.ang);
   const lower = r.swap > 0 ? Math.sin(r.swap / 0.3 * Math.PI) * 4 : 0, gy = r.y + PH * 0.45 + lower;
   const hands = { gun: { x: pcx + ax * 2.5, y: gy }, torch: { x: pcx + ax * 7, y: gy + ay * 5 - 0.5 } };
-  const ox = Math.round(r.x) - 14, oy = Math.round(r.y) - 8;
+  const ox = r.x - 14, oy = r.y - 8;     // the pixel grid rides with him (as the game's drawPlayer): not rounded, or it slides over his body
   if (r.mode === 'fly') {
     const len = 6 + r.flame * 14 + S.rnd() * 3, bx = pcx - r.face * 4.5, by = r.y + PH * 0.55;
     pixelSprite(ctx, ox - 10, oy, PW + 48, PH + 40, 1, false, c => jetFlame(c, bx, by, 0, 1, len, S.t));

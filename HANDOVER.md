@@ -3,7 +3,9 @@
 Where things stand, for a fresh session. Read `CLAUDE.md` first (the owner's working style, the
 release loop, testing), then the README of the `src/` folder you're working in.
 
-## NEXT (as of v0.0.168, 2026-10-08)
+## NEXT (as of v0.0.169, 2026-10-08)
+
+- v0.0.169: the title players' pixel grid now rides with them (owner's bug: it slid over the body and gun). Released.
 
 - **v0.0.168 released** (owner OK'd the screenshots, `node tools/titlecamshots.js`): random zones every visit, pinch
   zoom / pan / tap a player to follow. Feedback may follow from the app. Decisions they may revisit: letting go keeps the zoom (pinch out); dragging does nothing while following.
