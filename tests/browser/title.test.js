@@ -38,6 +38,42 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   check('slot 3 shows its run', (await page.textContent('.tslot[data-slot="3"]')).includes('Floor 5'));
   check('slot 2 is empty', (await page.textContent('.tslot[data-slot="2"]')).includes('Empty'));
 
+  // the camera (v0.0.168), by real touches: two fingers spread zoom in, one drags, a tap on a player follows them,
+  // again lets go; it never shows past the screen's box
+  const cdp = await ctx.newCDPSession(page);
+  const touch = (type, pts) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: pts.map(([x, y], id) => ({ x, y, id })) });
+  const cam = () => page.evaluate(() => { const { C, S } = window.__title; return { z: C.z, x: C.x, y: C.y, lock: C.lock, ay: C.ay, by: C.by }; });
+  const boxed = c => c.x - 110 / c.z > -0.01 && c.x + 110 / c.z < 220.01 && c.y - c.ay / c.z > -0.01 && c.y + (c.by - c.ay) / c.z < c.by + 0.01;
+  await touch('touchStart', [[180, 350], [230, 350]]);
+  for (let i = 1; i <= 8; i++) await touch('touchMove', [[180 - i * 5, 350], [230 + i * 5, 350]]);
+  await touch('touchEnd', []);
+  const c1 = await cam();
+  check('a pinch zooms in, the view inside the box', c1.z > 2 && c1.z < 3.2 && boxed(c1), c1);
+  await touch('touchStart', [[20, 380]]);
+  for (let i = 1; i <= 8; i++) await touch('touchMove', [[20 + i * 45, 380 - i * 20]]);
+  await touch('touchEnd', []);
+  const c2 = await cam();
+  check('a drag pans, and stops at the box\'s edge', c2.x < c1.x && Math.abs(c2.x - 110 / c2.z) < 0.01 && boxed(c2), c2);
+  // back to the whole screen, then tap a player where they are on screen (one over the menu)
+  const who = await page.evaluate(() => {
+    const { C, S } = window.__title, top = document.querySelector('.titlemenu').getBoundingClientRect().top;
+    Object.assign(C, { z: 1, x: 110, y: C.ay });
+    return S.runners.findIndex(r => r.x > 4 && r.x < 200 && (r.y + 22) * 412 / 220 < top - 6);
+  });
+  const tapAt = () => page.evaluate(i => {
+    const { C, S } = window.__title, r = S.runners[i], k = 412 / 220;
+    return [((r.x + 6 - C.x) * C.z + 110) * k, ((r.y + 11 - C.y) * C.z + C.ay) * k];
+  }, who);
+  let p = await tapAt();
+  await touch('touchStart', [p]); await touch('touchEnd', []);
+  await page.waitForTimeout(1500);
+  const c3 = await cam();
+  check('a tap on a player follows them, zoomed in', who >= 0 && c3.lock === who && c3.z > 1.8 && boxed(c3), { who, c3 });
+  p = await tapAt();
+  await touch('touchStart', [p]); await touch('touchEnd', []);
+  await page.waitForTimeout(100);
+  check('a tap on them again lets go', (await cam()).lock === -1);
+
   // delete: one tap asks, the second empties it
   await down('.tdel[data-del="3"]');
   await page.waitForTimeout(80);

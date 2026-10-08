@@ -38,7 +38,7 @@ require('../tests/build')();
       box = { x: (Math.min(...xs) - 16) * k, y: (Math.min(...ys) - 20) * k, w: (Math.max(...xs) - Math.min(...xs) + 44) * k, h: (Math.max(...ys) - Math.min(...ys) + 46) * k };
       z = 2;
     } else if (mode === 'timber') {
-      quiet(Math.round((TITLE_ZLEN * 2 - 110 - S.scroll) / 34 * 60));
+      { let T = titleZoneSpan(0, S); while (T.z !== 'timber') T = titleZoneSpan(T.x1 + 1, S); quiet(Math.round((T.x0 - 110 - S.scroll) / 34 * 60)); }
     } else if (mode === 'arch' || mode === 'arch2') {
       for (let i = 0; i < 60 * 45 && !S.props.some(p => p.arc && p.x > 50 && p.x + p.span < 200); i++) quiet(1);
       const a = S.props.find(p => p.arc && p.x > 50 && p.x + p.span < 200);

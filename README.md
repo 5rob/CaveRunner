@@ -68,6 +68,8 @@ green, yellow; they bump into each other and keep a little apart) tour Mossy Cav
 works' sloping roof, brick works and the vine grove), sawing tunnels with a Buzzsaw when rock is in their way, fighting the real creatures with guns made up at random
 from real shots and modifiers, collecting gold and setting things alight (slowly); vines sway as they pass, and
 a vine or web line burnt or blasted through hangs from its ends, swinging and burning. Anything on fire (creatures, vines) flickers with the same fire as burning ground.
+The cave behind the title is different every visit (its zones come in a random order, each its own length and shape). Pinch to zoom in on it,
+drag to look around, and tap a player to follow them (tap them again to stop).
 The gun in your hands has the same chunky pixel look as you, in the game, the Bag and the title.
 
 **Pause.** ⏸ (top right) pauses: Resume, Save, a Volume slider for the whole game, and Exit

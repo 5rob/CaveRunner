@@ -89,14 +89,16 @@ function terrain(S) {
   return C.cv;
 }
 
-/** @param {CanvasRenderingContext2D} ctx @param {import('../../art/titlescene.js').TitleScene} S @param {number} cw css width @param {number} ch css height */
-export function titleDraw(ctx, S, cw, ch) {
+// cam: the title's camera (art/titlescene.js titleCam: pinch zoom, pan, following a player), none: the whole screen
+/** @param {CanvasRenderingContext2D} ctx @param {import('../../art/titlescene.js').TitleScene} S @param {number} cw css width @param {number} ch css height @param {import('../../art/titlescene.js').TitleCam} [cam] */
+export function titleDraw(ctx, S, cw, ch, cam) {
   const k = cw / TITLE_VW;
   ctx.fillStyle = 'rgb(' + T.bg.join(',') + ')'; ctx.fillRect(0, 0, cw, ch);
   ctx.save();
   const sx = (S.rnd() - 0.5) * S.shake * k, sy = (S.rnd() - 0.5) * S.shake * k;
   ctx.translate(sx, sy);
   ctx.scale(k, k);
+  if (cam && cam.z !== 1) { ctx.translate(TITLE_VW / 2, cam.ay); ctx.scale(cam.z, cam.z); ctx.translate(-cam.x, -cam.y); }
   // the terrain: the ring of columns, in (up to) two pieces
   const cv = terrain(S), N = S.ncol, c0 = Math.floor(S.scroll / TCELL) - 2, n = Math.ceil(TITLE_VW / TCELL) + 4;
   ctx.imageSmoothingEnabled = false;

@@ -5,6 +5,20 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v0.0.168 — the title: random zones each visit; pinch zoom, pan, tap a player to follow
+Waiting on the owner's OK (a minor update).
+- **Zones** (art/titlescene.js `titlePlan`, `S.zp`): made from the scene's seed as it scrolls, each zone a random kind
+  (none of the last two again), its own length (`TITLE_ZLEN` 200–360), its own roof and floor (height, hilliness,
+  stretch, phase; blended over `ZMIX` 40 at the borders, no steps) and plant/web density. `titleZone`, `titleZoneAt`,
+  `titleCeil`, `titleFloor` take the scene (its plan); `titleZoneSpan` gives the zone record. The title picks a
+  random seed each visit (tests: 7, or `window.__TITLE_SEED`).
+- **Camera** (`titleCam`, `camClamp`, `camAt`, `camStep`, `camTap`; gestures in ui/title.js; `titleDraw`'s `cam`):
+  two fingers pinch (1×–`TITLE_ZMAX` 4×), one drags, a tap on a player follows them (zooming in to `TITLE_ZLOCK` 2×),
+  a tap on them again lets go (the zoom stays: pinch out). It zooms about the action band's middle and never shows
+  past the zoom-1 view (the screen's top down to the menu). Dragging does nothing while following.
+- Tests: slots (+ random zones, no steps at borders, the camera), browser title (real touches: pinch, drag, tap);
+  screenshots `node tools/titlecamshots.js`.
+
 ## v0.0.167 — the title's players collide and keep a little apart
 Released 2026-10-08 (owner OK'd; a minor update).
 - `separate` (after every player's step): within `TITLE_SEP` (24, height counted at 0.6) they're eased apart (sideways

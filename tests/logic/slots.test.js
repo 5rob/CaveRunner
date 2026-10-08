@@ -48,13 +48,13 @@ for (let i = 0; i < 60 * 40; i++) {
     if (dx < 12 - 0.5 && dy < 22 - 0.5) overlap++;
     if (Math.hypot(dx, dy * 0.6) < 14) tight++;
   }
-  zones.add(titleZone(S.scroll + r.x)); for (const q of S.runners) kits.add(q.kit.name);
+  zones.add(titleZone(S.scroll + r.x, S)); for (const q of S.runners) kits.add(q.kit.name);
   for (const f of S.foes) {
     const id = f.k.id;
     seenKinds.add(id);
     // where each one first shows: a zone that's home to it (TITLE_HOME); jellyfish stay out of the works
-    if (!born.has(f)) { born.add(f); const z = titleZone(f.x); if (!G.TITLE_HOME[z].some(h => h[0] === id)) badHome.push([id, z]); }
-    if (id === 'meduusa' && f.x - S.scroll > 0 && f.x - S.scroll < 220) { jellyIn++; const z = titleZone(f.x); if ((z === 'timber' || z === 'paved') && Math.min(f.x % 280, 280 - f.x % 280) > 60) jellyWorks++; }
+    if (!born.has(f)) { born.add(f); const z = titleZone(f.x, S); if (!G.TITLE_HOME[z].some(h => h[0] === id)) badHome.push([id, z]); }
+    if (id === 'meduusa' && f.x - S.scroll > 0 && f.x - S.scroll < 220) { jellyIn++; const Z = G.titleZoneSpan(f.x, S); if ((Z.z === 'timber' || Z.z === 'paved') && Math.min(f.x - Z.x0, Z.x1 - f.x) > 60) jellyWorks++; }
     // run by the game's brains: each has its brain state (e.je / e.sp / e.ra) after its first frame
     if (born.has(f) && (id === 'meduusa' ? f.je : id === 'hamahakki' ? f.sp : f.ra)) brains++; else noBrain++;
     // the game's aggro: never still hunting past its reach × loseAggro
@@ -111,20 +111,49 @@ check('every gun is a real gun skin, a real shot and real modifiers', TITLE_SHOT
 }
 check('four players, each its own colour, spread out', S.runners.length === 4 && new Set(S.runners.map(q => q.col)).size === 4
   && S.runners.every(q => q.x > 0 && q.x < 220 && q.y > S.top - 40 && q.y < S.bot), S.runners.map(q => [q.x, q.y]));
-check('it travels through the zones', ['moss', 'webs', 'timber', 'paved', 'grove'].every(z => zones.has(z)), [...zones]);
+// every zone it passed through (the plan's, from the start to where it got to)
+const passed = new Set();
+for (let Z = G.titleZoneSpan(S.runner.x, S); Z.x0 < S.scroll + S.runner.x; Z = G.titleZoneSpan(Z.x1 + 1, S)) passed.add(Z.z);
+check('it travels through the zones', passed.size >= 3 && [...passed].every(z => zones.has(z)), { zones: [...zones], passed: [...passed] });
 // v0.0.161 feedback: ragged zone borders, a low timber works, the spiders' webs
 {
-  const { titleZoneAt, ZBLEND, TITLE_ZLEN, TIMBER_H, titleCeil, titleFloor } = G;
+  const { titleZoneAt, titleZoneSpan, ZBLEND, TIMBER_H, titleCeil, titleFloor } = G;
+  const B = titleScene(470, 3, 139, 295);
   let near = 0, frayed = 0, far = 0, wrong = 0;
-  for (let wx = 0; wx < TITLE_ZLEN * 5; wx += 2) for (let y = 140; y < 300; y += 4) {
-    const d = Math.min(wx % TITLE_ZLEN, TITLE_ZLEN - wx % TITLE_ZLEN);
-    if (d < ZBLEND * 0.6) { near++; if (titleZoneAt(wx, y) !== titleZone(wx)) frayed++; }
-    if (d > ZBLEND + 8) { far++; if (titleZoneAt(wx, y) !== titleZone(wx)) wrong++; }
+  for (let wx = 0; wx < 1500; wx += 2) for (let y = 140; y < 300; y += 4) {
+    const Z = titleZoneSpan(wx, B), d = Math.min(wx - Z.x0, Z.x1 - wx);
+    if (d < ZBLEND * 0.6) { near++; if (titleZoneAt(wx, y, B) !== titleZone(wx, B)) frayed++; }
+    if (d > ZBLEND + 8) { far++; if (titleZoneAt(wx, y, B) !== titleZone(wx, B)) wrong++; }
   }
   check('zone borders fray (noise), and only near the border', frayed / near > 0.15 && wrong === 0, { frayed, near, wrong, far });
-  const B = { top: 139, bot: 295 }, mid = TITLE_ZLEN * 2.5;
-  check('the timber works are low: the frames\' height', titleZone(mid) === 'timber' && Math.abs(titleFloor(mid, B) - titleCeil(mid, B) - TIMBER_H) < 0.01,
+  let T = titleZoneSpan(0, B);
+  while (T.z !== 'timber') T = titleZoneSpan(T.x1 + 1, B);
+  const mid = (T.x0 + T.x1) / 2;
+  check('the timber works are low: the frames\' height', Math.abs(titleFloor(mid, B) - titleCeil(mid, B) - TIMBER_H) < 0.01,
     titleFloor(mid, B) - titleCeil(mid, B));
+}
+// v0.0.168 (owner): every zone its own: a random order (none of the last two again), lengths, roof and floor
+{
+  const { titleZoneSpan, titleCeil, titleFloor, TITLE_ZLEN, TITLE_ZONES } = G;
+  const A = titleScene(470, 11, 139, 295), Bs = titleScene(470, 12, 139, 295);
+  const zs = []; for (let Z = titleZoneSpan(0, A); zs.length < 30; Z = titleZoneSpan(Z.x1 + 1, A)) zs.push(Z);
+  const order = zs.map(Z => Z.z).join(' ');
+  check('the zones come in a random order, none twice in three', zs.every((Z, i) => i < 2 || (Z.z !== zs[i - 1].z && Z.z !== zs[i - 2].z))
+    && !/^(\S+ \S+ \S+ \S+ \S+) \1/.test(order) && TITLE_ZONES.every(z => zs.some(Z => Z.z === z)), order);
+  const lens = zs.map(Z => Math.round(Z.x1 - Z.x0));
+  check('each zone its own length', new Set(lens).size > 20 && lens.every(l => l >= TITLE_ZLEN[0] && l <= TITLE_ZLEN[1] + 1), lens.slice(0, 8));
+  const o2 = []; for (let Z = titleZoneSpan(0, Bs); o2.length < 10; Z = titleZoneSpan(Z.x1 + 1, Bs)) o2.push(Z.z);
+  check('another seed, another order', o2.join(' ') !== zs.slice(0, 10).map(Z => Z.z).join(' '), o2);
+  // two moss zones' roof lines differ (their own hills), and the roof and floor stay joined across every border
+  const mz = zs.filter(Z => Z.z === 'moss').slice(0, 2), prof = Z => Array.from({ length: 20 }, (_, i) => titleCeil(Z.x0 + 50 + i * 5, A) - titleCeil(Z.x0 + 50, A));
+  const diff = mz.length === 2 ? prof(mz[0]).reduce((a, v, i) => a + Math.abs(v - prof(mz[1])[i]), 0) : 0;
+  let jump = 0, room = Infinity;
+  for (let wx = -40; wx < zs[29].x0; wx += 0.5) {
+    jump = Math.max(jump, Math.abs(titleCeil(wx + 0.5, A) - titleCeil(wx, A)), Math.abs(titleFloor(wx + 0.5, A) - titleFloor(wx, A)));
+    room = Math.min(room, titleFloor(wx, A) - titleCeil(wx, A));
+  }
+  check('two moss zones, two roof shapes', diff > 20, diff);
+  check('roof and floor have no steps at the borders, and room to run', jump < 3 && room >= 30, { jump, room });
 }
 check('each creature comes only into its own zones', badHome.length === 0 && born.size > 20, { bad: badHome.slice(0, 5), born: born.size });
 check('jellyfish stay out of the works', jellyWorks / jellyIn < 0.02, { jellyWorks, jellyIn });
@@ -241,7 +270,10 @@ check('moss catches fire', !!mossAt && C.fire.length > 0, mossAt);
   check('burning silk lights the web it hangs along', caught(L2), L2.out);
   check('…but not one further off', !caught(L3), L3.out);
   // a web from the roof to the roof, lit: two burning halves hang from its ends; one in the air: they fall
-  const K = titleScene(470, 7, 139, 295);
+  // (a seed whose cave there is a natural one: a works' roof is low, timber in the way)
+  let ks = 7;
+  while (['timber', 'paved'].some(z => [60, 100].some(x => titleZone(x + 30 / 60 * 34, titleScene(470, ks, 139, 295)) === z))) ks++;
+  const K = titleScene(470, ks, 139, 295);
   quiet(K, 30);
   const x0 = K.scroll + 60, x1 = K.scroll + 100, c0 = G.titleCeil(x0, K) + 0.6, c1 = G.titleCeil(x1, K) + 0.6;
   const R1 = web(K, x0, c0, x1, c1), A1 = web(K, x0, 225, x1, 225);
@@ -301,6 +333,31 @@ check('moss catches fire', !!mossAt && C.fire.length > 0, mossAt);
 const A = titleScene(470, 3, 139, 295), A2 = titleScene(470, 3, 139, 295);
 for (let i = 0; i < 300; i++) { titleStep(A, 1 / 60); titleStep(A2, 1 / 60); }
 check('same seed, same scene', A.kills === A2.kills && A.runner.x === A2.runner.x && A.carved === A2.carved);
+
+// v0.0.168 (owner): the title's camera: zoom 1..TITLE_ZMAX, never past the screen's box; a tap on a player
+// follows them (zooming in), a tap on them again lets go; a tap on nothing does nothing
+{
+  const { titleCam, camClamp, camAt, camStep, camTap, TITLE_VW, TITLE_ZMAX, TITLE_ZLOCK } = G;
+  const K = titleScene(470, 5, 139, 295), C = titleCam(217, 300);
+  K.still = true;
+  C.z = 9; C.x = -50; C.y = 9999; camClamp(C);
+  const inBox = () => { const a = camAt(C, 0, 0), b = camAt(C, TITLE_VW, 300); return a.x >= -1e-9 && a.y >= -1e-9 && b.x <= TITLE_VW + 1e-9 && b.y <= 300 + 1e-9; };
+  check('the camera zooms no further than TITLE_ZMAX and stays in the box', C.z === TITLE_ZMAX && inBox(), C);
+  C.z = 0.2; camClamp(C);
+  check('…and no further out than the whole screen', C.z === 1 && C.x === TITLE_VW / 2 && C.y === 217, C);
+  const tl = camAt(C, 0, 0), br = camAt(C, TITLE_VW, 300);
+  check('at zoom 1 the screen is the box', Math.abs(tl.x) < 1e-9 && Math.abs(tl.y) < 1e-9 && Math.abs(br.x - TITLE_VW) < 1e-9 && Math.abs(br.y - 300) < 1e-9);
+  const miss = camTap(C, K, 3, 3, 4), lock0 = C.lock;
+  const r = K.runners[2], hit = camTap(C, K, r.x + 6, r.y + 11, 4);
+  let inside = true;
+  for (let i = 0; i < 120; i++) { titleStep(K, 1 / 60); camStep(C, K, 1 / 60); inside = inside && inBox(); }
+  const cx = r.x + 6, cy = r.y + 11, gap = Math.hypot(C.x - cx, C.y - cy), edge = TITLE_VW / 2 / C.z;
+  check('a tap on nothing does nothing', miss === null && lock0 === -1);
+  check('a tap on a player follows them, zoomed in, in the box', hit === r && C.lock === 2 && Math.abs(C.z - TITLE_ZLOCK) < 0.05 && inside
+    && (gap < 2 || cx < edge || cx > TITLE_VW - edge || cy < 217 / C.z || cy > 300 - 83 / C.z), { lock: C.lock, z: C.z, gap });
+  camTap(C, K, r.x + 6, r.y + 11, 4);
+  check('a tap on them again lets go', C.lock === -1);
+}
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
