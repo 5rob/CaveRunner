@@ -4,6 +4,7 @@
 // jetpack, the vines); this plays them every frame and clears the list. The ear is the camera's middle: the
 // title is drawn at half the game's scale, so a screen unit counts as two of the game's, more when zoomed in.
 
+import { Music } from '../audio/music.js';
 import { SFX } from '../audio/sfx.js';
 import { TCELL } from '../art/titlescene.js';
 import { PH, PW } from '../core/consts.js';
@@ -23,6 +24,7 @@ export function titleSound(S, C, L, dt) {
   SFX.ear(0, 0);
   SFX.tick();
   if (SFX.ambience !== THEMES[0].name) SFX.setAmbience(THEMES[0].name);
+  if (!Music.playing) Music.start();            // the title's track (audio/song.js)
   SFX.ambTick(dt);
   const k = SCALE * C.z;
   /** @param {number} x */
@@ -71,9 +73,10 @@ export function titleSound(S, C, L, dt) {
   }
 }
 
-// the title closes: its loops go (the engine keeps at most 8)
+// the title closes: its loops go (the engine keeps at most 8), the music fades out
 /** @param {{ jets?: any[], fire?: any }} L */
 export function titleSoundStop(L) {
+  Music.stop();
   for (const h of [...(L.jets || []), L.fire]) if (h) h.stop();
   L.jets = []; L.fire = null;
 }

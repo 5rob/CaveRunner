@@ -5,6 +5,9 @@
 | `recipes.js` | The pure part (tested): `SPELL_VOICE` (spell id → voice; trigger variants use their `base`), `shotSound(sh)` (a recipe from a shot's *final* stats: pitch from speed/size, volume from dmg×count, flags for homing, grit, pierce, bounce, pellets), `BODY_VOICE`/`CREATURE_TONE` + `creatureSound(k)`, `AMB_EVENTS`, `FX_VOL`/`fxVolKey`, `knob`, `jetPitch`, `rustleStep` |
 | `sfx.js` | `SFX`, the engine: a lazy `AudioContext` made in `SFX.unlock()` (App calls it on the first pointerdown/keydown), a master compressor, two buses (sfx = `DEV.vol`, ambience = `DEV.vol × DEV.amb`), distance/pan/far-muffle round `SFX.ear`, the one-shot table `FX` (`SFX.fx(name, x, y, a)`, per-name gaps `FX_GAP`, `SFX.FX_NAMES`), loops, `setAmbience(themeName)` |
 
+| `song.js` | The title's music as data (pure, tested by `song`): A minor, Am F Dm E, 100 bpm; `songStep(s)` = what plays on 16th step s (pads, bass, kick, snare, hats, riser, arps, guitar); the solo in `SOLO` (note:16ths, `b` bend, `~` vibrato); `harmonyOf` (the second guitar, a third above); loops bars 8–39 |
+| `music.js` | The synths that play it: `makeMusic(ac, dest)` (any context: tools/musicwav.js renders it offline to a .wav/.m4a), and `Music` (start/stop, live on `SFX.musicOut`, the Music slider; the title starts it, `ui/titlesound.js`) |
+
 The per-theme ambience table `AMBIENCE` is `data/themes.js`. Calls into `SFX` are one-liners at
 the events in `game/` (`SFX.cast` in `cast`/`releaseAt`, `SFX.boom` in `explode`, `SFX.creature(k,
 'alert' | 'idle' | 'fire' | 'charge' | 'hurt' | 'die' | 'bite' | 'fuse')`, `SFX.ui(…)`, `SFX.fx(…)`).
@@ -32,5 +35,7 @@ the events in `game/` (`SFX.cast` in `cast`/`releaseAt`, `SFX.boom` in `explode`
 - **Rustle anti-spam:** `rustleStep(st, dt, touching, entered, speed)` — entering a plant or
   grabbing rustles at once, moving inside every `(0.42 − 0.24·speed)·rand` s, standing still is
   silent, and every rustle starts a random pause (≥0.16s), so a clump can't machine-gun.
-- Tests: `tests/logic/sound.test.js`, `tests/browser/sound.test.js` (plays every voice and every
+- **Volumes (v0.0.174):** Master (`setVolume`), FX (`setFxVolume`: the sfx and ambience buses) and Music (`setMusicVolume`: the music bus), each in localStorage (`VOL_KEY`, `FXVOL_KEY`, `MUSVOL_KEY`); the title's ⚙ settings.
+- **Writing music:** change `song.js` (a bar of the solo must add up to 16), listen with `node tools/musicwav.js`.
+- Tests: `tests/logic/sound.test.js`, `tests/logic/song.test.js`, `tests/browser/sound.test.js` (plays every voice and every
   `FX_NAMES` entry, the Black Hole loop's lifecycle).

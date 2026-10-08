@@ -882,6 +882,8 @@ export const SFX = (() => {
       try { localStorage.setItem(MUSVOL_KEY, String(musVol)); } catch (_) {}
     },
     get musicVolume() { return musVol; },
+    get ctx() { return ac; },              // the context and the music bus, for audio/music.js
+    get musicOut() { return musicBus; },
     get ready() { return !!live(); },
     get ambience() { return amb ? amb.name : null; },
     get loops() { return loops.size; },

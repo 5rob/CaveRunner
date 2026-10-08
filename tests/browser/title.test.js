@@ -78,11 +78,12 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   let snd = null;
   for (let i = 0; i < 20; i++) {
     await page.waitForTimeout(150);
-    snd = await page.evaluate(() => ({ ready: SFX.ready, played: SFX.stats.played, errors: SFX.stats.errors.slice(), loops: SFX.loops, amb: SFX.ambience }));
+    snd = await page.evaluate(() => ({ ready: SFX.ready, played: SFX.stats.played, errors: SFX.stats.errors.slice(), loops: SFX.loops, amb: SFX.ambience, music: Music.playing, mstep: Music.step }));
     if (snd.ready && snd.played > 5) break;
   }
   check('the title plays its sounds (the scene\'s, the game\'s voices)', snd.ready && snd.played > 5 && !snd.errors.length, snd);
   check('the jetpacks and the cave\'s ambience run', snd.loops >= 4 && snd.amb === 'Mossy caves', snd);
+  check('the title track plays', snd.music && snd.mstep > 0, snd);
 
   // the buttons (v0.0.174): ▶ and ⚙ square, ⚙ left, ▶ right; ⚙ turns the window into the settings
   const bx = await page.evaluate(() => ['.tgear', '.tstart'].map(s => { const r = document.querySelector(s).getBoundingClientRect(); return [r.left, r.width, r.height]; }));
