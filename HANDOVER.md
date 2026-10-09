@@ -10,6 +10,7 @@ mock-up `docs/autobattler-mockup.png`). Progress: AUTOBATTLER.md's Log. `main` k
 - **Stage 0 done (v1.0.0):** the branch deploys to `https://5rob.github.io/CaveRunner/auto/` and builds the
   CaveRunner Auto APK (release `app-auto`); `android/README.md` has how. The only change on `main` was the shared
   workflow file. The owner allowed `autobattler` in Settings → Environments → github-pages (needed for the deploy).
+- **Stage 1 done (v1.0.1):** the pure run model, `src/auto/` (README there). Next: stage 2, the four-section screen.
 
 ## NEXT (as of v0.0.176, 2026-10-09)
 

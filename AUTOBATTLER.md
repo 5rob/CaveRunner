@@ -343,6 +343,7 @@ chest slow ×0.5. Grab radius 35% of a tile.
 | Stage | State | Version | Notes |
 |---|---|---|---|
 | 0 | done | v1.0.0 | Done by the PM (small plumbing). Workflow on both branches (deploys both; APK `app-auto` via `-PcaveAuto=true`). Pages env: owner allowed `autobattler`. |
+| 1 | done | v1.0.1 | Agent, ~8 min. Names clash-free: `autoGunPrice`/`autoExoPrice`, `loadAutoRun`/`saveAutoRun`. Exo mods stack in the bag by cat+tier, perks by id; fitting onto a full slot swaps; `fitPerk` refuses `st_*`; knobs `autoGunBase/Grow/ExoPrice/Scrap/Red/Green/ModGold`. |
 
 ## 8. The PM's kick-start prompt
 
