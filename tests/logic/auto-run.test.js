@@ -185,6 +185,23 @@ check('scrap follows its Dev knob', (() => { const o = G.DEV.autoScrap; G.DEV.au
 }
 
 // ---- Dev knobs ----
+// ---- between levels (stage 4b) ----
+{
+  const r = G.newRun(5);
+  check('newRun keeps its seed; a random one without', r.seed === 5 && G.newRun().seed >= 1);
+  const s1 = G.levelSeed(r);
+  check('levelSeed: the same run and tier, the same level; the next tier another', s1 === G.levelSeed(G.newRun(5)) && s1 >= 1
+    && (r.tier = 2, G.levelSeed(r) !== s1) && G.levelSeed({ tier: 1, players: [], bag: [] }) >= 1);
+  r.tier = 1;
+  r.players.push(G.newPlayer(1));
+  r.players[0].hp = 3; r.players[1].hp = 0; r.players[1].alive = false;
+  G.healRun(r);
+  check('healRun: everyone full and alive', r.players.every(p => p.alive && p.hp === G.playerStats(p).maxHp) && r.players[0].hp === 100);
+  r.players[0].hp = 9;
+  G.levelCleared(r);
+  check('levelCleared: tier + 1, healed', r.tier === 2 && r.players[0].hp === 100);
+}
+
 check('the Auto tab holds the auto group', G.DEV_TABS.some(t => t[0] === 'auto' && t[2].includes('auto'))
   && G.DEV_GROUPS.some(g => g[0] === 'auto') && G.DEV_META.filter(m => m.g === 'auto').length >= 7);
 

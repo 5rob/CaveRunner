@@ -42,9 +42,23 @@ export function newPlayer(i) {
     perks: [null, null, null, null, null, null], hp: PLAYER_HP, alive: true };
 }
 
-/** tier 1, one player, an empty bag (the starter kit is stage 5) @returns {AutoRun} */
-export function newRun() {
-  return { tier: 1, players: [newPlayer(0)], bag: Array(BAG_SLOTS).fill(null) };
+/** tier 1, one player, an empty bag (the starter kit is stage 5); seed: the run's levels (levelSeed)
+ * @param {number} [seed] @returns {AutoRun} */
+export function newRun(seed) {
+  return { tier: 1, players: [newPlayer(0)], bag: Array(BAG_SLOTS).fill(null), seed: seed || 1 + Math.floor(Math.random() * 1e6) };
+}
+
+// ---- between levels (stage 4b) ----
+/** every player back to full health and alive (each level's start, and home to the hub) @param {AutoRun} run */
+export function healRun(run) {
+  for (const p of run.players) { p.hp = playerStats(p).maxHp; p.alive = true; }
+}
+/** the run's level at its tier: the same run's tier n is always the same level @param {AutoRun} run */
+export const levelSeed = run => 1 + ((run.seed || 1) * 7919 + run.tier * 104729) % 999983;
+/** the level's boss is down and the team is home: tier + 1, healed @param {AutoRun} run */
+export function levelCleared(run) {
+  run.tier++;
+  healRun(run);
 }
 
 // ---- the bag ----

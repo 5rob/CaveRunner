@@ -34772,8 +34772,19 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       alive: true
     };
   }
-  function newRun() {
-    return { tier: 1, players: [newPlayer(0)], bag: Array(BAG_SLOTS).fill(null) };
+  function newRun(seed) {
+    return { tier: 1, players: [newPlayer(0)], bag: Array(BAG_SLOTS).fill(null), seed: seed || 1 + Math.floor(Math.random() * 1e6) };
+  }
+  function healRun(run) {
+    for (const p of run.players) {
+      p.hp = playerStats(p).maxHp;
+      p.alive = true;
+    }
+  }
+  var levelSeed = (run) => 1 + ((run.seed || 1) * 7919 + run.tier * 104729) % 999983;
+  function levelCleared(run) {
+    run.tier++;
+    healRun(run);
   }
   function itemKey(it) {
     if (it.kind === "gold" || it.kind === "red" || it.kind === "green") return it.kind;
@@ -34983,6 +34994,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var HUB_ROOM = 104;
   var HUB_WALL = 4;
   var HUB_ARRIVE = 1;
+  var HUB_LEAVE = 0.7;
   var HUB_FLASH = 0.4;
   var HUB_ZAP = 1.4;
   var HUB_PAD = 14;
@@ -35085,7 +35097,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   function hubStick(S2, st) {
     const H = hubState(S2);
-    if (H) H.stick = { active: !!st.active, nx: st.nx || 0, ny: st.ny || 0, mag: st.mag || 0, dy: st.dy || 0 };
+    if (H && H.exitT < 0) H.stick = { active: !!st.active, nx: st.nx || 0, ny: st.ny || 0, mag: st.mag || 0, dy: st.dy || 0 };
   }
   var push = (st) => st.active && st.mag > DEAD ? (st.mag - DEAD) / (1 - DEAD) : 0;
   function walkTo(x, tx2, dt, k) {
@@ -35161,11 +35173,37 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   function hubExit(S2) {
     const H = hubState(S2);
-    if (!H || !hubAtExit(S2)) return false;
+    if (!H || H.exitT >= 0 || !hubAtExit(S2)) return false;
     H.exitT = S2.t;
     S2.flash = Math.max(S2.flash, 0.5);
     S2.snd.push({ k: "arc", x: hubStopX("exit"), y: H.fy - PH / 2 });
+    for (const r of S2.runners) {
+      const cx = r.x + PW / 2, cy = r.y + PH / 2;
+      for (let k = 0; k < 12; k++) {
+        const a = S2.rnd() * Math.PI * 2, sp = 20 + S2.rnd() * 60;
+        S2.parts.push({
+          x: cx,
+          y: cy,
+          vx: Math.cos(a) * sp,
+          vy: Math.sin(a) * sp - 20,
+          life: 0.5,
+          max: 0.5,
+          r: 1.2,
+          col: k % 3 ? "#7cc8ff" : "#e6f6ff",
+          kind: "spark"
+        });
+      }
+      r.hide = true;
+      r.vx = 0;
+      r.vy = 0;
+      r.flame = 0;
+    }
+    H.stick = { active: false, nx: 0, ny: 0, mag: 0, dy: 0 };
     return true;
+  }
+  function hubLeft(S2) {
+    const H = hubState(S2);
+    return !!H && H.exitT >= 0 && S2.t - H.exitT >= HUB_LEAVE;
   }
   function hubExitFlash(S2) {
     const H = hubState(S2);
@@ -36956,6 +36994,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       c.dataset.kills = String(S2.kills);
       c.dataset.t = S2.t.toFixed(2);
       c.dataset.cam = [C.z.toFixed(2), C.x.toFixed(1), C.y.toFixed(1), C.lock].join(" ");
+      if (o.next && o.next(S2)) S2 = null;
     };
     raf = requestAnimationFrame(frame);
     const P2 = /* @__PURE__ */ new Map();
@@ -37043,6 +37082,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const cvs = useRef(null);
     const scene = useRef(null);
     const input = useRef({ saveRun: () => saveAutoRun(run) });
+    const where = useRef(window.__AUTO_LEVEL ? "level" : "hub");
     useEffect(() => {
       const c = cvs.current;
       if (!c) return void 0;
@@ -37050,8 +37090,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         size: () => ({ w: c.clientWidth, hh: c.clientHeight }),
         make: (w, hh, seed) => {
           const k = w / TITLE_VW, vh = hh / k;
-          if (window.__AUTO_LEVEL) {
-            const S3 = levelScene(vh, window.__AUTO_LEVEL, run.players.length);
+          if (where.current === "level") {
+            healRun(run);
+            saveAutoRun(run);
+            const S3 = levelScene(vh, window.__AUTO_LEVEL || levelSeed(run), run.players.length);
             scene.current = S3;
             return { S: S3, C: titleCam(vh / 2, vh), warm: 0 };
           }
@@ -37064,7 +37106,22 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           C.lock = 0;
           return { S: S2, C, warm: 0 };
         },
-        paused: () => pausedRef.current
+        paused: () => pausedRef.current,
+        // through the exit pad: to the level; the level's exit pad: home, tier + 1, healed (saved)
+        next: (S2) => {
+          if (where.current === "hub" && hubLeft(S2)) {
+            where.current = "level";
+            return true;
+          }
+          if (where.current === "level" && levelDone(S2)) {
+            where.current = "hub";
+            window.__AUTO_LEVEL = 0;
+            levelCleared(run);
+            saveAutoRun(run);
+            return true;
+          }
+          return false;
+        }
       });
     }, []);
     const tap = (fn) => (e) => {

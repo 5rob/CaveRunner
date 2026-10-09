@@ -19,13 +19,15 @@ import { titleSound, titleSoundStop } from './titlesound.js';
  *   make: (w: number, hh: number, seed: number) => { S: TitleScene, C: TitleCam, warm?: number },
  *   over?: (ctx: CanvasRenderingContext2D, S: TitleScene, w: number, hh: number) => void,
  *   paused?: () => boolean,
+ *   next?: (S: TitleScene) => boolean,
  * }} SceneOpts
  */
 
 // Start the scene on canvas c; returns the stop function (for a useEffect's cleanup).
 // size: the canvas's css size now; make: a new scene and camera for that size (called again on a resize; warm: how
 // many 1/30 s steps it opens on, default 40; the hub's teleport-in opens on 0);
-// over: paints on top (the title's words); paused: true holds the scene (still painted).
+// over: paints on top (the title's words); paused: true holds the scene (still painted); next: true after a step
+// throws the scene away and calls make again (the auto screen's hub to level and back).
 /** @param {HTMLCanvasElement} c @param {SceneOpts} o @returns {() => void} */
 export function runScene(c, o) {
   const ctx = c.getContext('2d');
@@ -62,6 +64,7 @@ export function runScene(c, o) {
     c.dataset.kills = String(S.kills);
     c.dataset.t = S.t.toFixed(2);
     c.dataset.cam = [C.z.toFixed(2), C.x.toFixed(1), C.y.toFixed(1), C.lock].join(' ');
+    if (o.next && o.next(S)) S = null;          // make a new one next frame (CaveRunner Auto: hub to level and back)
   };
   raf = requestAnimationFrame(frame);
   /** @type {Map<number, { x: number, y: number, x0: number, y0: number, t: number }>} */

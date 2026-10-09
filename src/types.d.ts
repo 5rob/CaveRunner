@@ -899,7 +899,7 @@ interface RunPlayer {
   hp: number; alive: boolean;
 }
 /** the run: newRun */
-interface AutoRun { tier: number; players: RunPlayer[]; bag: (BagItem | null)[] }
+interface AutoRun { tier: number; players: RunPlayer[]; bag: (BagItem | null)[]; seed?: number }
 /** exoBonus: what a player's exo mods add up to */
 interface ExoBonus { hpAdd: number; walk: number; fuel: number; refuel: number; carrot: number }
 /** localStorage, or a fake one */

@@ -79,6 +79,19 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   await page.locator('.abtn.aa').dispatchEvent('pointerdown');
   check('A away from the exit does nothing', await page.evaluate(() => hubExitFlash(window.__title.S) === 0));
 
+  // stage 4b: A on the exit pad takes the team into the level; the level's exit pad brings it home, tier + 1, healed
+  await page.evaluate(() => { const S = window.__title.S, r = S.runners[0]; r.x = hubStopX('exit') - PW / 2; r.vx = 0; hubState(S).lx = hubStopX('exit'); });
+  await page.waitForTimeout(100);
+  await page.locator('.abtn.aa').dispatchEvent('pointerdown');
+  let lvl = false;
+  for (let i = 0; i < 60 && !lvl; i++) { await page.waitForTimeout(50); lvl = await page.evaluate(() => !!levelState(window.__title.S)); }
+  check('A on the exit pad: the level loads', lvl);
+  await page.evaluate(() => { const L = levelState(window.__title.S); L.phase = 'exit'; L.doneT = 0; });
+  let home = false;
+  for (let i = 0; i < 60 && !home; i++) { await page.waitForTimeout(50); home = await page.evaluate(() => !!hubState(window.__title.S)); }
+  check('the level exit pad: back in the hub, tier 2, saved', home && await page.evaluate(() => hubState(window.__title.S).tier === 2
+    && JSON.parse(localStorage.getItem('caverunner-auto-run')).run.tier === 2));
+
   // the bag scrolls
   const sc = await page.evaluate(() => { const b = document.querySelector('.abag'); const was = b.scrollTop; b.scrollTop = 9999; return { was, now: b.scrollTop, over: b.scrollHeight > b.clientHeight, ta: getComputedStyle(b).touchAction }; });
   check('the bag scrolls up and down (pan-y)', sc.over && sc.now > sc.was && sc.ta === 'pan-y', sc);

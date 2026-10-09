@@ -21,6 +21,7 @@ export const HUB_GAP = 100;           // stop to stop (a machine is 56 wide)
 export const HUB_ROOM = 104;          // the room's height, floor to roof (world units; a machine is 84 tall)
 export const HUB_WALL = 4;            // the end walls' thickness (cells)
 export const HUB_ARRIVE = 1;          // the enter pad charges this long before the player comes through (s)
+export const HUB_LEAVE = 0.7;         // from A at the exit pad to the level (s)
 export const HUB_FLASH = 0.4;         // the flash as he comes through (s)
 export const HUB_ZAP = 1.4;           // the pad crackles this long after (s)
 export const HUB_PAD = 14;            // the exit pad: the leader's middle within this of its middle (world units)
@@ -137,7 +138,7 @@ export function hubCharge(S) {
 /** @param {import('../art/titlescene.js').TitleScene} S @param {HubStick} st */
 export function hubStick(S, st) {
   const H = hubState(S);
-  if (H) H.stick = { active: !!st.active, nx: st.nx || 0, ny: st.ny || 0, mag: st.mag || 0, dy: st.dy || 0 };
+  if (H && H.exitT < 0) H.stick = { active: !!st.active, nx: st.nx || 0, ny: st.ny || 0, mag: st.mag || 0, dy: st.dy || 0 };
 }
 // the push past the dead zone (0-1), as game/systems/player.js
 /** @param {HubStick} st */
@@ -208,10 +209,27 @@ export function hubAtExit(S) {
 /** @param {import('../art/titlescene.js').TitleScene} S */
 export function hubExit(S) {
   const H = hubState(S);
-  if (!H || !hubAtExit(S)) return false;
+  if (!H || H.exitT >= 0 || !hubAtExit(S)) return false;
   H.exitT = S.t; S.flash = Math.max(S.flash, 0.5);
   S.snd.push({ k: 'arc', x: hubStopX('exit'), y: H.fy - PH / 2 });
+  // everyone goes in the flash (stage 4b), sparks where each stood
+  for (const r of S.runners) {
+    const cx = r.x + PW / 2, cy = r.y + PH / 2;
+    for (let k = 0; k < 12; k++) {
+      const a = S.rnd() * Math.PI * 2, sp = 20 + S.rnd() * 60;
+      S.parts.push({ x: cx, y: cy, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 20, life: 0.5, max: 0.5, r: 1.2,
+        col: k % 3 ? '#7cc8ff' : '#e6f6ff', kind: 'spark' });
+    }
+    r.hide = true; r.vx = 0; r.vy = 0; r.flame = 0;
+  }
+  H.stick = { active: false, nx: 0, ny: 0, mag: 0, dy: 0 };
   return true;
+}
+// the team has gone through the exit pad and the flash has faded: the screen loads the level (stage 4b)
+/** @param {import('../art/titlescene.js').TitleScene} S */
+export function hubLeft(S) {
+  const H = hubState(S);
+  return !!H && H.exitT >= 0 && S.t - H.exitT >= HUB_LEAVE;
 }
 // what's left of the exit pad's flash (0-1)
 /** @param {import('../art/titlescene.js').TitleScene} S */

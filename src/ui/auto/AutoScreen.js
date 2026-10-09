@@ -11,11 +11,11 @@
 import { SFX } from '../../audio/sfx.js';
 import { TITLE_VW, titleCam } from '../../art/titlescene.js';
 import { DEAD } from '../../core/consts.js';
-import { HUB_W, hubExit, hubScene, hubStick, hubStopX } from '../../auto/hub.js';
-import { levelHold, levelScene } from '../../auto/level.js';
+import { HUB_W, hubExit, hubLeft, hubScene, hubStick, hubStopX } from '../../auto/hub.js';
+import { levelDone, levelHold, levelScene } from '../../auto/level.js';
 import { MODS } from '../../spells/mods.js';
 import { PERKS, STAT_PERKS } from '../../data/perks.js';
-import { BAG_SLOTS, EXO_GLYPH, EXO_STATS, MAX_PLAYERS, newRun } from '../../auto/run.js';
+import { BAG_SLOTS, EXO_GLYPH, EXO_STATS, MAX_PLAYERS, healRun, levelCleared, levelSeed, newRun } from '../../auto/run.js';
 import { loadAutoRun, saveAutoRun } from '../../auto/save.js';
 import { GunIcon } from '../editor.js';
 import { PauseMenu } from '../pause.js';
@@ -43,6 +43,8 @@ export function AutoScreen() {
   /** @type {{ current: import('../../art/titlescene.js').TitleScene | null }} */
   const scene = useRef(null);
   const input = useRef({ saveRun: () => saveAutoRun(run) });
+  // where the team is: the hub, or the run's level (A at the exit pad; the level's exit pad brings it home)
+  const where = useRef(window.__AUTO_LEVEL ? 'level' : 'hub');
   useEffect(() => {
     const c = cvs.current;
     if (!c) return undefined;
@@ -50,13 +52,15 @@ export function AutoScreen() {
       size: () => ({ w: c.clientWidth, hh: c.clientHeight }),
       make: (w, hh, seed) => {
         const k = w / TITLE_VW, vh = hh / k;
-        // (stage 4a, until 4b wires the hub to it) a test flag opens a level straight away: window.__AUTO_LEVEL = its seed
-        if (window.__AUTO_LEVEL) {
-          const S = levelScene(vh, window.__AUTO_LEVEL, run.players.length);
+        // the level: the run's (a test flag opens one straight away: window.__AUTO_LEVEL = its seed); full heal at its start
+        if (where.current === 'level') {
+          healRun(run);
+          saveAutoRun(run);
+          const S = levelScene(vh, window.__AUTO_LEVEL || levelSeed(run), run.players.length);
           scene.current = S;
           return { S, C: titleCam(vh / 2, vh), warm: 0 };
         }
-        // the run is in the hub (it always is, for now): the strip, the player teleporting in, the camera on him
+        // the hub: the strip, the players teleporting in, the camera on player 1
         const S = hubScene(vh, seed, run.players.length, run.tier);
         scene.current = S;
         const C = titleCam(vh / 2, vh);
@@ -64,6 +68,18 @@ export function AutoScreen() {
         return { S, C, warm: 0 };
       },
       paused: () => pausedRef.current,
+      // through the exit pad: to the level; the level's exit pad: home, tier + 1, healed (saved)
+      next: S => {
+        if (where.current === 'hub' && hubLeft(S)) { where.current = 'level'; return true; }
+        if (where.current === 'level' && levelDone(S)) {
+          where.current = 'hub';
+          window.__AUTO_LEVEL = 0;
+          levelCleared(run);
+          saveAutoRun(run);
+          return true;
+        }
+        return false;
+      },
     });
   }, []);
   /** @param {() => void} fn @returns {(e: any) => void} */

@@ -88,12 +88,15 @@ const goTo = (Sx, x, cap = 600) => { const Lx = Sx.runners[0]; let i = 0; for (;
 goTo(T, G.hubStopX('perk'));
 check('A away from the exit: nothing', G.hubAtExit(T) === false && G.hubExit(T) === false && G.hubExitFlash(T) === 0);
 check('he walked to the exit pad', goTo(T, G.hubStopX('exit')), cx(L));
-check('on the exit pad: A flashes it', G.hubAtExit(T) && G.hubExit(T) === true && G.hubExitFlash(T) > 0.9, G.hubExitFlash(T));
-step(T, 30);
-check('the flash fades', G.hubExitFlash(T) === 0);
 stick(T, 0, -1); step(T, 10);
-check('over the pad but in the air: no exit', !G.hubAtExit(T));
+check('over the pad but in the air: no exit', !G.hubAtExit(T) && G.hubExit(T) === false);
 stick(T, 0, 0, 0); step(T, 120);
+check('back on the exit pad', G.hubAtExit(T));
+check('on the exit pad: A flashes it, everyone goes', G.hubExit(T) === true && G.hubExitFlash(T) > 0.9 && T.runners.every(r => r.hide), G.hubExitFlash(T));
+check('not yet left (the flash), A again does nothing', !G.hubLeft(T) && G.hubExit(T) === false);
+const lx0 = L.x;
+stick(T, 1, 0); step(T, 30); stick(T, 0, 0, 0);
+check('the flash fades, the team has left; the stick no longer moves him', G.hubExitFlash(T) === 0 && G.hubLeft(T) && L.x === lx0);
 
 // 3 players: they line up behind the leader, in order, SP apart
 const P = G.hubScene(vh, 9, 3), PHs = G.hubState(P);
