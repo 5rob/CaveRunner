@@ -14,7 +14,9 @@ mock-up `docs/autobattler-mockup.png`). Progress: AUTOBATTLER.md's Log. `main` k
 - **Stage 2 done (v1.0.2, owner OK'd):** the four-section screen (`src/ui/auto/`). 
 - **Stage 3a done (v1.0.3, owner OK'd):** the hub room, machines, teleport-in (`auto/hub.js`, `render/hubdraw.js`). The
   owner wants the empty space above the room left as is (plans for it). 
-- **Stage 3b done (v1.0.4, owner OK'd):** walking the hub, the exit prompt, prices. Next: stage 4, the level strip + autopilot.
+- **Stage 3b done (v1.0.4, owner OK'd):** walking the hub, the exit prompt, prices. 
+- **Stage 4a + the pill stick done (v1.0.5, owner OK'd):** the level strip and pace pilot (not reachable yet), and the
+  owner's pill stick (hub free roam with run + jet; in levels hurry/slow, never stop). Next: stage 4b, hub ⇄ level.
 
 ## NEXT (as of v0.0.176, 2026-10-09)
 

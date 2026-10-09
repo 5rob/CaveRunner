@@ -5,6 +5,15 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.5 — CaveRunner Auto: the pill stick and the level strip (branch `autobattler`, stage 4a + owner's change)
+Released 2026-10-10 on the branch (owner OK'd the screenshots).
+- The bottom `<` `>` pair is one pill stick (as tall and round as B and A) that works like the old left
+  thumbstick: in the hub player 1 runs and jets freely (`hubStick`), the others follow on the floor; on the exit pad
+  "Tap A to exit". In a level the stick sets the pace: right hurries (× `autoLvlHurry`), left slows (× `autoLvlSlow`),
+  never stops. Replaces stage 3b's stop-to-stop arrows (`hubGo`/`hubStandX` gone). Dev → Auto → "Auto: hub" knobs.
+- Stage 4a (headless until 4b): the finite level strip (`auto/level.js`: start pad, random zones, boss arena,
+  exit pad) and the pace pilot (`auto/pilot.js`: eases for elites and chests). Dev → Auto → "Auto: level".
+
 ## v1.0.4 — CaveRunner Auto: walking the hub, the exit prompt, prices (branch `autobattler`, stage 3b)
 Released 2026-10-09 on the branch (owner OK'd the screenshots).
 - `<` / `>` walk the team to the next stop (`hubGo`), easing in just left of a machine (right, coming back), taps

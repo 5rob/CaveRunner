@@ -347,6 +347,8 @@ chest slow ×0.5. Grab radius 35% of a tile.
 | 2 | done | v1.0.2 | Agent, ~9 min; owner OK'd shots (`tools/autoshots.js`). `ui/scenecanvas.js` `runScene(canvas,{size,make,over?,paused?})` shared with title; `titleScene(..., { runners })`; `PauseMenu` `label`. Retired: `title` slot/old-pause checks. `tools/titleshots.js` broken on the branch (clicks old slots; not a test). Gun icon dark on its slot (noted). |
 | 3a | done | v1.0.3 | Agent, ~10 min (split by PM: 3a look + teleport-in; 3b travel, exit prompt, prices). `HUB_STOPS`/`hubStopX(id)`, `titleScene opts.hub`, materials STEEL/BWALL/SWALL, runner `hide`/`stand`, `runScene` make may return `warm`. Owner: keep the empty space above the room (plans for it); jetpack icon → 🚀 (`EXO_GLYPH`, PM). |
 | 3b | done | v1.0.4 | Agent, ~10 min. `hubGo(S,dir)`, `hubStandX`, state `H.lx/at/goal/dir/tier/exitT`; `hubExit(S)`, `hubAtExit`, `hubExitFlash` (stage 4 hooks these); `hubPrice(id,tier)`; `hubScene(vh,seed,n,tier)`. Leader stands ON the pads. Knobs group `autohub`. |
+| 4a | done | v1.0.5 | Agent. `levelPlan`, `levelScene(vh,seed,n,plan?)`, `levelDone`, `levelHold`, `levelState` (`L.elites/chests/bossDead`), phases arrive/run/arena/out/exit; `pilotPace`/`pilotEase`. Knobs `autolevel`. Notes: players drift while "stopped", menu creatures still spawn (stage 6), players overlap on arrival. |
+| pill | done | v1.0.5 | Owner's change after 4a, agent ~10 min. `<``>` → one pill stick (`.apill`): hub free roam (`hubStick`, run + jet; `hubGo`/`hubStandX` and `autoHubOff/Ease` removed; knobs `autoHubRun/Jet/Space/Walk`), level pace (`levelHold`: right × `autoLvlHurry`, left × `autoLvlSlow`, never 0). Nit: knob pokes a few px above the pill when pushed up. |
 
 ## 8. The PM's kick-start prompt
 
