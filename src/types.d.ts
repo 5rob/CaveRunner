@@ -877,3 +877,30 @@ interface RpFrame { near: RpSnap; p?: any; ghost?: any; [k: string]: any }
 type RpRect = [string, number, number, number, number];
 /** a terrain patch: the rectangle's pixels after the change */
 interface RpPatch { x: number; y: number; w: number; h: number; px: Uint8ClampedArray<ArrayBuffer>; [k: string]: any }
+
+// ---- CaveRunner Auto: the run (auto/run.js, auto/save.js) ----
+
+type ExoCat = 'hp' | 'speed' | 'jet' | 'carrot';
+type ItemKind = 'gun' | 'mod' | 'exo' | 'perk' | 'gold' | 'red' | 'green';
+/** a bag slot's item: n is the stack's count (a gun is always 1) */
+interface BagItem {
+  kind: ItemKind; n: number;
+  gun?: Gun;                  // kind gun
+  id?: string;                // kind mod (a MODS id) or perk (a PERKS id)
+  cat?: ExoCat; tier?: number; // kind exo: its category and tier 1-5
+}
+/** one of the team (up to 4) */
+interface RunPlayer {
+  col: string;                // TITLE_COLS
+  guns: (Gun | null)[];       // 4 slots
+  active: number;             // the one that fires
+  exo: Record<ExoCat, (BagItem | null)[]>;  // 5 slots a category
+  perks: (BagItem | null)[];  // 6 slots
+  hp: number; alive: boolean;
+}
+/** the run: newRun */
+interface AutoRun { tier: number; players: RunPlayer[]; bag: (BagItem | null)[] }
+/** exoBonus: what a player's exo mods add up to */
+interface ExoBonus { hpAdd: number; walk: number; fuel: number; refuel: number; carrot: number }
+/** localStorage, or a fake one */
+interface KVStore { getItem(k: string): string | null; setItem(k: string, v: string): void }

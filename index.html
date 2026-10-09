@@ -1735,6 +1735,26 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "aaDot", g: "aimassist", label: "Centre dot when snapped (px, 0 none)", min: 0, max: 6, step: 0.5 }
   );
   DEV_GROUPS.push(["aimassist", "Aim Assist"]);
+  Object.assign(DEV_DEFAULTS, {
+    autoGunBase: 120,
+    autoGunGrow: 1.35,
+    autoExoPrice: 60,
+    autoScrap: 25,
+    autoRed: 40,
+    autoGreen: 150,
+    autoModGold: 15
+  });
+  DEV_META.push(
+    { k: "autoGunBase", g: "auto", label: "Gun machine: price at tier 1 (gold)", min: 5, max: 2e3, step: 5 },
+    { k: "autoGunGrow", g: "auto", label: "Gun machine: price × each tier up", min: 1, max: 4, step: 0.05 },
+    { k: "autoExoPrice", g: "auto", label: "Exo machine: price (% of the gun price)", min: 1, max: 300, step: 1 },
+    { k: "autoScrap", g: "auto", label: "Scrap: a gun, exo mod or perk gives (% of its price)", min: 0, max: 100, step: 1 },
+    { k: "autoRed", g: "auto", label: "Scrap: a red gem (gold × the tier’s gold scale)", min: 0, max: 1e3, step: 1 },
+    { k: "autoGreen", g: "auto", label: "Scrap: a green gem (gold × the tier’s gold scale)", min: 0, max: 2e3, step: 1 },
+    { k: "autoModGold", g: "auto", label: "Scrap: a gun mod (gold × the tier’s gold scale)", min: 0, max: 500, step: 1 }
+  );
+  DEV_GROUPS.push(["auto", "Auto: economy"]);
+  DEV_TABS.splice(DEV_TABS.length - 1, 0, ["auto", "Auto", ["auto"]]);
   var DEV_KEY = "caverunner-dev";
   var DEV = Object.assign({}, DEV_DEFAULTS);
   var dueMs = (floor) => floor === 1 ? DEV.due1 * 6e4 : DEADLINE_MS;

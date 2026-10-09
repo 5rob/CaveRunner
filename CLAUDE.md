@@ -122,6 +122,7 @@ code changes. `assets/index.html` is git-ignored. Don't change `LOCAL_URL`'s hos
 | `world/` | 3 | `makeLevel`, strata, zones, decoration, nests, nav, vision + fog rules, the fire engine |
 | `creatures/` | 4 | creature brains and sprites; **how to add a creature** |
 | `art/`, `audio/`, `save/`, `replay/` | 4 | sprites and props; sound; autosave; death replay (pure part) |
+| `auto/` | 4 | CaveRunner Auto (branch `autobattler`): the run model (`run.js`), its one save (`save.js`) |
 | `game/` | 5 | `Game`, `W`/`G`/`F`, the test hook; `systems/` (step's parts), `render/` (draw's parts), `creatures/` (`ACTS`) |
 | `ui/` | 6 | React: `App`, HUD sticks, cards, the Bag, the Dev panel, GunSwap, Witness |
 

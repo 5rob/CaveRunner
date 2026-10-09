@@ -585,6 +585,20 @@ DEV_META.push(
   { k: 'aaLine',  g: 'aimassist', label: 'Ring line width (px)', min: 0.25, max: 4, step: 0.25 },
   { k: 'aaDot',   g: 'aimassist', label: 'Centre dot when snapped (px, 0 none)', min: 0, max: 6, step: 0.5 });
 DEV_GROUPS.push(['aimassist', 'Aim Assist']);
+// CaveRunner Auto's economy (auto/run.js, AUTOBATTLER.md section 6): the machines' prices and scrap
+Object.assign(DEV_DEFAULTS, { autoGunBase: 120, autoGunGrow: 1.35, autoExoPrice: 60, autoScrap: 25,
+  autoRed: 40, autoGreen: 150, autoModGold: 15 });
+DEV_META.push(
+  { k: 'autoGunBase',  g: 'auto', label: 'Gun machine: price at tier 1 (gold)', min: 5, max: 2000, step: 5 },
+  { k: 'autoGunGrow',  g: 'auto', label: 'Gun machine: price × each tier up', min: 1, max: 4, step: 0.05 },
+  { k: 'autoExoPrice', g: 'auto', label: 'Exo machine: price (% of the gun price)', min: 1, max: 300, step: 1 },
+  { k: 'autoScrap',    g: 'auto', label: 'Scrap: a gun, exo mod or perk gives (% of its price)', min: 0, max: 100, step: 1 },
+  { k: 'autoRed',      g: 'auto', label: 'Scrap: a red gem (gold × the tier’s gold scale)', min: 0, max: 1000, step: 1 },
+  { k: 'autoGreen',    g: 'auto', label: 'Scrap: a green gem (gold × the tier’s gold scale)', min: 0, max: 2000, step: 1 },
+  { k: 'autoModGold',  g: 'auto', label: 'Scrap: a gun mod (gold × the tier’s gold scale)', min: 0, max: 500, step: 1 });
+DEV_GROUPS.push(['auto', 'Auto: economy']);
+// before the last tab: that one also takes any group in no tab
+DEV_TABS.splice(DEV_TABS.length - 1, 0, ['auto', 'Auto', ['auto']]);
 export const DEV_KEY = 'caverunner-dev';
 /** @type {DevKnobs} */
 export const DEV = Object.assign({}, DEV_DEFAULTS);

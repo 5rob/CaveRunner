@@ -67,6 +67,9 @@
   fitted) / max (Carrot V) multiplier; `carrotAt(k, W.pb.carrot)` is the value at a level.
 - The menus' pointer (`g: 'menuptr'`): `ptrStart`, `ptrReach`, `ptrSize`, `ptrLine`, `snapR`, `snapPull`,
   `snapHit` (read live by `ui/vendshop.js` and the right `Stick`).
+- CaveRunner Auto's economy (`g: 'auto'`, its own tab **Auto**, placed before the last tab; `auto/run.js`): `autoGunBase` (the gun
+  machine at tier 1, 120 gold), `autoGunGrow` (× each tier, 1.35), `autoExoPrice` (% of the gun price, 60), `autoScrap` (% of a
+  gun, exo mod or perk's price, 25), `autoRed` (40), `autoGreen` (150), `autoModGold` (15): scrap gold × `goldScale(tier)`.
 - The tables: `ELITE_KNOBS`, `ELITE_COLS` (elites), `SP_KNOBS` (spider + web lines), `JE_KNOBS`, `JE_COLS` (jellyfish), `RA_KNOBS` (rats
   and nests), `LV_KNOBS` (floor-1 layout, lanterns), `ARCH_KNOBS` (arched vines), `FIRE_KNOBS`.
 
