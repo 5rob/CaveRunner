@@ -909,6 +909,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   font:700 12px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.14em;text-transform:uppercase;color:#ffd9b0;
   background:rgba(14,9,26,0.82);border:2px solid #ff8a1f;box-shadow:0 0 14px rgba(255,120,30,0.45);animation:ablock 1.2s ease-in-out infinite}
 @keyframes ablock{0%,100%{opacity:.45}50%{opacity:1}}
+.abossbar{position:absolute;left:12px;right:52px;top:10px;pointer-events:none;display:flex;flex-direction:column;align-items:center;gap:3px}
+.abossbar b{font:900 11px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.2em;text-transform:uppercase;color:#ffd0d0;
+  text-shadow:0 0 6px #ff2a3a,0 1px 0 #000}
+.abosstrack{width:100%;height:10px;border-radius:6px;background:rgba(14,9,26,0.85);border:2px solid #5a1f2a;box-sizing:border-box;overflow:hidden;
+  box-shadow:0 0 10px rgba(255,40,60,0.35)}
+.abosstrack i{display:block;height:100%;background:linear-gradient(#ff7a6a,#d01c34);transition:width .2s linear}
 .anav,.abag,.abtns{border-radius:14px;background:rgba(14,9,26,0.92);border:2px solid #3d2f5c;box-sizing:border-box}
 .anav{flex:none;display:flex;justify-content:space-around;align-items:center;padding:6px 8px}
 .anavc{width:50px;height:50px;border-radius:50%;box-sizing:border-box;border:3px solid #2a2140;background:#140e22;

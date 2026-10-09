@@ -71,7 +71,7 @@
   machine at tier 1, 120 gold), `autoGunGrow` (× each tier, 1.35), `autoExoPrice` (% of the gun price, 60), `autoScrap` (% of a
   gun, exo mod or perk's price, 25), `autoRed` (40), `autoGreen` (150), `autoModGold` (15): scrap gold × `goldScale(tier)`.
 - CaveRunner Auto's hub (`g: 'autohub'`, "Auto: hub", same **Auto** tab; `auto/hub.js`, stage 3b): `autoHubRun` (player 1's top run speed on the pill stick, 70), `autoHubJet` (jetpack push × gravity, 2.4), `autoHubWalk` (the others' walk speed to their place in line, 80), `autoHubSpace` (line-up spacing, 16). (`autoHubEase`, `autoHubOff`: gone with the arrow travel.)
-- CaveRunner Auto's level (`g: 'autolevel'`, "Auto: level", same **Auto** tab; `auto/level.js`, `auto/pilot.js`, stage 4a): `autoLvlMin` (level length, minutes at normal pace, 5), `autoLvlPace` (normal pace × the menu's scroll, 1), `autoLvlHurry` (stick full right, 1.6), `autoLvlSlow` (stick full left, 0.3; never stops), `autoLvlElite` (elite near, 0.4), `autoLvlChest` (chest near, 0.5), `autoLvlEliteR` (120), `autoLvlChestR` (50), `autoLvlBossT` (arena cleared after, s, 3: a stand-in till stage 6), `autoLvlEase` (pace change a second, 1.5).
+- CaveRunner Auto's level (`g: 'autolevel'`, "Auto: level", same **Auto** tab; `auto/level.js`, `auto/pilot.js`, stage 4a): `autoLvlMin` (level length, minutes at normal pace, 5), `autoLvlPace` (normal pace × the menu's scroll, 1), `autoLvlHurry` (stick full right, 1.6), `autoLvlSlow` (stick full left, 0.3; never stops), `autoLvlElite` (elite near, 0.4), `autoLvlChest` (chest near, 0.5), `autoLvlEliteR` (120), `autoLvlChestR` (50), `autoLvlBossT` (arena given up after, s, 120: a fallback if the boss can't be reached), `autoLvlEase` (pace change a second, 1.5).
 - The tables: `ELITE_KNOBS`, `ELITE_COLS` (elites), `SP_KNOBS` (spider + web lines), `JE_KNOBS`, `JE_COLS` (jellyfish), `RA_KNOBS` (rats
   and nests), `LV_KNOBS` (floor-1 layout, lanterns), `ARCH_KNOBS` (arched vines), `FIRE_KNOBS`.
 
@@ -93,3 +93,5 @@
   right after the tables register, so a table in a creature's own module would register too late.
 - A blank field in the panel restores `DEV_DEFAULTS[k]`. Group open/shut state is localStorage
   `caverunner-devgroups` (all shut by default), the tab `caverunner-devtab`.
+
+- CaveRunner Auto's enemies (`g: 'autofoes'`, "Auto: enemies", **Auto** tab; `auto/enemies.js`, stage 6): `autoFoeDmg` (creatures hurt players × their damage, 0.5), `autoFoeElites` (elites a level, 2), `autoBossSize` (4), `autoBossHp` (40), `autoBossDmg` (3).

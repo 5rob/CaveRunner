@@ -66,6 +66,7 @@ export * from './auto/pilot.js';
 export * from './auto/level.js';
 export * from './auto/meters.js';
 export * from './auto/clear.js';
+export * from './auto/enemies.js';
 export * from './art/scenegun.js';
 export * from './audio/recipes.js';
 export * from './audio/sfx.js';

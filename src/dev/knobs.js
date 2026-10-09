@@ -607,7 +607,7 @@ DEV_META.push(
 DEV_GROUPS.push(['autohub', 'Auto: hub']);
 // CaveRunner Auto's level (auto/level.js, auto/pilot.js, stage 4a): its length and the team's pace
 Object.assign(DEV_DEFAULTS, { autoLvlMin: 5, autoLvlPace: 1, autoLvlHurry: 1.6, autoLvlSlow: 0.3, autoLvlElite: 0.4, autoLvlChest: 0.5,
-  autoLvlEliteR: 120, autoLvlChestR: 50, autoLvlBossT: 3, autoLvlEase: 1.5 });
+  autoLvlEliteR: 120, autoLvlChestR: 50, autoLvlBossT: 120, autoLvlEase: 1.5 });
 DEV_META.push(
   { k: 'autoLvlMin',    g: 'autolevel', label: 'Level length (minutes at normal pace)', min: 0.2, max: 20, step: 0.1 },
   { k: 'autoLvlPace',   g: 'autolevel', label: 'Normal pace (× the menu’s scroll, 34 world units / s)', min: 0.1, max: 4, step: 0.05 },
@@ -617,7 +617,7 @@ DEV_META.push(
   { k: 'autoLvlChest',  g: 'autolevel', label: 'Passing a chest slows to (× pace)', min: 0, max: 1, step: 0.05 },
   { k: 'autoLvlEliteR', g: 'autolevel', label: 'An elite counts as near within (world units)', min: 10, max: 400, step: 5 },
   { k: 'autoLvlChestR', g: 'autolevel', label: 'A chest counts as near within (world units)', min: 5, max: 300, step: 5 },
-  { k: 'autoLvlBossT',  g: 'autolevel', label: 'Boss arena: cleared after (s; until stage 6 adds the boss)', min: 0, max: 30, step: 0.5 },
+  { k: 'autoLvlBossT',  g: 'autolevel', label: 'Boss arena: given up after (s; a fallback if the boss can’t be reached)', min: 5, max: 600, step: 5 },
   { k: 'autoLvlEase',   g: 'autolevel', label: 'Pace changes by at most (× pace / s)', min: 0.2, max: 10, step: 0.1 });
 DEV_GROUPS.push(['autolevel', 'Auto: level']);
 // CaveRunner Auto's starter gun (auto/run.js starterKit, stage 5a): its numbers, for each new player
@@ -635,8 +635,17 @@ DEV_META.push(
   { k: 'autoClearFire', g: 'autoguns', label: 'Fire counts this much against webs and timber (score)', min: 0, max: 100, step: 1 },
   { k: 'autoClearGap',  g: 'autoguns', label: 'Digging: the tunnel is cut while the clearing gun fired within (s)', min: 0.05, max: 3, step: 0.05 });
 DEV_GROUPS.push(['autoguns', 'Auto: guns']);
+// the level's enemies (auto/enemies.js, stage 6): how hard they hit, the elites, the boss
+Object.assign(DEV_DEFAULTS, { autoFoeDmg: 0.5, autoFoeElites: 2, autoBossSize: 4, autoBossHp: 40, autoBossDmg: 3 });
+DEV_META.push(
+  { k: 'autoFoeDmg',    g: 'autofoes', label: 'Creatures hurt the players (× their damage)', min: 0, max: 5, step: 0.05 },
+  { k: 'autoFoeElites', g: 'autofoes', label: 'Elites a level', min: 0, max: 12, step: 1 },
+  { k: 'autoBossSize',  g: 'autofoes', label: 'Boss size (× a normal one)', min: 1, max: 8, step: 0.25 },
+  { k: 'autoBossHp',    g: 'autofoes', label: 'Boss health (× a normal one)', min: 1, max: 200, step: 1 },
+  { k: 'autoBossDmg',   g: 'autofoes', label: 'Boss damage (× a normal one)', min: 0.5, max: 10, step: 0.25 });
+DEV_GROUPS.push(['autofoes', 'Auto: enemies']);
 // before the last tab: that one also takes any group in no tab
-DEV_TABS.splice(DEV_TABS.length - 1, 0, ['auto', 'Auto', ['auto', 'autohub', 'autolevel', 'autoguns']]);
+DEV_TABS.splice(DEV_TABS.length - 1, 0, ['auto', 'Auto', ['auto', 'autohub', 'autolevel', 'autoguns', 'autofoes']]);
 export const DEV_KEY = 'caverunner-dev';
 /** @type {DevKnobs} */
 export const DEV = Object.assign({}, DEV_DEFAULTS);

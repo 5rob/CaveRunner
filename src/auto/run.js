@@ -82,6 +82,10 @@ export function healRun(run) {
 }
 /** the run's level at its tier: the same run's tier n is always the same level @param {AutoRun} run */
 export const levelSeed = run => 1 + ((run.seed || 1) * 7919 + run.tier * 104729) % 999983;
+/** every player fell in the level (stage 6): home, the tier unchanged, healed (the loot kept) @param {AutoRun} run */
+export function levelFailed(run) {
+  healRun(run);
+}
 /** the level's boss is down and the team is home: tier + 1, healed @param {AutoRun} run */
 export function levelCleared(run) {
   run.tier++;

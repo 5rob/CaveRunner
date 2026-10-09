@@ -918,6 +918,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   font:700 12px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.14em;text-transform:uppercase;color:#ffd9b0;
   background:rgba(14,9,26,0.82);border:2px solid #ff8a1f;box-shadow:0 0 14px rgba(255,120,30,0.45);animation:ablock 1.2s ease-in-out infinite}
 @keyframes ablock{0%,100%{opacity:.45}50%{opacity:1}}
+.abossbar{position:absolute;left:12px;right:52px;top:10px;pointer-events:none;display:flex;flex-direction:column;align-items:center;gap:3px}
+.abossbar b{font:900 11px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.2em;text-transform:uppercase;color:#ffd0d0;
+  text-shadow:0 0 6px #ff2a3a,0 1px 0 #000}
+.abosstrack{width:100%;height:10px;border-radius:6px;background:rgba(14,9,26,0.85);border:2px solid #5a1f2a;box-sizing:border-box;overflow:hidden;
+  box-shadow:0 0 10px rgba(255,40,60,0.35)}
+.abosstrack i{display:block;height:100%;background:linear-gradient(#ff7a6a,#d01c34);transition:width .2s linear}
 .anav,.abag,.abtns{border-radius:14px;background:rgba(14,9,26,0.92);border:2px solid #3d2f5c;box-sizing:border-box}
 .anav{flex:none;display:flex;justify-content:space-around;align-items:center;padding:6px 8px}
 .anavc{width:50px;height:50px;border-radius:50%;box-sizing:border-box;border:3px solid #2a2140;background:#140e22;
@@ -1811,7 +1817,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     autoLvlChest: 0.5,
     autoLvlEliteR: 120,
     autoLvlChestR: 50,
-    autoLvlBossT: 3,
+    autoLvlBossT: 120,
     autoLvlEase: 1.5
   });
   DEV_META.push(
@@ -1823,7 +1829,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "autoLvlChest", g: "autolevel", label: "Passing a chest slows to (× pace)", min: 0, max: 1, step: 0.05 },
     { k: "autoLvlEliteR", g: "autolevel", label: "An elite counts as near within (world units)", min: 10, max: 400, step: 5 },
     { k: "autoLvlChestR", g: "autolevel", label: "A chest counts as near within (world units)", min: 5, max: 300, step: 5 },
-    { k: "autoLvlBossT", g: "autolevel", label: "Boss arena: cleared after (s; until stage 6 adds the boss)", min: 0, max: 30, step: 0.5 },
+    { k: "autoLvlBossT", g: "autolevel", label: "Boss arena: given up after (s; a fallback if the boss can’t be reached)", min: 5, max: 600, step: 5 },
     { k: "autoLvlEase", g: "autolevel", label: "Pace changes by at most (× pace / s)", min: 0.2, max: 10, step: 0.1 }
   );
   DEV_GROUPS.push(["autolevel", "Auto: level"]);
@@ -1842,7 +1848,16 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "autoClearGap", g: "autoguns", label: "Digging: the tunnel is cut while the clearing gun fired within (s)", min: 0.05, max: 3, step: 0.05 }
   );
   DEV_GROUPS.push(["autoguns", "Auto: guns"]);
-  DEV_TABS.splice(DEV_TABS.length - 1, 0, ["auto", "Auto", ["auto", "autohub", "autolevel", "autoguns"]]);
+  Object.assign(DEV_DEFAULTS, { autoFoeDmg: 0.5, autoFoeElites: 2, autoBossSize: 4, autoBossHp: 40, autoBossDmg: 3 });
+  DEV_META.push(
+    { k: "autoFoeDmg", g: "autofoes", label: "Creatures hurt the players (× their damage)", min: 0, max: 5, step: 0.05 },
+    { k: "autoFoeElites", g: "autofoes", label: "Elites a level", min: 0, max: 12, step: 1 },
+    { k: "autoBossSize", g: "autofoes", label: "Boss size (× a normal one)", min: 1, max: 8, step: 0.25 },
+    { k: "autoBossHp", g: "autofoes", label: "Boss health (× a normal one)", min: 1, max: 200, step: 1 },
+    { k: "autoBossDmg", g: "autofoes", label: "Boss damage (× a normal one)", min: 0.5, max: 10, step: 0.25 }
+  );
+  DEV_GROUPS.push(["autofoes", "Auto: enemies"]);
+  DEV_TABS.splice(DEV_TABS.length - 1, 0, ["auto", "Auto", ["auto", "autohub", "autolevel", "autoguns", "autofoes"]]);
   var DEV_KEY = "caverunner-dev";
   var DEV = Object.assign({}, DEV_DEFAULTS);
   var dueMs = (floor) => floor === 1 ? DEV.due1 * 6e4 : DEADLINE_MS;
@@ -11486,6 +11501,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       S2.lvl = opts.level;
     }
     if (opts.team) S2.team = opts.team;
+    if (opts.tier) S2.tier = opts.tier;
     if (hub) {
       S2.hub = hub;
       S2.still = true;
@@ -11571,31 +11587,37 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     S2.kinds[id] = (S2.kinds[id] || 0) + 1;
     const n = id === "rotta" ? 3 + Math.floor(R() * 4) : id === "hamahakki" ? 1 + Math.floor(R() * 2) : 1;
     for (let i = 0; i < n && S2.foes.length < TITLE_FOES; i++) {
-      const ex = wx + i * (8 + R() * 8), k = enemyFor(id, 1), cy = titleCeil(ex, S2), fy = titleFloor(ex, S2);
+      const ex = wx + i * (8 + R() * 8);
       if (i && titleZone(ex, S2) !== titleZone(wx, S2)) break;
       if (ex >= S2.gen * TCELL - 6) break;
-      const ey = id === "meduusa" ? cy + (fy - cy) * (0.25 + 0.45 * R()) : id === "hamahakki" && R() < 0.5 ? cy + k.r : fy - k.r - 1;
-      S2.foes.push({
-        x: ex,
-        y: ey,
-        ty: ey,
-        r: k.r,
-        phase: R() * 6.28,
-        hp: k.hp,
-        hpMax: k.hp,
-        cd: 1 + R() * 2,
-        flash: 0,
-        lx: 0,
-        ly: 1,
-        hx: ex,
-        hy: ey,
-        tgt: null,
-        rest: R() * 3,
-        k,
-        touch: 0,
-        charge: 0
-      });
+      titleFoeAt(S2, enemyFor(id, S2.tier || 1), ex);
     }
+  }
+  function titleFoeAt(S2, k, ex) {
+    const R = S2.rnd, id = k.id, cy = titleCeil(ex, S2), fy = titleFloor(ex, S2);
+    const ey = id === "meduusa" ? cy + (fy - cy) * (0.25 + 0.45 * R()) : id === "hamahakki" && R() < 0.5 ? cy + k.r : fy - k.r - 1;
+    const f = {
+      x: ex,
+      y: ey,
+      ty: ey,
+      r: k.r,
+      phase: R() * 6.28,
+      hp: k.hp,
+      hpMax: k.hp,
+      cd: 1 + R() * 2,
+      flash: 0,
+      lx: 0,
+      ly: 1,
+      hx: ex,
+      hy: ey,
+      tgt: null,
+      rest: R() * 3,
+      k,
+      touch: 0,
+      charge: 0
+    };
+    S2.foes.push(f);
+    return f;
   }
   function burst(S2, x, y, n, col, spd, kind, life) {
     for (let i = 0; i < n && S2.parts.length < TITLE_PARTS; i++) {
@@ -11959,7 +11981,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       S2.spawn = 0.4 + R() * 0.6;
     }
     if (!S2.still) {
-      for (const r of S2.runners) stepRunner(S2, r, dt);
+      for (const r of S2.runners) if (!r.out) stepRunner(S2, r, dt);
       separate(S2, dt);
     }
     stepFoes(S2, dt);
@@ -12565,6 +12587,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         e.touch = kr(k.kp + "BiteCd", R);
         snd(S2, "bite", e.x - S2.scroll, e.ty, k);
         burst(S2, ru.x + PW / 2, ru.y + PH / 2, 4, "#ff6a5a", 50, "spark", 0.2);
+        if (S2.lvl && S2.lvl.hurt) S2.lvl.hurt(S2, ru.id, k.dmg);
       }
       if (!(e.burn > 0) && S2.fire.length && fireNear2(S2, e.x, e.ty, e.r * 0.7)) {
         e.burn = kr("fireBurn", R);
@@ -12628,7 +12651,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           bounce: 0,
           bounceE: 0,
           pierce: 0,
-          dmg: 0
+          dmg: e.k.dmg
         });
       }
     }
@@ -12709,8 +12732,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return o.F;
   }
   function nearestRunner(S2, x, y) {
-    let best = S2.runners[0], bd = Infinity;
+    let best = S2.runners.find((r) => !r.out) || S2.runners[0], bd = Infinity;
     for (const r of S2.runners) {
+      if (r.out) continue;
       const d = Math.hypot(r.x + PW / 2 - x, r.y + PH / 2 - y);
       if (d < bd) {
         bd = d;
@@ -12790,10 +12814,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (s.pay && s.trig === "timer" && (s.age = (s.age || 0) + dt) >= (s.timer || 0)) release(S2, s);
       if (s.look === "flame" && S2.rnd() < dt * 20) burst(S2, s.x, s.y, 1, "#ff7a1a", 15, "fire", 0.3);
       if (s.foe) {
-        if (S2.runners.some((ru) => Math.abs(ru.x + PW / 2 - s.x) < 7 && Math.abs(ru.y + PH / 2 - s.y) < 11)) {
+        const hit = S2.runners.find((ru) => !ru.out && Math.abs(ru.x + PW / 2 - s.x) < 7 && Math.abs(ru.y + PH / 2 - s.y) < 11);
+        if (hit) {
           s.life = 0;
           burst(S2, s.x, s.y, 6, s.col, 60, "spark", 0.25);
           snd(S2, "hit", s.x, s.y);
+          if (S2.lvl && S2.lvl.hurt) S2.lvl.hurt(S2, hit.id, s.dmg);
         } else if (titleSolid(S2, s.x, s.y)) {
           s.life = 0;
           burst(S2, s.x, s.y, 4, s.col, 40, "spark", 0.3);
@@ -35089,6 +35115,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
   }
   var levelSeed = (run) => 1 + ((run.seed || 1) * 7919 + run.tier * 104729) % 999983;
+  function levelFailed(run) {
+    healRun(run);
+  }
   function levelCleared(run) {
     run.tier++;
     healRun(run);
@@ -35576,6 +35605,103 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return cur < want ? Math.min(want, cur + v) : Math.max(want, cur - v);
   }
 
+  // src/auto/enemies.js
+  var FALL_FLICKER = 0.6;
+  var BOSS_IN = 90;
+  function elitePlan(plan, rnd2, n = DEV.autoFoeElites) {
+    const out = [];
+    for (let i = 0; i < n; i++) {
+      const x = plan.z0 + plan.len * (i + 1) / (n + 1);
+      out.push({ x, alive: true, u: rnd2(), f: null });
+    }
+    return out;
+  }
+  function homeKind(S2, x) {
+    const home = TITLE_HOME[titleZone(x, S2)] || TITLE_HOME.moss;
+    let roll = S2.rnd() * home.reduce((a, h4) => a + h4[1], 0);
+    for (const [q, w] of home) {
+      if (roll < w) return q;
+      roll -= w;
+    }
+    return home[0][0];
+  }
+  function bossKind(id, tier) {
+    const k = enemyFor(id, tier);
+    return Object.assign({}, k, {
+      boss: true,
+      r: k.r * DEV.autoBossSize,
+      hp: Math.round(k.hp * DEV.autoBossHp),
+      dmg: Math.max(1, Math.round(k.dmg * DEV.autoBossDmg))
+    });
+  }
+  function levelHurt(S2, i, dmg) {
+    const pl = S2.team && S2.team[i], r = S2.runners[i];
+    if (!pl || pl.alive === false || !r || r.out) return;
+    pl.hp = Math.max(0, pl.hp - dmg * DEV.autoFoeDmg);
+    if (pl.hp <= 0) levelFall(S2, i);
+  }
+  function levelFall(S2, i) {
+    const pl = S2.team && S2.team[i], r = S2.runners[i];
+    if (!r || r.out) return;
+    if (pl) {
+      pl.hp = 0;
+      pl.alive = false;
+    }
+    r.out = true;
+    r.outT = S2.t;
+    r.dig = 0;
+    r.clr = null;
+    const cx = r.x + PW / 2, cy = r.y + PH / 2;
+    for (let k = 0; k < 16; k++) {
+      const a = S2.rnd() * Math.PI * 2, sp = 20 + S2.rnd() * 50;
+      S2.parts.push({ x: cx, y: cy, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 20, life: 0.5, max: 0.5, r: 1.2, col: k % 3 ? "#7cc8ff" : "#e6f6ff", kind: "spark" });
+    }
+    S2.snd.push({ k: "arc", x: cx, y: cy });
+  }
+  var allFallen = (S2) => S2.runners.length > 0 && S2.runners.every((r) => r.out);
+  function levelFoes(S2, L3, teamX) {
+    for (const r of S2.runners) if (r.out) r.hide = S2.t - (r.outT || 0) < FALL_FLICKER ? Math.floor((S2.t - (r.outT || 0)) * 24) % 2 === 0 : true;
+    if (allFallen(S2)) L3.failed = true;
+    if (L3.phase === "arrive") return;
+    const tier = S2.tier || 1;
+    for (const e of L3.elites) {
+      if (e.alive === false) continue;
+      if (!e.f) {
+        if (e.x - S2.scroll < TITLE_VW + 16 && e.x < S2.gen * TCELL - 6) {
+          const id = e.id || (e.id = homeKind(S2, e.x));
+          e.f = titleFoeAt(S2, eliteOf(enemyFor(id, tier), e.u == null ? 0.5 : e.u), e.x);
+        }
+        continue;
+      }
+      if (e.f.hp <= 0 || !S2.foes.includes(e.f)) {
+        e.alive = false;
+        continue;
+      }
+      e.x = e.f.x;
+    }
+    if (L3.phase === "arena" && !L3.boss && !L3.bossDead) {
+      const id = TITLE_KINDS[Math.floor(S2.rnd() * TITLE_KINDS.length)];
+      const f = titleFoeAt(S2, bossKind(id, tier), Math.min(L3.plan.arena.x1 - 30, teamX + BOSS_IN));
+      f.aggro = true;
+      L3.boss = f;
+    }
+    const B = L3.boss;
+    if (B && !L3.bossDead) {
+      if (B.hp <= 0) L3.bossDead = true;
+      else if (!S2.foes.includes(B)) {
+        B.x = Math.min(L3.plan.arena.x1 - 30, teamX + BOSS_IN);
+        B.y = B.ty = S2.vh / 2;
+        S2.foes.push(B);
+      }
+    }
+  }
+  function levelBoss(S2) {
+    const L3 = S2.lvl && S2.lvl.data;
+    const B = L3 && L3.boss;
+    if (!B || L3.bossDead) return null;
+    return { hp: Math.max(0, B.hp), max: B.hpMax, name: B.k.name };
+  }
+
   // src/auto/level.js
   var LVL_SCROLL = 34;
   var LVL_PADX = 60;
@@ -35613,9 +35739,26 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   var levelState = (S2) => S2.lvl && S2.lvl.data || null;
   var levelTeamX = (S2) => S2.scroll + LVL_TEAM;
-  function levelScene(vh, seed, n, plan = levelPlan(seed), team) {
-    const L3 = { plan, phase: "arrive", arrived: [], zap: -99, goT: -1, arenaT: -1, bossDead: false, hold: 0, elites: [], chests: [], doneT: -1, meters: [], blocked: false };
-    const S2 = titleScene(vh, seed, vh * 0.24, vh * 0.92, { runners: n, level: { zp: plan.zp, step: levelStep, data: L3 }, team });
+  function levelScene(vh, seed, n, plan = levelPlan(seed), team, tier = 1) {
+    const L3 = {
+      plan,
+      phase: "arrive",
+      arrived: [],
+      zap: -99,
+      goT: -1,
+      arenaT: -1,
+      bossDead: false,
+      hold: 0,
+      elites: [],
+      chests: [],
+      doneT: -1,
+      meters: [],
+      blocked: false,
+      boss: null,
+      failed: false
+    };
+    const S2 = titleScene(vh, seed, vh * 0.24, vh * 0.92, { runners: n, level: { zp: plan.zp, step: levelStep, data: L3, hurt: levelHurt }, team, tier });
+    L3.elites = elitePlan(plan, S2.rnd);
     L3.meters = S2.runners.map(() => ({ dmg: meterNew(), hp: meterNew(), dealt: 0 }));
     S2.pace = 0;
     S2.still = true;
@@ -35639,6 +35782,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const L3 = levelState(S2);
     if (L3) L3.hold = Math.max(-1, Math.min(1, dir || 0));
   }
+  function levelLost(S2) {
+    const L3 = levelState(S2);
+    return !!L3 && L3.failed;
+  }
   function levelDone(S2) {
     const L3 = levelState(S2);
     return !!L3 && L3.phase === "exit" && L3.doneT >= 0;
@@ -35660,6 +35807,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const L3 = levelState(S2);
     if (!L3) return;
     levelMeters(S2, L3, dt);
+    levelFoes(S2, L3, levelTeamX(S2));
     const P2 = L3.plan;
     if (L3.phase === "arrive") {
       const fy = titleFloor(P2.padX, S2);
@@ -37437,10 +37585,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const input = useRef({ saveRun: () => saveAutoRun(run) });
     const where = useRef(window.__AUTO_LEVEL ? "level" : "hub");
     const [blocked, setBlocked] = useState(false);
+    const noBoss = null;
+    const [boss, setBoss] = useState(noBoss);
     useEffect(() => {
       const id = setInterval(() => {
         const L3 = scene.current && levelState(scene.current);
         setBlocked(!!(L3 && L3.blocked));
+        const b = scene.current ? levelBoss(scene.current) : null;
+        setBoss((o) => !b && !o || b && o && b.hp === o.hp && b.max === o.max ? o : b);
       }, 200);
       return () => clearInterval(id);
     }, []);
@@ -37454,7 +37606,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           if (where.current === "level") {
             healRun(run);
             saveAutoRun(run);
-            const S3 = levelScene(vh, window.__AUTO_LEVEL || levelSeed(run), run.players.length, void 0, run.players);
+            const S3 = levelScene(vh, window.__AUTO_LEVEL || levelSeed(run), run.players.length, void 0, run.players, run.tier);
             scene.current = S3;
             if (window.__TEST_TITLE) window.__autoScene = S3;
             return { S: S3, C: titleCam(vh / 2, vh), warm: 0 };
@@ -37469,7 +37621,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           return { S: S2, C, warm: 0 };
         },
         paused: () => pausedRef.current,
-        // through the exit pad: to the level; the level's exit pad: home, tier + 1, healed (saved)
+        // through the exit pad: to the level; the level's exit pad: home, tier + 1, healed (saved); everyone fallen: home, same tier
         next: (S2) => {
           if (where.current === "hub" && hubLeft(S2)) {
             where.current = "level";
@@ -37479,6 +37631,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             where.current = "hub";
             window.__AUTO_LEVEL = 0;
             levelCleared(run);
+            saveAutoRun(run);
+            return true;
+          }
+          if (where.current === "level" && levelLost(S2)) {
+            where.current = "hub";
+            window.__AUTO_LEVEL = 0;
+            levelFailed(run);
             saveAutoRun(run);
             return true;
           }
@@ -37513,6 +37672,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         { className: "aplay" },
         h("canvas", { ref: cvs, className: "aplaycvs" }),
         blocked ? h("div", { className: "ablocked" }, "Path blocked") : null,
+        boss ? h(
+          "div",
+          { className: "abossbar" },
+          h("b", null, boss.name),
+          h("div", { className: "abosstrack" }, h("i", { style: { width: (100 * boss.hp / Math.max(1, boss.max)).toFixed(1) + "%" } }))
+        ) : null,
         h("button", { className: "pausebtn", title: "Pause", onPointerDown: tap(() => {
           SFX.fx("open");
           setPaused(true);

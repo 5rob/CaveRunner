@@ -15,6 +15,7 @@ import { hubArriveT } from './hub.js';
 import { meterAdd, meterNew, meterSet, meterStep } from './meters.js';
 import { pilotEase, pilotPace } from './pilot.js';
 import { teamClearer } from './clear.js';
+import { elitePlan, levelFoes, levelHurt } from './enemies.js';
 
 export const LVL_SCROLL = 34;         // the menu's scroll (world units / s at pace 1: titlescene.js SCROLL)
 export const LVL_PADX = 60;           // the start pad's middle (world x; on screen at the start)
@@ -57,9 +58,11 @@ export function levelPlan(seed, minutes = DEV.autoLvlMin) {
 // LevelState: the plan; phase: 'arrive' (teleporting in), 'run' (to the arena), 'arena' (stopped till the boss is dead),
 // 'out' (to the exit pad), 'exit' (gathered on it); arrived per player, zap (when someone last came through), arenaT
 // (when it got there), bossDead; hold (the stick's sideways push, -1 to 1), elites and chests (stage 6, 11: world x), pace (S.pace);
-// blocked (stage 5b): rock in the way and no gun in play can clear it (the pilot stops the team; the screen's "Path blocked")
+// blocked (stage 5b): rock in the way and no gun in play can clear it (the pilot stops the team; the screen's "Path blocked");
+// boss (stage 6: the arena's boss once it's in), failed (every player fallen: the screen takes the team home)
 /** @typedef {{ plan: LevelPlan, phase: string, arrived: boolean[], zap: number, goT: number, arenaT: number, bossDead: boolean, hold: number,
- *   elites: { x: number, alive?: boolean }[], chests: { x: number, open?: boolean }[], doneT: number, meters: PlayerMeters[], blocked: boolean }} LevelState */
+ *   elites: import('./enemies.js').LevelFoe[], chests: { x: number, open?: boolean }[], doneT: number, meters: PlayerMeters[], blocked: boolean,
+ *   boss: Enemy | null, failed: boolean }} LevelState */
 /** @param {import('../art/titlescene.js').TitleScene} S @returns {LevelState | null} */
 export const levelState = S => (S.lvl && S.lvl.data) || null;
 // the team's place in the level (world x)
@@ -68,12 +71,15 @@ export const levelTeamX = S => S.scroll + LVL_TEAM;
 
 // The level's scene: titleScene with the finite plan, n players, the band (roof and floor) lower than the menu's
 // team: the run's players (stage 5a): each fires its active gun for real (art/scenegun.js), and its damage dealt and
-// health go into L.meters (auto/meters.js, for the stats meters)
-/** @param {number} vh @param {number} seed @param {number} n @param {LevelPlan} [plan] (default levelPlan(seed)) @param {RunPlayer[]} [team] @returns {import('../art/titlescene.js').TitleScene} */
-export function levelScene(vh, seed, n, plan = levelPlan(seed), team) {
+// health go into L.meters (auto/meters.js, for the stats meters). tier: the run's (stage 6: the creatures' strength, enemyFor),
+// and the creatures hurt the team (auto/enemies.js)
+/** @param {number} vh @param {number} seed @param {number} n @param {LevelPlan} [plan] (default levelPlan(seed)) @param {RunPlayer[]} [team] @param {number} [tier] @returns {import('../art/titlescene.js').TitleScene} */
+export function levelScene(vh, seed, n, plan = levelPlan(seed), team, tier = 1) {
   /** @type {LevelState} */
-  const L = { plan, phase: 'arrive', arrived: [], zap: -99, goT: -1, arenaT: -1, bossDead: false, hold: 0, elites: [], chests: [], doneT: -1, meters: [], blocked: false };
-  const S = titleScene(vh, seed, vh * 0.24, vh * 0.92, { runners: n, level: { zp: plan.zp, step: levelStep, data: L }, team });
+  const L = { plan, phase: 'arrive', arrived: [], zap: -99, goT: -1, arenaT: -1, bossDead: false, hold: 0, elites: [], chests: [], doneT: -1, meters: [], blocked: false,
+    boss: null, failed: false };
+  const S = titleScene(vh, seed, vh * 0.24, vh * 0.92, { runners: n, level: { zp: plan.zp, step: levelStep, data: L, hurt: levelHurt }, team, tier });
+  L.elites = elitePlan(plan, S.rnd);
   L.meters = S.runners.map(() => ({ dmg: meterNew(), hp: meterNew(), dealt: 0 }));
   S.pace = 0; S.still = true;
   S.foes.length = 0;
@@ -91,6 +97,12 @@ export function levelScene(vh, seed, n, plan = levelPlan(seed), team) {
 export function levelHold(S, dir) {
   const L = levelState(S);
   if (L) L.hold = Math.max(-1, Math.min(1, dir || 0));
+}
+// has every player fallen (stage 6: home to the hub, the tier unchanged: run.js levelFailed)?
+/** @param {import('../art/titlescene.js').TitleScene} S */
+export function levelLost(S) {
+  const L = levelState(S);
+  return !!L && L.failed;
 }
 // is the team gathered on the exit pad (stage 4b: teleport to the hub)?
 /** @param {import('../art/titlescene.js').TitleScene} S */
@@ -120,6 +132,7 @@ export function levelStep(S, dt) {
   const L = levelState(S);
   if (!L) return;
   levelMeters(S, L, dt);
+  levelFoes(S, L, levelTeamX(S));
   const P = L.plan;
   if (L.phase === 'arrive') {
     const fy = titleFloor(P.padX, S);
@@ -146,7 +159,7 @@ export function levelStep(S, dt) {
   const stop = stopAt(L);
   if (L.phase !== 'exit' && levelTeamX(S) > stop) S.scroll = stop - LVL_TEAM;
   if (L.phase === 'run' && levelTeamX(S) >= stop - 0.5) { L.phase = 'arena'; L.arenaT = S.t; }
-  if (L.phase === 'arena' && (L.bossDead || S.t - L.arenaT >= DEV.autoLvlBossT)) { L.bossDead = true; L.phase = 'out'; }
+  if (L.phase === 'arena' && (L.bossDead || S.t - L.arenaT >= DEV.autoLvlBossT)) { L.bossDead = true; L.phase = 'out'; }   // (the timeout: a fallback, a boss out of reach)
   if (L.phase === 'out' && levelTeamX(S) >= stop - 0.5) { L.phase = 'exit'; S.still = true; }
   if (L.phase === 'exit') { S.pace = 0; gather(S, L, dt); return; }
   if (L.phase === 'arena') { S.pace = 0; return; }
