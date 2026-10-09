@@ -5,6 +5,14 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.7 — CaveRunner Auto: real guns in levels (branch `autobattler`, stage 5a)
+Released 2026-10-10 on the branch (owner OK'd the gun sheet, `tools/gunshots.js`).
+- In a level each player fires its active gun through the real `planCast` (`art/scenegun.js`: mana, recharge, the
+  shot's look, speed, size, gravity, drag, bounce, pierce, explode, fire, homing, triggers…), real damage against the
+  creatures' `enemyFor` health. 25 mods not carried yet: `GUN_TODO` (`src/auto/README.md`). The menu is unchanged.
+- `starterKit(rnd)`: every new player gets a 3-slot no-shuffle gun with a random tier-1 shot, and a Buzzsaw in the bag.
+  Dev → Auto → "Auto: guns". `auto/meters.js`: per-player damage and health, 30 s rings. Suite `auto-guns`.
+
 ## v1.0.6 — CaveRunner Auto: hub ⇄ level (branch `autobattler`, stage 4b)
 Released 2026-10-10 on the branch (owner OK'd the screenshots).
 - A on the hub's exit pad: everyone goes in the flash (`hubExit`), and when it fades (`hubLeft`, `HUB_LEAVE`) the run's

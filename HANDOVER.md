@@ -18,7 +18,9 @@ mock-up `docs/autobattler-mockup.png`). Progress: AUTOBATTLER.md's Log. `main` k
 - **Stage 4a + the pill stick done (v1.0.5, owner OK'd):** the level strip and pace pilot (not reachable yet), and the
   owner's pill stick (hub free roam with run + jet; in levels hurry/slow, never stop). 
 - **Stage 4b done (v1.0.6, owner OK'd; PM built it):** the exit pad takes the team into the run's level, the level's exit
-  pad brings it home (tier + 1, healed, saved). Next: stage 5, real guns in the scene.
+  pad brings it home (tier + 1, healed, saved). 
+- **Stage 5a done (v1.0.7, owner OK'd):** real guns in levels, the starter kit, the meters. Next: stage 5b, the
+  clearing rule (`canClear`/`bestClearer`, "Path blocked"), replacing the magic saw.
 
 ## NEXT (as of v0.0.176, 2026-10-09)
 
