@@ -5,6 +5,13 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.4 — CaveRunner Auto: walking the hub, the exit prompt, prices (branch `autobattler`, stage 3b)
+Released 2026-10-09 on the branch (owner OK'd the screenshots).
+- `<` / `>` walk the team to the next stop (`hubGo`), easing in just left of a machine (right, coming back), taps
+  queue; the others line up behind. On the pads the leader stands on the pad. At the exit pad "Tap A to exit"
+  shows; A flashes the pad (`hubExit`; stage 4 starts the level). Each machine shows its price (`hubPrice`): gun
+  and exo gold by tier, mod 1 red, perk 1 green. Dev → Auto → "Auto: hub" (walk speed, ease-in, stop offset, spacing).
+
 ## v1.0.3 — CaveRunner Auto: the hub room (branch `autobattler`, stage 3a)
 Released 2026-10-09 on the branch (owner OK'd the screenshots).
 - ▶ opens on the hub: a dark steel shop room (`auto/hub.js`, `titleScene(…, { hub })`, painter
