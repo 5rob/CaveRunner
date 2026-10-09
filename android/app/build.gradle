@@ -2,16 +2,23 @@ plugins {
     id 'com.android.application'
 }
 
+// -PcaveAuto=true (CI, on the autobattler branch) builds the second app, CaveRunner Auto: its own
+// package id (installs beside the main app, its own save) and its own update address (Pages' auto/).
+// Without it the build is the main app as always.
+def caveAuto = project.findProperty('caveAuto') == 'true'
+
 android {
     namespace 'com.caverunner.app'
     compileSdk 34
 
     defaultConfig {
-        applicationId 'com.caverunner.app'
+        applicationId caveAuto ? 'com.caverunner.auto' : 'com.caverunner.app'
         minSdk 26
         targetSdk 34
         versionCode 1
         versionName '1.0'
+        resValue 'string', 'app_name', caveAuto ? 'CaveRunner Auto' : 'CaveRunner'
+        buildConfigField 'String', 'PAGES_BASE', caveAuto ? '"https://5rob.github.io/CaveRunner/auto/"' : '"https://5rob.github.io/CaveRunner/"'
     }
 
     signingConfigs {
@@ -30,6 +37,10 @@ android {
         debug {
             signingConfig signingConfigs.debug
         }
+    }
+
+    buildFeatures {
+        buildConfig true
     }
 
     compileOptions {

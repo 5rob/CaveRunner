@@ -52,6 +52,17 @@ Same as before, but the delivery is Pages instead of the artifact:
 Pages URL (also playable in a phone browser):
 **https://5rob.github.io/CaveRunner/**
 
+## The second app: CaveRunner Auto (branch `autobattler`)
+
+The same shell, built with `gradle assembleDebug -PcaveAuto=true`: package `com.caverunner.auto` (installs
+beside the main app, with its own save), name "CaveRunner Auto", updates from
+**https://5rob.github.io/CaveRunner/auto/** (`BuildConfig.PAGES_BASE`, set in `app/build.gradle`). Without the
+flag the build is the main app as always. CI passes the flag only on pushes to `autobattler` and publishes the
+APK to the release **https://github.com/5rob/CaveRunner/releases/tag/app-auto**. Pages is one site, so every run
+deploys both: main's build at the root, the branch's under `auto/` (the workflow checks out both branches; keep
+the workflow file the same on both). The `github-pages` environment must allow deploys from `autobattler`
+(Settings → Environments → github-pages → Deployment branches).
+
 ## Notes
 
 - Updating the **game** never touches the shell. You only reinstall the APK if

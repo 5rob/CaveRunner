@@ -2,22 +2,25 @@ name: Android app + Pages
 
 # Ship a build to the phone: push game changes to main (or run this manually).
 # - deploy-pages publishes index.html + version.txt to GitHub Pages (the update
-#   source the installed app checks).
+#   source the installed app checks). Pages is one site per repo, replaced whole
+#   by every deploy, so each run publishes BOTH builds: main's at the root and
+#   the autobattler branch's (CaveRunner Auto) under auto/. Keep this file the
+#   same on both branches.
 # - build-apk builds the WebView shell and attaches app-debug.apk to a Release
-#   you download once to your phone.
+#   you download once to your phone: tag "app" from main, "app-auto" (the second
+#   app, com.caverunner.auto, updating from auto/) from autobattler.
 on:
   push:
-    branches: [ main ]
+    branches: [ main, autobattler ]
   workflow_dispatch:
-
-# Only the newest run needs to finish; cancel superseded ones.
-concurrency:
-  group: android-pages
-  cancel-in-progress: true
 
 jobs:
   deploy-pages:
     runs-on: ubuntu-latest
+    # Only the newest deploy needs to finish (each carries both builds).
+    concurrency:
+      group: pages
+      cancel-in-progress: true
     permissions:
       contents: read
       pages: write
@@ -27,13 +30,29 @@ jobs:
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
-      - name: Assemble site (game + version.txt)
+        with:
+          ref: main
+          path: main
+      - uses: actions/checkout@v4
+        with:
+          ref: autobattler
+          path: auto
+        continue-on-error: true
+      - name: Assemble site (both games + version.txt)
         run: |
+          for d in main auto; do
+            [ -f $d/index.html ] || continue
+            cd $d
+            mkdir -p _site
+            cp index.html _site/index.html
+            # "<update number> <label>", e.g. "132 v0.0.132": an app from before semver reads the first number
+            node -e "const fs=require('fs');const s=fs.readFileSync('index.html','utf8');const n=s.match(/VERSION\s*=\s*'v(\d+)'/);const v=s.match(/VERSION\s*=\s*'(v\d+\.\d+\.\d+)'/);fs.writeFileSync('_site/version.txt',(n?n[1]:'0')+' '+(v?v[1]:'')+'\n');"
+            cd ..
+          done
           mkdir -p _site
-          cp index.html _site/index.html
-          # "<update number> <label>", e.g. "132 v0.0.132": an app from before semver reads the first number
-          node -e "const fs=require('fs');const s=fs.readFileSync('index.html','utf8');const n=s.match(/VERSION\s*=\s*'v(\d+)'/);const v=s.match(/VERSION\s*=\s*'(v\d+\.\d+\.\d+)'/);fs.writeFileSync('_site/version.txt',(n?n[1]:'0')+' '+(v?v[1]:'')+'\n');"
-          echo "Published version:"; cat _site/version.txt
+          cp main/_site/* _site/
+          if [ -d auto/_site ]; then mkdir -p _site/auto && cp auto/_site/* _site/auto/; fi
+          echo "Published:"; cat _site/version.txt; cat _site/auto/version.txt || true
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
@@ -42,6 +61,10 @@ jobs:
 
   build-apk:
     runs-on: ubuntu-latest
+    # Per branch: an autobattler push must not cancel main's APK.
+    concurrency:
+      group: apk-${{ github.ref_name }}
+      cancel-in-progress: true
     permissions:
       contents: write
     steps:
@@ -84,9 +107,11 @@ jobs:
 
       - name: Build APK
         working-directory: android
-        run: gradle assembleDebug --no-daemon --stacktrace
+        # -PcaveAuto=true builds the second app (android/app/build.gradle); main builds as before
+        run: gradle assembleDebug --no-daemon --stacktrace ${{ github.ref_name == 'autobattler' && '-PcaveAuto=true' || '' }}
 
       - name: Publish APK to the "app" release
+        if: github.ref_name != 'autobattler'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: app
@@ -95,4 +120,16 @@ jobs:
             Install once on your phone. It plays offline and offers game updates
             from GitHub Pages on launch. Only reinstall this when the shell
             itself changes.
+          files: android/app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Publish APK to the "app-auto" release
+        if: github.ref_name == 'autobattler'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: app-auto
+          target_commitish: ${{ github.sha }}
+          name: CaveRunner Auto app (latest shell)
+          body: |
+            The auto-battler test app (branch autobattler). Installs beside the
+            main CaveRunner app and updates from GitHub Pages' auto/ address.
           files: android/app/build/outputs/apk/debug/app-debug.apk

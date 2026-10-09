@@ -5,6 +5,13 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.0 — CaveRunner Auto: its own address and app (branch `autobattler`)
+Released 2026-10-09 on the branch (stage 0 of AUTOBATTLER.md; plumbing, no game change yet).
+- The branch counts its own versions from v1.0.0 (update number 1000000); `main` stays v0.0.x.
+- CI runs on pushes to `main` and `autobattler` and deploys both builds to Pages every time (main at the root,
+  the branch at `/auto/`). A push to the branch builds a second APK, **CaveRunner Auto** (`com.caverunner.auto`,
+  `-PcaveAuto=true`, release `app-auto`) that updates from `/auto/`. The workflow file is on both branches.
+
 ## v0.0.176 — the title's gold pickup at 10%
 Released 2026-10-09 (owner's ask; a minor update).
 - The title animation's gold pickup sound plays at 10% of its volume (`SFX.ui(what, vol)` takes a volume now; the game's

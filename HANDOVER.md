@@ -6,8 +6,11 @@ release loop, testing), then the README of the `src/` folder you're working in.
 ## BRANCH `autobattler` (2026-10-09): the auto-battler pivot — read AUTOBATTLER.md
 
 Planned with the owner (brief + quiz answers + 16 stages + the PM's kick-start prompt, all in `AUTOBATTLER.md`;
-mock-up `docs/autobattler-mockup.png`). Nothing built yet: next is stage 0 (the second Pages address and APK).
-`main` is untouched and keeps the old game.
+mock-up `docs/autobattler-mockup.png`). Progress: AUTOBATTLER.md's Log. `main` keeps the old game.
+- **Stage 0 done (v1.0.0):** the branch deploys to `https://5rob.github.io/CaveRunner/auto/` and builds the
+  CaveRunner Auto APK (release `app-auto`); `android/README.md` has how. The only change on `main` was the shared
+  workflow file. **Needs the owner once:** allow `autobattler` in Settings → Environments → github-pages →
+  Deployment branches (until then the branch's Pages deploy fails; the APK still builds).
 
 ## NEXT (as of v0.0.176, 2026-10-09)
 

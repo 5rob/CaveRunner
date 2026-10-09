@@ -48,8 +48,8 @@ import java.util.regex.Pattern;
  */
 public class MainActivity extends Activity {
 
-    // Where updates come from. Trailing slash required.
-    static final String PAGES_BASE = "https://5rob.github.io/CaveRunner/";
+    // Where updates come from (app/build.gradle: the root, or auto/ for CaveRunner Auto). Trailing slash required.
+    static final String PAGES_BASE = BuildConfig.PAGES_BASE;
     // The stable origin the WebView serves the local game from.
     static final String LOCAL_URL = "https://appassets.androidplatform.net/game/index.html";
     static final String PREFS = "caverunner";
