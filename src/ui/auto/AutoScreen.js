@@ -9,6 +9,7 @@
 import { SFX } from '../../audio/sfx.js';
 import { TITLE_VW, titleCam } from '../../art/titlescene.js';
 import { HUB_W, hubExit, hubGo, hubScene, hubStopX } from '../../auto/hub.js';
+import { levelHold, levelScene } from '../../auto/level.js';
 import { MODS } from '../../spells/mods.js';
 import { PERKS, STAT_PERKS } from '../../data/perks.js';
 import { BAG_SLOTS, EXO_GLYPH, EXO_STATS, MAX_PLAYERS, newRun } from '../../auto/run.js';
@@ -46,6 +47,12 @@ export function AutoScreen() {
       size: () => ({ w: c.clientWidth, hh: c.clientHeight }),
       make: (w, hh, seed) => {
         const k = w / TITLE_VW, vh = hh / k;
+        // (stage 4a, until 4b wires the hub to it) a test flag opens a level straight away: window.__AUTO_LEVEL = its seed
+        if (window.__AUTO_LEVEL) {
+          const S = levelScene(vh, window.__AUTO_LEVEL, run.players.length);
+          scene.current = S;
+          return { S, C: titleCam(vh / 2, vh), warm: 0 };
+        }
         // the run is in the hub (it always is, for now): the strip, the player teleporting in, the camera on him
         const S = hubScene(vh, seed, run.players.length, run.tier);
         scene.current = S;
@@ -60,7 +67,9 @@ export function AutoScreen() {
   const tap = fn => e => { e.preventDefault(); fn(); };
   const nothing = () => { SFX.unlock(); SFX.ui('tap'); };
   /** @param {number} dir */
-  const go = dir => () => { SFX.unlock(); SFX.ui('tap'); if (scene.current) hubGo(scene.current, dir); };
+  const go = dir => () => { SFX.unlock(); SFX.ui('tap'); if (scene.current && scene.current.lvl) levelHold(scene.current, dir); else if (scene.current) hubGo(scene.current, dir); };
+  // in a level < and > are held (auto/pilot.js: < stops, > hurries); letting go lets go
+  const letGo = () => { if (scene.current && scene.current.lvl) levelHold(scene.current, 0); };
   const press = () => { SFX.unlock(); SFX.ui('tap'); if (scene.current && hubExit(scene.current)) SFX.fx('open'); };
   return h('div', { className: 'auto' },
     h('div', { className: 'aplay' },
@@ -77,8 +86,8 @@ export function AutoScreen() {
       ...Array.from({ length: BAG_SLOTS }, (_, i) => h(BagSlot, { key: i, i, it: run.bag[i] }))),
     h('div', { className: 'abtns' },
       h('button', { className: 'abtn ab', onPointerDown: tap(nothing) }, 'B'),
-      h('button', { className: 'abtn around al', onPointerDown: tap(go(-1)) }, '<'),
-      h('button', { className: 'abtn around ar', onPointerDown: tap(go(1)) }, '>'),
+      h('button', { className: 'abtn around al', onPointerDown: tap(go(-1)), onPointerUp: letGo, onPointerLeave: letGo, onPointerCancel: letGo }, '<'),
+      h('button', { className: 'abtn around ar', onPointerDown: tap(go(1)), onPointerUp: letGo, onPointerLeave: letGo, onPointerCancel: letGo }, '>'),
       h('button', { className: 'abtn aa', onPointerDown: tap(press) }, 'A')),
     paused ? h(PauseMenu, { input, label: 'Tier ' + run.tier, close: () => { SFX.fx('close'); setPaused(false); } }) : null);
 }

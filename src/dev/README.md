@@ -71,6 +71,7 @@
   machine at tier 1, 120 gold), `autoGunGrow` (× each tier, 1.35), `autoExoPrice` (% of the gun price, 60), `autoScrap` (% of a
   gun, exo mod or perk's price, 25), `autoRed` (40), `autoGreen` (150), `autoModGold` (15): scrap gold × `goldScale(tier)`.
 - CaveRunner Auto's hub (`g: 'autohub'`, "Auto: hub", same **Auto** tab; `auto/hub.js`, stage 3b): `autoHubWalk` (walk speed, 80), `autoHubEase` (eases in over the last, 26), `autoHubOff` (stops this far beside a machine's middle, 38), `autoHubSpace` (line-up spacing, 16).
+- CaveRunner Auto's level (`g: 'autolevel'`, "Auto: level", same **Auto** tab; `auto/level.js`, `auto/pilot.js`, stage 4a): `autoLvlMin` (level length, minutes at normal pace, 5), `autoLvlPace` (normal pace × the menu's scroll, 1), `autoLvlHurry` (holding >, 1.6), `autoLvlElite` (elite near, 0.4), `autoLvlChest` (chest near, 0.5), `autoLvlEliteR` (120), `autoLvlChestR` (50), `autoLvlBossT` (arena cleared after, s, 3: a stand-in till stage 6), `autoLvlEase` (pace change a second, 1.5).
 - The tables: `ELITE_KNOBS`, `ELITE_COLS` (elites), `SP_KNOBS` (spider + web lines), `JE_KNOBS`, `JE_COLS` (jellyfish), `RA_KNOBS` (rats
   and nests), `LV_KNOBS` (floor-1 layout, lanterns), `ARCH_KNOBS` (arched vines), `FIRE_KNOBS`.
 

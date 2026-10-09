@@ -1794,7 +1794,30 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "autoHubSpace", g: "autohub", label: "Players line up this far apart (world units)", min: 4, max: 40, step: 1 }
   );
   DEV_GROUPS.push(["autohub", "Auto: hub"]);
-  DEV_TABS.splice(DEV_TABS.length - 1, 0, ["auto", "Auto", ["auto", "autohub"]]);
+  Object.assign(DEV_DEFAULTS, {
+    autoLvlMin: 5,
+    autoLvlPace: 1,
+    autoLvlHurry: 1.6,
+    autoLvlElite: 0.4,
+    autoLvlChest: 0.5,
+    autoLvlEliteR: 120,
+    autoLvlChestR: 50,
+    autoLvlBossT: 3,
+    autoLvlEase: 1.5
+  });
+  DEV_META.push(
+    { k: "autoLvlMin", g: "autolevel", label: "Level length (minutes at normal pace)", min: 0.2, max: 20, step: 0.1 },
+    { k: "autoLvlPace", g: "autolevel", label: "Normal pace (× the menu’s scroll, 34 world units / s)", min: 0.1, max: 4, step: 0.05 },
+    { k: "autoLvlHurry", g: "autolevel", label: "Holding > hurries (× pace)", min: 1, max: 4, step: 0.05 },
+    { k: "autoLvlElite", g: "autolevel", label: "An elite alive and near slows to (× pace)", min: 0, max: 1, step: 0.05 },
+    { k: "autoLvlChest", g: "autolevel", label: "Passing a chest slows to (× pace)", min: 0, max: 1, step: 0.05 },
+    { k: "autoLvlEliteR", g: "autolevel", label: "An elite counts as near within (world units)", min: 10, max: 400, step: 5 },
+    { k: "autoLvlChestR", g: "autolevel", label: "A chest counts as near within (world units)", min: 5, max: 300, step: 5 },
+    { k: "autoLvlBossT", g: "autolevel", label: "Boss arena: cleared after (s; until stage 6 adds the boss)", min: 0, max: 30, step: 0.5 },
+    { k: "autoLvlEase", g: "autolevel", label: "Pace changes by at most (× pace / s)", min: 0.2, max: 10, step: 0.1 }
+  );
+  DEV_GROUPS.push(["autolevel", "Auto: level"]);
+  DEV_TABS.splice(DEV_TABS.length - 1, 0, ["auto", "Auto", ["auto", "autohub", "autolevel"]]);
   var DEV_KEY = "caverunner-dev";
   var DEV = Object.assign({}, DEV_DEFAULTS);
   var dueMs = (floor) => floor === 1 ? DEV.due1 * 6e4 : DEADLINE_MS;
@@ -10383,6 +10406,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var FRAME_GAP = 72;
   var FRAME_W = 36;
   var SCROLL = 34;
+  var sv = (S2) => SCROLL * (S2.pace == null ? 1 : S2.pace);
   var GRAV = 260;
   var SP = 0.5;
   var TITLE_SHOTS = [
@@ -10469,6 +10493,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     return Z[lo];
   }
+  var titleZoneAdd = (P2, x0) => {
+    const z = mkZone(P2.R, x0, P2.z);
+    P2.z.push(z);
+    return z;
+  };
   function mkZone(R, x0, Z) {
     const last = Z.slice(-2).map((q) => q.z), can = TITLE_ZONES.filter((z2) => !last.includes(z2));
     const z = can[Math.floor(R() * can.length)], len = TITLE_ZLEN[0] + R() * (TITLE_ZLEN[1] - TITLE_ZLEN[0]);
@@ -10653,10 +10682,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const patch = titleNoise(wx / 14, 11) > 0.52, tuft = patch && h2(c, 5) < 0.4 ? h2(c, 6) < 0.4 ? 2 : 1 : 0;
     const mossDeep = 2 + (patch ? 1 + Math.floor(h2(c, 7) * 3) : 0);
     const rk = Math.floor(wx / 60), rcx = rk * 60 + 10 + h2(rk, 1) * 40, rw = 6 + h2(rk, 2) * 6, rd = (wx - rcx) / rw;
-    const rub = z !== "paved" && h2(rk, 3) < 0.45 && Math.abs(rd) < 1 ? (2 + h2(rk, 4) * 2.5) * (1 - rd * rd) : 0;
+    const rub = !Zn.flat && z !== "paved" && h2(rk, 3) < 0.45 && Math.abs(rd) < 1 ? (2 + h2(rk, 4) * 2.5) * (1 - rd * rd) : 0;
     const lk = Math.floor(wx / 90), lx0 = lk * 90 + 15 + h2(lk, 8) * 35, lw = 14 + h2(lk, 9) * 14;
     const lmid = lx0 + lw / 2, lc = titleCeil(lmid, S2), lf = titleFloor(lmid, S2), ly = lc + 14 + h2(lk, 10) * Math.max(0, lf - lc - 52);
-    const ledge = (z === "moss" || z === "grove" || z === "webs") && built(lmid, S2) === 0 && h2(lk, 11) < 0.5 && wx >= lx0 && wx < lx0 + lw && lf - lc > 60;
+    const ledge = !Zn.flat && (z === "moss" || z === "grove" || z === "webs") && built(lmid, S2) === 0 && h2(lk, 11) < 0.5 && wx >= lx0 && wx < lx0 + lw && lf - lc > 60;
     for (let r = 0; r < S2.rows; r++) {
       const y = (r + 0.5) * TCELL, zc = titleZoneAt(wx, y, S2);
       let m = TM.AIR;
@@ -10922,6 +10951,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       digWhy: {},
       snd: []
     };
+    if (opts.level) {
+      S2.zp = opts.level.zp;
+      S2.lvl = opts.level;
+    }
     if (hub) {
       S2.hub = hub;
       S2.still = true;
@@ -11376,7 +11409,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     dt = Math.min(dt, 0.05);
     const R = S2.rnd;
     S2.t += dt;
-    if (!S2.hub) S2.scroll += SCROLL * dt;
+    if (!S2.hub) S2.scroll += sv(S2) * dt;
     genTo(S2);
     S2.shake = Math.max(0, S2.shake - dt * 18);
     S2.flash = Math.max(0, S2.flash - dt * 1.6);
@@ -11417,7 +11450,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (p.kind === "drip") {
         p.vy += GRAV * dt;
         p.y += p.vy * dt;
-        p.x -= SCROLL * dt;
+        p.x -= sv(S2) * dt;
         if (titleSolid(S2, p.x, p.y + 1)) {
           p.life = 0;
           burst(S2, p.x, p.y, 2, "#7ab8ff", 25, "spark", 0.2);
@@ -11427,7 +11460,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
       if (p.kind === "ember") {
         p.vy += GRAVITY * 0.45 * dt;
-        p.x += (p.vx - SCROLL) * dt;
+        p.x += (p.vx - sv(S2)) * dt;
         p.y += p.vy * dt;
         const c = Math.floor((p.x + S2.scroll) / TCELL), r = Math.floor(p.y / TCELL), m = titleCell(S2, c, r);
         if (FUEL[m]) lightArea(S2, p.x + S2.scroll, p.y, 2, 0.6);
@@ -11439,13 +11472,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
       if (p.kind === "flame") {
         p.vy += GRAVITY * -0.03 * dt;
-        p.x += (p.vx - SCROLL) * dt;
+        p.x += (p.vx - sv(S2)) * dt;
         p.y += p.vy * dt;
         if (titleSolid(S2, p.x, p.y)) p.life = 0;
         continue;
       }
       if (p.kind === "fsmoke") {
-        p.x += (p.vx - SCROLL) * dt;
+        p.x += (p.vx - sv(S2)) * dt;
         p.y += p.vy * dt;
         p.vx *= 1 - 2.5 * dt;
         p.vy = p.vy * (1 - 2.5 * dt) - 12 * dt;
@@ -11453,7 +11486,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         continue;
       }
       if (p.kind === "spore") {
-        p.x += (p.vx + Math.sin(S2.t * 1.7 + p.max * 9) * 3 - SCROLL) * dt;
+        p.x += (p.vx + Math.sin(S2.t * 1.7 + p.max * 9) * 3 - sv(S2)) * dt;
         p.y += p.vy * dt;
         continue;
       }
@@ -11464,7 +11497,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       p.vy -= p.vy * drag * dt;
       if (p.kind === "chunk") p.vy += GRAV * 0.6 * dt;
       if (p.kind === "fire") p.vy -= 30 * dt;
-      p.x -= (p.kind === "smoke" || p.kind === "chunk" ? SCROLL * 0.5 : 0) * dt;
+      p.x -= (p.kind === "smoke" || p.kind === "chunk" ? sv(S2) * 0.5 : 0) * dt;
     }
     S2.parts = S2.parts.filter((p) => p.life > 0);
     stepGold(S2, dt);
@@ -11526,12 +11559,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     S2.props = S2.props.filter((p) => !p.gone && p.ox + (p.span || 0) - S2.scroll > -60);
     S2.webs = S2.webs.filter((L3) => Math.max(L3.a0x, L3.b0x) - S2.scroll > -40);
     if (S2.hub && S2.hub.step) S2.hub.step(S2, dt);
+    if (S2.lvl && S2.lvl.step) S2.lvl.step(S2, dt);
   }
   function stepRunner(S2, r, dt) {
     const x0 = r.x, y0 = r.y;
     stepRunnerMove(S2, r, dt);
     const k = Math.min(1, 12 * dt);
-    r.wvx += (Math.max(-250, Math.min(250, (r.x - x0) / Math.max(dt, 1e-3) + SCROLL)) - r.wvx) * k;
+    r.wvx += (Math.max(-250, Math.min(250, (r.x - x0) / Math.max(dt, 1e-3) + sv(S2))) - r.wvx) * k;
     r.wvy += (Math.max(-250, Math.min(250, (r.y - y0) / Math.max(dt, 1e-3))) - r.wvy) * k;
     stepRunnerGun(S2, r, dt);
   }
@@ -11625,7 +11659,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       r.tx = r.spd < 0 ? 8 : 18 + R() * 90;
       r.retarget = r.spd === 1 ? 1 + R() * 1.5 : 0.8 + R() * 1.2;
     }
-    const vx = r.spd < 0 ? Math.max(r.spd * SCROLL, (8 - r.x) * 2) : Math.max(-26 * r.pace, Math.min(26 * r.pace * r.spd, (r.tx - r.x) * 1.2));
+    const vx = r.spd < 0 ? Math.max(r.spd * sv(S2), (8 - r.x) * 2) : Math.max(-26 * r.pace, Math.min(26 * r.pace * r.spd, (r.tx - r.x) * 1.2));
     const ground = titleSurf(S2, cx, r.y + PH - 9, 1);
     if (ground < r.y + PH - 8) {
       r.ground = false;
@@ -11657,8 +11691,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       return;
     }
     r.x += vx * dt;
-    r.gait += (SCROLL + vx) * dt * 0.38;
-    if ((r.stepT = (r.stepT || 0) - dt * Math.abs(SCROLL + vx) / 20) <= 0) {
+    r.gait += (sv(S2) + vx) * dt * 0.38;
+    if ((r.stepT = (r.stepT || 0) - dt * Math.abs(sv(S2) + vx) / 20) <= 0) {
       r.stepT = 1;
       snd(S2, "step", cx, r.y + PH);
     }
@@ -11712,7 +11746,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const g0 = titleSurf(S2, cx, r.y + PH - 9, 1);
     if (g0 < r.y + PH && g0 >= r.y + PH - 9 && !boxRock(S2, r.x, g0 - PH)) r.y = g0 - PH;
     if (boxRock(S2, r.x, r.y)) {
-      startDig(S2, r, r.vx + SCROLL, r.vy, "came");
+      startDig(S2, r, r.vx + sv(S2), r.vy, "came");
       return;
     }
     if (landing && g0 - (r.y + PH) < 1.5) {
@@ -11744,7 +11778,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
       return;
     }
-    startDig(S2, r, r.vx + SCROLL, r.vy, into ? "aim" : "fly");
+    startDig(S2, r, r.vx + sv(S2), r.vy, into ? "aim" : "fly");
   }
   function digStep(S2, r, dt) {
     const R = S2.rnd;
@@ -11768,8 +11802,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     r.y += r.vy * dt;
     r.flame = r.mode === "fly" ? 0.3 : 0;
     r.ground = false;
-    if (r.mode === "run") r.gait += (SCROLL + r.vx) * dt * 0.3;
-    const dx = r.vx + SCROLL, dy = r.vy, d = Math.hypot(dx, dy) || 1;
+    if (r.mode === "run") r.gait += (sv(S2) + r.vx) * dt * 0.3;
+    const dx = r.vx + sv(S2), dy = r.vy, d = Math.hypot(dx, dy) || 1;
     r.dx = dx / d;
     r.dy = dy / d;
     titleCarve(S2, r.x + PW / 2 + r.dx * 4, r.y + PH / 2 + r.dy * 4, TITLE_DIGR, false);
@@ -14096,9 +14130,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return ((v ^ v >>> 16) >>> 0) / 4294967296;
   }
   function valueNoise(x, y, s) {
-    const xi = Math.floor(x), yi = Math.floor(y), u = x - xi, v = y - yi, su = u * u * (3 - 2 * u), sv = v * v * (3 - 2 * v);
+    const xi = Math.floor(x), yi = Math.floor(y), u = x - xi, v = y - yi, su = u * u * (3 - 2 * u), sv2 = v * v * (3 - 2 * v);
     const a = cellNoise(xi, yi, s), b = cellNoise(xi + 1, yi, s), c = cellNoise(xi, yi + 1, s), d = cellNoise(xi + 1, yi + 1, s);
-    return a + (b - a) * su + (c - a) * sv + (a - b - c + d) * su * sv;
+    return a + (b - a) * su + (c - a) * sv2 + (a - b - c + d) * su * sv2;
   }
   function darkAt(level, wx, wy, cell) {
     const m = level.darkMask;
@@ -28700,13 +28734,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
       });
       {
-        const sv = input.current.saved;
+        const sv2 = input.current.saved;
         input.current.saved = null;
-        if (sv) {
-          W.floor = sv.floor;
-          W.hasLvl = sv.hasLvl;
-          enterLevel(W, G, sv.level);
-          if (sv.hp) W.p.hp = Math.min(sv.hp, maxHp(W, G));
+        if (sv2) {
+          W.floor = sv2.floor;
+          W.hasLvl = sv2.hasLvl;
+          enterLevel(W, G, sv2.level);
+          if (sv2.hp) W.p.hp = Math.min(sv2.hp, maxHp(W, G));
         } else {
           enterLevel(W, G);
           if (!window.__TEST || window.__TEST_INTRO) shopDarkStart(W);
@@ -33417,7 +33451,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     useEffect(() => {
       if (!on || !strip.current || !win.current) return;
       const H = win.current.clientHeight, K = REEL_FILL, speed = spin.boost ? REEL_BOOST : REEL_SPEED;
-      const stopAt = REEL_STOP * (spin.boost ? 0.8 : 1) + idx * REEL_GAP;
+      const stopAt2 = REEL_STOP * (spin.boost ? 0.8 : 1) + idx * REEL_GAP;
       const t0 = performance.now();
       let raf = 0, tick = -1, land = null, thudded = false;
       const frame = () => {
@@ -33430,7 +33464,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             tick = Math.floor(raw);
             SFX.fx("reelTick");
           }
-          if (t >= stopAt && o >= K - 0.6) land = { o0: o, t, dur: 3 * (K + 1 + OVER - o) / speed };
+          if (t >= stopAt2 && o >= K - 0.6) land = { o0: o, t, dur: 3 * (K + 1 + OVER - o) / speed };
         }
         if (land) {
           const s = (t - land.t) / land.dur;
@@ -35112,6 +35146,202 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return m && m.takes ? { n: 1, kind: m.takes } : null;
   }
 
+  // src/auto/pilot.js
+  var PILOT_BRAKE = 60;
+  var PILOT_CRAWL = 0.08;
+  function pilotPace(P2) {
+    if ((P2.hold || 0) < 0) return 0;
+    const base = DEV.autoLvlPace;
+    let k = base;
+    if (P2.elites && P2.elites.some((e) => e.alive !== false && Math.abs(e.x - P2.x) < DEV.autoLvlEliteR)) k *= DEV.autoLvlElite;
+    if (P2.chests && P2.chests.some((c) => !c.open && Math.abs(c.x - P2.x) < DEV.autoLvlChestR)) k *= DEV.autoLvlChest;
+    if ((P2.hold || 0) > 0) k *= DEV.autoLvlHurry;
+    if (P2.stopX != null) {
+      const d = P2.stopX - P2.x;
+      if (d <= 0) return 0;
+      k = Math.min(k, base * Math.max(PILOT_CRAWL, Math.min(1, d / PILOT_BRAKE)) * (P2.hold && P2.hold > 0 ? DEV.autoLvlHurry : 1));
+    }
+    return Math.max(0, k);
+  }
+  function pilotEase(cur, want, dt) {
+    const v = DEV.autoLvlEase * DEV.autoLvlPace * dt;
+    return cur < want ? Math.min(want, cur + v) : Math.max(want, cur - v);
+  }
+
+  // src/auto/level.js
+  var LVL_SCROLL = 34;
+  var LVL_PADX = 60;
+  var LVL_PAD = 160;
+  var LVL_ARENA = 320;
+  var LVL_EXITW = 160;
+  var LVL_TEAM = 60;
+  var LVL_GO = 0.4;
+  var LVL_WALK = 40;
+  var GRAV2 = 260;
+  function flatZone(P2, x0, x1, co) {
+    const z = { z: "moss", x0, x1, i: P2.z.length, ph: [0, 0, 0, 0, 0], ca: 0, fa: 0, cf: 1, ff: 1, co, fo: 2, dens: 0.4, flat: true };
+    P2.z.push(z);
+    return z;
+  }
+  function levelPlan(seed, minutes = DEV.autoLvlMin) {
+    const P2 = titlePlan(seed);
+    flatZone(P2, -300, LVL_PAD, 0);
+    const want = Math.max(TITLE_ZLEN[0], minutes * 60 * LVL_SCROLL * DEV.autoLvlPace);
+    let x = LVL_PAD;
+    while (x - LVL_PAD < want) x = titleZoneAdd(P2, x).x1;
+    const a = flatZone(P2, x, x + LVL_ARENA, -14);
+    const e = flatZone(P2, a.x1, a.x1 + LVL_EXITW, 0);
+    flatZone(P2, e.x1, 1e9, 400);
+    return {
+      zp: P2,
+      seed,
+      padX: LVL_PADX,
+      z0: LVL_PAD,
+      z1: x,
+      len: x - LVL_PAD,
+      arena: { x0: a.x0, x1: a.x1, mid: (a.x0 + a.x1) / 2 },
+      exitX: (e.x0 + e.x1) / 2
+    };
+  }
+  var levelState = (S2) => S2.lvl && S2.lvl.data || null;
+  var levelTeamX = (S2) => S2.scroll + LVL_TEAM;
+  function levelScene(vh, seed, n, plan = levelPlan(seed)) {
+    const L3 = { plan, phase: "arrive", arrived: [], zap: -99, goT: -1, arenaT: -1, bossDead: false, hold: 0, elites: [], chests: [], doneT: -1 };
+    const S2 = titleScene(vh, seed, vh * 0.24, vh * 0.92, { runners: n, level: { zp: plan.zp, step: levelStep, data: L3 } });
+    S2.pace = 0;
+    S2.still = true;
+    S2.foes.length = 0;
+    const fy = titleFloor(plan.padX, S2);
+    S2.runners.forEach((r, i) => {
+      r.x = plan.padX - PW / 2 + (i - (S2.runners.length - 1) / 2) * 7;
+      r.y = fy - PH;
+      r.vx = r.vy = 0;
+      r.mode = "run";
+      r.ground = true;
+      r.hide = true;
+      r.face = 1;
+      r.ang = 0.2;
+      r.flame = 0;
+      L3.arrived[i] = false;
+    });
+    return S2;
+  }
+  function levelHold(S2, dir) {
+    const L3 = levelState(S2);
+    if (L3) L3.hold = Math.sign(dir);
+  }
+  function levelDone(S2) {
+    const L3 = levelState(S2);
+    return !!L3 && L3.phase === "exit" && L3.doneT >= 0;
+  }
+  var stopAt = (L3) => L3.phase === "run" || L3.phase === "arrive" ? L3.plan.arena.mid : L3.plan.exitX;
+  function levelStep(S2, dt) {
+    const L3 = levelState(S2);
+    if (!L3) return;
+    const P2 = L3.plan;
+    if (L3.phase === "arrive") {
+      const fy = titleFloor(P2.padX, S2);
+      S2.runners.forEach((r, i) => {
+        if (!L3.arrived[i] && S2.t >= hubArriveT(i)) {
+          L3.arrived[i] = true;
+          L3.zap = S2.t;
+          r.hide = false;
+          S2.flash = Math.max(S2.flash, 0.5);
+          const cx = r.x + PW / 2;
+          for (let k = 0; k < 18; k++) {
+            const a = S2.rnd() * Math.PI * 2, sp = 20 + S2.rnd() * 60;
+            S2.parts.push({
+              x: cx,
+              y: fy - PH / 2,
+              vx: Math.cos(a) * sp,
+              vy: Math.sin(a) * sp - 20,
+              life: 0.5,
+              max: 0.5,
+              r: 1.2,
+              col: k % 3 ? "#7cc8ff" : "#e6f6ff",
+              kind: "spark"
+            });
+          }
+          S2.snd.push({ k: "arc", x: cx, y: fy - PH / 2 });
+        }
+      });
+      if (L3.arrived.every((a) => a)) {
+        if (L3.goT < 0) L3.goT = S2.t;
+        if (S2.t - L3.goT >= LVL_GO) {
+          L3.phase = "run";
+          S2.still = false;
+          S2.runners.forEach((r) => {
+            r.retarget = 0;
+            r.modeT = 0.6 + r.id * 0.5;
+          });
+        }
+      }
+      return;
+    }
+    const stop = stopAt(L3);
+    if (L3.phase !== "exit" && levelTeamX(S2) > stop) S2.scroll = stop - LVL_TEAM;
+    if (L3.phase === "run" && levelTeamX(S2) >= stop - 0.5) {
+      L3.phase = "arena";
+      L3.arenaT = S2.t;
+    }
+    if (L3.phase === "arena" && (L3.bossDead || S2.t - L3.arenaT >= DEV.autoLvlBossT)) {
+      L3.bossDead = true;
+      L3.phase = "out";
+    }
+    if (L3.phase === "out" && levelTeamX(S2) >= stop - 0.5) {
+      L3.phase = "exit";
+      S2.still = true;
+    }
+    if (L3.phase === "exit") {
+      S2.pace = 0;
+      gather(S2, L3, dt);
+      return;
+    }
+    if (L3.phase === "arena") {
+      S2.pace = 0;
+      return;
+    }
+    const want = pilotPace({ x: levelTeamX(S2), stopX: stop, elites: L3.elites, chests: L3.chests, hold: L3.hold });
+    S2.pace = pilotEase(S2.pace || 0, want, dt);
+  }
+  function gather(S2, L3, dt) {
+    const n = S2.runners.length, px = L3.plan.exitX - S2.scroll;
+    let all = true;
+    S2.runners.forEach((r, i) => {
+      if (r.dig) {
+        r.dig = 0;
+        if (r.keep) r.kit = r.keep;
+        r.keep = null;
+      }
+      r.mode = "run";
+      r.flame = 0;
+      const tx2 = px - PW / 2 + (i - (n - 1) / 2) * 7, d = tx2 - r.x, mv = Math.sign(d) * Math.min(Math.abs(d), LVL_WALK * dt);
+      r.x += mv;
+      if (Math.abs(mv) > 1e-3) {
+        r.face = Math.sign(mv);
+        r.gait += Math.abs(mv) * 0.3;
+      }
+      r.stand = Math.abs(mv) <= 1e-3;
+      const g = titleSurf(S2, r.x + PW / 2, r.y + PH - 6, 1);
+      if (r.y + PH < g - 0.5) {
+        r.vy += GRAV2 * dt;
+        r.y = Math.min(g - PH, r.y + r.vy * dt);
+        r.ground = false;
+      } else {
+        r.y = g - PH;
+        r.vy = 0;
+        r.ground = true;
+      }
+      if (Math.abs(d) > 0.5 || !r.ground) all = false;
+    });
+    if (all && L3.doneT < 0) L3.doneT = S2.t;
+  }
+  function levelPads(S2) {
+    const L3 = levelState(S2);
+    if (!L3) return [];
+    return [{ id: "enter", x: L3.plan.padX - S2.scroll, fy: titleFloor(L3.plan.padX, S2) }, { id: "exit", x: L3.plan.exitX - S2.scroll, fy: titleFloor(L3.plan.exitX, S2) }].filter((p) => p.x > -60 && p.x < TITLE_VW + 60);
+  }
+
   // src/auto/save.js
   var AUTO_SAVE_KEY = "caverunner-auto-run";
   var AUTO_SAVE_V = 1;
@@ -35516,6 +35746,28 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ctx.restore();
   }
 
+  // src/game/render/leveldraw.js
+  function levelBack(ctx, S2) {
+    for (const p of levelPads(S2)) drawHubPad(ctx, p.x, p.fy, S2.t + (p.id === "enter" ? 0 : 5));
+  }
+  function levelLight(S2, pool) {
+    const L3 = levelState(S2);
+    if (!L3) return;
+    const { ch, fl } = L3.phase === "arrive" || S2.t < 3 ? hubCharge(S2) : { ch: 0, fl: 0 };
+    for (const p of levelPads(S2)) pool(p.x, p.fy - 16, 34 + 30 * (p.id === "enter" ? fl : 0), Math.min(1, p.id === "enter" ? 0.35 + 0.6 * ch * ch + 0.6 * fl : 0.45), 0.2);
+  }
+  function levelGlow(ctx, S2) {
+    const L3 = levelState(S2);
+    if (!L3) return;
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    for (const p of levelPads(S2)) {
+      if (p.id === "enter") padGlow(ctx, S2, p.x, p.fy, 0, L3.phase === "arrive" || S2.t < 3 ? hubCharge(S2) : { ch: 0, fl: 0 }, L3.zap);
+      else padGlow(ctx, S2, p.x, p.fy, 5, { ch: 0, fl: 0 }, -99);
+    }
+    ctx.restore();
+  }
+
   // src/game/render/titledraw.js
   var T = THEMES[0];
   var CACHE = /* @__PURE__ */ new WeakMap();
@@ -35682,12 +35934,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
     }
     if (S2.hub) hubBack(ctx, S2);
+    if (S2.lvl) levelBack(ctx, S2);
     for (const r of S2.runners) if (!r.hide) drawTitleRunner(ctx, S2, r);
     titleDark(ctx, S2);
     ctx.globalCompositeOperation = "lighter";
     for (const f of S2.foes) if (f.je && f.x - S2.scroll > -40 && f.x - S2.scroll < TITLE_VW + 40) titlePlantGlow(ctx, S2, f);
     for (const r of S2.runners) if (!r.hide) titleBeam(ctx, S2, r, DK.vis[r.id]);
     if (S2.hub) hubGlow(ctx, S2);
+    if (S2.lvl) levelGlow(ctx, S2);
     if (S2.shots.length || S2.zaps.length) pixelSprite(ctx, gx, 0, TITLE_VW + 100, S2.vh, 1, false, (c) => {
       const G2 = { ctx: c };
       c.globalCompositeOperation = "lighter";
@@ -36001,6 +36255,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       lc.restore();
     }
     if (S2.hub) hubLight(S2, pool);
+    if (S2.lvl) levelLight(S2, pool);
     for (const p of S2.props) if (p.k === "lamp" && !p.gone && !p.fall && p.x > -TITLE_LAMPR - 40 && p.x < TITLE_VW + TITLE_LAMPR + 40) {
       const ly = p.y + p.len + 3;
       lc.save();
@@ -36759,6 +37014,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         size: () => ({ w: c.clientWidth, hh: c.clientHeight }),
         make: (w, hh, seed) => {
           const k = w / TITLE_VW, vh = hh / k;
+          if (window.__AUTO_LEVEL) {
+            const S3 = levelScene(vh, window.__AUTO_LEVEL, run.players.length);
+            scene.current = S3;
+            return { S: S3, C: titleCam(vh / 2, vh), warm: 0 };
+          }
           const S2 = hubScene(vh, seed, run.players.length, run.tier);
           scene.current = S2;
           const C = titleCam(vh / 2, vh);
@@ -36782,7 +37042,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const go = (dir) => () => {
       SFX.unlock();
       SFX.ui("tap");
-      if (scene.current) hubGo(scene.current, dir);
+      if (scene.current && scene.current.lvl) levelHold(scene.current, dir);
+      else if (scene.current) hubGo(scene.current, dir);
+    };
+    const letGo2 = () => {
+      if (scene.current && scene.current.lvl) levelHold(scene.current, 0);
     };
     const press = () => {
       SFX.unlock();
@@ -36828,8 +37092,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         "div",
         { className: "abtns" },
         h("button", { className: "abtn ab", onPointerDown: tap(nothing) }, "B"),
-        h("button", { className: "abtn around al", onPointerDown: tap(go(-1)) }, "<"),
-        h("button", { className: "abtn around ar", onPointerDown: tap(go(1)) }, ">"),
+        h("button", { className: "abtn around al", onPointerDown: tap(go(-1)), onPointerUp: letGo2, onPointerLeave: letGo2, onPointerCancel: letGo2 }, "<"),
+        h("button", { className: "abtn around ar", onPointerDown: tap(go(1)), onPointerUp: letGo2, onPointerLeave: letGo2, onPointerCancel: letGo2 }, ">"),
         h("button", { className: "abtn aa", onPointerDown: tap(press) }, "A")
       ),
       paused ? h(PauseMenu, { input, label: "Tier " + run.tier, close: () => {

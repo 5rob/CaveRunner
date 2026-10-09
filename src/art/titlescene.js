@@ -60,6 +60,9 @@ const FUEL = [0, 0, 2, 0, 3, 0, 3, 3, 1, 0, 1, 0, 0, 0];   // the fuel kind each
 export const FRAME_GAP = 72;          // the built-up layers: a timber frame every this far (world units)
 export const FRAME_W = 36;            // its width, post to post
 const SCROLL = 34;                    // the world's scroll speed (world units / s)
+// the scroll's speed now: SCROLL × the scene's pace (CaveRunner Auto's level, auto/pilot.js: S.pace; the title's is 1)
+/** @param {{ pace?: number }} S */
+const sv = S => SCROLL * (S.pace == null ? 1 : S.pace);
 const GRAV = 260;
 const SP = 0.5;                       // the game's shot speeds, scaled to the title's screen
 // the guns they swap between, made up at each swap (titleKit): a real gun skin, a real shot mod (its look,
@@ -119,13 +122,17 @@ export const TITLE_HOME = {
  *   fire: TFire[], dirty: number[][], dirtyAll: boolean, carved: number, burnt: number, swaps: number, groundT: number, flyT: number, kinds: Record<string, number>,
  *   webs: WebLine[], cut: number, lineT: number, silk: { x: number, y: number, ax: number, ay: number, vx: number, vy: number, life: number }[],
  *   nav: { F: any, fx: number, fy: number, t: number }, fireAcc: number, fireN: number, burning: Set<number>, gotN: number, pops: number, lampsPopped: number, kitNames: Set<string>,
- *   digT: number, digs: number, digWhy: Record<string, number>, still?: boolean, zp: TitlePlan, snd: TSnd[], hub?: TitleHub }} TitleScene */
+ *   digT: number, digs: number, digWhy: Record<string, number>, still?: boolean, zp: TitlePlan, snd: TSnd[], hub?: TitleHub, lvl?: TitleLevel, pace?: number }} TitleScene */
+// a finite level in the scrolling ring (CaveRunner Auto, auto/level.js levelScene): zp its plan (made whole up front); step runs
+// after titleStep's own; data is the level's own state. S.pace (0..) scales the scroll (auto/pilot.js)
+/** @typedef {{ zp: TitlePlan, step?: (S: TitleScene, dt: number) => void, data?: any }} TitleLevel */
 // a sound the scene asks for this frame (v0.0.174): ui/titlesound.js plays it with the game's own voice. k its name, x, y where (screen
 // units), a what it needs (a creature's kind, a shot, a radius)
 /** @typedef {{ k: string, x: number, y: number, a?: any }} TSnd */
 // a zone of the plan (titlePlan): its kind, x0..x1, i its place in the plan; its roof's and floor's offset (co, fo), hills' height (ca, fa),
 // stretch (cf, ff) and phases (ph); dens its plants and webs
-/** @typedef {{ z: string, x0: number, x1: number, i: number, ph: number[], ca: number, fa: number, cf: number, ff: number, co: number, fo: number, dens: number, mine?: TMine }} TZone */
+/** @typedef {{ z: string, x0: number, x1: number, i: number, ph: number[], ca: number, fa: number, cf: number, ff: number, co: number, fo: number, dens: number, mine?: TMine, flat?: boolean }} TZone */
+// (flat: a level's pad or arena, auto/level.js: no rubble, no ledges)
 // a mine works' own layout (v0.0.170, mkMine): n tunnels stacked (0 the lowest), `ein` the one the cave comes in at, `eout`
 // the one it leaves by; `lf` how high the stack sits (0 low .. 1 high, where there's room); `sh` the rock shelf over each;
 // each tunnel's walled ends `L` / `Rx` (±Infinity: open, the way in or out); `holes` through a shelf (k: over tunnel k), and
@@ -165,6 +172,9 @@ function zoneIn(P, wx) {
   while (lo < hi) { const m = (lo + hi + 1) >> 1; if (Z[m].x0 <= wx) lo = m; else hi = m - 1; }
   return Z[lo];
 }
+// the plan's next zone from x0, by the same rules (CaveRunner Auto's finite level, auto/level.js)
+/** @param {TitlePlan} P @param {number} x0 @returns {TZone} */
+export const titleZoneAdd = (P, x0) => { const z = mkZone(P.R, x0, P.z); P.z.push(z); return z; };
 /** @param {() => number} R @param {number} x0 @param {TZone[]} Z the zones so far @returns {TZone} */
 function mkZone(R, x0, Z) {
   const last = Z.slice(-2).map(q => q.z), can = TITLE_ZONES.filter(z => !last.includes(z));
@@ -383,11 +393,11 @@ function genCol(S, c) {
   const mossDeep = 2 + (patch ? 1 + Math.floor(h2(c, 7) * 3) : 0);
   // rubble: a low mound of broken brick, moss over its top (decorate.js rubble), now and then on a floor
   const rk = Math.floor(wx / 60), rcx = rk * 60 + 10 + h2(rk, 1) * 40, rw = 6 + h2(rk, 2) * 6, rd = (wx - rcx) / rw;
-  const rub = z !== 'paved' && h2(rk, 3) < 0.45 && Math.abs(rd) < 1 ? (2 + h2(rk, 4) * 2.5) * (1 - rd * rd) : 0;
+  const rub = !Zn.flat && z !== 'paved' && h2(rk, 3) < 0.45 && Math.abs(rd) < 1 ? (2 + h2(rk, 4) * 2.5) * (1 - rd * rd) : 0;
   // a small brick ledge out in the air of a natural cave (the level's built ledges)
   const lk = Math.floor(wx / 90), lx0 = lk * 90 + 15 + h2(lk, 8) * 35, lw = 14 + h2(lk, 9) * 14;
   const lmid = lx0 + lw / 2, lc = titleCeil(lmid, S), lf = titleFloor(lmid, S), ly = lc + 14 + h2(lk, 10) * Math.max(0, lf - lc - 52);
-  const ledge = (z === 'moss' || z === 'grove' || z === 'webs') && built(lmid, S) === 0 && h2(lk, 11) < 0.5 && wx >= lx0 && wx < lx0 + lw && lf - lc > 60;
+  const ledge = !Zn.flat && (z === 'moss' || z === 'grove' || z === 'webs') && built(lmid, S) === 0 && h2(lk, 11) < 0.5 && wx >= lx0 && wx < lx0 + lw && lf - lc > 60;
   for (let r = 0; r < S.rows; r++) {
     const y = (r + 0.5) * TCELL, zc = titleZoneAt(wx, y, S);   // the skin (moss or bricks) frays at a border
     let m = TM.AIR;
@@ -536,7 +546,8 @@ function kitOf(shot, mods, art) {
 
 // opts.runners: how many players (1-4; default TITLE_RUNNERS): CaveRunner Auto shows the run's players
 // opts.hub: a fixed strip instead of the scrolling ring (TitleHub; auto/hub.js hubScene): no creatures, no scroll
-/** @param {number} vh the view's height in world units @param {number} [seed] @param {number} [top] the action's band (world units) @param {number} [bot] @param {{ runners?: number, hub?: TitleHub }} [opts] @returns {TitleScene} */
+// opts.level: a finite plan in the scrolling ring (TitleLevel; auto/level.js levelScene)
+/** @param {number} vh the view's height in world units @param {number} [seed] @param {number} [top] the action's band (world units) @param {number} [bot] @param {{ runners?: number, hub?: TitleHub, level?: TitleLevel }} [opts] @returns {TitleScene} */
 export function titleScene(vh, seed = 7, top = vh * 0.3, bot = vh * 0.62, opts = {}) {
   const rnd = titleRng(seed), rows = Math.ceil(vh / TCELL) + 1, hub = opts.hub, ncol = hub ? hub.w : Math.ceil((TITLE_VW + 50 + AHEAD) / TCELL);
   /** @type {TitleScene} */
@@ -544,6 +555,7 @@ export function titleScene(vh, seed = 7, top = vh * 0.3, bot = vh * 0.62, opts =
     parts: [], coins: [], booms: [], zaps: [], flash: 0, rows, ncol, cells: new Uint8Array(rows * ncol), gen: -25, props: [],
     fire: [], dirty: [], dirtyAll: true, carved: 0, burnt: 0, swaps: 0, groundT: 0, flyT: 0, kinds: {}, webs: [], cut: 0, lineT: 0,
     silk: [], nav: { F: null, fx: 0, fy: 0, t: -9 }, fireAcc: 0, fireN: 0, burning: new Set(), gotN: 0, pops: 0, lampsPopped: 0, kitNames: new Set(), digT: 0, digs: 0, digWhy: {}, snd: [] };
+  if (opts.level) { S.zp = opts.level.zp; S.lvl = opts.level; }
   if (hub) {                            // a fixed strip: every column made now, nothing comes in
     S.hub = hub; S.still = true; S.gen = ncol;
     for (let c = 0; c < ncol; c++) for (let r = 0; r < rows; r++) S.cells[ci(S, c, r)] = hub.cell(c, r, rows);
@@ -916,7 +928,7 @@ function shotEnd(S, s) {
 export function titleStep(S, dt) {
   dt = Math.min(dt, 0.05);
   const R = S.rnd;
-  S.t += dt; if (!S.hub) S.scroll += SCROLL * dt;
+  S.t += dt; if (!S.hub) S.scroll += sv(S) * dt;
   genTo(S);
   S.shake = Math.max(0, S.shake - dt * 18);
   S.flash = Math.max(0, S.flash - dt * 1.6);
@@ -943,33 +955,33 @@ export function titleStep(S, dt) {
     p.life -= dt;
     if (p.kind === 'drip') {
       // falls with the rock (the scroll carries it), until it lands: a splash
-      p.vy += GRAV * dt; p.y += p.vy * dt; p.x -= SCROLL * dt;
+      p.vy += GRAV * dt; p.y += p.vy * dt; p.x -= sv(S) * dt;
       if (titleSolid(S, p.x, p.y + 1)) { p.life = 0; burst(S, p.x, p.y, 2, '#7ab8ff', 25, 'spark', 0.2); snd(S, 'drip', p.x, p.y); }
       continue;
     }
     if (p.kind === 'ember') {
-      p.vy += GRAVITY * 0.45 * dt; p.x += (p.vx - SCROLL) * dt; p.y += p.vy * dt;
+      p.vy += GRAVITY * 0.45 * dt; p.x += (p.vx - sv(S)) * dt; p.y += p.vy * dt;
       const c = Math.floor((p.x + S.scroll) / TCELL), r = Math.floor(p.y / TCELL), m = titleCell(S, c, r);
       if (FUEL[m]) lightArea(S, p.x + S.scroll, p.y, 2, 0.6);
       if (SOLID[m]) { lightArea(S, p.x + S.scroll - p.vx * dt, p.y - p.vy * dt, 4, 0.85); p.life = 0; }
       continue;
     }
     if (p.kind === 'flame') {          // world/props.js's dparts: GRAVITY × g (-0.03), gone on rock
-      p.vy += GRAVITY * -0.03 * dt; p.x += (p.vx - SCROLL) * dt; p.y += p.vy * dt;
+      p.vy += GRAVITY * -0.03 * dt; p.x += (p.vx - sv(S)) * dt; p.y += p.vy * dt;
       if (titleSolid(S, p.x, p.y)) p.life = 0;
       continue;
     }
     if (p.kind === 'fsmoke') {         // game/systems/particles.js smoke
-      p.x += (p.vx - SCROLL) * dt; p.y += p.vy * dt; p.vx *= 1 - 2.5 * dt; p.vy = p.vy * (1 - 2.5 * dt) - 12 * dt; p.r += 5 * dt;
+      p.x += (p.vx - sv(S)) * dt; p.y += p.vy * dt; p.vx *= 1 - 2.5 * dt; p.vy = p.vy * (1 - 2.5 * dt) - 12 * dt; p.r += 5 * dt;
       continue;
     }
-    if (p.kind === 'spore') { p.x += (p.vx + Math.sin(S.t * 1.7 + p.max * 9) * 3 - SCROLL) * dt; p.y += p.vy * dt; continue; }
+    if (p.kind === 'spore') { p.x += (p.vx + Math.sin(S.t * 1.7 + p.max * 9) * 3 - sv(S)) * dt; p.y += p.vy * dt; continue; }
     p.x += p.vx * dt; p.y += p.vy * dt;
     const drag = p.kind === 'smoke' ? 1.5 : 3;
     p.vx -= p.vx * drag * dt; p.vy -= p.vy * drag * dt;
     if (p.kind === 'chunk') p.vy += GRAV * 0.6 * dt;
     if (p.kind === 'fire') p.vy -= 30 * dt;
-    p.x -= (p.kind === 'smoke' || p.kind === 'chunk' ? SCROLL * 0.5 : 0) * dt;
+    p.x -= (p.kind === 'smoke' || p.kind === 'chunk' ? sv(S) * 0.5 : 0) * dt;
   }
   S.parts = S.parts.filter(p => p.life > 0);
   stepGold(S, dt);
@@ -1016,6 +1028,7 @@ export function titleStep(S, dt) {
   S.props = S.props.filter(p => !p.gone && p.ox + (p.span || 0) - S.scroll > -60);
   S.webs = S.webs.filter(L => Math.max(L.a0x, L.b0x) - S.scroll > -40);
   if (S.hub && S.hub.step) S.hub.step(S, dt);
+  if (S.lvl && S.lvl.step) S.lvl.step(S, dt);
 }
 
 /** @param {TitleScene} S @param {TRunner} r @param {number} dt */
@@ -1024,7 +1037,7 @@ function stepRunner(S, r, dt) {
   stepRunnerMove(S, r, dt);
   // how fast he's going through the world (it scrolls under him): what pushes the vines and webs he passes
   const k = Math.min(1, 12 * dt);
-  r.wvx += (Math.max(-250, Math.min(250, (r.x - x0) / Math.max(dt, 1e-3) + SCROLL)) - r.wvx) * k;
+  r.wvx += (Math.max(-250, Math.min(250, (r.x - x0) / Math.max(dt, 1e-3) + sv(S))) - r.wvx) * k;
   r.wvy += (Math.max(-250, Math.min(250, (r.y - y0) / Math.max(dt, 1e-3))) - r.wvy) * k;
   stepRunnerGun(S, r, dt);
 }
@@ -1127,7 +1140,7 @@ function runStep(S, r, dt) {
     r.spd = roll < 0.25 ? -(0.3 + R() * 0.25) : roll < 0.45 ? 1.6 + R() * 0.4 : 1;
     r.tx = r.spd < 0 ? 8 : 18 + R() * 90; r.retarget = r.spd === 1 ? 1 + R() * 1.5 : 0.8 + R() * 1.2;
   }
-  const vx = r.spd < 0 ? Math.max(r.spd * SCROLL, (8 - r.x) * 2) : Math.max(-26 * r.pace, Math.min(26 * r.pace * r.spd, (r.tx - r.x) * 1.2));
+  const vx = r.spd < 0 ? Math.max(r.spd * sv(S), (8 - r.x) * 2) : Math.max(-26 * r.pace, Math.min(26 * r.pace * r.spd, (r.tx - r.x) * 1.2));
   // his feet: a step up to 8 he takes in his stride; a hole he drops into; rock higher than that at his feet
   // (the scroll brought a wall into him) he saws
   const ground = titleSurf(S, cx, r.y + PH - 9, 1);
@@ -1141,8 +1154,8 @@ function runStep(S, r, dt) {
   if (ahead < r.y + PH - 7) { startDig(S, r, 1, 0, 'wall'); return; }
   if (boxRock(S, r.x, r.y, false) || boxRock(S, r.x + vx * dt + 2, r.y, false)) { startDig(S, r, 1, 0, 'roof'); return; }
   r.x += vx * dt;
-  r.gait += (SCROLL + vx) * dt * 0.38;
-  if ((r.stepT = (r.stepT || 0) - dt * Math.abs(SCROLL + vx) / 20) <= 0) { r.stepT = 1; snd(S, 'step', cx, r.y + PH); }
+  r.gait += (sv(S) + vx) * dt * 0.38;
+  if ((r.stepT = (r.stepT || 0) - dt * Math.abs(sv(S) + vx) / 20) <= 0) { r.stepT = 1; snd(S, 'step', cx, r.y + PH); }
   if (r.modeT <= 0) { setMode(S, r, 'fly', flyTime(R)); pickTarget(S, r); r.vy = -40; r.ground = false; r.burst = R() < r.bursty; r.jet = r.burst; r.jetT = 0.3; r.jetCd = 0; }
 }
 /** @param {TitleScene} S @param {TRunner} r @param {number} dt */
@@ -1177,7 +1190,7 @@ function flyStep(S, r, dt) {
   // the floor rising under his feet (skimming it) he rides up over; the rock otherwise come to him (it scrolls) he saws
   const g0 = titleSurf(S, cx, r.y + PH - 9, 1);
   if (g0 < r.y + PH && g0 >= r.y + PH - 9 && !boxRock(S, r.x, g0 - PH)) r.y = g0 - PH;
-  if (boxRock(S, r.x, r.y)) { startDig(S, r, r.vx + SCROLL, r.vy, 'came'); return; }
+  if (boxRock(S, r.x, r.y)) { startDig(S, r, r.vx + sv(S), r.vy, 'came'); return; }
   // coming down to land: once his feet are at the floor, he's running
   if (landing && g0 - (r.y + PH) < 1.5) { if (r.vy > 100) snd(S, 'land', cx, g0, r.vy * 2); r.y = g0 - PH; r.vy = 0; setMode(S, r, 'run', runTime(R)); r.vx = 0; r.ground = true; r.retarget = 0; return; }
   const nx = r.x + r.vx * dt, ny = r.y + r.vy * dt;
@@ -1189,7 +1202,7 @@ function flyStep(S, r, dt) {
     if (landing) { setMode(S, r, 'run', runTime(R)); r.vx = 0; r.ground = true; r.retarget = 0; }
     return;
   }
-  startDig(S, r, r.vx + SCROLL, r.vy, into ? 'aim' : 'fly');
+  startDig(S, r, r.vx + sv(S), r.vy, into ? 'aim' : 'fly');
 }
 // sawing through: slower, steered as he was going (running: straight on at the height he started), the
 // tunnel cut round him and ahead; once he's been clear of rock a moment, his gun comes back
@@ -1210,9 +1223,9 @@ function digStep(S, r, dt) {
   r.x += r.vx * dt; r.y += r.vy * dt;
   r.flame = r.mode === 'fly' ? 0.3 : 0;
   r.ground = false;
-  if (r.mode === 'run') r.gait += (SCROLL + r.vx) * dt * 0.3;
+  if (r.mode === 'run') r.gait += (sv(S) + r.vx) * dt * 0.3;
   // his way through the rock (it scrolls past at SCROLL), and the tunnel round him and ahead
-  const dx = r.vx + SCROLL, dy = r.vy, d = Math.hypot(dx, dy) || 1;
+  const dx = r.vx + sv(S), dy = r.vy, d = Math.hypot(dx, dy) || 1;
   r.dx = dx / d; r.dy = dy / d;
   titleCarve(S, r.x + PW / 2 + r.dx * 4, r.y + PH / 2 + r.dy * 4, TITLE_DIGR, false);
   if (!boxRock(S, r.x, r.y, false) && !boxRock(S, r.x + r.dx * 7, r.y + r.dy * 7, false)) r.clearT += dt; else r.clearT = 0;

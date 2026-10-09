@@ -22,6 +22,7 @@ import { TCELL, TITLE_SOLID, TITLE_VW, TM, titleNoise, titleSolid, titleSolidCel
 import { visPoly } from '../../world/vision.js';
 import { drawBolt, drawLook } from './looks.js';
 import { hubBack, hubGlow, hubLight } from './hubdraw.js';
+import { levelBack, levelGlow, levelLight } from './leveldraw.js';
 
 const T = THEMES[0];                                   // Mossy caves
 /** @type {WeakMap<object, { cv: HTMLCanvasElement, cx: CanvasRenderingContext2D, img: ImageData, painted: number, white?: number, whiteT?: number }>} */
@@ -185,7 +186,8 @@ export function titleDraw(ctx, S, cw, ch, cam) {
   }
   // the four players: body and jet flame on the 1-unit pixel grid like the game's drawPlayer, the gun in it
   // (pixelHeld), each with its colour on the backpack and helmet
-  if (S.hub) hubBack(ctx, S);   // the auto hub's machines, pads and tubes (game/render/hubdraw.js)
+  if (S.hub) hubBack(ctx, S);
+  if (S.lvl) levelBack(ctx, S);   // the auto level's pads (game/render/leveldraw.js)   // the auto hub's machines, pads and tubes (game/render/hubdraw.js)
   for (const r of S.runners) if (!r.hide) drawTitleRunner(ctx, S, r);
   // the game's dark over it all, the players' gun lights, the lanterns, fire and the jellyfish cutting through it (v0.0.171)
   titleDark(ctx, S);
@@ -195,6 +197,7 @@ export function titleDraw(ctx, S, cw, ch, cam) {
   for (const f of S.foes) if (f.je && f.x - S.scroll > -40 && f.x - S.scroll < TITLE_VW + 40) titlePlantGlow(ctx, S, f);
   for (const r of S.runners) if (!r.hide) titleBeam(ctx, S, r, DK.vis[r.id]);
   if (S.hub) hubGlow(ctx, S);
+  if (S.lvl) levelGlow(ctx, S);
   // the shots and lightning in the pixel look too (owner, v0.0.171): one layer on the world's grid, added as before
   if (S.shots.length || S.zaps.length) pixelSprite(ctx, gx, 0, TITLE_VW + 100, S.vh, 1, false, c => {
     /** @type {any} */
@@ -453,6 +456,7 @@ function titleDark(ctx, S) {
     lc.restore();
   }
   if (S.hub) hubLight(S, pool);
+  if (S.lvl) levelLight(S, pool);
   // the lanterns (not fallen or popped), their own shadows
   for (const p of S.props) if (p.k === 'lamp' && !p.gone && !p.fall && p.x > -TITLE_LAMPR - 40 && p.x < TITLE_VW + TITLE_LAMPR + 40) {
     const ly = p.y + p.len + 3;

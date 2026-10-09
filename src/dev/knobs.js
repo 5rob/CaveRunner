@@ -605,8 +605,22 @@ DEV_META.push(
   { k: 'autoHubOff',   g: 'autohub', label: 'Stops this far beside a machine’s middle (world units)', min: 0, max: 60, step: 1 },
   { k: 'autoHubSpace', g: 'autohub', label: 'Players line up this far apart (world units)', min: 4, max: 40, step: 1 });
 DEV_GROUPS.push(['autohub', 'Auto: hub']);
+// CaveRunner Auto's level (auto/level.js, auto/pilot.js, stage 4a): its length and the team's pace
+Object.assign(DEV_DEFAULTS, { autoLvlMin: 5, autoLvlPace: 1, autoLvlHurry: 1.6, autoLvlElite: 0.4, autoLvlChest: 0.5,
+  autoLvlEliteR: 120, autoLvlChestR: 50, autoLvlBossT: 3, autoLvlEase: 1.5 });
+DEV_META.push(
+  { k: 'autoLvlMin',    g: 'autolevel', label: 'Level length (minutes at normal pace)', min: 0.2, max: 20, step: 0.1 },
+  { k: 'autoLvlPace',   g: 'autolevel', label: 'Normal pace (× the menu’s scroll, 34 world units / s)', min: 0.1, max: 4, step: 0.05 },
+  { k: 'autoLvlHurry',  g: 'autolevel', label: 'Holding > hurries (× pace)', min: 1, max: 4, step: 0.05 },
+  { k: 'autoLvlElite',  g: 'autolevel', label: 'An elite alive and near slows to (× pace)', min: 0, max: 1, step: 0.05 },
+  { k: 'autoLvlChest',  g: 'autolevel', label: 'Passing a chest slows to (× pace)', min: 0, max: 1, step: 0.05 },
+  { k: 'autoLvlEliteR', g: 'autolevel', label: 'An elite counts as near within (world units)', min: 10, max: 400, step: 5 },
+  { k: 'autoLvlChestR', g: 'autolevel', label: 'A chest counts as near within (world units)', min: 5, max: 300, step: 5 },
+  { k: 'autoLvlBossT',  g: 'autolevel', label: 'Boss arena: cleared after (s; until stage 6 adds the boss)', min: 0, max: 30, step: 0.5 },
+  { k: 'autoLvlEase',   g: 'autolevel', label: 'Pace changes by at most (× pace / s)', min: 0.2, max: 10, step: 0.1 });
+DEV_GROUPS.push(['autolevel', 'Auto: level']);
 // before the last tab: that one also takes any group in no tab
-DEV_TABS.splice(DEV_TABS.length - 1, 0, ['auto', 'Auto', ['auto', 'autohub']]);
+DEV_TABS.splice(DEV_TABS.length - 1, 0, ['auto', 'Auto', ['auto', 'autohub', 'autolevel']]);
 export const DEV_KEY = 'caverunner-dev';
 /** @type {DevKnobs} */
 export const DEV = Object.assign({}, DEV_DEFAULTS);

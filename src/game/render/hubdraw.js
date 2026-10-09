@@ -198,7 +198,7 @@ export function hubGlow(ctx, S) {
 
 // one pad's light (render/pads.js drawPads)
 /** @param {CanvasRenderingContext2D} ctx @param {import('../../art/titlescene.js').TitleScene} S @param {number} x @param {number} y @param {number} seed @param {{ ch: number, fl: number }} c @param {number} zapAt */
-function padGlow(ctx, S, x, y, seed, c, zapAt) {
+export function padGlow(ctx, S, x, y, seed, c, zapAt) {
   const t = S.t, { ch, fl } = c;
   const pulse = (0.85 + 0.15 * Math.sin(t * (2.4 + 30 * ch * ch) + seed)) * (1 + 2.2 * ch * ch);
   if (ch > 0) {
