@@ -5,7 +5,7 @@ release loop, testing), then the README of the `src/` folder you're working in.
 
 ## BRANCH `autobattler` (2026-10-09): the auto-battler pivot — read AUTOBATTLER.md
 
-Planned with the owner (brief + quiz answers + 15 stages + the PM's kick-start prompt, all in `AUTOBATTLER.md`;
+Planned with the owner (brief + quiz answers + 16 stages + the PM's kick-start prompt, all in `AUTOBATTLER.md`;
 mock-up `docs/autobattler-mockup.png`). Nothing built yet: next is stage 0 (the second Pages address and APK).
 `main` is untouched and keeps the old game.
 

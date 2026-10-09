@@ -78,7 +78,9 @@ Mock-up (layout only; keep the main menu's colours and style): `docs/autobattler
 | Saving | **One save** (no slot picker). Autosave in the hub and at each level's end. Quitting mid-level resumes in the hub, keeping the loot already banked in the bag. |
 | Mock-up 4's dim slots | Mock-up shading only. Show the gun's real mod slots, and scroll sideways if there are more than fit. |
 | Gun mods in levels | **Yes, as rare enemy drops:** rarer than gold, more common than a green gem (a Dev knob). Vacuumed into the bag. |
-| Digging | **Keep it:** blocked players saw through with the Buzzsaw, as on the menu. |
+| Digging / clearing | **Players magically pull out their best way through** (the menu's trick, but from their own kit): when the way is blocked (rock, webs, fallen beams, anything), a player switches on its own to whichever of **their 4 guns** can clear it best (Buzzsaw, Digging Bolt, drills, bombs and blasts, black holes, fire for webs and timber; anything that breaks through at minimum), clears it, then switches back. **The team slows to a stop only when no gun of any player in play can clear it** (then a "Path blocked" hint pulses over the play area: my default). Same rule for ordinary walls. |
+| Starter kit (added 2026-10-09) | Each new player: **one basic gun, 3 slots, no shuffle**, holding **a random projectile mod** (a tier-1 shot, not a digger). **A Buzzsaw mod in the bag** (so the first block teaches you to drag it in). This replaces `scratchPistol`. |
+| Blocked zones (added 2026-10-09) | A new zone kind in the random rotation, **~2 a level**: a copy of a random other zone, its path blocked by an amount rolled from "small inconvenience" to "blocked all the way through". The blockage suits the zone: mine works → collapses or dead ends; vegetation caves → a rounded-off dead end; tunnels/web caves → so many webs that their overlapping slow-downs halt the team (burn or dig out); **plus ~20 more variations the agent invents** (the owner sees them in screenshots). The point: make the player switch to a gun that can dig. |
 | Camera | **Follows the team, with pinch zoom.** Tap a player to follow them, as on the menu. Swipes that start in the bag (gold or gem throws) never move the camera. |
 
 ## 3. What already exists (facts so agents don't re-explore)
@@ -207,7 +209,7 @@ Each stage is one agent run (~20 min box). The PM may split a stage that overrun
 - `src/auto/level.js`: a **finite** plan for Mossy Caves from the menu's zones (moss, webs, timber, paved, grove,
   winding; keep their random order rules), long enough for **~5 min** at normal pace (a Dev knob). It has a start
   pad, then the zones, then a **boss arena** (a wide flat chamber), then the **exit pad**. Same seed → same level.
-- The team arrives on the start pad in the teleport flash, then runs and flies as on the menu (dig, jet, keep
+- The team arrives on the start pad in the teleport flash, then runs and flies as on the menu (dig with the menu's saw for now (stage 5 swaps in the clearing rule), jet, keep
   apart), heading right.
 - **Pace control** (`src/auto/pilot.js`, pure): normal pace; **slows while an elite is alive and near**; slows
   passing a **chest**; **slows to a stop at the boss arena** until the boss is dead; holding `>` hurries (×1.6,
@@ -226,7 +228,11 @@ Each stage is one agent run (~20 min box). The PM may split a stage that overrun
 - List every mod the bridge can't do yet in the stage report and in `src/auto/README.md` (the PM decides what to
   chase). `everymod`-style suite: each mod at least changes something, or is on the list.
 - Each player records **damage dealt** and **health** per tick (ring buffers, 30 s) for the stats meters.
-- Starting kit: a new run's player has a `scratchPistol` in slot 1 (no free gun from the machine any more).
+- **Starter kit** (section 2): `starterKit(rnd)` in `src/auto/run.js`: a basic 3-slot, no-shuffle gun with a random
+  tier-1 projectile (not a digger) in slot 1, and a Buzzsaw (`saw`) into the bag. Every new player gets one.
+- **The clearing rule** (section 2) replaces the menu's magic Buzzsaw: `canClear(gun, block)` (pure: which mods
+  dig rock, burn webs or timber, blast) and `bestClearer(player, block)`; the player switches to it, clears, and
+  switches back. No gun on any player can → the pilot stops and the "Path blocked" hint pulses.
 - Looks: a sheet of 6–8 guns firing in the sandbox strip.
 
 ### Stage 6 — Enemies, elites, the boss, drops, death (looks)
@@ -239,6 +245,22 @@ Each stage is one agent run (~20 min box). The PM may split a stage that overrun
 - **Death:** a fallen player drops out (a little teleport-out flicker) until the hub. All fallen → teleport to the
   hub, loot kept, the tier unchanged.
 - Looks: an elite, the boss with its bar, loot flying to the team.
+
+### Stage 6b — Blocked zones (looks)
+- `src/auto/blocked.js` (pure): the zone kind `blocked` in the level plan's rotation (~2 a level, a knob), based on
+  a random other zone; a severity roll 0..1 (knob range) from a small inconvenience (a partial wall you can jet
+  over or chip through) to blocked all the way through.
+- The blockage fits the base zone: **mine works** → a collapse (rubble and broken frames) or a dead end;
+  **vegetation caves (moss, grove)** → a rounded-off dead end; **web caves / winding tunnels** → a web thicket whose
+  overlapping slow-downs bring the team to a halt (webs slow players inside them: add that to the scene if it isn't
+  there), cleared by fire or digging; **plus 20 more variations** the agent invents (fallen timber, a rockslide, roots,
+  a flooded/silted pass, a jammed mine cart, a brick wall, crystal growth, a nest plug, …), each listed with the
+  zones it suits and what clears it (dig, blast, fire).
+- Each block is tagged with what clears it, so stage 5's `canClear` decides who can get through.
+- Done when a logic suite generates many seeds: every variation appears, severity spans its range, a team with
+  a digger always gets through (headless, frame budget), and a team with only the starter projectile stops at a
+  full block.
+- Looks: a sheet with each of the ~23 variations (one shot each, phone size), sent to the owner to strike or keep.
 
 ### Stage 7 — Level cleared (looks)
 - After the boss's loot is vacuumed: **LEVEL CLEARED** in the CAVE RUNNER style (`titleText`'s pixfont,
@@ -291,8 +313,8 @@ Each stage is one agent run (~20 min box). The PM may split a stage that overrun
 
 ### Stage 12 — Extra players (looks)
 - Drag a **green gem** from the bag onto an **empty player circle** → `addPlayer`: the new player teleports in
-  beside the team (pad flash and lightning wherever they are, hub or level) with their own empty slots, plus a
-  `scratchPistol`. The team keeps apart, as the menu's four do. The camera frames them all.
+  beside the team (pad flash and lightning wherever they are, hub or level) with their own empty slots, plus the
+  starter kit (`starterKit`: the basic gun, and a Buzzsaw into the bag). The team keeps apart, as the menu's four do. The camera frames them all.
 - Looks: the teleport-in, and the nav with 2–3 players.
 
 ### Stage 13 — Save, resume, cleanup (no looks unless something visible changes)
@@ -329,7 +351,7 @@ Paste this into a fresh Claude Code session on the `autobattler` branch:
 ```
 You are the project manager for CaveRunner Auto, the auto-battler pivot on the `autobattler` branch.
 Read CLAUDE.md, HANDOVER.md, then AUTOBATTLER.md in full. AUTOBATTLER.md is the plan: the owner's
-brief, their quiz answers (decisions, don't reopen them), the facts, the ground rules, 15 stages, and
+brief, their quiz answers (decisions, don't reopen them), the facts, the ground rules, 16 stages (0-14 and 6b), and
 the Log you keep.
 
 How you run it:
