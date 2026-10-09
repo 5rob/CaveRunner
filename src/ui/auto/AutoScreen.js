@@ -6,13 +6,14 @@
 // (B, the pill stick, A). The pill stick (PillStick, owner after stage 4a) works as the old game's left thumbstick: in the
 // hub it runs and jets player 1 anywhere in the room (auto/hub.js hubStick), in a level its sideways push hurries or
 // slows the team (auto/level.js levelHold; it never stops them). A at the exit pad flashes it (hubExit; stage 4 starts
-// the level from there). The nav and B do nothing yet (later stages).
+// the level from there). The nav and B do nothing yet (later stages). In a level, rock in the way that no gun in play
+// can clear (auto/clear.js, stage 5b) stops the team and pulses a "Path blocked" hint over the play area.
 
 import { SFX } from '../../audio/sfx.js';
 import { TITLE_VW, titleCam } from '../../art/titlescene.js';
 import { DEAD } from '../../core/consts.js';
 import { HUB_W, hubExit, hubLeft, hubScene, hubStick, hubStopX } from '../../auto/hub.js';
-import { levelDone, levelHold, levelScene } from '../../auto/level.js';
+import { levelDone, levelHold, levelScene, levelState } from '../../auto/level.js';
 import { MODS } from '../../spells/mods.js';
 import { PERKS, STAT_PERKS } from '../../data/perks.js';
 import { BAG_SLOTS, EXO_GLYPH, EXO_STATS, MAX_PLAYERS, healRun, levelCleared, levelSeed, newRun } from '../../auto/run.js';
@@ -45,6 +46,15 @@ export function AutoScreen() {
   const input = useRef({ saveRun: () => saveAutoRun(run) });
   // where the team is: the hub, or the run's level (A at the exit pad; the level's exit pad brings it home)
   const where = useRef(window.__AUTO_LEVEL ? 'level' : 'hub');
+  // the level's "Path blocked" (stage 5b), read off the scene a few times a second
+  const [blocked, setBlocked] = useState(false);
+  useEffect(() => {
+    const id = setInterval(() => {
+      const L = scene.current && levelState(scene.current);
+      setBlocked(!!(L && L.blocked));
+    }, 200);
+    return () => clearInterval(id);
+  }, []);
   useEffect(() => {
     const c = cvs.current;
     if (!c) return undefined;
@@ -58,6 +68,7 @@ export function AutoScreen() {
           saveAutoRun(run);
           const S = levelScene(vh, window.__AUTO_LEVEL || levelSeed(run), run.players.length, undefined, run.players);
           scene.current = S;
+          if (window.__TEST_TITLE) window.__autoScene = S;   // the shot scripts (tools/clearshots.js) reach the level here
           return { S, C: titleCam(vh / 2, vh), warm: 0 };
         }
         // the hub: the strip, the players teleporting in, the camera on player 1
@@ -97,6 +108,7 @@ export function AutoScreen() {
   return h('div', { className: 'auto' },
     h('div', { className: 'aplay' },
       h('canvas', { ref: cvs, className: 'aplaycvs' }),
+      blocked ? h('div', { className: 'ablocked' }, 'Path blocked') : null,
       h('button', { className: 'pausebtn', title: 'Pause', onPointerDown: tap(() => { SFX.fx('open'); setPaused(true); }) }, '⏸')),
     h('div', { className: 'anav' },
       ...Array.from({ length: MAX_PLAYERS }, (_, i) => {

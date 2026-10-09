@@ -628,6 +628,12 @@ DEV_META.push(
   { k: 'autoGunMana',   g: 'autoguns', label: 'Starter gun: mana', min: 20, max: 1000, step: 10 },
   { k: 'autoGunRegen',  g: 'autoguns', label: 'Starter gun: mana back a second', min: 5, max: 500, step: 5 },
   { k: 'autoGunSpread', g: 'autoguns', label: 'Starter gun: spread (degrees)', min: 0, max: 30, step: 1 });
+// the clearing rule (auto/clear.js, stage 5b): what counts as a gun that clears the way
+Object.assign(DEV_DEFAULTS, { autoClearMin: 1, autoClearFire: 20, autoClearGap: 0.4 });
+DEV_META.push(
+  { k: 'autoClearMin',  g: 'autoguns', label: 'A gun clears the way from this score (bore × 3 + eat + blast ÷ 2)', min: 0.1, max: 50, step: 0.1 },
+  { k: 'autoClearFire', g: 'autoguns', label: 'Fire counts this much against webs and timber (score)', min: 0, max: 100, step: 1 },
+  { k: 'autoClearGap',  g: 'autoguns', label: 'Digging: the tunnel is cut while the clearing gun fired within (s)', min: 0.05, max: 3, step: 0.05 });
 DEV_GROUPS.push(['autoguns', 'Auto: guns']);
 // before the last tab: that one also takes any group in no tab
 DEV_TABS.splice(DEV_TABS.length - 1, 0, ['auto', 'Auto', ['auto', 'autohub', 'autolevel', 'autoguns']]);

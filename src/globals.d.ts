@@ -11,7 +11,7 @@ declare const VERSION: string;
 // the old prefixed Web Audio constructor (audio/sfx.js falls back to it on older WebViews)
 interface Window { webkitAudioContext?: typeof AudioContext }
 // the browser test page's hooks (tests/build.js sets __TEST; src/game/testhook.js makes __lvl)
-interface Window { __TEST?: boolean; __TEST_VOID?: boolean; __TEST_INTRO?: boolean; __TEST_EMPTY?: boolean; __TEST_TITLE?: boolean; __TITLE_SEED?: number; __AUTO_LEVEL?: number; __title?: any; __lvl?: any; __in?: any }
+interface Window { __TEST?: boolean; __TEST_VOID?: boolean; __TEST_INTRO?: boolean; __TEST_EMPTY?: boolean; __TEST_TITLE?: boolean; __TITLE_SEED?: number; __AUTO_LEVEL?: number; __autoScene?: any; __title?: any; __lvl?: any; __in?: any }
 // the Android app's bridge (android/.../MainActivity.java VideoSaver): an exported Witness video, in
 // base64 pieces, into the phone's Movies/CaveRunner. Missing in a browser and in an older app.
 interface Window { CaveApp?: { videoBegin(name: string, mime: string): boolean; videoChunk(b64: string): boolean; videoEnd(): string } }
