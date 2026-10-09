@@ -118,11 +118,10 @@ export function blockCell(B, wx, y, cy, fy, cur) {
       if (up > h) return cur;
       return h2(c, r) < 0.25 ? TM.RUB : TM.ROCK;
     }
-    case 'roots': {                                // hanging down from the roof, thick strands
-      const down = y - cy, len = H * frac * (0.7 + 0.3 * titleNoise(wx / 5, 403));
-      if (down > len) return cur;
-      const s = Math.abs(Math.sin((wx + Math.sin(y / 9) * 4) / 3.2));
-      return s > 0.45 || down < 4 ? TM.ROOT : cur;
+    case 'roots': {                                // single roots hanging from a matted roof: each its own (owner: not a pattern)
+      const down = y - cy;
+      if (down < 3 + 3 * titleNoise(wx / 4, 403)) return TM.ROOT;
+      return rootAt(B, wx, down, H * frac) ? TM.ROOT : cur;
     }
     case 'silt': {                                 // a flat-topped bank, banded
       const h = H * frac * Math.min(1, Math.min(u, 1 - u) * 6) + n * 0.3;
@@ -156,6 +155,29 @@ export function blockCell(B, wx, y, cy, fy, cur) {
     }
   }
   return cur;
+}
+
+// is (wx, down below the roof) on one of a roots block's roots? Roots grow from slots ~6 apart (some empty), each its own
+// thickness, length (up to len), sway and drift, tapering to a point, now and then forking
+/** @param {ZoneBlock} B @param {number} wx @param {number} down @param {number} len */
+function rootAt(B, wx, down, len) {
+  const k0 = Math.floor(wx / 6), s = B.k || 0;
+  for (let k = k0 - 3; k <= k0 + 3; k++) {
+    if (h2(k, s + 1) < 0.22) continue;                                  // a gap
+    const L = len * (0.25 + 0.85 * h2(k, s + 2));                       // its length
+    if (down > L) continue;
+    const t = down / L, w0 = 0.8 + 2.6 * Math.pow(h2(k, s + 3), 1.5);   // how thick at the roof
+    const sway = Math.sin(down / (5 + 9 * h2(k, s + 4)) + h2(k, s + 5) * 6.3) * (1 + 4 * h2(k, s + 6)) * t;
+    const x = k * 6 + 6 * h2(k, s + 7) + sway + (h2(k, s + 8) - 0.5) * 0.6 * down;
+    if (Math.abs(wx - x) < w0 * (1 - t * 0.85)) return true;
+    // a fork: a thinner root off it partway down, off to one side
+    const fd = L * (0.3 + 0.4 * h2(k, s + 9)), side = h2(k, s + 10) < 0.5 ? -1 : 1;
+    if (h2(k, s + 11) < 0.45 && down > fd && down < fd + L * 0.5) {
+      const ft = (down - fd) / (L * 0.5);
+      if (Math.abs(wx - (x + side * (down - fd) * 0.7)) < Math.max(0.6, w0 * 0.6 * (1 - ft))) return true;
+    }
+  }
+  return false;
 }
 
 // once per column of a blocked zone's span (genCol): the thicket's and the nest's web lines (they slow the team)

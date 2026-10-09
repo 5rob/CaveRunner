@@ -35823,10 +35823,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         return h22(c, r) < 0.25 ? TM.RUB : TM.ROCK;
       }
       case "roots": {
-        const down = y - cy, len = H * frac * (0.7 + 0.3 * titleNoise(wx / 5, 403));
-        if (down > len) return cur;
-        const s = Math.abs(Math.sin((wx + Math.sin(y / 9) * 4) / 3.2));
-        return s > 0.45 || down < 4 ? TM.ROOT : cur;
+        const down = y - cy;
+        if (down < 3 + 3 * titleNoise(wx / 4, 403)) return TM.ROOT;
+        return rootAt(B, wx, down, H * frac) ? TM.ROOT : cur;
       }
       case "silt": {
         const h4 = H * frac * Math.min(1, Math.min(u, 1 - u) * 6) + n * 0.3;
@@ -35860,6 +35859,24 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
     }
     return cur;
+  }
+  function rootAt(B, wx, down, len) {
+    const k0 = Math.floor(wx / 6), s = B.k || 0;
+    for (let k = k0 - 3; k <= k0 + 3; k++) {
+      if (h22(k, s + 1) < 0.22) continue;
+      const L3 = len * (0.25 + 0.85 * h22(k, s + 2));
+      if (down > L3) continue;
+      const t = down / L3, w0 = 0.8 + 2.6 * Math.pow(h22(k, s + 3), 1.5);
+      const sway = Math.sin(down / (5 + 9 * h22(k, s + 4)) + h22(k, s + 5) * 6.3) * (1 + 4 * h22(k, s + 6)) * t;
+      const x = k * 6 + 6 * h22(k, s + 7) + sway + (h22(k, s + 8) - 0.5) * 0.6 * down;
+      if (Math.abs(wx - x) < w0 * (1 - t * 0.85)) return true;
+      const fd = L3 * (0.3 + 0.4 * h22(k, s + 9)), side = h22(k, s + 10) < 0.5 ? -1 : 1;
+      if (h22(k, s + 11) < 0.45 && down > fd && down < fd + L3 * 0.5) {
+        const ft = (down - fd) / (L3 * 0.5);
+        if (Math.abs(wx - (x + side * (down - fd) * 0.7)) < Math.max(0.6, w0 * 0.6 * (1 - ft))) return true;
+      }
+    }
+    return false;
   }
   function blockCol(S2, B, c, wx, cy, fy) {
     if (B.variant !== "thicket" && B.variant !== "nest" || wx < B.x0 || wx >= B.x1 || c % 2) return;
