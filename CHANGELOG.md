@@ -5,6 +5,16 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.11 — CaveRunner Auto: blocked zones (branch `autobattler`, stage 6b part 1)
+Released 2026-10-10 on the branch (owner OK'd the sheet, `tools/blockshots.js` + `tools/blocksheet.js`).
+- `auto/blocked.js`: ~`autoBlockN` (2) zones a level carry a blockage suiting their base zone, severity in a knob
+  range (partial: jet over; full: clear it or "Path blocked"). 11 kinds: collapse, deadend, thicket (webs slow the team
+  to a halt; burnt or cut), timberfall, rockslide, roots, silt, cart, brickwall, stalactites, nest; each tagged with what
+  clears it (rock, web, timber) for `canClear`. Owner rounds: each rolls its own width (`autoBlockThin` to
+  `autoBlockWide` of the zone) and place, its ends a sheer face or a long slope, leaning ragged faces; roots are single
+  roots (own thickness, length, sway, forks); crystal growth became stalactites and stalagmites in the ground's rock.
+  Dev → Auto → "Auto: blocks". Suite `auto-blocked` (`auto-loot`'s full-bag check made steady).
+
 ## v1.0.10 — CaveRunner Auto: drops (branch `autobattler`, stage 6 part 2)
 Released 2026-10-10 on the branch (owner OK'd the screenshots, `tools/autolootshots.js`).
 - `auto/loot.js` `killLoot`: gold from every kill; a gun mod at `autoLootMod` % (`rollMod` by tier); elites + red gems,
