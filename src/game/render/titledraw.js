@@ -21,6 +21,7 @@ import { GUN_HELD, gunMuzzle, drawGun, drawNugget, glowAt, drawRunner, jetFlame,
 import { TCELL, TITLE_SOLID, TITLE_VW, TM, titleNoise, titleSolid, titleSolidCell, titleWebAt } from '../../art/titlescene.js';
 import { visPoly } from '../../world/vision.js';
 import { drawBolt, drawLook } from './looks.js';
+import { hubBack, hubGlow, hubLight } from './hubdraw.js';
 
 const T = THEMES[0];                                   // Mossy caves
 /** @type {WeakMap<object, { cv: HTMLCanvasElement, cx: CanvasRenderingContext2D, img: ImageData, painted: number, white?: number, whiteT?: number }>} */
@@ -56,6 +57,11 @@ function cellRGB(m, c, r, up) {
   if (m === TM.BEAM || m === TM.WOOD) return J(mixc(TIMBER, TIMBER, 0, 0.95));
   if (m === TM.BEAMD) return J(mixc(TIMBER, TIMBER, 0, 0.7));
   if (m === TM.CHAR) return mixc([30, 26, 26], [52, 44, 40], h);
+  // the auto hub's room (auto/hub.js): steel plates (a seam every 8 cells, rivets), the brick back wall (the bricks, darker),
+  // the steel wainscot (tall panels)
+  if (m === TM.STEEL) return c % 8 === 0 || r % 6 === 0 ? [34, 38, 46] : (c % 8 === 1 && r % 6 === 1) ? [96, 104, 118] : mixc([62, 68, 80], [74, 80, 92], h);
+  if (m === TM.BWALL) { const k = c + (r % 2) * 3; return k % 6 === 0 || r % 3 === 0 ? [22, 20, 22] : mixc(T.brick[0], T.brick[1], hash(Math.floor(k / 6), r), 0.5); }
+  if (m === TM.SWALL) return c % 10 === 0 ? [20, 23, 28] : r % 14 === 0 ? [58, 64, 76] : mixc([36, 40, 48], [42, 46, 54], h);
   // the back wall: the level's is a quarter-size picture (one pixel = 4 cells), so the same scale here
   const bx = c / 4, by = r / 4, t = Math.pow(fbm(bx / 10 + 300, by / 10 + 300), 1.6);
   const big = fbm(bx / 34 + 700, by / 34 + 500), shade = 1 - 0.55 * Math.max(0, Math.min(1, (big - 0.35) / 0.3));
@@ -102,9 +108,9 @@ export function titleDraw(ctx, S, cw, ch, cam) {
   const sx = (S.rnd() - 0.5) * S.shake * k, sy = (S.rnd() - 0.5) * S.shake * k;
   ctx.translate(sx, sy);
   ctx.scale(k, k);
-  if (cam && cam.z !== 1) { ctx.translate(TITLE_VW / 2, cam.ay); ctx.scale(cam.z, cam.z); ctx.translate(-cam.x, -cam.y); }
+  if (cam && (cam.z !== 1 || cam.w)) { ctx.translate(TITLE_VW / 2, cam.ay); ctx.scale(cam.z, cam.z); ctx.translate(-cam.x, -cam.y); }
   // the terrain: the ring of columns, in (up to) two pieces
-  const cv = terrain(S), N = S.ncol, c0 = Math.floor(S.scroll / TCELL) - 2, n = Math.ceil(TITLE_VW / TCELL) + 4;
+  const cv = terrain(S), N = S.ncol, c0 = S.hub ? 0 : Math.floor(S.scroll / TCELL) - 2, n = S.hub ? N : Math.ceil(TITLE_VW / TCELL) + 4;
   ctx.imageSmoothingEnabled = false;
   for (let c = c0; c < c0 + n;) {
     const x = ((c % N) + N) % N, w = Math.min(N - x, c0 + n - c);
@@ -179,14 +185,16 @@ export function titleDraw(ctx, S, cw, ch, cam) {
   }
   // the four players: body and jet flame on the 1-unit pixel grid like the game's drawPlayer, the gun in it
   // (pixelHeld), each with its colour on the backpack and helmet
-  for (const r of S.runners) drawTitleRunner(ctx, S, r);
+  if (S.hub) hubBack(ctx, S);   // the auto hub's machines, pads and tubes (game/render/hubdraw.js)
+  for (const r of S.runners) if (!r.hide) drawTitleRunner(ctx, S, r);
   // the game's dark over it all, the players' gun lights, the lanterns, fire and the jellyfish cutting through it (v0.0.171)
   titleDark(ctx, S);
   // the bright stuff, added light
   ctx.globalCompositeOperation = 'lighter';
   // each jellyfish's green glow on the plants and moss round it, as the game's (systems/plantglow.js, plantGlowFill)
   for (const f of S.foes) if (f.je && f.x - S.scroll > -40 && f.x - S.scroll < TITLE_VW + 40) titlePlantGlow(ctx, S, f);
-  for (const r of S.runners) titleBeam(ctx, S, r, DK.vis[r.id]);
+  for (const r of S.runners) if (!r.hide) titleBeam(ctx, S, r, DK.vis[r.id]);
+  if (S.hub) hubGlow(ctx, S);
   // the shots and lightning in the pixel look too (owner, v0.0.171): one layer on the world's grid, added as before
   if (S.shots.length || S.zaps.length) pixelSprite(ctx, gx, 0, TITLE_VW + 100, S.vh, 1, false, c => {
     /** @type {any} */
@@ -264,7 +272,7 @@ function drawTitleRunner(ctx, S, r) {
     const len = 6 + r.flame * 14 + S.rnd() * 3, bx = pcx - r.face * 4.5, by = r.y + PH * 0.55;
     pixelSprite(ctx, ox - 10, oy, PW + 48, PH + 40, 1, false, c => jetFlame(c, bx, by, 0, 1, len, S.t));
   }
-  const gait = r.mode === 'run' ? r.gait : null;
+  const gait = r.mode === 'run' && !r.stand ? r.gait : null;
   pixelHeld(ctx, ox + 14, oy + 8, 1, false, c => {   // no outline (owner, v0.0.171)
     drawRunner(c, r.x, r.y, PW, PH, r.face, gait, r.mode !== 'run', r.flame, false, hands, null, r.col);
     drawGun(c, pcx + ax * 2.5, gy, r.ang, GUN_HELD, K.art);
@@ -394,7 +402,7 @@ export const TITLE_EDGE = 6;            // light reaches this far into the rock 
 export const TITLE_LAMPR = 60;          // a lantern's pool of light (world units)
 /** @param {CanvasRenderingContext2D} ctx @param {import('../../art/titlescene.js').TitleScene} S */
 function titleDark(ctx, S) {
-  const x0 = -40, w = Math.ceil((TITLE_VW + 80) / TCELL), h = Math.ceil(S.vh / TCELL);
+  const x0 = -40, w = Math.ceil(((S.hub ? S.ncol * TCELL : TITLE_VW) + 80) / TCELL), h = Math.ceil(S.vh / TCELL);
   if (!DK.L) { DK.L = document.createElement('canvas'); DK.D = document.createElement('canvas'); }
   const L = DK.L, D = DK.D;
   if (!D) return;
@@ -431,6 +439,7 @@ function titleDark(ctx, S) {
   const half = DEV.beamDeg * Math.PI / 360;
   DK.vis.length = 0;
   for (const r of S.runners) {
+    if (r.hide) continue;
     const cx = r.x + PW / 2, cy = r.y + PH * 0.45;
     lc.save();
     DK.vis[r.id] = fan(cx, cy, R, 120); lc.clip();
@@ -443,6 +452,7 @@ function titleDark(ctx, S) {
     }
     lc.restore();
   }
+  if (S.hub) hubLight(S, pool);
   // the lanterns (not fallen or popped), their own shadows
   for (const p of S.props) if (p.k === 'lamp' && !p.gone && !p.fall && p.x > -TITLE_LAMPR - 40 && p.x < TITLE_VW + TITLE_LAMPR + 40) {
     const ly = p.y + p.len + 3;

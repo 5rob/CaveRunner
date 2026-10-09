@@ -27,7 +27,9 @@ art, …), never `game/`, `ui/` or `main.js`. Everything here is pure: the logic
   (`caverunner-auto-run`), `{ v: AUTO_SAVE_V (1), run }`. `storage` defaults to localStorage (in try/catch); a
   missing, junk or other-version save loads as null. Named `…AutoRun` because `saveRun` is the old game's.
 
-Tests: `tests/logic/auto-run.test.js`.
+- `hub.js` — the hub strip (stage 3a). `HUB_STOPS` (enter, gun, exo, mod, perk, exit; each its middle x, `HUB_GAP` apart, `HUB_EDGE` from the ends; `hubStopX(id)`: stage 3b's arrow travel and prices hook on these), `HUB_W`, `HUB_ROOM`, `hubFloor(vh)`. `hubScene(vh, seed, n)` = `titleScene` with `opts.hub` (a fixed strip, `TitleHub`: steel floor, roof and end walls `TM.STEEL`, open brick back wall `TM.BWALL` over a steel wainscot `TM.SWALL`; no creatures, no scroll; `S.still`). `hubStep` (titleStep calls it): the players hidden until the enter pad has charged (`HUB_ARRIVE`, then 0.5 s apart, `hubArriveT`: flash, sparks, `H.zap`), then standing on the floor (`r.stand`); a tube over each stop comes on in turn from `LIGHT_WAIT` (`hubTube`: world/shoplights.js `tubeLevel`). `hubCharge` (the pad's charge and flash), `hubState(S)` (`HubState`), `HUB_MACHINES` (hues: gun gold, exo teal `#3fe6d6`, mod red, perk green), `HUB_EXO_GLYPHS` (the exo hologram cycles them, `HUB_EXO_T`). Painter: `game/render/hubdraw.js`.
+
+Tests: `tests/logic/auto-run.test.js`, `tests/logic/auto-hub.test.js`.
 
 ## Rules
 

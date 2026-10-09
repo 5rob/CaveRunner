@@ -52,10 +52,11 @@ export const TITLE_AIM = 90;         // he shoots only at creatures this near (w
 // up), moss (burns, chars), brick, wood (burns away), char (burnt or blasted rock); not solid: beam and
 // beamD (a timber frame's lit and shaded wood, burn away), grass (the bright tufts on a moss patch),
 // rub and rubM (a rubble mound, its mossy top)
-export const TM = { AIR: 0, ROCK: 1, MOSS: 2, BRICK: 3, WOOD: 4, CHAR: 5, BEAM: 6, BEAMD: 7, GRASS: 8, RUB: 9, RUBM: 10 };
-export const TITLE_SOLID = [0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0];
+// STEEL, BWALL (a brick back wall, open) and SWALL (a steel back wall, open): the auto hub's room (auto/hub.js)
+export const TM = { AIR: 0, ROCK: 1, MOSS: 2, BRICK: 3, WOOD: 4, CHAR: 5, BEAM: 6, BEAMD: 7, GRASS: 8, RUB: 9, RUBM: 10, STEEL: 11, BWALL: 12, SWALL: 13 };
+export const TITLE_SOLID = [0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0];
 const SOLID = TITLE_SOLID;
-const FUEL = [0, 0, 2, 0, 3, 0, 3, 3, 1, 0, 1];   // the fuel kind each burns as (world/fire.js: 1 grass, 2 moss, 3 timber)
+const FUEL = [0, 0, 2, 0, 3, 0, 3, 3, 1, 0, 1, 0, 0, 0];   // the fuel kind each burns as (world/fire.js: 1 grass, 2 moss, 3 timber)
 export const FRAME_GAP = 72;          // the built-up layers: a timber frame every this far (world units)
 export const FRAME_W = 36;            // its width, post to post
 const SCROLL = 34;                    // the world's scroll speed (world units / s)
@@ -95,7 +96,11 @@ export const TITLE_HOME = {
  *   mode: string, modeT: number, tx: number, ty: number, retarget: number, gait: number, ground: boolean, swapT: number, swap: number, wvx: number, wvy: number,
  *   dig: number, clearT: number, keep: TKit | null, dx: number, dy: number, digY: number, sawT: number, switches: number[],
  *   bursty: number, burst: boolean, jet: boolean, jetT: number, jetCd: number, pace: number, spd: number,
- *   nav: { F: any, fx: number, fy: number, t: number }, stepT?: number, sawS?: number, rst?: { t?: number }, rub?: string, rubWas?: boolean }} TRunner */
+ *   nav: { F: any, fx: number, fy: number, t: number }, stepT?: number, sawS?: number, rst?: { t?: number }, rub?: string, rubWas?: boolean,
+ *   hide?: boolean, stand?: boolean }} TRunner */
+// a fixed strip in place of the scrolling ring (CaveRunner Auto's hub, auto/hub.js): w columns, each cell's material from
+// cell(c, r, rows); step runs after titleStep's own (the runners are its: S.still); data is the strip's own state
+/** @typedef {{ w: number, cell: (c: number, r: number, rows: number) => number, step?: (S: TitleScene, dt: number) => void, data?: any }} TitleHub */
 /** @typedef {{ x: number, y: number, vx: number, vy: number, size: number, col: string, look: string, life: number, foe: boolean, spin: number,
  *   grav: number, drag: number, explode: number, pit: number, fire: number, bounce: number, bounceE: number, pierce: number, dmg: number,
  *   homing?: number, accel?: number, vmax?: number, chain?: number, hitFoe?: boolean }} TShot */
@@ -114,7 +119,7 @@ export const TITLE_HOME = {
  *   fire: TFire[], dirty: number[][], dirtyAll: boolean, carved: number, burnt: number, swaps: number, groundT: number, flyT: number, kinds: Record<string, number>,
  *   webs: WebLine[], cut: number, lineT: number, silk: { x: number, y: number, ax: number, ay: number, vx: number, vy: number, life: number }[],
  *   nav: { F: any, fx: number, fy: number, t: number }, fireAcc: number, fireN: number, burning: Set<number>, gotN: number, pops: number, lampsPopped: number, kitNames: Set<string>,
- *   digT: number, digs: number, digWhy: Record<string, number>, still?: boolean, zp: TitlePlan, snd: TSnd[] }} TitleScene */
+ *   digT: number, digs: number, digWhy: Record<string, number>, still?: boolean, zp: TitlePlan, snd: TSnd[], hub?: TitleHub }} TitleScene */
 // a sound the scene asks for this frame (v0.0.174): ui/titlesound.js plays it with the game's own voice. k its name, x, y where (screen
 // units), a what it needs (a creature's kind, a shot, a radius)
 /** @typedef {{ k: string, x: number, y: number, a?: any }} TSnd */
@@ -530,14 +535,19 @@ function kitOf(shot, mods, art) {
 }
 
 // opts.runners: how many players (1-4; default TITLE_RUNNERS): CaveRunner Auto shows the run's players
-/** @param {number} vh the view's height in world units @param {number} [seed] @param {number} [top] the action's band (world units) @param {number} [bot] @param {{ runners?: number }} [opts] @returns {TitleScene} */
+// opts.hub: a fixed strip instead of the scrolling ring (TitleHub; auto/hub.js hubScene): no creatures, no scroll
+/** @param {number} vh the view's height in world units @param {number} [seed] @param {number} [top] the action's band (world units) @param {number} [bot] @param {{ runners?: number, hub?: TitleHub }} [opts] @returns {TitleScene} */
 export function titleScene(vh, seed = 7, top = vh * 0.3, bot = vh * 0.62, opts = {}) {
-  const rnd = titleRng(seed), rows = Math.ceil(vh / TCELL) + 1, ncol = Math.ceil((TITLE_VW + 50 + AHEAD) / TCELL);
+  const rnd = titleRng(seed), rows = Math.ceil(vh / TCELL) + 1, hub = opts.hub, ncol = hub ? hub.w : Math.ceil((TITLE_VW + 50 + AHEAD) / TCELL);
   /** @type {TitleScene} */
   const S = { t: 0, vh, top, bot, seed, rnd, zp: titlePlan(seed), scroll: 0, shake: 0, spawn: 0, kills: 0, gold: 0, got: 0, runner: null, runners: [], foes: [], shots: [],
     parts: [], coins: [], booms: [], zaps: [], flash: 0, rows, ncol, cells: new Uint8Array(rows * ncol), gen: -25, props: [],
     fire: [], dirty: [], dirtyAll: true, carved: 0, burnt: 0, swaps: 0, groundT: 0, flyT: 0, kinds: {}, webs: [], cut: 0, lineT: 0,
     silk: [], nav: { F: null, fx: 0, fy: 0, t: -9 }, fireAcc: 0, fireN: 0, burning: new Set(), gotN: 0, pops: 0, lampsPopped: 0, kitNames: new Set(), digT: 0, digs: 0, digWhy: {}, snd: [] };
+  if (hub) {                            // a fixed strip: every column made now, nothing comes in
+    S.hub = hub; S.still = true; S.gen = ncol;
+    for (let c = 0; c < ncol; c++) for (let r = 0; r < rows; r++) S.cells[ci(S, c, r)] = hub.cell(c, r, rows);
+  }
   genTo(S);
   // four players, spread along the left side, each on its own clock (S.runner: player 1)
   for (let i = 0, n = Math.max(1, Math.min(TITLE_RUNNERS, opts.runners || TITLE_RUNNERS)); i < n; i++) {
@@ -549,7 +559,7 @@ export function titleScene(vh, seed = 7, top = vh * 0.3, bot = vh * 0.62, opts =
       nav: { F: null, fx: 0, fy: 0, t: -9 } });
   }
   S.runner = S.runners[0];
-  for (let i = 0; i < 6; i++) addFoe(S, 130 + rnd() * 90);
+  if (!hub) for (let i = 0; i < 6; i++) addFoe(S, 130 + rnd() * 90);
   return S;
 }
 // the terrain is made this far past the screen's right edge (v0.0.170: was 40, and a rat swarm coming in
@@ -560,6 +570,7 @@ const AHEAD = 130;
 const snd = (S, k, x, y, a) => { if (S.snd.length < 80) S.snd.push({ k, x, y, a }); };
 /** @param {TitleScene} S */
 function genTo(S) {
+  if (S.hub) return;
   while (S.gen * TCELL < S.scroll + TITLE_VW + AHEAD) { genCol(S, S.gen); S.gen++; }
 }
 
@@ -905,18 +916,18 @@ function shotEnd(S, s) {
 export function titleStep(S, dt) {
   dt = Math.min(dt, 0.05);
   const R = S.rnd;
-  S.t += dt; S.scroll += SCROLL * dt;
+  S.t += dt; if (!S.hub) S.scroll += SCROLL * dt;
   genTo(S);
   S.shake = Math.max(0, S.shake - dt * 18);
   S.flash = Math.max(0, S.flash - dt * 1.6);
   S.spawn -= dt;
-  if (S.spawn <= 0 && S.foes.length < TITLE_FOES - 10) { addFoe(S); S.spawn = 0.4 + R() * 0.6; }
+  if (S.spawn <= 0 && !S.hub && S.foes.length < TITLE_FOES - 10) { addFoe(S); S.spawn = 0.4 + R() * 0.6; }
   if (!S.still) { for (const r of S.runners) stepRunner(S, r, dt); separate(S, dt); }
   stepFoes(S, dt);
   stepShots(S, dt);
   stepFire(S, dt);
   // the natural caves' ambience, as the level has it: water dripping from the roof, luminescent spores drifting
-  if (S.parts.length < TITLE_PARTS - 40) {
+  if (S.parts.length < TITLE_PARTS - 40 && !S.hub) {
     if (R() < dt * 3) {
       const x = R() * TITLE_VW, wx = x + S.scroll;
       if (built(wx, S) === 0) S.parts.push({ x, y: titleCeil(wx, S) + 1.5, vx: 0, vy: 0, life: 4, max: 4, r: 1, col: '#7ab8ff', kind: 'drip' });
@@ -1004,6 +1015,7 @@ export function titleStep(S, dt) {
   }
   S.props = S.props.filter(p => !p.gone && p.ox + (p.span || 0) - S.scroll > -60);
   S.webs = S.webs.filter(L => Math.max(L.a0x, L.b0x) - S.scroll > -40);
+  if (S.hub && S.hub.step) S.hub.step(S, dt);
 }
 
 /** @param {TitleScene} S @param {TRunner} r @param {number} dt */
@@ -1630,15 +1642,17 @@ function spreadFrom(S, wx, y) {
 // zt: a zoom it eases to (a lock zooms in to TITLE_ZLOCK)
 export const TITLE_ZMAX = 4;
 export const TITLE_ZLOCK = 2;
-/** @typedef {{ z: number, x: number, y: number, lock: number, zt: number, ay: number, by: number }} TitleCam */
+// w: the strip's width when wider than the screen (the hub), zmin: how far out it zooms (below 1: the whole strip)
+/** @typedef {{ z: number, x: number, y: number, lock: number, zt: number, ay: number, by: number, w?: number, zmin?: number }} TitleCam */
 /** @param {number} ay the band's middle @param {number} by the box's bottom (screen units) @returns {TitleCam} */
 export const titleCam = (ay, by) => ({ z: 1, x: TITLE_VW / 2, y: ay, lock: -1, zt: 0, ay, by });
 /** @param {TitleCam} C keep the view inside the box */
 export function camClamp(C) {
-  C.z = Math.max(1, Math.min(TITLE_ZMAX, C.z));
-  const hw = TITLE_VW / 2 / C.z;
-  C.x = Math.max(hw, Math.min(TITLE_VW - hw, C.x));
-  C.y = Math.max(C.ay / C.z, Math.min(C.by - (C.by - C.ay) / C.z, C.y));
+  C.z = Math.max(C.zmin || 1, Math.min(TITLE_ZMAX, C.z));
+  const hw = TITLE_VW / 2 / C.z, W = C.w || TITLE_VW;
+  C.x = hw * 2 >= W ? W / 2 : Math.max(hw, Math.min(W - hw, C.x));
+  const y0 = C.ay / C.z, y1 = C.by - (C.by - C.ay) / C.z;
+  C.y = y0 > y1 ? (y0 + y1) / 2 : Math.max(y0, Math.min(y1, C.y));
 }
 // the scene point under a screen point (sx, sy in screen units: css px / the screen's scale)
 /** @param {TitleCam} C @param {number} sx @param {number} sy */

@@ -10368,10 +10368,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var TITLE_LINKS = 8;
   var TITLE_WEBFIRE = 3;
   var TITLE_AIM = 90;
-  var TM = { AIR: 0, ROCK: 1, MOSS: 2, BRICK: 3, WOOD: 4, CHAR: 5, BEAM: 6, BEAMD: 7, GRASS: 8, RUB: 9, RUBM: 10 };
-  var TITLE_SOLID = [0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0];
+  var TM = { AIR: 0, ROCK: 1, MOSS: 2, BRICK: 3, WOOD: 4, CHAR: 5, BEAM: 6, BEAMD: 7, GRASS: 8, RUB: 9, RUBM: 10, STEEL: 11, BWALL: 12, SWALL: 13 };
+  var TITLE_SOLID = [0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0];
   var SOLID = TITLE_SOLID;
-  var FUEL = [0, 0, 2, 0, 3, 0, 3, 3, 1, 0, 1];
+  var FUEL = [0, 0, 2, 0, 3, 0, 3, 3, 1, 0, 1, 0, 0, 0];
   var FRAME_GAP = 72;
   var FRAME_W = 36;
   var SCROLL = 34;
@@ -10859,7 +10859,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     };
   }
   function titleScene(vh, seed = 7, top = vh * 0.3, bot = vh * 0.62, opts = {}) {
-    const rnd2 = titleRng(seed), rows = Math.ceil(vh / TCELL) + 1, ncol = Math.ceil((TITLE_VW + 50 + AHEAD) / TCELL);
+    const rnd2 = titleRng(seed), rows = Math.ceil(vh / TCELL) + 1, hub = opts.hub, ncol = hub ? hub.w : Math.ceil((TITLE_VW + 50 + AHEAD) / TCELL);
     const S2 = {
       t: 0,
       vh,
@@ -10914,6 +10914,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       digWhy: {},
       snd: []
     };
+    if (hub) {
+      S2.hub = hub;
+      S2.still = true;
+      S2.gen = ncol;
+      for (let c = 0; c < ncol; c++) for (let r = 0; r < rows; r++) S2.cells[ci(S2, c, r)] = hub.cell(c, r, rows);
+    }
     genTo(S2);
     for (let i = 0, n = Math.max(1, Math.min(TITLE_RUNNERS, opts.runners || TITLE_RUNNERS)); i < n; i++) {
       const x = 18 + i * 30, y = titleSurf(S2, x + PW / 2, (top + bot) / 2, 1) - PH;
@@ -10959,7 +10965,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       });
     }
     S2.runner = S2.runners[0];
-    for (let i = 0; i < 6; i++) addFoe(S2, 130 + rnd2() * 90);
+    if (!hub) for (let i = 0; i < 6; i++) addFoe(S2, 130 + rnd2() * 90);
     return S2;
   }
   var AHEAD = 130;
@@ -10967,6 +10973,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (S2.snd.length < 80) S2.snd.push({ k, x, y, a });
   };
   function genTo(S2) {
+    if (S2.hub) return;
     while (S2.gen * TCELL < S2.scroll + TITLE_VW + AHEAD) {
       genCol(S2, S2.gen);
       S2.gen++;
@@ -11361,12 +11368,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     dt = Math.min(dt, 0.05);
     const R = S2.rnd;
     S2.t += dt;
-    S2.scroll += SCROLL * dt;
+    if (!S2.hub) S2.scroll += SCROLL * dt;
     genTo(S2);
     S2.shake = Math.max(0, S2.shake - dt * 18);
     S2.flash = Math.max(0, S2.flash - dt * 1.6);
     S2.spawn -= dt;
-    if (S2.spawn <= 0 && S2.foes.length < TITLE_FOES - 10) {
+    if (S2.spawn <= 0 && !S2.hub && S2.foes.length < TITLE_FOES - 10) {
       addFoe(S2);
       S2.spawn = 0.4 + R() * 0.6;
     }
@@ -11377,7 +11384,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     stepFoes(S2, dt);
     stepShots(S2, dt);
     stepFire(S2, dt);
-    if (S2.parts.length < TITLE_PARTS - 40) {
+    if (S2.parts.length < TITLE_PARTS - 40 && !S2.hub) {
       if (R() < dt * 3) {
         const x = R() * TITLE_VW, wx = x + S2.scroll;
         if (built(wx, S2) === 0) S2.parts.push({ x, y: titleCeil(wx, S2) + 1.5, vx: 0, vy: 0, life: 4, max: 4, r: 1, col: "#7ab8ff", kind: "drip" });
@@ -11510,6 +11517,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     S2.props = S2.props.filter((p) => !p.gone && p.ox + (p.span || 0) - S2.scroll > -60);
     S2.webs = S2.webs.filter((L3) => Math.max(L3.a0x, L3.b0x) - S2.scroll > -40);
+    if (S2.hub && S2.hub.step) S2.hub.step(S2, dt);
   }
   function stepRunner(S2, r, dt) {
     const x0 = r.x, y0 = r.y;
@@ -12331,10 +12339,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var TITLE_ZLOCK = 2;
   var titleCam = (ay, by) => ({ z: 1, x: TITLE_VW / 2, y: ay, lock: -1, zt: 0, ay, by });
   function camClamp(C) {
-    C.z = Math.max(1, Math.min(TITLE_ZMAX, C.z));
-    const hw = TITLE_VW / 2 / C.z;
-    C.x = Math.max(hw, Math.min(TITLE_VW - hw, C.x));
-    C.y = Math.max(C.ay / C.z, Math.min(C.by - (C.by - C.ay) / C.z, C.y));
+    C.z = Math.max(C.zmin || 1, Math.min(TITLE_ZMAX, C.z));
+    const hw = TITLE_VW / 2 / C.z, W = C.w || TITLE_VW;
+    C.x = hw * 2 >= W ? W / 2 : Math.max(hw, Math.min(W - hw, C.x));
+    const y0 = C.ay / C.z, y1 = C.by - (C.by - C.ay) / C.z;
+    C.y = y0 > y1 ? (y0 + y1) / 2 : Math.max(y0, Math.min(y1, C.y));
   }
   var camAt = (C, sx, sy) => ({ x: C.x + (sx - TITLE_VW / 2) / C.z, y: C.y + (sy - C.ay) / C.z });
   function camStep(C, S2, dt) {
@@ -17137,8 +17146,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           ctx.scale(1, -1);
         }
         const base = st === "obsidian" ? [44, 28, 48] : st === "salt" ? [226, 220, 198] : [222, 212, 188];
-        const hs5 = [[-4, 7], [0, 10], [4, 6]];
-        for (const [dx, hgt] of hs5) {
+        const hs6 = [[-4, 7], [0, 10], [4, 6]];
+        for (const [dx, hgt] of hs6) {
           ctx.fillStyle = rgbA(base);
           tri(x + dx - 2.4, y, x + dx + 2.4, y, x + dx, y - hgt);
           ctx.fillStyle = st === "obsidian" ? "rgba(200,110,255,0.55)" : "rgba(255,255,255,0.45)";
@@ -21623,8 +21632,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const gx1 = clamp(Math.ceil((wx0 + tw * CELL) / BCELL) + 2, 1, BW), gy1 = clamp(Math.ceil((wy0 + th * CELL) / BCELL) + 2, 1, BH);
     bc.imageSmoothingEnabled = true;
     bc.globalAlpha = clamp(DEV.l2dBack, 0, 1);
-    const hs5 = G.bgHiOn ? BCELL / CELL : 1;
-    bc.drawImage(D.bb, gx0 * hs5, gy0 * hs5, (gx1 - gx0) * hs5, (gy1 - gy0) * hs5, (gx0 * BCELL + bgox) / CELL - tx0, (gy0 * BCELL + bgoy) / CELL - ty0, (gx1 - gx0) * BCELL / CELL, (gy1 - gy0) * BCELL / CELL);
+    const hs6 = G.bgHiOn ? BCELL / CELL : 1;
+    bc.drawImage(D.bb, gx0 * hs6, gy0 * hs6, (gx1 - gx0) * hs6, (gy1 - gy0) * hs6, (gx0 * BCELL + bgox) / CELL - tx0, (gy0 * BCELL + bgoy) / CELL - ty0, (gx1 - gx0) * BCELL / CELL, (gy1 - gy0) * BCELL / CELL);
     const dt = clamp(W.time - D.flT, 0, 0.1);
     D.flT = W.time;
     const nr = Math.max(0, DEV.l2dFlkNear) * CELL, px = W.p.x + 6, py = W.p.y + 11;
@@ -23182,8 +23191,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const bcx = W.camX - bgox, bcy = W.camY - bgoy;
     const bx0 = clamp(Math.floor(bcx / BCELL), 0, BW - 1), by0 = clamp(Math.floor(bcy / BCELL), 0, BH - 1);
     const bx1 = clamp(Math.ceil((bcx + vw) / BCELL) + 1, 1, BW), by1 = clamp(Math.ceil((bcy + vh) / BCELL) + 1, 1, BH);
-    const hs5 = G.bgHiOn ? BCELL / CELL : 1;
-    G.ctx.drawImage(G.bgHiOn ? G.bgHi : G.bg, bx0 * hs5, by0 * hs5, (bx1 - bx0) * hs5, (by1 - by0) * hs5, bx0 * BCELL + bgox, by0 * BCELL + bgoy, (bx1 - bx0) * BCELL, (by1 - by0) * BCELL);
+    const hs6 = G.bgHiOn ? BCELL / CELL : 1;
+    G.ctx.drawImage(G.bgHiOn ? G.bgHi : G.bg, bx0 * hs6, by0 * hs6, (bx1 - bx0) * hs6, (by1 - by0) * hs6, bx0 * BCELL + bgox, by0 * BCELL + bgoy, (bx1 - bx0) * BCELL, (by1 - by0) * BCELL);
     drawHolo(W, G, F2);
     darkPrep(W, G, F2);
     if (W.camY + vh > SHOP_Y) {
@@ -34920,6 +34929,100 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return P2;
   }
 
+  // src/auto/hub.js
+  var HUB_EDGE = 56;
+  var HUB_GAP = 100;
+  var HUB_ROOM = 104;
+  var HUB_WALL = 4;
+  var HUB_ARRIVE = 1;
+  var HUB_FLASH = 0.4;
+  var HUB_ZAP = 1.4;
+  var STOP_IDS = ["enter", "gun", "exo", "mod", "perk", "exit"];
+  var HUB_STOPS = STOP_IDS.map((id, i) => ({ id, x: HUB_EDGE + i * HUB_GAP }));
+  var HUB_W = HUB_EDGE * 2 + (HUB_STOPS.length - 1) * HUB_GAP;
+  var hubStopX = (id) => (HUB_STOPS.find((s) => s.id === id) || HUB_STOPS[0]).x;
+  var HUB_MACHINES = {
+    gun: { hue: "#ffd95a", icon: "gun" },
+    exo: { hue: "#3fe6d6", icon: "exo" },
+    mod: { hue: "#ff3a4a", icon: "⚙️", takes: "red" },
+    perk: { hue: "#3dff7a", icon: "✦", takes: "green" }
+  };
+  var HUB_EXO_GLYPHS = EXO_CATS.map((c) => STAT_PERKS[EXO_STATS[c][0]].glyph);
+  var HUB_EXO_T = 1.2;
+  var hubFloor = (vh) => Math.floor(Math.max(HUB_ROOM + 8, vh * 0.86) / TCELL) * TCELL;
+  var hubCell = (fy) => (c, r) => {
+    const fr = fy / TCELL, rr2 = (fy - HUB_ROOM) / TCELL, nc = HUB_W / TCELL;
+    if (r >= fr || r < rr2 || c < HUB_WALL || c >= nc - HUB_WALL) return TM.STEEL;
+    return r >= fr - 14 ? TM.SWALL : TM.BWALL;
+  };
+  var hubState = (S2) => S2.hub && S2.hub.data;
+  function hubScene(vh, seed, n) {
+    const fy = hubFloor(vh);
+    const H = { fy, roof: fy - HUB_ROOM, on: HUB_STOPS.map(() => -1), zap: -99, arrived: [] };
+    const S2 = titleScene(vh, seed, fy - HUB_ROOM, fy, { runners: n, hub: { w: HUB_W / TCELL, cell: hubCell(fy), step: hubStep, data: H } });
+    S2.runners.forEach((r, i) => {
+      r.x = hubStopX("enter") - PW / 2 - i * 18;
+      r.y = fy - PH;
+      r.vx = r.vy = 0;
+      r.mode = "run";
+      r.ground = true;
+      r.stand = true;
+      r.hide = true;
+      r.face = 1;
+      r.ang = 0.35;
+      r.flame = 0;
+      H.arrived[i] = false;
+    });
+    return S2;
+  }
+  var hubArriveT = (i) => HUB_ARRIVE + i * 0.5;
+  function hubStep(S2, dt) {
+    const H = hubState(S2);
+    if (!H) return;
+    S2.runners.forEach((r, i) => {
+      if (!H.arrived[i] && S2.t >= hubArriveT(i)) {
+        H.arrived[i] = true;
+        H.zap = S2.t;
+        r.hide = false;
+        S2.flash = Math.max(S2.flash, 0.5);
+        const cx = r.x + PW / 2;
+        for (let k = 0; k < 18; k++) {
+          const a = S2.rnd() * Math.PI * 2, sp = 20 + S2.rnd() * 60;
+          S2.parts.push({
+            x: cx,
+            y: H.fy - PH / 2,
+            vx: Math.cos(a) * sp,
+            vy: Math.sin(a) * sp - 20,
+            life: 0.5,
+            max: 0.5,
+            r: 1.2,
+            col: k % 3 ? "#7cc8ff" : "#e6f6ff",
+            kind: "spark"
+          });
+        }
+        S2.snd.push({ k: "arc", x: cx, y: H.fy - PH / 2 });
+      }
+      r.y = H.fy - PH;
+      r.vy = 0;
+      r.ground = true;
+      r.mode = "run";
+      r.stand = true;
+    });
+    for (let i = 0; i < H.on.length; i++) {
+      const at = LIGHT_WAIT + i * LIGHT_RUN * 1.6;
+      if (H.on[i] < 0 && S2.t >= at) H.on[i] = at;
+    }
+    void dt;
+  }
+  function hubTube(S2, i) {
+    const H = hubState(S2);
+    return !H || H.on[i] < 0 ? 0 : tubeLevel(S2.t - H.on[i], i + 1);
+  }
+  function hubCharge(S2) {
+    const t = S2.t;
+    return { ch: t < HUB_ARRIVE ? Math.max(0, t / HUB_ARRIVE) : 0, fl: t >= HUB_ARRIVE ? Math.max(0, 1 - (t - HUB_ARRIVE) / HUB_FLASH) : 0 };
+  }
+
   // src/auto/save.js
   var AUTO_SAVE_KEY = "caverunner-auto-run";
   var AUTO_SAVE_V = 1;
@@ -34953,6 +35056,308 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
   }
 
+  // src/game/render/hubdraw.js
+  var MW = 56, MH = 84;
+  var PAD_W2 = 30, BEAM_H2 = 64;
+  var TUBE_W2 = 40;
+  var ICON2 = 30, GLOW3 = 8, RES4 = 4;
+  var SHOP_GUN_ART2 = "blueraider";
+  var hs5 = (n) => {
+    const v = Math.sin(n * 12.9898 + 78.233) * 43758.5453;
+    return v - Math.floor(v);
+  };
+  var cache4 = /* @__PURE__ */ new Map();
+  function holoIcon2(icon, hue) {
+    const key = icon + hue, got = cache4.get(key);
+    if (got) return got;
+    const S2 = (ICON2 + GLOW3 * 2) * RES4;
+    const A = document.createElement("canvas");
+    A.width = A.height = S2;
+    const B = document.createElement("canvas");
+    B.width = B.height = S2;
+    const a = A.getContext("2d"), b = B.getContext("2d");
+    if (!a || !b) return B;
+    const im = icon === "gun" ? gunArtCanvas(SHOP_GUN_ART2) : null;
+    if (im) {
+      const k = ICON2 * RES4 / im.width;
+      a.imageSmoothingEnabled = false;
+      a.drawImage(im, (S2 - im.width * k) / 2, (S2 - im.height * k) / 2, im.width * k, im.height * k);
+    } else {
+      a.fillStyle = "#ffffff";
+      a.font = ICON2 * RES4 * 0.86 + 'px system-ui, "Segoe UI Emoji", "Noto Color Emoji", sans-serif';
+      a.textAlign = "center";
+      a.textBaseline = "middle";
+      a.fillText(icon, S2 / 2, S2 / 2 + ICON2 * RES4 * 0.04);
+    }
+    a.globalCompositeOperation = "source-atop";
+    a.globalAlpha = 0.78;
+    a.fillStyle = hue;
+    a.fillRect(0, 0, S2, S2);
+    a.globalAlpha = 1;
+    a.globalCompositeOperation = "destination-out";
+    a.fillStyle = "rgba(0,0,0,0.45)";
+    for (let y = 0; y < S2; y += RES4 * 1.5) a.fillRect(0, y, S2, RES4 * 0.5);
+    b.shadowColor = hue;
+    b.shadowBlur = GLOW3 * RES4 * 0.6;
+    b.drawImage(A, 0, 0);
+    b.shadowBlur = 0;
+    b.drawImage(A, 0, 0);
+    cache4.set(key, B);
+    return B;
+  }
+  function drawMachine(ctx, cx, fy, m, t) {
+    const x = cx - MW / 2, y = fy - MH;
+    ctx.save();
+    ctx.fillStyle = "#171a21";
+    ctx.fillRect(x, y, MW, MH);
+    ctx.fillStyle = "#252a35";
+    ctx.fillRect(x, y, 5, MH);
+    ctx.fillRect(x + MW - 5, y, 5, MH);
+    ctx.fillStyle = "#323948";
+    ctx.fillRect(x - 2, y - 1, MW + 4, 5);
+    ctx.fillRect(x - 3, fy - 5, MW + 6, 5);
+    ctx.fillStyle = m.hue;
+    ctx.globalAlpha = 0.5 + 0.2 * Math.sin(t * 3 + cx);
+    ctx.fillRect(x + 5, y + 6, 1, MH - 14);
+    ctx.fillRect(x + MW - 6, y + 6, 1, MH - 14);
+    ctx.globalAlpha = 1;
+    const gx = x + 8, gy = y + 7, gw = MW - 16, gh = 42;
+    ctx.fillStyle = "#05070a";
+    ctx.fillRect(gx, gy, gw, gh);
+    ctx.fillStyle = "rgba(255,255,255,0.05)";
+    ctx.beginPath();
+    ctx.moveTo(gx + gw * 0.55, gy);
+    ctx.lineTo(gx + gw, gy);
+    ctx.lineTo(gx + gw, gy + gh * 0.35);
+    ctx.closePath();
+    ctx.fill();
+    const py = gy + gh + 3;
+    ctx.fillStyle = "#2a303c";
+    ctx.fillRect(x + 10, py, MW - 20, 2);
+    ctx.fillStyle = m.hue;
+    ctx.globalAlpha = 0.85;
+    ctx.fillRect(x + 12, py + 0.5, MW - 24, 1);
+    ctx.globalAlpha = 1;
+    const cy = fy - 22;
+    ctx.fillStyle = "#0a0c10";
+    ctx.fillRect(x + 12, cy, MW - 24, 12);
+    ctx.fillStyle = "#2c323e";
+    ctx.fillRect(x + 12, cy, MW - 24, 3);
+    ctx.fillStyle = m.hue;
+    ctx.globalAlpha = 0.35;
+    ctx.fillRect(x + 12, cy + 11, MW - 24, 1);
+    ctx.globalAlpha = 1;
+    const icon = m.icon === "exo" ? HUB_EXO_GLYPHS[Math.floor(t / HUB_EXO_T) % HUB_EXO_GLYPHS.length] : m.icon;
+    const f = Math.floor(t * 14) + cx;
+    const drop = hs5(f) < 0.07, jit = hs5(f * 1.3) < 0.1 ? (hs5(f * 2.1) - 0.5) * 3 : 0;
+    const alpha = drop ? 0.25 : 0.82 + 0.15 * hs5(f * 0.7);
+    const ix = cx - ICON2 / 2, iy = gy + (gh - ICON2) / 2 - 2;
+    ctx.globalAlpha = alpha * 0.12;
+    ctx.fillStyle = m.hue;
+    ctx.beginPath();
+    ctx.moveTo(x + 14, py);
+    ctx.lineTo(x + MW - 14, py);
+    ctx.lineTo(ix + ICON2, iy + ICON2);
+    ctx.lineTo(ix, iy + ICON2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalAlpha = alpha;
+    ctx.drawImage(holoIcon2(icon, m.hue), ix - GLOW3 + jit, iy - GLOW3 + Math.sin(t * 2) * 1.2, ICON2 + GLOW3 * 2, ICON2 + GLOW3 * 2);
+    const band = iy + (t * 16 + cx) % (ICON2 + 16) - 8;
+    ctx.globalCompositeOperation = "lighter";
+    ctx.globalAlpha = alpha * 0.2;
+    ctx.fillRect(ix, Math.max(iy, band), ICON2, Math.max(0, Math.min(5, iy + ICON2 - band)));
+    ctx.globalCompositeOperation = "source-over";
+    if (m.takes) {
+      const col = m.takes === "green" ? "#3dff7a" : "#ff3a4a", sy = y + 52;
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = "#05070a";
+      ctx.fillRect(cx - 7, sy - 2, 14, 4);
+      ctx.fillStyle = col;
+      ctx.globalAlpha = 0.55 + 0.3 * Math.sin(t * 4 + cx);
+      ctx.fillRect(cx - 8, sy - 3, 16, 1);
+      ctx.fillRect(cx - 8, sy + 2, 16, 1);
+      const N = 8, pos = t * 1.5;
+      for (let i = 0; i < N; i++) {
+        const lit = Math.max(0.15, 1 - ((pos - i) % N + N) % N * 0.45);
+        ctx.globalAlpha = lit;
+        ctx.fillStyle = lit > 0.5 ? "#ffffff" : col;
+        ctx.fillRect(x + 4 + i * (MW - 8) / N + 1, y, 3, 2);
+      }
+    }
+    ctx.restore();
+  }
+  function drawHubPad(ctx, x, fy, time) {
+    const w = PAD_W2, l = x - w / 2;
+    ctx.fillStyle = "#1c2230";
+    ctx.beginPath();
+    ctx.moveTo(l - 3, fy + 4);
+    ctx.lineTo(l, fy - 2);
+    ctx.lineTo(l + w, fy - 2);
+    ctx.lineTo(l + w + 3, fy + 4);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = "#3a4458";
+    ctx.fillRect(l, fy - 2, w, 1);
+    ctx.fillStyle = "#5a6880";
+    ctx.fillRect(l + 1, fy - 2, w - 2, 0.6);
+    const p = 0.75 + 0.25 * Math.sin(time * 3);
+    ctx.fillStyle = "rgba(120,210,255," + p.toFixed(3) + ")";
+    ctx.fillRect(l + 3, fy - 1, w - 6, 1.2);
+    ctx.fillStyle = "#e8f7ff";
+    ctx.fillRect(l + 6, fy - 0.8, w - 12, 0.6);
+    for (let i = 0; i < 4; i++) {
+      const on = Math.floor(time * 4) % 4 === i;
+      ctx.fillStyle = on ? "#9fe2ff" : "#2e4a66";
+      ctx.fillRect(l + 5 + i * (w - 10) / 3 - 0.75, fy + 1.4, 1.5, 1);
+    }
+  }
+  function hubBack(ctx, S2) {
+    const H = hubState(S2);
+    if (!H) return;
+    const t = S2.t;
+    HUB_STOPS.forEach((st, i) => {
+      const lv = hubTube(S2, i), y = H.roof;
+      ctx.fillStyle = "#20242c";
+      ctx.fillRect(st.x - TUBE_W2 / 2 - 3, y, TUBE_W2 + 6, 3);
+      ctx.fillStyle = "#3a404c";
+      ctx.fillRect(st.x - TUBE_W2 / 2 - 3, y + 3, 2, 2);
+      ctx.fillRect(st.x + TUBE_W2 / 2 + 1, y + 3, 2, 2);
+      ctx.fillStyle = lv > 0.2 ? `rgb(${Math.round(150 + 105 * lv)},${Math.round(165 + 90 * lv)},${Math.round(180 + 75 * lv)})` : "#363b44";
+      ctx.fillRect(st.x - TUBE_W2 / 2, y + 3, TUBE_W2, 2);
+      if (H.on[i] >= 0 && lv <= 0.2) {
+        ctx.fillStyle = "rgba(255,170,190,0.8)";
+        ctx.fillRect(st.x - TUBE_W2 / 2, y + 3, 3, 2);
+        ctx.fillRect(st.x + TUBE_W2 / 2 - 3, y + 3, 3, 2);
+      }
+      if (st.id === "enter" || st.id === "exit") drawHubPad(ctx, st.x, H.fy, t + i);
+      else drawMachine(ctx, st.x, H.fy, HUB_MACHINES[st.id], t);
+    });
+  }
+  function hubLight(S2, pool) {
+    const H = hubState(S2);
+    if (!H) return;
+    const { ch, fl } = hubCharge(S2);
+    HUB_STOPS.forEach((st, i) => {
+      const lv = hubTube(S2, i);
+      if (lv > 0) {
+        pool(st.x, H.fy - 40, 70, lv, 0.45);
+        pool(st.x, H.roof + 8, 30, lv * 0.8, 0.3);
+      }
+      if (st.id === "enter" || st.id === "exit") {
+        const a = st.id === "enter" ? 0.35 + 0.6 * ch * ch + 0.6 * fl : 0.3;
+        pool(st.x, H.fy - 16, 34 + (st.id === "enter" ? 30 * fl : 0), Math.min(1, a), 0.2);
+      }
+    });
+  }
+  function hubGlow(ctx, S2) {
+    const H = hubState(S2);
+    if (!H) return;
+    const t = S2.t, fy = H.fy;
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    HUB_STOPS.forEach((st, i) => {
+      const lv = hubTube(S2, i), x = st.x, y = H.roof + 1;
+      if (lv > 0.2) {
+        const halo = ctx.createRadialGradient(x, y + 4, 2, x, y + 4, 34);
+        halo.addColorStop(0, `rgba(210,235,255,${0.32 * lv})`);
+        halo.addColorStop(1, "rgba(210,235,255,0)");
+        ctx.fillStyle = halo;
+        ctx.fillRect(x - 36, y - 2, 72, 40);
+        const cone = ctx.createLinearGradient(0, y + 5, 0, fy);
+        cone.addColorStop(0, `rgba(200,230,255,${0.2 * lv})`);
+        cone.addColorStop(1, `rgba(200,230,255,${0.04 * lv})`);
+        ctx.fillStyle = cone;
+        ctx.beginPath();
+        ctx.moveTo(x - TUBE_W2 / 2, y + 5);
+        ctx.lineTo(x + TUBE_W2 / 2, y + 5);
+        ctx.lineTo(x + TUBE_W2 / 2 + 26, fy);
+        ctx.lineTo(x - TUBE_W2 / 2 - 26, fy);
+        ctx.closePath();
+        ctx.fill();
+        const pl = ctx.createRadialGradient(x, fy, 2, x, fy, TUBE_W2 / 2 + 26);
+        pl.addColorStop(0, `rgba(210,235,255,${0.22 * lv})`);
+        pl.addColorStop(1, "rgba(210,235,255,0)");
+        ctx.fillStyle = pl;
+        ctx.beginPath();
+        ctx.ellipse(x, fy, TUBE_W2 / 2 + 26, 7, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      if (st.id === "enter" || st.id === "exit") padGlow(ctx, S2, x, fy, i, st.id === "enter" ? hubCharge(S2) : { ch: 0, fl: 0 }, st.id === "enter" ? H.zap : -99);
+    });
+    ctx.restore();
+    void t;
+  }
+  function padGlow(ctx, S2, x, y, seed, c, zapAt) {
+    const t = S2.t, { ch, fl } = c;
+    const pulse = (0.85 + 0.15 * Math.sin(t * (2.4 + 30 * ch * ch) + seed)) * (1 + 2.2 * ch * ch);
+    if (ch > 0) {
+      for (let i = 0; i < 18; i++) {
+        const u = (hs5(i * 5.1) + t * (0.8 + 2.2 * ch)) % 1, ang = hs5(i * 2.3) * 6.283 + u * 3;
+        const r = (1 - u) * (26 + 30 * hs5(i * 9.7)), sx = x + Math.cos(ang) * r, sy = y - 14 + Math.sin(ang) * r * 0.75;
+        ctx.globalAlpha = Math.min(1, u * 3) * (0.4 + 0.6 * ch);
+        ctx.fillStyle = hs5(i * 1.7) < 0.4 ? "#e6f6ff" : "#6cc4ff";
+        ctx.fillRect(sx - 0.7, sy - 0.7, 1.4, 1.4);
+      }
+      ctx.globalAlpha = 1;
+      const cg = ctx.createRadialGradient(x, y - 12, 0, x, y - 12, 8 + 10 * ch);
+      cg.addColorStop(0, "rgba(220,245,255," + (0.5 * ch * ch).toFixed(3) + ")");
+      cg.addColorStop(1, "rgba(90,185,255,0)");
+      ctx.fillStyle = cg;
+      ctx.fillRect(x - 20, y - 32, 40, 40);
+    }
+    if (fl > 0) {
+      const fg2 = ctx.createRadialGradient(x, y - 12, 0, x, y - 12, 70);
+      fg2.addColorStop(0, "rgba(235,250,255," + (0.95 * fl).toFixed(3) + ")");
+      fg2.addColorStop(0.4, "rgba(120,200,255," + (0.45 * fl).toFixed(3) + ")");
+      fg2.addColorStop(1, "rgba(90,185,255,0)");
+      ctx.fillStyle = fg2;
+      ctx.fillRect(x - 70, y - 82, 140, 140);
+      ctx.fillStyle = "rgba(235,250,255," + (0.8 * fl * fl).toFixed(3) + ")";
+      ctx.fillRect(x - 7 * fl - 2, y - BEAM_H2 * 1.6, 14 * fl + 4, BEAM_H2 * 1.6);
+    }
+    for (const [wf, a, hf] of [[0.95, 0.16, 1], [0.66, 0.2, 0.8], [0.34, 0.28, 0.6]]) {
+      const h4 = BEAM_H2 * hf, g = ctx.createLinearGradient(0, y, 0, y - h4);
+      g.addColorStop(0, "rgba(90,185,255," + (a * pulse).toFixed(3) + ")");
+      g.addColorStop(0.5, "rgba(70,150,255," + (a * 0.35 * pulse).toFixed(3) + ")");
+      g.addColorStop(1, "rgba(60,120,255,0)");
+      ctx.fillStyle = g;
+      ctx.fillRect(x - PAD_W2 * wf / 2, y - h4, PAD_W2 * wf, h4);
+    }
+    const fg = ctx.createRadialGradient(x, y, 0, x, y, PAD_W2);
+    fg.addColorStop(0, "rgba(90,185,255," + (0.25 * pulse).toFixed(3) + ")");
+    fg.addColorStop(1, "rgba(90,185,255,0)");
+    ctx.fillStyle = fg;
+    ctx.fillRect(x - PAD_W2, y - PAD_W2, PAD_W2 * 2, PAD_W2 * 2);
+    for (let i = 0; i < 10; i++) {
+      const sp = 14 + hs5(i * 3 + seed) * 22, u = (t * sp / BEAM_H2 + hs5(i * 7 + seed * 13)) % 1;
+      const sx = x + (hs5(i * 11 + seed) - 0.5) * PAD_W2 * 0.8 + Math.sin(t * 2 + i) * 1.2;
+      ctx.globalAlpha = (1 - u) * 0.8;
+      ctx.fillStyle = hs5(i + seed * 5) < 0.4 ? "#e6f6ff" : "#6cc4ff";
+      ctx.fillRect(sx - 0.6, y - 2 - u * BEAM_H2 * 0.9, 1.2, 1.2);
+    }
+    ctx.globalAlpha = 1;
+    const zap = 1 - (t - zapAt) / HUB_ZAP;
+    if (zap <= 0 || zap > 1) return;
+    const G = { ctx };
+    const BT = 0.09, n0 = Math.floor(t / BT), z = zap;
+    for (let n = n0 - 2; n <= n0; n++) {
+      const s = n * 7.13 + seed * 101;
+      if (hs5(s) > (0.35 + 0.65 * z) * 0.8 * (fl > 0 ? 1.25 : 1)) continue;
+      const age = (t - n * BT) / (BT * 3);
+      let bx = x + (hs5(s + 1) - 0.5) * (PAD_W2 - 6), by = y - 1;
+      const up = BEAM_H2 * (0.3 + 0.5 * hs5(s + 2)), steps = 6;
+      const pts = [{ x: bx, y: by }];
+      for (let k = 1; k <= steps; k++) {
+        bx += (hs5(s + 3 + k) - 0.5) * 7;
+        by -= up / steps;
+        bx = Math.max(x - PAD_W2 / 2, Math.min(x + PAD_W2 / 2, bx));
+        pts.push({ x: bx, y: by });
+      }
+      drawBolt(G, pts, "#7cc8ff", 0.9, Math.max(0, 1 - age));
+    }
+  }
+
   // src/game/render/titledraw.js
   var T = THEMES[0];
   var CACHE = /* @__PURE__ */ new WeakMap();
@@ -34979,6 +35384,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (m === TM.BEAM || m === TM.WOOD) return J(mixc(TIMBER, TIMBER, 0, 0.95));
     if (m === TM.BEAMD) return J(mixc(TIMBER, TIMBER, 0, 0.7));
     if (m === TM.CHAR) return mixc([30, 26, 26], [52, 44, 40], h4);
+    if (m === TM.STEEL) return c % 8 === 0 || r % 6 === 0 ? [34, 38, 46] : c % 8 === 1 && r % 6 === 1 ? [96, 104, 118] : mixc([62, 68, 80], [74, 80, 92], h4);
+    if (m === TM.BWALL) {
+      const k = c + r % 2 * 3;
+      return k % 6 === 0 || r % 3 === 0 ? [22, 20, 22] : mixc(T.brick[0], T.brick[1], hash5(Math.floor(k / 6), r), 0.5);
+    }
+    if (m === TM.SWALL) return c % 10 === 0 ? [20, 23, 28] : r % 14 === 0 ? [58, 64, 76] : mixc([36, 40, 48], [42, 46, 54], h4);
     const bx = c / 4, by = r / 4, t = Math.pow(fbm(bx / 10 + 300, by / 10 + 300), 1.6);
     const big = fbm(bx / 34 + 700, by / 34 + 500), shade = 1 - 0.55 * Math.max(0, Math.min(1, (big - 0.35) / 0.3));
     return mixc(T.bg, T.bg2, Math.min(1, t * 1.3), shade).map((v) => v + (h4 - 0.5) * 4);
@@ -35030,12 +35441,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const sx = (S2.rnd() - 0.5) * S2.shake * k, sy = (S2.rnd() - 0.5) * S2.shake * k;
     ctx.translate(sx, sy);
     ctx.scale(k, k);
-    if (cam && cam.z !== 1) {
+    if (cam && (cam.z !== 1 || cam.w)) {
       ctx.translate(TITLE_VW / 2, cam.ay);
       ctx.scale(cam.z, cam.z);
       ctx.translate(-cam.x, -cam.y);
     }
-    const cv = terrain(S2), N = S2.ncol, c0 = Math.floor(S2.scroll / TCELL) - 2, n = Math.ceil(TITLE_VW / TCELL) + 4;
+    const cv = terrain(S2), N = S2.ncol, c0 = S2.hub ? 0 : Math.floor(S2.scroll / TCELL) - 2, n = S2.hub ? N : Math.ceil(TITLE_VW / TCELL) + 4;
     ctx.imageSmoothingEnabled = false;
     for (let c = c0; c < c0 + n; ) {
       const x = (c % N + N) % N, w = Math.min(N - x, c0 + n - c);
@@ -35112,11 +35523,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         ctx.restore();
       }
     }
-    for (const r of S2.runners) drawTitleRunner(ctx, S2, r);
+    if (S2.hub) hubBack(ctx, S2);
+    for (const r of S2.runners) if (!r.hide) drawTitleRunner(ctx, S2, r);
     titleDark(ctx, S2);
     ctx.globalCompositeOperation = "lighter";
     for (const f of S2.foes) if (f.je && f.x - S2.scroll > -40 && f.x - S2.scroll < TITLE_VW + 40) titlePlantGlow(ctx, S2, f);
-    for (const r of S2.runners) titleBeam(ctx, S2, r, DK.vis[r.id]);
+    for (const r of S2.runners) if (!r.hide) titleBeam(ctx, S2, r, DK.vis[r.id]);
+    if (S2.hub) hubGlow(ctx, S2);
     if (S2.shots.length || S2.zaps.length) pixelSprite(ctx, gx, 0, TITLE_VW + 100, S2.vh, 1, false, (c) => {
       const G2 = { ctx: c };
       c.globalCompositeOperation = "lighter";
@@ -35202,7 +35615,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const len = 6 + r.flame * 14 + S2.rnd() * 3, bx = pcx - r.face * 4.5, by = r.y + PH * 0.55;
       pixelSprite(ctx, ox2 - 10, oy2, PW + 48, PH + 40, 1, false, (c) => jetFlame(c, bx, by, 0, 1, len, S2.t));
     }
-    const gait = r.mode === "run" ? r.gait : null;
+    const gait = r.mode === "run" && !r.stand ? r.gait : null;
     pixelHeld(ctx, ox2 + 14, oy2 + 8, 1, false, (c) => {
       drawRunner(c, r.x, r.y, PW, PH, r.face, gait, r.mode !== "run", r.flame, false, hands, null, r.col);
       drawGun(c, pcx + ax * 2.5, gy, r.ang, GUN_HELD, K.art);
@@ -35361,7 +35774,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var TITLE_EDGE = 6;
   var TITLE_LAMPR = 60;
   function titleDark(ctx, S2) {
-    const x0 = -40, w = Math.ceil((TITLE_VW + 80) / TCELL), h4 = Math.ceil(S2.vh / TCELL);
+    const x0 = -40, w = Math.ceil(((S2.hub ? S2.ncol * TCELL : TITLE_VW) + 80) / TCELL), h4 = Math.ceil(S2.vh / TCELL);
     if (!DK.L) {
       DK.L = document.createElement("canvas");
       DK.D = document.createElement("canvas");
@@ -35409,6 +35822,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const half = DEV.beamDeg * Math.PI / 360;
     DK.vis.length = 0;
     for (const r of S2.runners) {
+      if (r.hide) continue;
       const cx = r.x + PW / 2, cy = r.y + PH * 0.45;
       lc.save();
       DK.vis[r.id] = fan(cx, cy, R, 120);
@@ -35428,6 +35842,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
       lc.restore();
     }
+    if (S2.hub) hubLight(S2, pool);
     for (const p of S2.props) if (p.k === "lamp" && !p.gone && !p.fall && p.x > -TITLE_LAMPR - 40 && p.x < TITLE_VW + TITLE_LAMPR + 40) {
       const ly = p.y + p.len + 3;
       lc.save();
@@ -36073,9 +36488,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         chh = hh;
         c.width = Math.round(w * dpr);
         c.height = Math.round(hh * dpr);
-        ({ S: S2, C } = o.make(w, hh, seed));
+        const m = o.make(w, hh, seed);
+        S2 = m.S;
+        C = m.C;
         if (window.__TEST) window.__title = { S: S2, C };
-        for (let i = 0; i < 40; i++) titleStep(S2, 1 / 30);
+        for (let i = 0; i < (m.warm ?? 40); i++) titleStep(S2, 1 / 30);
       }
       const now = performance.now(), dt = (now - last) / 1e3;
       last = now;
@@ -36183,8 +36600,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         size: () => ({ w: c.clientWidth, hh: c.clientHeight }),
         make: (w, hh, seed) => {
           const k = w / TITLE_VW, vh = hh / k;
-          const S2 = titleScene(vh, seed, vh * 0.16, vh * 0.86, { runners: run.players.length });
-          return { S: S2, C: titleCam((S2.top + S2.bot) / 2, Math.min(vh, S2.bot + 10 / k)) };
+          const S2 = hubScene(vh, seed, run.players.length);
+          const C = titleCam(vh / 2, vh);
+          C.w = HUB_W;
+          C.zmin = TITLE_VW / HUB_W;
+          C.x = hubStopX("enter") + 40;
+          C.lock = 0;
+          return { S: S2, C, warm: 0 };
         },
         paused: () => pausedRef.current
       });

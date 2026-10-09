@@ -1,6 +1,7 @@
 // Screenshots for the owner (CaveRunner Auto stage 2), phone size (412 x 880 @2.625), the real page
 // through the test page: the title's ▶ opens the auto screen. A quiet one (a new run: one player, empty
-// bag) and a busy one (2 players; a gun, mods, a gold stack, gems, an exo mod in the bag).
+// bag) and a busy one (2 players; a gun, mods, a gold stack, gems, an exo mod in the bag). Stage 3a: the hub
+// (the teleport-in in the dark, just through, lit at the exo machine, the whole row zoomed out).
 //   node tools/autoshots.js [outdir]      (default tests/build/autoshots)
 // Not a test: it takes the pictures and prints what each shows.
 const { launch } = require('../tests/chromium');
@@ -15,7 +16,8 @@ require('../tests/build')();
 (async () => {
   const browser = await launch();
   const said = [];
-  const shot = async (n, busy, what) => {
+  // after: run in the page once the screen is up (the scene is window.__title: { S, C }); wait: ms before the shot
+  const shot = async (n, busy, what, wait, after) => {
     const ctx = await browser.newContext({ viewport: { width: 412, height: 880 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2.625 });
     await ctx.addInitScript(() => { window.__TEST_TITLE = true; window.__TITLE_SEED = 101; localStorage.removeItem('caverunner-auto-run'); });
     const page = await ctx.newPage();
@@ -39,13 +41,20 @@ require('../tests/build')();
       });
     }
     await page.locator('.tstart').dispatchEvent('pointerdown');
-    await page.waitForTimeout(busy ? 9000 : 2500);
+    await page.waitForTimeout(wait || (busy ? 9000 : 2500));
+    if (after) { await page.evaluate(after); await page.waitForTimeout(400); }
     await page.screenshot({ path: path.join(OUT, n + '.png') });
     said.push(`${n}.png  ${what}`);
     await ctx.close();
   };
   await shot('a-quiet', false, 'a new run: one player in the scene, his ring in the nav, three locked circles, the empty bag');
   await shot('b-busy', true, '2 players, 9 s in; the bag: a gun, 4 mods (Bolt ×3), 245 gold, 3 red, 1 green, two exo mods');
+  await shot('c-teleport', false, 'the hub, dark: the enter pad charging, the player about to come through', 700);
+  await shot('d-arrived', false, 'the hub, just after: he is through, the lightning, the first tubes stuttering on', 1500);
+  await shot('e-lit-machine', false, 'the hub lit, the player moved to the exo machine (its own teal hue, the exo glyphs)', 7000,
+    () => { const { S, C } = window.__title; S.runners[0].x = hubStopX('exo') - 40; C.lock = 0; });
+  await shot('f-whole-hub', false, 'zoomed all the way out: the whole hub row, enter pad, gun, exo, mod, perk machines, exit pad', 7000,
+    () => { const { C } = window.__title; C.lock = -1; C.z = C.zmin; C.zt = 0; });
   await browser.close();
   console.log(said.join('\n'));
   console.log('saved in ' + OUT);

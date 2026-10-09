@@ -16,14 +16,15 @@ import { titleSound, titleSoundStop } from './titlesound.js';
 /**
  * @typedef {{
  *   size: () => { w: number, hh: number },
- *   make: (w: number, hh: number, seed: number) => { S: TitleScene, C: TitleCam },
+ *   make: (w: number, hh: number, seed: number) => { S: TitleScene, C: TitleCam, warm?: number },
  *   over?: (ctx: CanvasRenderingContext2D, S: TitleScene, w: number, hh: number) => void,
  *   paused?: () => boolean,
  * }} SceneOpts
  */
 
 // Start the scene on canvas c; returns the stop function (for a useEffect's cleanup).
-// size: the canvas's css size now; make: a new scene and camera for that size (called again on a resize);
+// size: the canvas's css size now; make: a new scene and camera for that size (called again on a resize; warm: how
+// many 1/30 s steps it opens on, default 40; the hub's teleport-in opens on 0);
 // over: paints on top (the title's words); paused: true holds the scene (still painted).
 /** @param {HTMLCanvasElement} c @param {SceneOpts} o @returns {() => void} */
 export function runScene(c, o) {
@@ -43,9 +44,10 @@ export function runScene(c, o) {
     if (w !== cw || hh !== chh || !S || !C) {
       cw = w; chh = hh;
       c.width = Math.round(w * dpr); c.height = Math.round(hh * dpr);
-      ({ S, C } = o.make(w, hh, seed));
+      const m = o.make(w, hh, seed);
+      S = m.S; C = m.C;
       if (window.__TEST) window.__title = { S, C };    // the browser suites' reach
-      for (let i = 0; i < 40; i++) titleStep(S, 1 / 30);     // open on the action, not an empty cave
+      for (let i = 0; i < (m.warm ?? 40); i++) titleStep(S, 1 / 30);     // open on the action, not an empty cave
     }
     const now = performance.now(), dt = (now - last) / 1000;
     last = now;

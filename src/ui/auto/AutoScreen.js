@@ -1,12 +1,13 @@
 // @ts-check
 // CaveRunner Auto's play screen (AUTOBATTLER.md stage 2), top to bottom: the play area (the menu's
-// scene on a canvas, ui/scenecanvas.js runScene, with the run's players; ⏸ top right opens the pause
+// scene on a canvas, ui/scenecanvas.js runScene: the hub, auto/hub.js, with the run's players; ⏸ top right opens the pause
 // menu), the context nav (the player row: a colour ring per player, an empty circle per locked one),
 // the bag (10 rows × 7, scrolls up and down; the run's items with stack counts) and the buttons
 // (B, <, >, A). Taps on the nav and the buttons do nothing yet (later stages).
 
 import { SFX } from '../../audio/sfx.js';
-import { TITLE_VW, titleCam, titleScene } from '../../art/titlescene.js';
+import { TITLE_VW, titleCam } from '../../art/titlescene.js';
+import { HUB_W, hubScene, hubStopX } from '../../auto/hub.js';
 import { MODS } from '../../spells/mods.js';
 import { PERKS, STAT_PERKS } from '../../data/perks.js';
 import { BAG_SLOTS, EXO_STATS, MAX_PLAYERS, newRun } from '../../auto/run.js';
@@ -42,8 +43,11 @@ export function AutoScreen() {
       size: () => ({ w: c.clientWidth, hh: c.clientHeight }),
       make: (w, hh, seed) => {
         const k = w / TITLE_VW, vh = hh / k;
-        const S = titleScene(vh, seed, vh * 0.16, vh * 0.86, { runners: run.players.length });
-        return { S, C: titleCam((S.top + S.bot) / 2, Math.min(vh, S.bot + 10 / k)) };
+        // the run is in the hub (it always is, for now): the strip, the player teleporting in, the camera on him
+        const S = hubScene(vh, seed, run.players.length);
+        const C = titleCam(vh / 2, vh);
+        C.w = HUB_W; C.zmin = TITLE_VW / HUB_W; C.x = hubStopX('enter') + 40; C.lock = 0;
+        return { S, C, warm: 0 };
       },
       paused: () => pausedRef.current,
     });

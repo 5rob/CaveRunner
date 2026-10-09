@@ -60,6 +60,7 @@ export * from './art/ramps.js';
 export * from './art/gunart.js';
 export * from './art/titlescene.js';
 export * from './auto/run.js';
+export * from './auto/hub.js';
 export * from './auto/save.js';
 export * from './audio/recipes.js';
 export * from './audio/sfx.js';

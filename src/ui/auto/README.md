@@ -6,7 +6,7 @@ this folder only shows them and takes the taps.
 ## Files
 
 - `AutoScreen.js` — (stage 2) the play screen, top to bottom (`.auto`, a flex column, CSS in `style.css`):
-  - **play area** `.aplay` (55% of the height): the menu's scene on `.aplaycvs` through `ui/scenecanvas.js`
+  - **play area** `.aplay` (55% of the height): the hub (stage 3a: `auto/hub.js` `hubScene`, opening on the teleport-in, `warm: 0`; the camera follows player 1, `C.w = HUB_W`, pinch out to the whole row) on `.aplaycvs` through `ui/scenecanvas.js`
     `runScene` (pinch, drag, tap a player to follow), `titleScene(…, { runners: run.players.length })`;
     ⏸ (`.pausebtn`) opens `ui/pause.js` `PauseMenu` (label `Tier n`; Save / Exit write the run) and holds the scene.
   - **context nav** `.anav`: 4 circles (`.anavc`, `data-player`), a player's colour ring (`TITLE_COLS`) and number
