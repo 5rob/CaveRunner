@@ -5,6 +5,14 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.8 — CaveRunner Auto: the clearing rule (branch `autobattler`, stage 5b)
+Released 2026-10-10 on the branch (owner OK'd the screenshots, `tools/clearshots.js`).
+- In levels the magic saw is gone: at rock a player switches to its best clearing gun (`auto/clear.js` `canClear`,
+  `bestClearer`, `teamClearer`: scored from the real MODS — bore, eat, blasts; fire for webs and timber), fires it
+  at the rock, then switches back; with none of its own it borrows a teammate's. No gun in play can → the team slows
+  to a stop (`pilotPace({ blocked })`) and "Path blocked" pulses (`.ablocked`). Starter guns can't dig (the Buzzsaw
+  is in the bag; dragging it in is stage 8). Knobs `autoClearMin/Fire/Gap`. Suite `auto-clear`.
+
 ## v1.0.7 — CaveRunner Auto: real guns in levels (branch `autobattler`, stage 5a)
 Released 2026-10-10 on the branch (owner OK'd the gun sheet, `tools/gunshots.js`).
 - In a level each player fires its active gun through the real `planCast` (`art/scenegun.js`: mana, recharge, the

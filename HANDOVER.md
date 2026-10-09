@@ -21,6 +21,8 @@ mock-up `docs/autobattler-mockup.png`). Progress: AUTOBATTLER.md's Log. `main` k
   pad brings it home (tier + 1, healed, saved). 
 - **Stage 5a done (v1.0.7, owner OK'd):** real guns in levels, the starter kit, the meters. Next: stage 5b, the
   clearing rule (`canClear`/`bestClearer`, "Path blocked"), replacing the magic saw.
+- **Stage 5b done (v1.0.8, owner OK'd):** the clearing rule and "Path blocked". Until stage 8 (dragging mods) a team
+  of starter guns stops at its first wall. Next: stage 6, enemies, elites, the boss, drops, death.
 
 ## NEXT (as of v0.0.176, 2026-10-09)
 
