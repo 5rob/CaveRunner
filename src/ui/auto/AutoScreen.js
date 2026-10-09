@@ -3,12 +3,15 @@
 // scene on a canvas, ui/scenecanvas.js runScene: the hub, auto/hub.js, with the run's players; ⏸ top right opens the pause
 // menu), the context nav (the player row: a colour ring per player, an empty circle per locked one),
 // the bag (10 rows × 7, scrolls up and down; the run's items with stack counts) and the buttons
-// (B, <, >, A). In the hub (stage 3b) < and > walk the team between the stops (auto/hub.js hubGo), and A at the
-// exit pad flashes it (hubExit; stage 4 starts the level from there). The nav and B do nothing yet (later stages).
+// (B, the pill stick, A). The pill stick (PillStick, owner after stage 4a) works as the old game's left thumbstick: in the
+// hub it runs and jets player 1 anywhere in the room (auto/hub.js hubStick), in a level its sideways push hurries or
+// slows the team (auto/level.js levelHold; it never stops them). A at the exit pad flashes it (hubExit; stage 4 starts
+// the level from there). The nav and B do nothing yet (later stages).
 
 import { SFX } from '../../audio/sfx.js';
 import { TITLE_VW, titleCam } from '../../art/titlescene.js';
-import { HUB_W, hubExit, hubGo, hubScene, hubStopX } from '../../auto/hub.js';
+import { DEAD } from '../../core/consts.js';
+import { HUB_W, hubExit, hubScene, hubStick, hubStopX } from '../../auto/hub.js';
 import { levelHold, levelScene } from '../../auto/level.js';
 import { MODS } from '../../spells/mods.js';
 import { PERKS, STAT_PERKS } from '../../data/perks.js';
@@ -66,10 +69,14 @@ export function AutoScreen() {
   /** @param {() => void} fn @returns {(e: any) => void} */
   const tap = fn => e => { e.preventDefault(); fn(); };
   const nothing = () => { SFX.unlock(); SFX.ui('tap'); };
-  /** @param {number} dir */
-  const go = dir => () => { SFX.unlock(); SFX.ui('tap'); if (scene.current && scene.current.lvl) levelHold(scene.current, dir); else if (scene.current) hubGo(scene.current, dir); };
-  // in a level < and > are held (auto/pilot.js: < stops, > hurries); letting go lets go
-  const letGo = () => { if (scene.current && scene.current.lvl) levelHold(scene.current, 0); };
+  // the pill stick's push, to the scene: the hub's free roam, a level's pace (the push past the dead zone, sideways)
+  /** @param {PillState} st */
+  const steer = st => {
+    const S = scene.current;
+    if (!S) return;
+    if (S.lvl) levelHold(S, st.active && st.mag > DEAD ? st.nx * (st.mag - DEAD) / (1 - DEAD) : 0);
+    else hubStick(S, st);
+  };
   const press = () => { SFX.unlock(); SFX.ui('tap'); if (scene.current && hubExit(scene.current)) SFX.fx('open'); };
   return h('div', { className: 'auto' },
     h('div', { className: 'aplay' },
@@ -86,10 +93,59 @@ export function AutoScreen() {
       ...Array.from({ length: BAG_SLOTS }, (_, i) => h(BagSlot, { key: i, i, it: run.bag[i] }))),
     h('div', { className: 'abtns' },
       h('button', { className: 'abtn ab', onPointerDown: tap(nothing) }, 'B'),
-      h('button', { className: 'abtn around al', onPointerDown: tap(go(-1)), onPointerUp: letGo, onPointerLeave: letGo, onPointerCancel: letGo }, '<'),
-      h('button', { className: 'abtn around ar', onPointerDown: tap(go(1)), onPointerUp: letGo, onPointerLeave: letGo, onPointerCancel: letGo }, '>'),
+      h(PillStick, { onMove: steer }),
       h('button', { className: 'abtn aa', onPointerDown: tap(press) }, 'A')),
     paused ? h(PauseMenu, { input, label: 'Tier ' + run.tier, close: () => { SFX.fx('close'); setPaused(false); } }) : null);
+}
+
+// PillState: as the old game's left stick (ui/hud.js Stick): active while held; dx, dy the finger from the middle as a
+// share of the pill's half-width and half-height (so a small push up reads as up); mag their length (0-1, clamped), nx, ny
+// its direction
+/** @typedef {{ active: boolean, nx: number, ny: number, mag: number, dx: number, dy: number }} PillState */
+const PILL_REST = { active: false, nx: 0, ny: 0, mag: 0, dx: 0, dy: 0 };
+
+// The pill stick: one pill between B and A; a knob in it follows the finger (clamped to the pill, a little up and down
+// too). Pointer capture, so the finger may wander off it; letting go puts the knob back and the push to rest
+/** @param {{ onMove: (st: PillState) => void }} props */
+function PillStick({ onMove }) {
+  const ref = useRef(null);
+  const pid = useRef(null);
+  const [knob, setKnob] = useState({ x: 0, y: 0, jet: false });
+  /** @param {any} e */
+  const update = e => {
+    const el = ref.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect(), kr = r.height * 0.36;
+    const hw = Math.max(1, r.width / 2 - kr), hh = Math.max(1, r.height / 2 - kr * 0.55);
+    let dx = (e.clientX - (r.left + r.width / 2)) / hw, dy = (e.clientY - (r.top + r.height / 2)) / hh;
+    const d = Math.hypot(dx, dy);
+    if (d > 1) { dx /= d; dy /= d; }
+    const mag = Math.min(1, d);
+    /** @type {PillState} */
+    const st = { active: true, nx: d ? dx / Math.max(d, 1e-6) : 0, ny: d ? dy / Math.max(d, 1e-6) : 0, mag, dx, dy };
+    onMove(st);
+    setKnob({ x: dx * hw, y: dy * Math.min(hh, 7), jet: dy < 0 && mag > DEAD });
+  };
+  /** @param {any} e */
+  const down = e => {
+    e.preventDefault();
+    if (pid.current !== null) return;
+    pid.current = e.pointerId;
+    SFX.unlock();
+    try { ref.current.setPointerCapture(e.pointerId); } catch (_) { /* (a synthetic event: no capture) */ }
+    update(e);
+  };
+  /** @param {any} e */
+  const move = e => { if (e.pointerId === pid.current) update(e); };
+  /** @param {any} e */
+  const end = e => {
+    if (e.pointerId !== pid.current) return;
+    pid.current = null;
+    onMove(PILL_REST);
+    setKnob({ x: 0, y: 0, jet: false });
+  };
+  return h('div', { ref, className: 'apill', onPointerDown: down, onPointerMove: move, onPointerUp: end, onPointerCancel: end },
+    h('div', { className: 'apillknob' + (knob.jet ? ' jet' : ''), style: { transform: 'translate(' + knob.x + 'px,' + knob.y + 'px)' } }));
 }
 
 // one bag slot: empty, or the item's icon and its count

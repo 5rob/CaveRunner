@@ -54,7 +54,7 @@ export function levelPlan(seed, minutes = DEV.autoLvlMin) {
 
 // LevelState: the plan; phase: 'arrive' (teleporting in), 'run' (to the arena), 'arena' (stopped till the boss is dead),
 // 'out' (to the exit pad), 'exit' (gathered on it); arrived per player, zap (when someone last came through), arenaT
-// (when it got there), bossDead; hold (-1 <, 1 >, 0: the buttons), elites and chests (stage 6, 11: world x), pace (S.pace)
+// (when it got there), bossDead; hold (the stick's sideways push, -1 to 1), elites and chests (stage 6, 11: world x), pace (S.pace)
 /** @typedef {{ plan: LevelPlan, phase: string, arrived: boolean[], zap: number, goT: number, arenaT: number, bossDead: boolean, hold: number,
  *   elites: { x: number, alive?: boolean }[], chests: { x: number, open?: boolean }[], doneT: number }} LevelState */
 /** @param {import('../art/titlescene.js').TitleScene} S @returns {LevelState | null} */
@@ -80,11 +80,11 @@ export function levelScene(vh, seed, n, plan = levelPlan(seed)) {
   return S;
 }
 
-// the button: hold > (1), hold < (-1), let go (0)
+// the pill stick's sideways push (-1 left … 1 right; 0 let go): auto/pilot.js pilotPush
 /** @param {import('../art/titlescene.js').TitleScene} S @param {number} dir */
 export function levelHold(S, dir) {
   const L = levelState(S);
-  if (L) L.hold = Math.sign(dir);
+  if (L) L.hold = Math.max(-1, Math.min(1, dir || 0));
 }
 // is the team gathered on the exit pad (stage 4b: teleport to the hub)?
 /** @param {import('../art/titlescene.js').TitleScene} S */

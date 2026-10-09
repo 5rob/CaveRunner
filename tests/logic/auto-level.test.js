@@ -35,8 +35,11 @@ check('a dead elite, or a far one, doesn\'t', near(G.pilotPace({ x: 100, elites:
 check('passing a chest slows it', near(G.pilotPace({ x: 100, chests: [{ x: 90 }] }), base * D.autoLvlChest));
 check('an opened chest doesn\'t', near(G.pilotPace({ x: 100, chests: [{ x: 90, open: true }] }), base));
 check('both: both', near(G.pilotPace({ x: 100, elites: [{ x: 100 }], chests: [{ x: 100 }] }), base * D.autoLvlElite * D.autoLvlChest));
-check('holding > hurries', near(G.pilotPace({ x: 100, hold: 1 }), base * D.autoLvlHurry));
-check('holding < stops', G.pilotPace({ x: 100, hold: -1 }) === 0);
+check('stick full right hurries', near(G.pilotPace({ x: 100, hold: 1 }), base * D.autoLvlHurry));
+check('stick half right: half way to the hurry', near(G.pilotPace({ x: 100, hold: 0.5 }), base * (1 + (D.autoLvlHurry - 1) / 2)));
+check('stick full left slows to the minimum, never 0', near(G.pilotPace({ x: 100, hold: -1 }), base * D.autoLvlSlow) && D.autoLvlSlow > 0);
+check('stick half left: between', G.pilotPace({ x: 100, hold: -0.5 }) < base && G.pilotPace({ x: 100, hold: -0.5 }) > base * D.autoLvlSlow);
+check('the push clamps to ±1', near(G.pilotPace({ x: 100, hold: -5 }), base * D.autoLvlSlow) && near(G.pilotPace({ x: 100, hold: 5 }), base * D.autoLvlHurry));
 check('a stop point: brakes before it, stops at it', G.pilotPace({ x: 100, stopX: 130 }) < base && G.pilotPace({ x: 100, stopX: 100 }) === 0
   && G.pilotPace({ x: 100, stopX: 400 }) === base && G.pilotPace({ x: 100, stopX: 100.5 }) > 0);
 check('easing: a step at most the knob × dt', near(G.pilotEase(0, 1, 0.1), D.autoLvlEase * base * 0.1) && G.pilotEase(1, 1, 0.1) === 1);
@@ -64,17 +67,17 @@ check('no one sawing for more than 8 s on end', longDig === 0, longDig);
 const ex = P.exitX - S.scroll;
 check('everyone on the exit pad, on the floor', S.runners.every(r => Math.abs(r.x + G.PW / 2 - ex) < 15 && r.ground), S.runners.map(r => [r.x + G.PW / 2 - ex, r.ground]));
 check('the team stopped at the exit pad', Math.abs(G.levelTeamX(S) - P.exitX) < 1 && S.pace === 0);
-// the hold: < stops it dead mid-level
+// the stick: full left slows the team but never stops it
 const S2 = G.levelScene(190, 12, 1, G.levelPlan(12));
 for (let i = 0; i < 150; i++) G.titleStep(S2, dt);
 G.levelHold(S2, -1);
 for (let i = 0; i < 30; i++) G.titleStep(S2, dt);
 const x0 = G.levelTeamX(S2);
 for (let i = 0; i < 30; i++) G.titleStep(S2, dt);
-check('holding < stops the team', G.levelTeamX(S2) === x0 && S2.pace === 0);
+check('stick full left slows the team to the minimum, still moving', G.levelTeamX(S2) > x0 && Math.abs(S2.pace - D.autoLvlPace * D.autoLvlSlow) < 1e-6, S2.pace);
 G.levelHold(S2, 1);
 for (let i = 0; i < 90; i++) G.titleStep(S2, dt);
-check('holding > hurries it', Math.abs(S2.pace - D.autoLvlPace * D.autoLvlHurry) < 1e-6, S2.pace);
+check('stick full right hurries it', Math.abs(S2.pace - D.autoLvlPace * D.autoLvlHurry) < 1e-6, S2.pace);
 D.autoLvlMin = keep.m; D.autoLvlBossT = keep.b;
 console.log(fails ? `${fails} FAILED` : 'all passed');
 process.exit(fails ? 1 : 0);

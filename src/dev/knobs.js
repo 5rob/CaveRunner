@@ -598,20 +598,21 @@ DEV_META.push(
   { k: 'autoModGold',  g: 'auto', label: 'Scrap: a gun mod (gold × the tier’s gold scale)', min: 0, max: 500, step: 1 });
 DEV_GROUPS.push(['auto', 'Auto: economy']);
 // CaveRunner Auto's hub (auto/hub.js, stage 3b): the team walking between the stops
-Object.assign(DEV_DEFAULTS, { autoHubWalk: 80, autoHubEase: 26, autoHubOff: 38, autoHubSpace: 16 });
+Object.assign(DEV_DEFAULTS, { autoHubRun: 70, autoHubJet: 2.4, autoHubWalk: 80, autoHubSpace: 16 });
 DEV_META.push(
-  { k: 'autoHubWalk',  g: 'autohub', label: 'Walk speed between stops (world units / s)', min: 10, max: 400, step: 5 },
-  { k: 'autoHubEase',  g: 'autohub', label: 'Eases to a stop over the last (world units)', min: 0, max: 100, step: 1 },
-  { k: 'autoHubOff',   g: 'autohub', label: 'Stops this far beside a machine’s middle (world units)', min: 0, max: 60, step: 1 },
+  { k: 'autoHubRun',   g: 'autohub', label: 'Player 1’s top run speed, stick pushed all the way (world units / s)', min: 10, max: 300, step: 5 },
+  { k: 'autoHubJet',   g: 'autohub', label: 'Jetpack push, stick pushed up (× gravity)', min: 1, max: 6, step: 0.1 },
+  { k: 'autoHubWalk',  g: 'autohub', label: 'The others’ walk speed to their place in line (world units / s)', min: 10, max: 400, step: 5 },
   { k: 'autoHubSpace', g: 'autohub', label: 'Players line up this far apart (world units)', min: 4, max: 40, step: 1 });
 DEV_GROUPS.push(['autohub', 'Auto: hub']);
 // CaveRunner Auto's level (auto/level.js, auto/pilot.js, stage 4a): its length and the team's pace
-Object.assign(DEV_DEFAULTS, { autoLvlMin: 5, autoLvlPace: 1, autoLvlHurry: 1.6, autoLvlElite: 0.4, autoLvlChest: 0.5,
+Object.assign(DEV_DEFAULTS, { autoLvlMin: 5, autoLvlPace: 1, autoLvlHurry: 1.6, autoLvlSlow: 0.3, autoLvlElite: 0.4, autoLvlChest: 0.5,
   autoLvlEliteR: 120, autoLvlChestR: 50, autoLvlBossT: 3, autoLvlEase: 1.5 });
 DEV_META.push(
   { k: 'autoLvlMin',    g: 'autolevel', label: 'Level length (minutes at normal pace)', min: 0.2, max: 20, step: 0.1 },
   { k: 'autoLvlPace',   g: 'autolevel', label: 'Normal pace (× the menu’s scroll, 34 world units / s)', min: 0.1, max: 4, step: 0.05 },
-  { k: 'autoLvlHurry',  g: 'autolevel', label: 'Holding > hurries (× pace)', min: 1, max: 4, step: 0.05 },
+  { k: 'autoLvlHurry',  g: 'autolevel', label: 'Stick pushed all the way right hurries to (× pace)', min: 1, max: 4, step: 0.05 },
+  { k: 'autoLvlSlow',   g: 'autolevel', label: 'Stick pushed all the way left slows to (× pace; never stops)', min: 0.05, max: 1, step: 0.05 },
   { k: 'autoLvlElite',  g: 'autolevel', label: 'An elite alive and near slows to (× pace)', min: 0, max: 1, step: 0.05 },
   { k: 'autoLvlChest',  g: 'autolevel', label: 'Passing a chest slows to (× pace)', min: 0, max: 1, step: 0.05 },
   { k: 'autoLvlEliteR', g: 'autolevel', label: 'An elite counts as near within (world units)', min: 10, max: 400, step: 5 },
