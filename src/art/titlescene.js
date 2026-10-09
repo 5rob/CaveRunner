@@ -1598,7 +1598,7 @@ function stepLoot(S, dt) {
       if (d < 12 && (!L || !L.take || L.take(S, g.it))) { S.loot.splice(i, 1); snd(S, 'coin', g.x - S.scroll, g.y); }
       continue;
     }
-    g.amount = 5;
+    g.amount = g.it.kind === 'red' || g.it.kind === 'green' ? 25 : 5;     // a gem lies as the biggest nugget (drawn as the game's crystal)
     stepNugget(g, dt, solid);
     if (g.x - S.scroll < -30) S.loot.splice(i, 1);
   }

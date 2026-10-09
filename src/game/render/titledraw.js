@@ -17,7 +17,7 @@ import { FIRE_COLS } from '../../world/fire.js';
 import { vinePt } from '../../world/sway.js';
 import { crackleAt, crackleBody } from '../../art/crackle.js';
 import { drawProp, propGlow } from '../../art/props.js';
-import { GUN_HELD, gunMuzzle, drawGun, drawNugget, glowAt, drawRunner, jetFlame, pixelHeld, pixelSprite } from '../../art/sprites.js';
+import { CRYSTAL_PAL, CRYSTAL_R, GREEN_PAL, GUN_HELD, gunMuzzle, drawGun, drawNugget, glowAt, drawRunner, jetFlame, pixelHeld, pixelSprite } from '../../art/sprites.js';
 import { TCELL, TITLE_SOLID, TITLE_VW, TM, titleNoise, titleSolid, titleSolidCell, titleWebAt } from '../../art/titlescene.js';
 import { visPoly } from '../../world/vision.js';
 import { drawBolt, drawLook } from './looks.js';
@@ -337,23 +337,26 @@ function worldLayer(c, S) {
   drawLoot(c, S);
 }
 
-// CaveRunner Auto's drops (S.loot: a gun mod, gems, an exo mod): a small glowing gem in the item's colour, pulsing; one
+// CaveRunner Auto's drops (S.loot: a gun mod, gems, an exo mod): a red or green gem is the game's crystal at its size
+// (drawNugget, CRYSTAL_R, owner: so they stand out); the others a glowing diamond in the item's colour, pulsing; one
 // waiting (the bag full) pulses slowly and dimmer
 /** @param {CanvasRenderingContext2D} c @param {import('../../art/titlescene.js').TitleScene} S */
 function drawLoot(c, S) {
   if (!S.loot || !S.loot.length) return;
   c.save();
   for (const g of S.loot) {
-    const x = g.x - S.scroll, y = g.y, p = 0.5 + 0.5 * Math.sin(g.t * (g.wait ? 2 : 8)), r = 2.6;
+    const gem = g.it.kind === 'red' || g.it.kind === 'green';
+    const x = g.x - S.scroll, y = g.y, p = 0.5 + 0.5 * Math.sin(g.t * (g.wait ? 2 : 8)), r = gem ? CRYSTAL_R * 0.6 : 5;
     c.globalCompositeOperation = 'lighter';
     c.globalAlpha = (g.wait ? 0.25 : 0.45) + 0.25 * p;
     const gr = c.createRadialGradient(x, y, 0, x, y, r * 4);
     gr.addColorStop(0, g.col); gr.addColorStop(1, 'rgba(0,0,0,0)');
     c.fillStyle = gr; c.fillRect(x - r * 4, y - r * 4, r * 8, r * 8);
     c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1;
+    if (gem) { drawNugget(c, x, y - (CRYSTAL_R - 8.4), CRYSTAL_R, 3.7, 0, g.it.kind === 'green' ? GREEN_PAL : CRYSTAL_PAL); continue; }
     c.fillStyle = g.col;
     c.beginPath(); c.moveTo(x, y - r * 1.3); c.lineTo(x + r, y); c.lineTo(x, y + r * 1.3); c.lineTo(x - r, y); c.closePath(); c.fill();
-    c.fillStyle = '#ffffff'; c.globalAlpha = 0.6 + 0.4 * p; c.fillRect(x - 0.7, y - 1.2, 1.2, 1.2); c.globalAlpha = 1;
+    c.fillStyle = '#ffffff'; c.globalAlpha = 0.6 + 0.4 * p; c.fillRect(x - 1.2, y - 2, 2, 2); c.globalAlpha = 1;
   }
   c.restore();
 }
