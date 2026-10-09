@@ -145,6 +145,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   await page.waitForTimeout(100);
   check('⏸ opens the pause menu', !!(await page.$('.pausecard')));
   check('and pauses the game', await page.evaluate(() => window.__in.current.paused === true));
+  check('the pause menu has the three volumes (v0.0.174)', (await page.$$('.pausecard .tvol')).length === 3);
   await page.evaluate(() => {
     const el = document.querySelector('.volslider');
     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, '40');

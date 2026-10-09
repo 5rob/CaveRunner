@@ -895,3 +895,4 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .tclose{position:absolute;right:-4px;top:0;width:38px;height:38px;padding:0;border-radius:10px;border:1px solid rgba(255,255,255,0.15);
   background:rgba(0,0,0,0.3);color:#fff;font:700 26px system-ui,sans-serif;line-height:34px}
 .tvol{padding:6px 12px}
+.volumes{display:flex;flex-direction:column;gap:9px}

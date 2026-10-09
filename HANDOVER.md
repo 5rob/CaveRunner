@@ -3,12 +3,12 @@
 Where things stand, for a fresh session. Read `CLAUDE.md` first (the owner's working style, the
 release loop, testing), then the README of the `src/` folder you're working in.
 
-## NEXT (as of v0.0.174, 2026-10-09)
+## NEXT (as of v0.0.175, 2026-10-09)
 
 - **v0.0.174 released: the title's sound, music, ▶ / ⚙ and Settings** (owner OK'd all). Sounds: `art/titlescene.js` `snd()`
   → `ui/titlesound.js`. Music: `audio/song.js` (data) + `audio/music.js` (synths), title only; `node tools/musicwav.js` to
-  listen. Settings: Master / FX / Music (`SFX.setFxVolume`, `setMusicVolume`). Not done: the pause menu still has one Volume
-  slider (the owner may want the three there too); no music in the game itself. Not timed on a phone (music + title sounds).
+  listen. Settings: Master / FX / Music (`SFX.setFxVolume`, `setMusicVolume`). v0.0.175: the pause menu has the same three
+  sliders (`ui/volume.js`, shared). No music in the game itself. Not timed on a phone (music + title sounds).
 - **The title (v0.0.165–173) is all released; the owner is playing it in the app.** Where it lives: `art/titlescene.js`
   (pure: zones, mines, winding caves, players, camera; its README row in `src/art/README.md`), painter
   `game/render/titledraw.js` (pixel layers, the dark and lights, the jellyfish plant glow; `src/game/render/README.md`),
@@ -30,6 +30,10 @@ release loop, testing), then the README of the `src/` folder you're working in.
 - Open idea the owner hasn't asked for: the game's web lines still flare away at once when lit (the title's cut
   lines hang and swing; the game's don't).
 - Known failing as before: logic `spider` ("every roaming spider moves about": 1 still of 69), browser `vendshop`.
+
+## v0.0.175 — the pause menu's Master / FX / Music sliders: on branch `pause-volumes`, screenshot sent, waiting on the owner's OK
+
+CHANGELOG v0.0.175.
 
 ## v0.0.174 — title sound, music, ▶ / ⚙, Settings: RELEASED on `main` 2026-10-09 (owner OK'd)
 

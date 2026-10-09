@@ -15,6 +15,7 @@ import { titleDraw } from '../game/render/titledraw.js';
 import { SLOTS, deleteSlot, getSlot, loadSlotSummary, setSlot } from '../save/save.js';
 import { App } from './app.js';
 import { titleSound, titleSoundStop } from './titlesound.js';
+import { Volumes } from './volume.js';
 import { h, useEffect, useRef, useState } from './h.js';
 import { fmtGold } from './hud.js';
 
@@ -166,28 +167,13 @@ const Cog = () => h('svg', { viewBox: '0 0 40 40', width: 38, height: 38, 'aria-
   h('circle', { cx: 20, cy: 20, r: 12.5, fill: 'currentColor' }),
   h('circle', { cx: 20, cy: 20, r: 5.5, fill: '#2a1a3e' }));
 
-// The settings (v0.0.174): the three volumes, each kept (audio/sfx.js), × back to the slots
+// The settings (v0.0.174): the three volumes (ui/volume.js), × back to the slots
 /** @param {{ close: () => void }} props */
 function Settings({ close }) {
-  const [v, setV] = useState(() => ({ master: SFX.volume, fx: SFX.fxVolume, music: SFX.musicVolume }));
-  const SET = { master: SFX.setVolume, fx: SFX.setFxVolume, music: SFX.setMusicVolume };
-  /** @param {'master' | 'fx' | 'music'} k @param {string} label */
-  const row = (k, label) => {
-    /** @param {any} e */
-    const slide = e => {
-      const x = Number(e.target.value) / 100;
-      SET[k](x);
-      setV(o => ({ ...o, [k]: x }));
-      if (k !== 'music') SFX.fx('reelTick');
-    };
-    return h('label', { key: k, className: 'pvol tvol', 'data-vol': k },
-      h('span', null, label, h('b', null, Math.round(v[k] * 100) + '%')),
-      h('input', { type: 'range', min: 0, max: 100, step: 1, value: Math.round(v[k] * 100), className: 'volslider', onInput: slide, onChange: slide }));
-  };
   return [
     h('div', { key: 'h', className: 'tmhead tsethead' }, 'SETTINGS',
       h('button', { className: 'tclose', title: 'Close', onPointerDown: e => { e.preventDefault(); close(); } }, '×')),
-    row('master', 'Master'), row('fx', 'FX'), row('music', 'Music')];
+    h(Volumes, { key: 'v' })];
 }
 
 // The page: the title first (every load), then the game. The browser test page skips the title
