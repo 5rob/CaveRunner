@@ -344,6 +344,7 @@ chest slow ×0.5. Grab radius 35% of a tile.
 |---|---|---|---|
 | 0 | done | v1.0.0 | Done by the PM (small plumbing). Workflow on both branches (deploys both; APK `app-auto` via `-PcaveAuto=true`). Pages env: owner allowed `autobattler`. |
 | 1 | done | v1.0.1 | Agent, ~8 min. Names clash-free: `autoGunPrice`/`autoExoPrice`, `loadAutoRun`/`saveAutoRun`. Exo mods stack in the bag by cat+tier, perks by id; fitting onto a full slot swaps; `fitPerk` refuses `st_*`; knobs `autoGunBase/Grow/ExoPrice/Scrap/Red/Green/ModGold`. |
+| 2 | done | v1.0.2 | Agent, ~9 min; owner OK'd shots (`tools/autoshots.js`). `ui/scenecanvas.js` `runScene(canvas,{size,make,over?,paused?})` shared with title; `titleScene(..., { runners })`; `PauseMenu` `label`. Retired: `title` slot/old-pause checks. `tools/titleshots.js` broken on the branch (clicks old slots; not a test). Gun icon dark on its slot (noted). |
 
 ## 8. The PM's kick-start prompt
 

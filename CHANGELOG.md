@@ -5,6 +5,13 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.2 — CaveRunner Auto: the four-section screen (branch `autobattler`, stage 2)
+Released 2026-10-09 on the branch (owner OK'd the screenshots).
+- ▶ on the title opens the auto screen (`ui/auto/AutoScreen.js`): the menu scene with the run's players (pinch,
+  pan, tap to follow, ⏸ pause), the player row, the 70-slot bag (scrolls), B / < / > / A. The title keeps ▶ and ⚙
+  only (one save). The scene loop and gestures are shared (`ui/scenecanvas.js` `runScene`); `titleScene` takes
+  `{ runners }`. Suites: browser `auto-screen` (new), `title` (slot picker and old pause checks retired).
+
 ## v1.0.1 — CaveRunner Auto: the run model (branch `autobattler`, stage 1)
 Released 2026-10-09 on the branch (no looks; nothing on screen yet).
 - `src/auto/run.js` (pure): the run (tier, up to 4 players, a 70-slot bag), every bag and slot move, exo mods
