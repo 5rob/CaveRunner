@@ -48,10 +48,10 @@ check('the gold too', G.bagCount(run, 'gold') > gold0, G.bagCount(run, 'gold'));
 
 // ---- a full bag: they wait ----
 for (let i = 0; i < run.bag.length; i++) run.bag[i] = { kind: 'perk', id: 'x' + i, n: 1 };
-const f2 = G.titleFoeAt(S, G.enemyFor('rotta', 2), S.scroll + r0.x + 30);
+const f2 = G.titleFoeAt(S, G.enemyFor('rotta', 2), S.scroll + r0.x + 160);     // well ahead: a drop left behind off-screen is lost
 G.titleKill(S, f2);
 const n2 = (S.loot || []).length;
-until(S, () => false, 90);
+until(S, () => false, 45);
 check('the bag full: the drop waits on the ground', n2 >= 1 && (S.loot || []).length === n2 && S.loot.every(g => g.wait), [n2, (S.loot || []).length]);
 run.bag[3] = null;
 check('a slot frees: it comes in', until(S, s => !(s.loot || []).length, 300) >= 0 && run.bag[3] && run.bag[3].kind === 'mod');
