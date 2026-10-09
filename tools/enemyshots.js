@@ -48,6 +48,8 @@ require('../tests/build')();
         return f.k.name;
       });
       await page.waitForTimeout(1800);
+      await page.evaluate(() => { const S = window.__autoScene, t0 = performance.now(); performance.now = () => t0; S.shots.length = 0; for (const f of S.foes) f.flash = 0; });
+      await page.waitForTimeout(150);
       const pace = await page.evaluate(() => window.__autoScene.pace);
       said.push(`e1-elite.png  an elite ${what} ahead; the team's pace ${pace.toFixed(2)}`);
     } else {
