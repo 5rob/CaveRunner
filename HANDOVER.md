@@ -3,7 +3,9 @@
 Where things stand, for a fresh session. Read `CLAUDE.md` first (the owner's working style, the
 release loop, testing), then the README of the `src/` folder you're working in.
 
-## NEXT (as of v0.0.175, 2026-10-09)
+## NEXT (as of v0.0.176, 2026-10-09)
+
+- **v0.0.176 released: the title's gold pickup at 10% volume** (owner's ask; `ui/titlesound.js`, `SFX.ui('coin', 0.1)`).
 
 - **v0.0.174 released: the title's sound, music, ▶ / ⚙ and Settings** (owner OK'd all). Sounds: `art/titlescene.js` `snd()`
   → `ui/titlesound.js`. Music: `audio/song.js` (data) + `audio/music.js` (synths), title only; `node tools/musicwav.js` to

@@ -5,6 +5,11 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v0.0.176 — the title's gold pickup at 10%
+Released 2026-10-09 (owner's ask; a minor update).
+- The title animation's gold pickup sound plays at 10% of its volume (`SFX.ui(what, vol)` takes a volume now; the game's
+  gold is unchanged). Test: `sound`.
+
 ## v0.0.175 — the pause menu's three volumes
 Released 2026-10-09 (owner's ask; a minor update).
 - The pause menu's single Volume slider is now the title's three: Master, FX, Music (`ui/volume.js` `Volumes`, shared by

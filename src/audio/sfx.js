@@ -444,11 +444,11 @@ export const SFX = (() => {
 
   // ---- you: pickups, the shop, damage, the portal ----
   let coinStreak = 0, coinT = 0;
-  /** @param {string} what */
-  function ui(what) {
+  /** @param {string} what @param {number} [vol] scales it (the title's gold: 0.1) */
+  function ui(what, vol = 1) {
     if (what === 'hurt' && !gate('phurt', 120)) return;
     if (what === 'empty' && !gate('empty', 250)) return;
-    const d = out(null, null, 1.3, true, null, knob(what === 'sputter' ? 'jetVol' : 'vUi')); if (!d) return;
+    const d = out(null, null, 1.3, true, null, knob(what === 'sputter' ? 'jetVol' : 'vUi') * vol); if (!d) return;
     const t = ac.currentTime;
     const arp = (notes, gap, type, pk, len) => notes.forEach((f, i) => tone(d, type, f, f, t + i * gap, len || 0.14, pk, 0.004));
     switch (what) {

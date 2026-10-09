@@ -54,7 +54,7 @@ export function titleSound(S, C, L, dt) {
       case 'step': SFX.fx('step', x, y); break;
       case 'land': SFX.fx('land', x, y, { v: e.a }); break;
       case 'swap': SFX.fx('switch', x, y); break;
-      case 'coin': SFX.ui('coin'); break;
+      case 'coin': SFX.ui('coin', 0.1); break;         // the gold pickup at 10% on the title (owner, v0.0.176)
       default: SFX.fx(e.k, x, y);               // whoosh, drip, lash, fizzle, chainhop, coinland
     }
   }

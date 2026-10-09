@@ -10,7 +10,7 @@
 
 The per-theme ambience table `AMBIENCE` is `data/themes.js`. Calls into `SFX` are one-liners at
 the events in `game/` (`SFX.cast` in `cast`/`releaseAt`, `SFX.boom` in `explode`, `SFX.creature(k,
-'alert' | 'idle' | 'fire' | 'charge' | 'hurt' | 'die' | 'bite' | 'fuse')`, `SFX.ui(…)`, `SFX.fx(…)`).
+'alert' | 'idle' | 'fire' | 'charge' | 'hurt' | 'die' | 'bite' | 'fuse')`, `SFX.ui(what, vol?)` (vol scales it: the title's gold is 0.1), `SFX.fx(…)`).
 
 ## Rules
 
