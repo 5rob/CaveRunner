@@ -5,6 +5,11 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v0.0.175 — the pause menu's three volumes
+Released 2026-10-09 (owner's ask; a minor update).
+- The pause menu's single Volume slider is now the title's three: Master, FX, Music (`ui/volume.js` `Volumes`, shared by
+  the title's Settings and `PauseMenu`). Test: `title` (+ the pause menu has the three). Screenshot: `tools/settingsshots.js`.
+
 ## v0.0.174 — the title: sound, music, ▶ / ⚙ buttons and settings
 Released 2026-10-09 (owner OK'd; a minor update).
 - **Sound for everything on the title** (owner: match the game): the scene queues sounds (`S.snd`, `snd()` in

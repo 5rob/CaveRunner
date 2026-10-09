@@ -22,7 +22,7 @@ the events in `game/` (`SFX.cast` in `cast`/`releaseAt`, `SFX.boom` in `explode`
   any loop nobody set — that's how pause and dead Black Holes go quiet. The Game keeps `W.jetLoop`
   and `W.bhLoops` (bullet → loop, max 3), plus the `'portal'`, `'matter'` and `'fire'` loops.
   Ambience starts in `tick()` once unlocking finishes (resume is async).
-- **The player's volume** (LIST4 #3, the pause menu's slider): `SFX.setVolume(v)` (0..1) sets the
+- **The player's volume** (LIST4 #3; the Master slider of `ui/volume.js`, in the pause menu and the title's Settings): `SFX.setVolume(v)` (0..1) sets the
   `master` gain and keeps it in localStorage `VOL_KEY` (`caverunner-volume`, shared by the save slots);
   `SFX.volume` reads it; it is read when the module loads and applied when the context is made.
 - **Volume knobs** (Dev → Sound): `vol`, `amb`, `jetVol`, `vSpell`, `vBoom`, `vHit`, `vEnemyFire`,

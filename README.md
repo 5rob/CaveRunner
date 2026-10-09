@@ -75,7 +75,7 @@ The gun in your hands has the same chunky pixel look as you, in the game, the Ba
 The title has its own sound (everything you see on it, with the game's sounds) and music: a dark synthwave track with a guitar solo.
 ⚙ next to ▶ opens Settings: Master, FX and Music volume.
 
-**Pause.** ⏸ (top right) pauses: Resume, Save, a Volume slider for the whole game, and Exit
+**Pause.** ⏸ (top right) pauses: Resume, Save, Master / FX / Music volume sliders, and Exit
 to main menu (it saves first). **Hold ⏸ for 5 seconds** to show or hide the dev tools: the ⚙️ panel
 (beside ⏸), the 📌 / 🗑️ / Give Feedback on mod and perk cards, and the Bag's 💾 save-as-preset.
 They're hidden until you do.
