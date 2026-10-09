@@ -7,16 +7,18 @@
 // hub it runs and jets player 1 anywhere in the room (auto/hub.js hubStick), in a level its sideways push hurries or
 // slows the team (auto/level.js levelHold; it never stops them). A at the exit pad flashes it (hubExit; stage 4 starts
 // the level from there). The nav and B do nothing yet (later stages). In a level, rock in the way that no gun in play
-// can clear (auto/clear.js, stage 5b) stops the team and pulses a "Path blocked" hint over the play area.
+// can clear (auto/clear.js, stage 5b) stops the team and pulses a "Path blocked" hint over the play area. The arena's boss
+// (auto/enemies.js, stage 6) shows its health bar over the top of the play area; every player fallen takes the team home.
 
 import { SFX } from '../../audio/sfx.js';
 import { TITLE_VW, titleCam } from '../../art/titlescene.js';
 import { DEAD } from '../../core/consts.js';
 import { HUB_W, hubExit, hubLeft, hubScene, hubStick, hubStopX } from '../../auto/hub.js';
-import { levelDone, levelHold, levelScene, levelState } from '../../auto/level.js';
+import { levelDone, levelHold, levelLost, levelScene, levelState } from '../../auto/level.js';
+import { levelBoss } from '../../auto/enemies.js';
 import { MODS } from '../../spells/mods.js';
 import { PERKS, STAT_PERKS } from '../../data/perks.js';
-import { BAG_SLOTS, EXO_GLYPH, EXO_STATS, MAX_PLAYERS, healRun, levelCleared, levelSeed, newRun } from '../../auto/run.js';
+import { BAG_SLOTS, EXO_GLYPH, EXO_STATS, MAX_PLAYERS, healRun, levelCleared, levelFailed, levelSeed, newRun } from '../../auto/run.js';
 import { loadAutoRun, saveAutoRun } from '../../auto/save.js';
 import { GunIcon } from '../editor.js';
 import { PauseMenu } from '../pause.js';
@@ -48,10 +50,16 @@ export function AutoScreen() {
   const where = useRef(window.__AUTO_LEVEL ? 'level' : 'hub');
   // the level's "Path blocked" (stage 5b), read off the scene a few times a second
   const [blocked, setBlocked] = useState(false);
+  // the boss's health bar (stage 6): { hp, max, name } while it's in the arena and alive
+  /** @type {{ hp: number, max: number, name: string } | null} */
+  const noBoss = null;
+  const [boss, setBoss] = useState(noBoss);
   useEffect(() => {
     const id = setInterval(() => {
       const L = scene.current && levelState(scene.current);
       setBlocked(!!(L && L.blocked));
+      const b = scene.current ? levelBoss(scene.current) : null;
+      setBoss(o => (!b && !o) || (b && o && b.hp === o.hp && b.max === o.max) ? o : b);
     }, 200);
     return () => clearInterval(id);
   }, []);
@@ -66,7 +74,7 @@ export function AutoScreen() {
         if (where.current === 'level') {
           healRun(run);
           saveAutoRun(run);
-          const S = levelScene(vh, window.__AUTO_LEVEL || levelSeed(run), run.players.length, undefined, run.players);
+          const S = levelScene(vh, window.__AUTO_LEVEL || levelSeed(run), run.players.length, undefined, run.players, run.tier);
           scene.current = S;
           if (window.__TEST_TITLE) window.__autoScene = S;   // the shot scripts (tools/clearshots.js) reach the level here
           return { S, C: titleCam(vh / 2, vh), warm: 0 };
@@ -79,13 +87,20 @@ export function AutoScreen() {
         return { S, C, warm: 0 };
       },
       paused: () => pausedRef.current,
-      // through the exit pad: to the level; the level's exit pad: home, tier + 1, healed (saved)
+      // through the exit pad: to the level; the level's exit pad: home, tier + 1, healed (saved); everyone fallen: home, same tier
       next: S => {
         if (where.current === 'hub' && hubLeft(S)) { where.current = 'level'; return true; }
         if (where.current === 'level' && levelDone(S)) {
           where.current = 'hub';
           window.__AUTO_LEVEL = 0;
           levelCleared(run);
+          saveAutoRun(run);
+          return true;
+        }
+        if (where.current === 'level' && levelLost(S)) {
+          where.current = 'hub';
+          window.__AUTO_LEVEL = 0;
+          levelFailed(run);
           saveAutoRun(run);
           return true;
         }
@@ -109,6 +124,8 @@ export function AutoScreen() {
     h('div', { className: 'aplay' },
       h('canvas', { ref: cvs, className: 'aplaycvs' }),
       blocked ? h('div', { className: 'ablocked' }, 'Path blocked') : null,
+      boss ? h('div', { className: 'abossbar' }, h('b', null, boss.name),
+        h('div', { className: 'abosstrack' }, h('i', { style: { width: (100 * boss.hp / Math.max(1, boss.max)).toFixed(1) + '%' } }))) : null,
       h('button', { className: 'pausebtn', title: 'Pause', onPointerDown: tap(() => { SFX.fx('open'); setPaused(true); }) }, '⏸')),
     h('div', { className: 'anav' },
       ...Array.from({ length: MAX_PLAYERS }, (_, i) => {
