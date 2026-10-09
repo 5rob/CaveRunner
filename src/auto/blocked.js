@@ -25,7 +25,7 @@ export const BLOCK_VARIANTS = [
   { id: 'silt',       name: 'Silted pass',       bases: ['winding', 'moss'],          clears: 'rock',   look: 'flat banded mud' },
   { id: 'cart',       name: 'Jammed mine cart',  bases: ['timber'],                   clears: 'rock',   look: 'an iron cart on its side in rubble' },
   { id: 'brickwall',  name: 'Brick wall',        bases: ['paved', 'timber'],          clears: 'rock',   look: 'a straight brick wall' },
-  { id: 'crystal',    name: 'Crystal growth',    bases: ['moss', 'webs', 'winding'],  clears: 'rock',   look: 'crystal spikes, floor and roof' },
+  { id: 'stalactites', name: 'Stalactites and stalagmites', bases: ['moss', 'webs', 'winding'], clears: 'rock', look: 'rock spikes, floor and roof (owner: the ground rock)' },
   { id: 'nest',       name: 'Nest plug',         bases: ['webs', 'grove'],            clears: 'web',    look: 'a resin plug wrapped in webs' },
 ];
 /** @param {string} id */
@@ -142,10 +142,16 @@ export function blockCell(B, wx, y, cy, fy, cur) {
       const h = H * frac;
       return up <= h ? TM.BRICK : cur;
     }
-    case 'crystal': {                              // spikes up from the floor and down from the roof
-      const k = Math.floor(wx / 9), cx = k * 9 + 4.5, hw = 4.5, d = Math.abs(wx - cx) / hw;
-      const hf = H * frac * 0.62 * (0.6 + 0.4 * h2(k, 3)), hc = H * frac * 0.5 * (0.5 + 0.5 * h2(k, 7));
-      if (up < hf * (1 - d) || (y - cy) < hc * (1 - d)) return d < 0.3 ? TM.CRYSL : TM.CRYS;
+    case 'stalactites': {                          // rock spikes up from the floor and down from the roof, the ground's rock;
+      // each slot (~9 apart) its own place, width and length, some missing (owner, 2026-10-10: was crystal growth)
+      const k0 = Math.floor(wx / 9), s = B.k || 0, dn = y - cy;
+      for (let k = k0 - 1; k <= k0 + 1; k++) {
+        const cx = k * 9 + 9 * h2(k, s + 21), hw = 2.5 + 5 * h2(k, s + 22), d = Math.abs(wx - cx) / hw;
+        if (d >= 1) continue;
+        const hf = h2(k, s + 23) < 0.2 ? 0 : H * frac * 0.62 * (0.35 + 0.65 * h2(k, s + 3));
+        const hc = h2(k, s + 24) < 0.2 ? 0 : H * frac * 0.55 * (0.3 + 0.7 * h2(k, s + 7));
+        if (up < hf * (1 - d) || dn < hc * (1 - d)) return TM.ROCK;
+      }
       return cur;
     }
     case 'nest': {                                 // a resin plug in the middle, webs round it (blockCol)

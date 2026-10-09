@@ -54,7 +54,7 @@ art, …), never `game/`, `ui/` or `main.js`. Everything here is pure: the logic
   | silt | Silted pass | winding, moss | rock |
   | cart | Jammed mine cart | timber | rock |
   | brickwall | Brick wall | paved, timber | rock |
-  | crystal | Crystal growth | moss, webs, winding | rock |
+  | stalactites | Stalactites and stalagmites (the ground's rock; owner: was crystal growth) | moss, webs, winding | rock |
   | nest | Nest plug (resin + webs) | webs, grove | web |
   Part 2 (left): ~12 more variants (to ~23), per-player web slowing (now the team's pace only), the owner's strike/keep round on the shots, the screen's hint for a web block, docs (HANDOVER, CHANGELOG, AUTOBATTLER), version bump.
 
