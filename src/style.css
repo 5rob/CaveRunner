@@ -896,3 +896,35 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   background:rgba(0,0,0,0.3);color:#fff;font:700 26px system-ui,sans-serif;line-height:34px}
 .tvol{padding:6px 12px}
 .volumes{display:flex;flex-direction:column;gap:9px}
+
+/* CaveRunner Auto's screen (stage 2, ui/auto/AutoScreen.js): play area, nav, bag, buttons, in the title menu's colours */
+.auto{position:fixed;inset:0;display:flex;flex-direction:column;gap:6px;box-sizing:border-box;
+  padding:max(6px,env(safe-area-inset-top)) 8px calc(8px + env(safe-area-inset-bottom));
+  background:#08040f;color:#f1ecff;touch-action:none;user-select:none;-webkit-user-select:none;overflow:hidden}
+.aplay{position:relative;flex:0 0 55%;border-radius:18px;overflow:hidden;border:2px solid #ff8a1f;
+  box-shadow:0 0 18px rgba(255,120,30,0.35);background:#000}
+.aplaycvs{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+.anav,.abag,.abtns{border-radius:14px;background:rgba(14,9,26,0.92);border:2px solid #3d2f5c;box-sizing:border-box}
+.anav{flex:none;display:flex;justify-content:space-around;align-items:center;padding:6px 8px}
+.anavc{width:50px;height:50px;border-radius:50%;box-sizing:border-box;border:3px solid #2a2140;background:#140e22;
+  display:flex;align-items:center;justify-content:center}
+.anavc.on{background:#1d1531}
+.anavp{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font:900 15px ui-monospace,SFMono-Regular,Menlo,monospace;color:#0b0716;box-shadow:inset 0 -3px 0 rgba(0,0,0,0.3)}
+.abag{flex:1 1 0;min-height:0;overflow-y:auto;overflow-x:hidden;touch-action:pan-y;-webkit-overflow-scrolling:touch;
+  display:grid;grid-template-columns:repeat(7,1fr);grid-auto-rows:min-content;gap:6px;padding:8px;overscroll-behavior:contain}
+.aslot{position:relative;aspect-ratio:1;border-radius:10px;background:#1d1531;border:2px solid rgba(255,255,255,0.1);
+  box-sizing:border-box;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.aslot.full{border-color:rgba(255,179,90,0.45);background:#2c1f45}
+.aslot .gicon{width:92%;height:auto}
+.aglyph{position:relative;font:900 24px system-ui,sans-serif;line-height:1}
+.atier{position:absolute;left:-10px;top:-8px;font:900 9px ui-monospace,SFMono-Regular,Menlo,monospace;font-style:normal;color:#ffd23a}
+.acount{position:absolute;right:3px;bottom:1px;font:800 11px ui-monospace,SFMono-Regular,Menlo,monospace;color:#fff;
+  text-shadow:0 1px 2px #000,0 0 3px #000}
+.abtns{flex:none;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px}
+.abtn{height:46px;border:none;padding:0;font:900 20px ui-monospace,SFMono-Regular,Menlo,monospace;color:#fff;touch-action:none}
+.abtn:active{transform:translateY(2px)}
+.abtn.ab,.abtn.aa{flex:0 0 30%;border-radius:23px}
+.abtn.ab{background:linear-gradient(#ff6a72,#e0283a);box-shadow:0 4px 0 #7a1020,0 0 14px rgba(255,60,80,0.45)}
+.abtn.aa{background:linear-gradient(#4ef08a,#0fb556);box-shadow:0 4px 0 #0a5a2a,0 0 14px rgba(40,220,110,0.45)}
+.abtn.around{width:46px;flex:none;border-radius:50%;background:#251c3a;border:2px solid #4a3a6e;color:#e7e0ff;box-shadow:0 3px 0 #0b0716}

@@ -28,8 +28,9 @@ export function PauseButton({ open, toggleDev }) {
     onPointerCancel: stop }, '⏸');
 }
 
-/** @param {{ input: { current: GameInput }, close: () => void }} props */
-export function PauseMenu({ input, close }) {
+// label: the header's right side (default the save slot; CaveRunner Auto passes its own)
+/** @param {{ input: { current: { saveRun?: () => void } }, close: () => void, label?: string }} props */
+export function PauseMenu({ input, close, label }) {
   const [saved, setSaved] = useState(0);
   /** @param {() => void} fn @returns {(e: any) => void} */
   const tap = fn => e => { e.preventDefault(); fn(); };
@@ -44,7 +45,7 @@ export function PauseMenu({ input, close }) {
   return h('div', { className: 'pausewrap' },
     h('div', { className: 'shade', onPointerDown: tap(close) }),
     h('div', { className: 'pausecard' },
-      h('div', { className: 'phead' }, 'PAUSED', h('span', null, 'Slot ' + getSlot())),
+      h('div', { className: 'phead' }, 'PAUSED', h('span', null, label || 'Slot ' + getSlot())),
       h('button', { className: 'pbtn resume', onPointerDown: tap(close) }, '▶ Resume'),
       h('button', { className: 'pbtn save', onPointerDown: tap(save) }, saved ? h('span', { key: saved, className: 'saved' }, '✓ Saved') : '💾 Save'),
       h(Volumes),
