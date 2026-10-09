@@ -34,16 +34,24 @@ export const blockVariant = id => BLOCK_VARIANTS.find(v => v.id === id) || BLOCK
 export const variantsFor = base => BLOCK_VARIANTS.filter(v => v.bases.includes(base));
 
 // a zone's blockage: the variant, its severity, what clears it, the span (world x) it fills, full (no way past but through)
-/** @typedef {{ variant: string, base: string, sev: number, clears: string, x0: number, x1: number, full: boolean }} ZoneBlock */
+// rl, rr: how much of the span each end slopes over (0 a sheer face … 0.45 a long gradual slope; owner: not always
+// straight up and down); lean: the faces slant (the top runs ahead or behind the foot); k: its own noise seed
+/** @typedef {{ variant: string, base: string, sev: number, clears: string, x0: number, x1: number, full: boolean,
+ *   rl?: number, rr?: number, lean?: number, k?: number }} ZoneBlock */
 
 // roll one zone's blockage (R: a seeded random)
 /** @param {() => number} R @param {import('../art/titlescene.js').TZone} Z @param {string} [variant] (forced: tests, shots) @returns {ZoneBlock} */
 export function rollBlock(R, Z, variant) {
   const can = variantsFor(Z.z), v = variant ? blockVariant(variant) : (can.length ? can[Math.floor(R() * can.length)] : BLOCK_VARIANTS[1]);
   const lo = Math.min(DEV.autoBlockMin, DEV.autoBlockMax), hi = Math.max(DEV.autoBlockMin, DEV.autoBlockMax);
-  const sev = lo + R() * (hi - lo), mid = (Z.x0 + Z.x1) / 2;
-  const w = v.id === 'thicket' || v.id === 'nest' ? 70 + sev * 80 : v.id === 'rockslide' ? 60 + sev * 40 : 24 + sev * 30;
-  return { variant: v.id, base: Z.z, sev, clears: v.clears, x0: mid - w / 2, x1: mid + w / 2, full: sev >= DEV.autoBlockFull };
+  const sev = lo + R() * (hi - lo), zw = Z.x1 - Z.x0;
+  // its size (owner): anything from a thin plug (autoBlockThin) to autoBlockWide of the zone, anywhere in it
+  const wMin = Math.min(DEV.autoBlockThin, zw * 0.5), wMax = Math.max(wMin, zw * DEV.autoBlockWide);
+  const w = wMin + Math.pow(R(), 1.2) * (wMax - wMin), x0 = Z.x0 + R() * (zw - w);
+  // its ends: a sheer face or a slope up to it, each end its own; the faces lean
+  const ramp = () => (R() < 0.3 ? R() * 0.06 : 0.12 + R() * 0.33);
+  return { variant: v.id, base: Z.z, sev, clears: v.clears, x0, x1: x0 + w, full: sev >= DEV.autoBlockFull,
+    rl: ramp(), rr: ramp(), lean: (R() - 0.5) * 0.5, k: Math.floor(R() * 1000) };
 }
 // the zone kind for display and counting: 'blocked' for one with a blockage, else its own
 /** @param {import('../art/titlescene.js').TZone} Z */
@@ -70,9 +78,16 @@ const h2 = (a, b) => { const s = Math.sin(a * 127.1 + b * 311.7) * 43758.5453; r
 /** @param {ZoneBlock} B @param {number} wx @param {number} y @param {number} cy @param {number} fy @param {number} cur @returns {number} */
 export function blockCell(B, wx, y, cy, fy, cur) {
   if (wx < B.x0 || wx >= B.x1 || y < cy - 4 || y > fy + 4) return cur;
-  const u = (wx - B.x0) / (B.x1 - B.x0), H = Math.max(1, fy - cy), c = Math.floor(wx / 2), r = Math.floor(y / 2);
-  const frac = B.full ? 1.2 : Math.min(0.75, 0.15 + B.sev / Math.max(0.01, DEV.autoBlockFull) * 0.6);   // how much of the band it fills
+  const H = Math.max(1, fy - cy), c = Math.floor(wx / 2), r = Math.floor(y / 2);
   const up = fy - y;                               // height above the floor
+  // where across it (0-1), the faces slanted (lean) and ragged (noise down the face), so the ends aren't plumb lines
+  const u = (wx - B.x0) / (B.x1 - B.x0) + (B.lean || 0) * (up / H - 0.5) + (titleNoise(y / 6, 409 + (B.k || 0)) - 0.5) * 0.08;
+  if (u < 0 || u >= 1) return cur;
+  if (!B.full && up > H - PH * 1.6 - 12) return cur;      // a partial one always leaves him room over it (in a low mine tunnel too)
+  // the ends slope up to it (rl, rr): the height it reaches eases from nothing to all of it
+  const rl = B.rl ?? 0, rr = B.rr ?? 0;
+  const env = Math.min(1, rl > 0 ? u / rl : 1, rr > 0 ? (1 - u) / rr : 1), ease = env * env * (3 - 2 * env);
+  const frac = (B.full ? 1.2 : Math.min(0.75, 0.15 + B.sev / Math.max(0.01, DEV.autoBlockFull) * 0.6)) * ease;   // how much of the band it fills
   const n = titleNoise(wx / 7, 401) * 6 - 3;
   switch (B.variant) {
     case 'collapse': {                             // a heap peaked in the middle, broken frames slanting through

@@ -1833,12 +1833,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "autoLvlEase", g: "autolevel", label: "Pace changes by at most (× pace / s)", min: 0.2, max: 10, step: 0.1 }
   );
   DEV_GROUPS.push(["autolevel", "Auto: level"]);
-  Object.assign(DEV_DEFAULTS, { autoBlockN: 2, autoBlockMin: 0.2, autoBlockMax: 1, autoBlockFull: 0.85, autoWebSlow: 0.2, autoWebHalt: 0.25 });
+  Object.assign(DEV_DEFAULTS, { autoBlockN: 2, autoBlockMin: 0.2, autoBlockMax: 1, autoBlockFull: 0.85, autoBlockThin: 16, autoBlockWide: 0.75, autoWebSlow: 0.2, autoWebHalt: 0.25 });
   DEV_META.push(
     { k: "autoBlockN", g: "autoblocks", label: "Blocked zones a level (a fraction: a chance of one more)", min: 0, max: 8, step: 0.1 },
     { k: "autoBlockMin", g: "autoblocks", label: "Severity: at least (0 a low lump … 1 blocked all the way)", min: 0, max: 1, step: 0.05 },
     { k: "autoBlockMax", g: "autoblocks", label: "Severity: at most", min: 0, max: 1, step: 0.05 },
     { k: "autoBlockFull", g: "autoblocks", label: "Severity from which it’s blocked all the way (no jetting over)", min: 0.1, max: 1, step: 0.05 },
+    { k: "autoBlockThin", g: "autoblocks", label: "Thinnest blockage (world units)", min: 6, max: 80, step: 2 },
+    { k: "autoBlockWide", g: "autoblocks", label: "Widest blockage (share of its zone)", min: 0.1, max: 1, step: 0.05 },
     { k: "autoWebSlow", g: "autoblocks", label: "Each web line a player is caught in slows him by (× pace; they multiply)", min: 0, max: 0.9, step: 0.01 },
     { k: "autoWebHalt", g: "autoblocks", label: "Slowed below this the team halts (clears the webs, or is blocked)", min: 0, max: 1, step: 0.01 }
   );
@@ -35746,9 +35748,23 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function rollBlock(R, Z, variant) {
     const can = variantsFor(Z.z), v = variant ? blockVariant(variant) : can.length ? can[Math.floor(R() * can.length)] : BLOCK_VARIANTS[1];
     const lo = Math.min(DEV.autoBlockMin, DEV.autoBlockMax), hi = Math.max(DEV.autoBlockMin, DEV.autoBlockMax);
-    const sev = lo + R() * (hi - lo), mid = (Z.x0 + Z.x1) / 2;
-    const w = v.id === "thicket" || v.id === "nest" ? 70 + sev * 80 : v.id === "rockslide" ? 60 + sev * 40 : 24 + sev * 30;
-    return { variant: v.id, base: Z.z, sev, clears: v.clears, x0: mid - w / 2, x1: mid + w / 2, full: sev >= DEV.autoBlockFull };
+    const sev = lo + R() * (hi - lo), zw = Z.x1 - Z.x0;
+    const wMin = Math.min(DEV.autoBlockThin, zw * 0.5), wMax = Math.max(wMin, zw * DEV.autoBlockWide);
+    const w = wMin + Math.pow(R(), 1.2) * (wMax - wMin), x0 = Z.x0 + R() * (zw - w);
+    const ramp = () => R() < 0.3 ? R() * 0.06 : 0.12 + R() * 0.33;
+    return {
+      variant: v.id,
+      base: Z.z,
+      sev,
+      clears: v.clears,
+      x0,
+      x1: x0 + w,
+      full: sev >= DEV.autoBlockFull,
+      rl: ramp(),
+      rr: ramp(),
+      lean: (R() - 0.5) * 0.5,
+      k: Math.floor(R() * 1e3)
+    };
   }
   var zoneKind = (Z) => Z.blk ? "blocked" : Z.z;
   function planBlocks(P2, zs, seed, n = DEV.autoBlockN) {
@@ -35766,9 +35782,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   };
   function blockCell(B, wx, y, cy, fy, cur) {
     if (wx < B.x0 || wx >= B.x1 || y < cy - 4 || y > fy + 4) return cur;
-    const u = (wx - B.x0) / (B.x1 - B.x0), H = Math.max(1, fy - cy), c = Math.floor(wx / 2), r = Math.floor(y / 2);
-    const frac = B.full ? 1.2 : Math.min(0.75, 0.15 + B.sev / Math.max(0.01, DEV.autoBlockFull) * 0.6);
+    const H = Math.max(1, fy - cy), c = Math.floor(wx / 2), r = Math.floor(y / 2);
     const up = fy - y;
+    const u = (wx - B.x0) / (B.x1 - B.x0) + (B.lean || 0) * (up / H - 0.5) + (titleNoise(y / 6, 409 + (B.k || 0)) - 0.5) * 0.08;
+    if (u < 0 || u >= 1) return cur;
+    if (!B.full && up > H - PH * 1.6 - 12) return cur;
+    const rl = B.rl ?? 0, rr2 = B.rr ?? 0;
+    const env = Math.min(1, rl > 0 ? u / rl : 1, rr2 > 0 ? (1 - u) / rr2 : 1), ease = env * env * (3 - 2 * env);
+    const frac = (B.full ? 1.2 : Math.min(0.75, 0.15 + B.sev / Math.max(0.01, DEV.autoBlockFull) * 0.6)) * ease;
     const n = titleNoise(wx / 7, 401) * 6 - 3;
     switch (B.variant) {
       case "collapse": {

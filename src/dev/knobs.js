@@ -621,12 +621,14 @@ DEV_META.push(
   { k: 'autoLvlEase',   g: 'autolevel', label: 'Pace changes by at most (× pace / s)', min: 0.2, max: 10, step: 0.1 });
 DEV_GROUPS.push(['autolevel', 'Auto: level']);
 // CaveRunner Auto's blocked zones (auto/blocked.js, stage 6b)
-Object.assign(DEV_DEFAULTS, { autoBlockN: 2, autoBlockMin: 0.2, autoBlockMax: 1, autoBlockFull: 0.85, autoWebSlow: 0.2, autoWebHalt: 0.25 });
+Object.assign(DEV_DEFAULTS, { autoBlockN: 2, autoBlockMin: 0.2, autoBlockMax: 1, autoBlockFull: 0.85, autoBlockThin: 16, autoBlockWide: 0.75, autoWebSlow: 0.2, autoWebHalt: 0.25 });
 DEV_META.push(
   { k: 'autoBlockN',    g: 'autoblocks', label: 'Blocked zones a level (a fraction: a chance of one more)', min: 0, max: 8, step: 0.1 },
   { k: 'autoBlockMin',  g: 'autoblocks', label: 'Severity: at least (0 a low lump … 1 blocked all the way)', min: 0, max: 1, step: 0.05 },
   { k: 'autoBlockMax',  g: 'autoblocks', label: 'Severity: at most', min: 0, max: 1, step: 0.05 },
   { k: 'autoBlockFull', g: 'autoblocks', label: 'Severity from which it’s blocked all the way (no jetting over)', min: 0.1, max: 1, step: 0.05 },
+  { k: 'autoBlockThin', g: 'autoblocks', label: 'Thinnest blockage (world units)', min: 6, max: 80, step: 2 },
+  { k: 'autoBlockWide', g: 'autoblocks', label: 'Widest blockage (share of its zone)', min: 0.1, max: 1, step: 0.05 },
   { k: 'autoWebSlow',   g: 'autoblocks', label: 'Each web line a player is caught in slows him by (× pace; they multiply)', min: 0, max: 0.9, step: 0.01 },
   { k: 'autoWebHalt',   g: 'autoblocks', label: 'Slowed below this the team halts (clears the webs, or is blocked)', min: 0, max: 1, step: 0.01 });
 DEV_GROUPS.push(['autoblocks', 'Auto: blocks']);

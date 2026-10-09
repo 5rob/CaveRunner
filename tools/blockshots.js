@@ -46,8 +46,8 @@ const ONLY = process.argv.slice(3);
     // the first zone not generated yet: blocked all the way with this variant
     const x0 = await page.evaluate(v => {
       const S = window.__autoScene, Z = S.zp.z.find(z => z.x0 > S.gen * TCELL + 10 && !z.flat);
-      let k = 0;
-      Z.blk = rollBlock(() => ((k++ * 0.37) % 1), Z, v);
+      // its own random per variant (sizes, sloped ends, lean differ: owner, 2026-10-10)
+      Z.blk = rollBlock(titleRng(17 + v.length * 131 + v.charCodeAt(0) * 7), Z, v);
       Object.assign(Z.blk, { sev: 1, full: true });
       S.foes.length = 0;
       return Z.blk.x0;
