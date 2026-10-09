@@ -900,6 +900,10 @@ interface RunPlayer {
 }
 /** the run: newRun */
 interface AutoRun { tier: number; players: RunPlayer[]; bag: (BagItem | null)[]; seed?: number }
+/** a stats meter's record (auto/meters.js): n buckets of dt s in a ring, i the one now, t the time into it */
+interface Meter { dt: number; n: number; buf: number[]; i: number; t: number }
+/** a player's records in a level (auto/level.js L.meters): damage dealt, health; dealt the scene's total at the last tick */
+interface PlayerMeters { dmg: Meter; hp: Meter; dealt: number }
 /** exoBonus: what a player's exo mods add up to */
 interface ExoBonus { hpAdd: number; walk: number; fuel: number; refuel: number; carrot: number }
 /** localStorage, or a fake one */

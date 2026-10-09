@@ -36,7 +36,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     nav: document.querySelectorAll('.anav .anavc').length, players: document.querySelectorAll('.anav .anavc.on').length,
     slots: document.querySelectorAll('.abag .aslot').length, full: document.querySelectorAll('.abag .aslot.full').length,
     btns: [...document.querySelector('.abtns').children].map(e => e.className).join('|'),
-    gold: (document.querySelector('.aslot.k-gold') || {}).textContent, mod: (document.querySelector('.aslot.k-mod') || {}).textContent,
+    gold: (document.querySelector('.aslot.k-gold') || {}).textContent, mod: Array.from(document.querySelectorAll('.aslot.k-mod')).map(e => e.textContent).join('|'),
     gun: !!document.querySelector('.aslot.k-gun canvas'),
   }));
   check('four sections: play area, 4 nav circles (2 players), 70 bag slots; buttons B, pill stick, A',
@@ -44,7 +44,8 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   const pill = await page.evaluate(() => { const p = document.querySelector('.apill').getBoundingClientRect(), b = document.querySelector('.abtn.ab').getBoundingClientRect(), cs = getComputedStyle(document.querySelector('.apill'));
     return { h: p.height, bh: b.height, w: p.width, r: cs.borderTopLeftRadius, ta: cs.touchAction }; });
   check('the pill: the buttons height, round ends, wide, touch-action none', Math.abs(pill.h - 46) < 1 && pill.w > 100 && pill.r === '23px' && pill.ta === 'none', pill);
-  check('the bag shows the run: gun icon, gold 120, mod ×3', n.full === 3 && n.gun && /120/.test(n.gold) && /3/.test(n.mod), n);
+  // (stage 5a: each player's starter kit puts a Buzzsaw in the bag: 2 players, a stack of 2)
+  check('the bag shows the run: gun icon, gold 120, mod ×3, the Buzzsaws', n.full === 4 && n.gun && /120/.test(n.gold) && /3/.test(n.mod), n);
   const order = await page.evaluate(() => ['.aplay', '.anav', '.abag', '.abtns'].map(s => document.querySelector(s).getBoundingClientRect().top));
   check('top to bottom: play, nav, bag, buttons', order.every((v, i) => !i || v > order[i - 1]), order);
   const ph = await page.evaluate(() => document.querySelector('.aplay').getBoundingClientRect().height / innerHeight);

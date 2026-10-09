@@ -620,8 +620,17 @@ DEV_META.push(
   { k: 'autoLvlBossT',  g: 'autolevel', label: 'Boss arena: cleared after (s; until stage 6 adds the boss)', min: 0, max: 30, step: 0.5 },
   { k: 'autoLvlEase',   g: 'autolevel', label: 'Pace changes by at most (× pace / s)', min: 0.2, max: 10, step: 0.1 });
 DEV_GROUPS.push(['autolevel', 'Auto: level']);
+// CaveRunner Auto's starter gun (auto/run.js starterKit, stage 5a): its numbers, for each new player
+Object.assign(DEV_DEFAULTS, { autoGunDelay: 0.25, autoGunRech: 0.8, autoGunMana: 120, autoGunRegen: 40, autoGunSpread: 4 });
+DEV_META.push(
+  { k: 'autoGunDelay',  g: 'autoguns', label: 'Starter gun: cast delay (s)', min: 0.02, max: 2, step: 0.01 },
+  { k: 'autoGunRech',   g: 'autoguns', label: 'Starter gun: recharge (s)', min: 0.05, max: 3, step: 0.05 },
+  { k: 'autoGunMana',   g: 'autoguns', label: 'Starter gun: mana', min: 20, max: 1000, step: 10 },
+  { k: 'autoGunRegen',  g: 'autoguns', label: 'Starter gun: mana back a second', min: 5, max: 500, step: 5 },
+  { k: 'autoGunSpread', g: 'autoguns', label: 'Starter gun: spread (degrees)', min: 0, max: 30, step: 1 });
+DEV_GROUPS.push(['autoguns', 'Auto: guns']);
 // before the last tab: that one also takes any group in no tab
-DEV_TABS.splice(DEV_TABS.length - 1, 0, ['auto', 'Auto', ['auto', 'autohub', 'autolevel']]);
+DEV_TABS.splice(DEV_TABS.length - 1, 0, ['auto', 'Auto', ['auto', 'autohub', 'autolevel', 'autoguns']]);
 export const DEV_KEY = 'caverunner-dev';
 /** @type {DevKnobs} */
 export const DEV = Object.assign({}, DEV_DEFAULTS);

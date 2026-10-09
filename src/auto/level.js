@@ -12,6 +12,7 @@ import { PH, PW } from '../core/consts.js';
 import { DEV } from '../dev/knobs.js';
 import { TITLE_VW, TITLE_ZLEN, titleFloor, titlePlan, titleScene, titleSurf, titleZoneAdd } from '../art/titlescene.js';
 import { hubArriveT } from './hub.js';
+import { meterAdd, meterNew, meterSet, meterStep } from './meters.js';
 import { pilotEase, pilotPace } from './pilot.js';
 
 export const LVL_SCROLL = 34;         // the menu's scroll (world units / s at pace 1: titlescene.js SCROLL)
@@ -56,7 +57,7 @@ export function levelPlan(seed, minutes = DEV.autoLvlMin) {
 // 'out' (to the exit pad), 'exit' (gathered on it); arrived per player, zap (when someone last came through), arenaT
 // (when it got there), bossDead; hold (the stick's sideways push, -1 to 1), elites and chests (stage 6, 11: world x), pace (S.pace)
 /** @typedef {{ plan: LevelPlan, phase: string, arrived: boolean[], zap: number, goT: number, arenaT: number, bossDead: boolean, hold: number,
- *   elites: { x: number, alive?: boolean }[], chests: { x: number, open?: boolean }[], doneT: number }} LevelState */
+ *   elites: { x: number, alive?: boolean }[], chests: { x: number, open?: boolean }[], doneT: number, meters: PlayerMeters[] }} LevelState */
 /** @param {import('../art/titlescene.js').TitleScene} S @returns {LevelState | null} */
 export const levelState = S => (S.lvl && S.lvl.data) || null;
 // the team's place in the level (world x)
@@ -64,11 +65,14 @@ export const levelState = S => (S.lvl && S.lvl.data) || null;
 export const levelTeamX = S => S.scroll + LVL_TEAM;
 
 // The level's scene: titleScene with the finite plan, n players, the band (roof and floor) lower than the menu's
-/** @param {number} vh @param {number} seed @param {number} n @param {LevelPlan} [plan] (default levelPlan(seed)) @returns {import('../art/titlescene.js').TitleScene} */
-export function levelScene(vh, seed, n, plan = levelPlan(seed)) {
+// team: the run's players (stage 5a): each fires its active gun for real (art/scenegun.js), and its damage dealt and
+// health go into L.meters (auto/meters.js, for the stats meters)
+/** @param {number} vh @param {number} seed @param {number} n @param {LevelPlan} [plan] (default levelPlan(seed)) @param {RunPlayer[]} [team] @returns {import('../art/titlescene.js').TitleScene} */
+export function levelScene(vh, seed, n, plan = levelPlan(seed), team) {
   /** @type {LevelState} */
-  const L = { plan, phase: 'arrive', arrived: [], zap: -99, goT: -1, arenaT: -1, bossDead: false, hold: 0, elites: [], chests: [], doneT: -1 };
-  const S = titleScene(vh, seed, vh * 0.24, vh * 0.92, { runners: n, level: { zp: plan.zp, step: levelStep, data: L } });
+  const L = { plan, phase: 'arrive', arrived: [], zap: -99, goT: -1, arenaT: -1, bossDead: false, hold: 0, elites: [], chests: [], doneT: -1, meters: [] };
+  const S = titleScene(vh, seed, vh * 0.24, vh * 0.92, { runners: n, level: { zp: plan.zp, step: levelStep, data: L }, team });
+  L.meters = S.runners.map(() => ({ dmg: meterNew(), hp: meterNew(), dealt: 0 }));
   S.pace = 0; S.still = true;
   S.foes.length = 0;
   const fy = titleFloor(plan.padX, S);
@@ -92,6 +96,18 @@ export function levelDone(S) {
   const L = levelState(S);
   return !!L && L.phase === 'exit' && L.doneT >= 0;
 }
+// each player's damage dealt this tick (the scene's r.dealt, added up since the last) and health, into its meters
+/** @param {import('../art/titlescene.js').TitleScene} S @param {LevelState} L @param {number} dt */
+export function levelMeters(S, L, dt) {
+  S.runners.forEach((r, i) => {
+    const M = L.meters[i];
+    if (!M) return;
+    meterStep(M.dmg, dt); meterStep(M.hp, dt, true);
+    meterAdd(M.dmg, (r.dealt || 0) - M.dealt); M.dealt = r.dealt || 0;
+    const pl = S.team && S.team[i];
+    if (pl) meterSet(M.hp, pl.alive === false ? 0 : pl.hp);
+  });
+}
 // where the team stops next (world x): the arena's middle till the boss is dead, then the exit pad
 /** @param {LevelState} L */
 const stopAt = L => (L.phase === 'run' || L.phase === 'arrive' ? L.plan.arena.mid : L.plan.exitX);
@@ -101,6 +117,7 @@ const stopAt = L => (L.phase === 'run' || L.phase === 'arrive' ? L.plan.arena.mi
 export function levelStep(S, dt) {
   const L = levelState(S);
   if (!L) return;
+  levelMeters(S, L, dt);
   const P = L.plan;
   if (L.phase === 'arrive') {
     const fy = titleFloor(P.padX, S);
