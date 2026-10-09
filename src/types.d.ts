@@ -140,6 +140,7 @@ interface CreatureKind {
   tele: number; shots: number; r: number; spd: number; aggro: number;
   kp: string | null; glow: string | null;
   elite?: boolean;            // an elite (eliteOf): boosted, tinted, drops gold and red and green crystals
+  boss?: boolean;             // CaveRunner Auto's level boss (auto/enemies.js bossKind)
   eu?: number; r0?: number; col0?: CreatureType['col']; tintKey?: string;   // an elite: its roll, its kind's size and colours, the tint it has
   // no `fire`: enemyFor doesn't copy CreatureType's (REFACTOR.md, Found along the way)
 }

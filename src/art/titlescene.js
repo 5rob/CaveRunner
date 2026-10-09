@@ -125,11 +125,15 @@ export const TITLE_HOME = {
  *   fire: TFire[], dirty: number[][], dirtyAll: boolean, carved: number, burnt: number, swaps: number, groundT: number, flyT: number, kinds: Record<string, number>,
  *   webs: WebLine[], cut: number, lineT: number, silk: { x: number, y: number, ax: number, ay: number, vx: number, vy: number, life: number }[],
  *   nav: { F: any, fx: number, fy: number, t: number }, fireAcc: number, fireN: number, burning: Set<number>, gotN: number, pops: number, lampsPopped: number, kitNames: Set<string>,
- *   digT: number, digs: number, digWhy: Record<string, number>, still?: boolean, zp: TitlePlan, snd: TSnd[], hub?: TitleHub, lvl?: TitleLevel, pace?: number, team?: RunPlayer[], blocked?: number, tier?: number }} TitleScene */
+ *   digT: number, digs: number, digWhy: Record<string, number>, still?: boolean, zp: TitlePlan, snd: TSnd[], hub?: TitleHub, lvl?: TitleLevel, pace?: number, team?: RunPlayer[], blocked?: number, tier?: number, loot?: TLoot[] }} TitleScene */
 // a finite level in the scrolling ring (CaveRunner Auto, auto/level.js levelScene): zp its plan (made whole up front); step runs
 // after titleStep's own; data is the level's own state. S.pace (0..) scales the scroll (auto/pilot.js)
 // hurt(S, i, dmg): a creature hit player i for dmg (its kind's damage; auto/enemies.js levelHurt)
-/** @typedef {{ zp: TitlePlan, step?: (S: TitleScene, dt: number) => void, data?: any, hurt?: (S: TitleScene, i: number, dmg: number) => void }} TitleLevel */
+/** @typedef {{ zp: TitlePlan, step?: (S: TitleScene, dt: number) => void, data?: any, hurt?: (S: TitleScene, i: number, dmg: number) => void,
+ *   loot?: (S: TitleScene, f: Enemy) => BagItem[], fits?: (S: TitleScene, it: BagItem) => boolean, take?: (S: TitleScene, it: BagItem) => boolean, lootCol?: (it: BagItem) => string }} TitleLevel */
+// loot (CaveRunner Auto, auto/level.js): what a kill drops (its gold spills as nuggets, the rest as TLoot pickups); fits: would it go in the bag;
+// take: put it in the bag (false: it didn't fit). A pickup: the item, its colour, nopull (s before it can fly), wait (the bag is full)
+/** @typedef {{ x: number, y: number, vx: number, vy: number, it: BagItem, col: string, t: number, nopull: number, wait?: boolean, fly?: boolean, amount?: number }} TLoot */
 // a sound the scene asks for this frame (v0.0.174): ui/titlesound.js plays it with the game's own voice. k its name, x, y where (screen
 // units), a what it needs (a creature's kind, a shot, a radius)
 /** @typedef {{ k: string, x: number, y: number, a?: any }} TSnd */
@@ -904,11 +908,22 @@ function killFoe(S, f) {
   if (big) { S.shake = Math.min(7, S.shake + 3); S.flash = Math.min(0.35, S.flash + 0.15); }
   // its gold as the game drops it (systems/enemies.js damageEnemy): its kind's gold and up to 2 more,
   // split into big, medium and small nuggets (world/nuggets.js spillGold), thrown up out of it
-  const amount = Math.round(f.k.gold + Math.floor(S.rnd() * 3));
+  // CaveRunner Auto: the level's drops (auto/loot.js killLoot): the gold as nuggets, the rest as pickups (S.loot) thrown up
+  const items = S.lvl && S.lvl.loot ? S.lvl.loot(S, f) : null;
+  const amount = items ? items.filter(it => it.kind === 'gold').reduce((a, it) => a + it.n, 0) : Math.round(f.k.gold + Math.floor(S.rnd() * 3));
   spillGold(S.coins, f.x, f.ty, amount);
   S.gold += amount;
+  if (items) for (const it of items) {
+    if (it.kind === 'gold') continue;
+    const a = -Math.PI / 2 + (S.rnd() - 0.5) * 1.6, sp = 70 + S.rnd() * 60;
+    (S.loot || (S.loot = [])).push({ x: f.x, y: f.ty, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, it, col: S.lvl && S.lvl.lootCol ? S.lvl.lootCol(it) : '#ffffff', t: S.rnd() * 6, nopull: LOOT_WAIT + S.rnd() * 0.3 });
+  }
   if (S.coins.length > TITLE_GOLD) S.coins.splice(0, S.coins.length - TITLE_GOLD);
 }
+
+// a creature killed outright (the logic suites: auto-loot)
+/** @param {TitleScene} S @param {Enemy} f */
+export const titleKill = (S, f) => killFoe(S, f);
 
 /** @param {TitleScene} S @param {Enemy} f @param {number} dmg @param {string} col @param {number} [by] the runner who did it (its damage dealt, r.dealt) */
 function hitFoe(S, f, dmg, col, by) {
@@ -1013,6 +1028,7 @@ export function titleStep(S, dt) {
   }
   S.parts = S.parts.filter(p => p.life > 0);
   stepGold(S, dt);
+  stepLoot(S, dt);
   for (const b of S.booms) b.t += dt;
   S.booms = S.booms.filter(b => b.t < b.max);
   for (const z of S.zaps) z.t -= dt;
@@ -1543,12 +1559,13 @@ function stepGold(S, dt) {
     const dx = pcx - g.x, dy = pcy - g.y, d = Math.hypot(dx, dy) || 1;
     if (g.nopull > 0) g.nopull -= dt;
     g.fly = false;
-    if (d < COIN_PULL && !(g.nopull > 0)) {
+    if (d < COIN_PULL && !(g.nopull > 0) && !(S.lvl && S.lvl.fits && !S.lvl.fits(S, { kind: 'gold', n: g.amount }))) {
       g.fly = true;
       const grab = 180 + 900 * (1 - d / COIN_PULL);
       g.vx = (g.vx || 0) + (dx / d) * grab * dt * 6; g.vy = (g.vy || 0) + (dy / d) * grab * dt * 6;
       g.vx *= 0.88; g.vy *= 0.88;
       g.x += g.vx * dt; g.y += g.vy * dt;
+      if (d < 12 && S.lvl && S.lvl.take && !S.lvl.take(S, { kind: 'gold', n: g.amount })) { g.fly = false; continue; }
       if (d < 12) { S.got += g.amount; S.gotN++; S.coins.splice(i, 1); snd(S, 'coin', g.x - S.scroll, g.y); }
       continue;
     }
@@ -1556,6 +1573,35 @@ function stepGold(S, dt) {
     if (g.x - S.scroll < -30) S.coins.splice(i, 1);
   }
   collideNuggets(S.coins, solid);
+}
+
+const LOOT_WAIT = 0.6;   // a drop flies to the team after this long (s), once it has been seen thrown up
+// CaveRunner Auto's drops (S.loot, killFoe): each falls and bounces as a nugget, then (once LOOT_WAIT is up) is vacuumed to
+// the nearest player still in, from anywhere, straight through rock, and goes into the bag (S.lvl.take) at 12. The bag
+// full (S.lvl.fits): it waits on the ground. Left behind off the screen, it's gone
+/** @param {TitleScene} S @param {number} dt */
+function stepLoot(S, dt) {
+  if (!S.loot || !S.loot.length) return;
+  const solid = wsolid(S), L = S.lvl;
+  for (let i = S.loot.length - 1; i >= 0; i--) {
+    const g = S.loot[i], ru = nearestRunner(S, g.x - S.scroll, g.y), pcx = S.scroll + ru.x + PW / 2, pcy = ru.y + PH / 2;
+    const dx = pcx - g.x, dy = pcy - g.y, d = Math.hypot(dx, dy) || 1;
+    g.t += dt;
+    if (g.nopull > 0) g.nopull -= dt;
+    g.wait = !!(L && L.fits && !L.fits(S, g.it));
+    g.fly = !(g.nopull > 0) && !g.wait && !ru.out;
+    if (g.fly) {
+      const grab = 260 + 900 * Math.max(0, 1 - d / COIN_PULL);
+      g.vx += (dx / d) * grab * dt * 6; g.vy += (dy / d) * grab * dt * 6;
+      g.vx *= 0.88; g.vy *= 0.88;
+      g.x += g.vx * dt; g.y += g.vy * dt;
+      if (d < 12 && (!L || !L.take || L.take(S, g.it))) { S.loot.splice(i, 1); snd(S, 'coin', g.x - S.scroll, g.y); }
+      continue;
+    }
+    g.amount = 5;
+    stepNugget(g, dt, solid);
+    if (g.x - S.scroll < -30) S.loot.splice(i, 1);
+  }
 }
 
 /** @param {TitleScene} S @param {number} dt */

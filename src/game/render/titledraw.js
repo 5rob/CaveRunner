@@ -334,6 +334,28 @@ function worldLayer(c, S) {
   c.stroke();
   // gold, the game's nuggets (its size from its amount: coinR), turned as they roll
   for (const g of S.coins) drawNugget(c, g.x - S.scroll, g.y, coinR(g), g.t, g.a || 0);
+  drawLoot(c, S);
+}
+
+// CaveRunner Auto's drops (S.loot: a gun mod, gems, an exo mod): a small glowing gem in the item's colour, pulsing; one
+// waiting (the bag full) pulses slowly and dimmer
+/** @param {CanvasRenderingContext2D} c @param {import('../../art/titlescene.js').TitleScene} S */
+function drawLoot(c, S) {
+  if (!S.loot || !S.loot.length) return;
+  c.save();
+  for (const g of S.loot) {
+    const x = g.x - S.scroll, y = g.y, p = 0.5 + 0.5 * Math.sin(g.t * (g.wait ? 2 : 8)), r = 2.6;
+    c.globalCompositeOperation = 'lighter';
+    c.globalAlpha = (g.wait ? 0.25 : 0.45) + 0.25 * p;
+    const gr = c.createRadialGradient(x, y, 0, x, y, r * 4);
+    gr.addColorStop(0, g.col); gr.addColorStop(1, 'rgba(0,0,0,0)');
+    c.fillStyle = gr; c.fillRect(x - r * 4, y - r * 4, r * 8, r * 8);
+    c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1;
+    c.fillStyle = g.col;
+    c.beginPath(); c.moveTo(x, y - r * 1.3); c.lineTo(x + r, y); c.lineTo(x, y + r * 1.3); c.lineTo(x - r, y); c.closePath(); c.fill();
+    c.fillStyle = '#ffffff'; c.globalAlpha = 0.6 + 0.4 * p; c.fillRect(x - 0.7, y - 1.2, 1.2, 1.2); c.globalAlpha = 1;
+  }
+  c.restore();
 }
 
 // A jellyfish's green glow on the plants and moss round it (owner, v0.0.170), the game's (systems/plantglow.js): the

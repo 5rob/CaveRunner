@@ -16,6 +16,8 @@ import { meterAdd, meterNew, meterSet, meterStep } from './meters.js';
 import { pilotEase, pilotPace } from './pilot.js';
 import { teamClearer } from './clear.js';
 import { elitePlan, levelFoes, levelHurt } from './enemies.js';
+import { bagFits, killLoot, lootCol } from './loot.js';
+import { bagAdd } from './run.js';
 
 export const LVL_SCROLL = 34;         // the menu's scroll (world units / s at pace 1: titlescene.js SCROLL)
 export const LVL_PADX = 60;           // the start pad's middle (world x; on screen at the start)
@@ -59,10 +61,11 @@ export function levelPlan(seed, minutes = DEV.autoLvlMin) {
 // 'out' (to the exit pad), 'exit' (gathered on it); arrived per player, zap (when someone last came through), arenaT
 // (when it got there), bossDead; hold (the stick's sideways push, -1 to 1), elites and chests (stage 6, 11: world x), pace (S.pace);
 // blocked (stage 5b): rock in the way and no gun in play can clear it (the pilot stops the team; the screen's "Path blocked");
-// boss (stage 6: the arena's boss once it's in), failed (every player fallen: the screen takes the team home)
+// boss (stage 6: the arena's boss once it's in), failed (every player fallen: the screen takes the team home);
+// run (stage 6 part 2: the drops go into its bag; none: they're just taken), bagV (+1 each time something goes in: the screen redraws the bag)
 /** @typedef {{ plan: LevelPlan, phase: string, arrived: boolean[], zap: number, goT: number, arenaT: number, bossDead: boolean, hold: number,
  *   elites: import('./enemies.js').LevelFoe[], chests: { x: number, open?: boolean }[], doneT: number, meters: PlayerMeters[], blocked: boolean,
- *   boss: Enemy | null, failed: boolean }} LevelState */
+ *   boss: Enemy | null, failed: boolean, run?: AutoRun | null, bagV: number }} LevelState */
 /** @param {import('../art/titlescene.js').TitleScene} S @returns {LevelState | null} */
 export const levelState = S => (S.lvl && S.lvl.data) || null;
 // the team's place in the level (world x)
@@ -72,13 +75,17 @@ export const levelTeamX = S => S.scroll + LVL_TEAM;
 // The level's scene: titleScene with the finite plan, n players, the band (roof and floor) lower than the menu's
 // team: the run's players (stage 5a): each fires its active gun for real (art/scenegun.js), and its damage dealt and
 // health go into L.meters (auto/meters.js, for the stats meters). tier: the run's (stage 6: the creatures' strength, enemyFor),
-// and the creatures hurt the team (auto/enemies.js)
-/** @param {number} vh @param {number} seed @param {number} n @param {LevelPlan} [plan] (default levelPlan(seed)) @param {RunPlayer[]} [team] @param {number} [tier] @returns {import('../art/titlescene.js').TitleScene} */
-export function levelScene(vh, seed, n, plan = levelPlan(seed), team, tier = 1) {
+// and the creatures hurt the team (auto/enemies.js). run (stage 6 part 2): kills drop loot (auto/loot.js) that is vacuumed into its bag
+/** @param {number} vh @param {number} seed @param {number} n @param {LevelPlan} [plan] (default levelPlan(seed)) @param {RunPlayer[]} [team] @param {number} [tier] @param {AutoRun | null} [run] @returns {import('../art/titlescene.js').TitleScene} */
+export function levelScene(vh, seed, n, plan = levelPlan(seed), team, tier = 1, run = null) {
   /** @type {LevelState} */
   const L = { plan, phase: 'arrive', arrived: [], zap: -99, goT: -1, arenaT: -1, bossDead: false, hold: 0, elites: [], chests: [], doneT: -1, meters: [], blocked: false,
-    boss: null, failed: false };
-  const S = titleScene(vh, seed, vh * 0.24, vh * 0.92, { runners: n, level: { zp: plan.zp, step: levelStep, data: L, hurt: levelHurt }, team, tier });
+    boss: null, failed: false, run, bagV: 0 };
+  const S = titleScene(vh, seed, vh * 0.24, vh * 0.92, { runners: n, level: { zp: plan.zp, step: levelStep, data: L, hurt: levelHurt,
+    loot: (S, f) => killLoot(f.k.boss ? 'boss' : f.k.elite ? 'elite' : 'foe', S.tier || 1, S.rnd, f.k.gold),
+    fits: (_S, it) => !L.run || bagFits(L.run, it),
+    take: (_S, it) => { if (L.run && bagAdd(L.run, it)) return false; L.bagV++; return true; },
+    lootCol }, team, tier });
   L.elites = elitePlan(plan, S.rnd);
   L.meters = S.runners.map(() => ({ dmg: meterNew(), hp: meterNew(), dealt: 0 }));
   S.pace = 0; S.still = true;

@@ -644,8 +644,17 @@ DEV_META.push(
   { k: 'autoBossHp',    g: 'autofoes', label: 'Boss health (× a normal one)', min: 1, max: 200, step: 1 },
   { k: 'autoBossDmg',   g: 'autofoes', label: 'Boss damage (× a normal one)', min: 0.5, max: 10, step: 0.25 });
 DEV_GROUPS.push(['autofoes', 'Auto: enemies']);
+// the level's drops (auto/loot.js, stage 6 part 2): gun mods, gems and exo mods from kills
+Object.assign(DEV_DEFAULTS, { autoLootMod: 6, autoLootRed: 2, autoLootExo: 30, autoLootEliteGold: 3, autoLootBossGold: 10 });
+DEV_META.push(
+  { k: 'autoLootMod',       g: 'autoloot', label: 'A kill drops a gun mod (% chance)', min: 0, max: 100, step: 0.5 },
+  { k: 'autoLootRed',       g: 'autoloot', label: 'An elite drops red gems (count)', min: 0, max: 10, step: 1 },
+  { k: 'autoLootExo',       g: 'autoloot', label: 'An elite drops an exo mod (% chance)', min: 0, max: 100, step: 1 },
+  { k: 'autoLootEliteGold', g: 'autoloot', label: 'An elite’s gold (× a normal kill’s)', min: 1, max: 20, step: 0.5 },
+  { k: 'autoLootBossGold',  g: 'autoloot', label: 'The boss’s gold (× a normal kill’s)', min: 1, max: 100, step: 1 });
+DEV_GROUPS.push(['autoloot', 'Auto: loot']);
 // before the last tab: that one also takes any group in no tab
-DEV_TABS.splice(DEV_TABS.length - 1, 0, ['auto', 'Auto', ['auto', 'autohub', 'autolevel', 'autoguns', 'autofoes']]);
+DEV_TABS.splice(DEV_TABS.length - 1, 0, ['auto', 'Auto', ['auto', 'autohub', 'autolevel', 'autoguns', 'autofoes', 'autoloot']]);
 export const DEV_KEY = 'caverunner-dev';
 /** @type {DevKnobs} */
 export const DEV = Object.assign({}, DEV_DEFAULTS);
