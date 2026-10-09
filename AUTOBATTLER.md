@@ -342,7 +342,7 @@ chest slow ×0.5. Grab radius 35% of a tile.
 
 | Stage | State | Version | Notes |
 |---|---|---|---|
-| 0 | done | v1.0.0 | Done by the PM (small plumbing). Workflow on both branches (deploys both; APK `app-auto` via `-PcaveAuto=true`). Pages env needed `autobattler` allowed (owner). |
+| 0 | done | v1.0.0 | Done by the PM (small plumbing). Workflow on both branches (deploys both; APK `app-auto` via `-PcaveAuto=true`). Pages env: owner allowed `autobattler`. |
 
 ## 8. The PM's kick-start prompt
 

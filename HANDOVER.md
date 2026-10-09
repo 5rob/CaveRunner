@@ -9,8 +9,7 @@ Planned with the owner (brief + quiz answers + 16 stages + the PM's kick-start p
 mock-up `docs/autobattler-mockup.png`). Progress: AUTOBATTLER.md's Log. `main` keeps the old game.
 - **Stage 0 done (v1.0.0):** the branch deploys to `https://5rob.github.io/CaveRunner/auto/` and builds the
   CaveRunner Auto APK (release `app-auto`); `android/README.md` has how. The only change on `main` was the shared
-  workflow file. **Needs the owner once:** allow `autobattler` in Settings → Environments → github-pages →
-  Deployment branches (until then the branch's Pages deploy fails; the APK still builds).
+  workflow file. The owner allowed `autobattler` in Settings → Environments → github-pages (needed for the deploy).
 
 ## NEXT (as of v0.0.176, 2026-10-09)
 
