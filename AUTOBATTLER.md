@@ -71,7 +71,7 @@ Mock-up (layout only; keep the main menu's colours and style): `docs/autobattler
 | Slot counts | **5 per exo category** (the 5 tiers I–V); **6 perk slots.** Exo mods **add up** (slot I + slot III both count). An exo mod fits only its own category. |
 | Bag full | **Scrap for gold:** drag any item onto the gold stack to turn it into gold. New loot that doesn't fit waits on the ground (the strip), and is vacuumed once there's room. |
 | Chests | **The team slows while passing one** (not a stop). A "tap A" prompt shows while a player is in range; missed is missed. |
-| `<` `>` in a level | **Speed / hold:** hold `>` to hurry, hold `<` to stand still (to wait or farm). In the hub, a tap moves to the next stop. |
+| `<` `>` in a level | ~~Speed / hold; in the hub a tap moves to the next stop.~~ **Changed by the owner (2026-10-09, after stage 4a):** `<` `>` become **one pill-shaped stick** (same height and roundness as the arrow buttons) that works like the old game's left thumbstick (drag sideways to run, up to jetpack). **In the hub: free roam** (run and jet anywhere; the exit prompt shows on the exit pad). **In a level:** left slows the team, right hurries it; it **never stops** them. |
 | Level length | **~5 minutes** start to boss at normal pace. |
 | Gems into the hub machines | **Thrown like gold**, with the same flick, stream and hold gestures from the gem's bag slot. |
 | Version | **Starts at v1.0.0 on the branch** and counts on its own (`main` stays v0.0.x). Update number 1,000,000+. |
