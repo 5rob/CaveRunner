@@ -29,6 +29,7 @@ import { pixText, pixWidth } from './pixfont.js';
 import { GUN_HELD, gunMuzzle } from './sprites.js';
 import { GUN_ART } from './gunart.js';
 import { gunPull, gunTick, planShots, shotsOf } from './scenegun.js';
+import { teamClearer } from '../auto/clear.js';
 
 export const TITLE_VW = 220;          // world units across the screen
 export const TITLE_FOES = 24;         // at most this many creatures at once (a rat swarm counts each rat; v0.0.165: ×2)
@@ -101,7 +102,7 @@ export const TITLE_HOME = {
  *   dig: number, clearT: number, keep: TKit | null, dx: number, dy: number, digY: number, sawT: number, switches: number[],
  *   bursty: number, burst: boolean, jet: boolean, jetT: number, jetCd: number, pace: number, spd: number,
  *   nav: { F: any, fx: number, fy: number, t: number }, stepT?: number, sawS?: number, rst?: { t?: number }, rub?: string, rubWas?: boolean,
- *   hide?: boolean, stand?: boolean, dealt?: number }} TRunner */
+ *   hide?: boolean, stand?: boolean, dealt?: number, clr?: { p: number, g: number } | null, clrT?: number }} TRunner */
 // a fixed strip in place of the scrolling ring (CaveRunner Auto's hub, auto/hub.js): w columns, each cell's material from
 // cell(c, r, rows); step runs after titleStep's own (the runners are its: S.still); data is the strip's own state
 /** @typedef {{ w: number, cell: (c: number, r: number, rows: number) => number, step?: (S: TitleScene, dt: number) => void, data?: any }} TitleHub */
@@ -124,7 +125,7 @@ export const TITLE_HOME = {
  *   fire: TFire[], dirty: number[][], dirtyAll: boolean, carved: number, burnt: number, swaps: number, groundT: number, flyT: number, kinds: Record<string, number>,
  *   webs: WebLine[], cut: number, lineT: number, silk: { x: number, y: number, ax: number, ay: number, vx: number, vy: number, life: number }[],
  *   nav: { F: any, fx: number, fy: number, t: number }, fireAcc: number, fireN: number, burning: Set<number>, gotN: number, pops: number, lampsPopped: number, kitNames: Set<string>,
- *   digT: number, digs: number, digWhy: Record<string, number>, still?: boolean, zp: TitlePlan, snd: TSnd[], hub?: TitleHub, lvl?: TitleLevel, pace?: number, team?: RunPlayer[] }} TitleScene */
+ *   digT: number, digs: number, digWhy: Record<string, number>, still?: boolean, zp: TitlePlan, snd: TSnd[], hub?: TitleHub, lvl?: TitleLevel, pace?: number, team?: RunPlayer[], blocked?: number }} TitleScene */
 // a finite level in the scrolling ring (CaveRunner Auto, auto/level.js levelScene): zp its plan (made whole up front); step runs
 // after titleStep's own; data is the level's own state. S.pace (0..) scales the scroll (auto/pilot.js)
 /** @typedef {{ zp: TitlePlan, step?: (S: TitleScene, dt: number) => void, data?: any }} TitleLevel */
@@ -1084,6 +1085,18 @@ function pickTarget(S, r) {
 // rock in his way: out comes the Buzzsaw (TITLE_SAW), and he cuts through until he's in the open again
 /** @param {TitleScene} S @param {TRunner} r @param {number} dx @param {number} dy @param {string} why (counted in S.digWhy) */
 function startDig(S, r, dx, dy, why) {
+  // CaveRunner Auto's level (stage 5b, the clearing rule): his own best clearing gun, else a teammate's; no gun in play
+  // can clear rock: he doesn't dig (the scroll's push: blocked, the pilot stops the team; his own aim: somewhere else)
+  if (!r.dig && S.team && S.lvl) {
+    const c = teamClearer(S.team, 'rock', r.id);
+    if (!c) {
+      if (why === 'aim' || why === 'fly') { r.vx = 0; r.vy = Math.min(r.vy, 0); pickTarget(S, r); return; }
+      S.blocked = S.t; S.digWhy.blocked = (S.digWhy.blocked || 0) + 1;
+      r.x = Math.max(8, r.x - 1);
+      return;
+    }
+    r.clr = c; r.clrT = 0;
+  }
   if (!r.dig) { r.keep = r.kit; r.kit = kitOf('saw', [], TITLE_SAW); r.swap = 0.2; S.digs++; r.digY = r.y; S.digWhy[why] = (S.digWhy[why] || 0) + 1; }
   const d = Math.hypot(dx, dy) || 1;
   r.dig = Math.max(r.dig, 1e-3); r.clearT = 0; r.dx = dx / d; r.dy = dy / d;
@@ -1242,12 +1255,12 @@ function digStep(S, r, dt) {
   // his way through the rock (it scrolls past at SCROLL), and the tunnel round him and ahead
   const dx = r.vx + sv(S), dy = r.vy, d = Math.hypot(dx, dy) || 1;
   r.dx = dx / d; r.dy = dy / d;
-  titleCarve(S, r.x + PW / 2 + r.dx * 4, r.y + PH / 2 + r.dy * 4, TITLE_DIGR, false);
+  if (!r.clr || (r.clrT || 0) < DEV.autoClearGap) titleCarve(S, r.x + PW / 2 + r.dx * 4, r.y + PH / 2 + r.dy * 4, TITLE_DIGR, false);
   if (!boxRock(S, r.x, r.y, false) && !boxRock(S, r.x + r.dx * 7, r.y + r.dy * 7, false)) r.clearT += dt; else r.clearT = 0;
   if (r.clearT > 0.25) {
     r.dig = 0; r.clearT = 0; r.swap = 0.3;
     if (r.keep) r.kit = r.keep;
-    r.keep = null;
+    r.keep = null; r.clr = null;
     if (r.mode === 'fly' && R() < 0.5) pickTarget(S, r);
   }
 }
@@ -1262,6 +1275,20 @@ function stepRunnerGun(S, r, dt) {
     r.face = Math.cos(r.ang) >= 0 ? 1 : -1;
     r.sawT -= dt;
     const mz = gunMuzzle(cx() + Math.cos(r.ang) * 2.5, r.y + PH * 0.45, r.ang, GUN_HELD, r.kit.art), bx = mz.x + Math.cos(r.ang) * 3, by = mz.y + Math.sin(r.ang) * 3;
+    // CaveRunner Auto: the clearing gun (his own, or a teammate's) really fires at the rock; the tunnel's cut while it does
+    const cp = r.clr && S.team ? S.team[r.clr.p] : null, cg = cp ? cp.guns[r.clr.g] : null;
+    if (cp && cg) {
+      r.clrT = (r.clrT || 0) + dt;
+      gunTick(cg, dt);
+      const plan = gunPull(cg, cp.guns);
+      if (plan) {
+        const out = planShots(plan, r.ang, mz.x, mz.y, R, r.id);
+        for (const s of out) S.shots.push(s);
+        if (out.length) { r.clrT = 0; snd(S, 'cast', mz.x, mz.y, r.kit); }
+      }
+      if (R() < dt * 25) burst(S, bx, by, 1, R() < 0.5 ? '#ffd27a' : '#fff2c0', 70, 'spark', 0.15);
+      return;
+    }
     if (R() < dt * 25) burst(S, bx, by, 1, R() < 0.5 ? '#ffd27a' : '#fff2c0', 70, 'spark', 0.15);
     if ((r.sawS = (r.sawS || 0) - dt) <= 0) { r.sawS = r.kit.cd; snd(S, 'cast', bx, by, r.kit); }
     if (r.sawT <= 0) for (const f of S.foes) if (f.hp > 0 && Math.hypot(f.x - S.scroll - bx, f.ty - by) < f.r + 6) { hitFoe(S, f, MODS.saw.dmg * 0.5, '#d9dde4'); r.sawT = 0.15; }

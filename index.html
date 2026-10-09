@@ -913,6 +913,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .aplay{position:relative;flex:0 0 55%;border-radius:18px;overflow:hidden;border:2px solid #ff8a1f;
   box-shadow:0 0 18px rgba(255,120,30,0.35);background:#000}
 .aplaycvs{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+/* a level's "Path blocked" (stage 5b): no gun in play can clear the rock ahead; pulses over the play area */
+.ablocked{position:absolute;left:50%;top:22%;transform:translateX(-50%);pointer-events:none;padding:5px 12px;border-radius:10px;
+  font:700 12px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.14em;text-transform:uppercase;color:#ffd9b0;
+  background:rgba(14,9,26,0.82);border:2px solid #ff8a1f;box-shadow:0 0 14px rgba(255,120,30,0.45);animation:ablock 1.2s ease-in-out infinite}
+@keyframes ablock{0%,100%{opacity:.45}50%{opacity:1}}
 .anav,.abag,.abtns{border-radius:14px;background:rgba(14,9,26,0.92);border:2px solid #3d2f5c;box-sizing:border-box}
 .anav{flex:none;display:flex;justify-content:space-around;align-items:center;padding:6px 8px}
 .anavc{width:50px;height:50px;border-radius:50%;box-sizing:border-box;border:3px solid #2a2140;background:#140e22;
@@ -1829,6 +1834,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "autoGunMana", g: "autoguns", label: "Starter gun: mana", min: 20, max: 1e3, step: 10 },
     { k: "autoGunRegen", g: "autoguns", label: "Starter gun: mana back a second", min: 5, max: 500, step: 5 },
     { k: "autoGunSpread", g: "autoguns", label: "Starter gun: spread (degrees)", min: 0, max: 30, step: 1 }
+  );
+  Object.assign(DEV_DEFAULTS, { autoClearMin: 1, autoClearFire: 20, autoClearGap: 0.4 });
+  DEV_META.push(
+    { k: "autoClearMin", g: "autoguns", label: "A gun clears the way from this score (bore × 3 + eat + blast ÷ 2)", min: 0.1, max: 50, step: 0.1 },
+    { k: "autoClearFire", g: "autoguns", label: "Fire counts this much against webs and timber (score)", min: 0, max: 100, step: 1 },
+    { k: "autoClearGap", g: "autoguns", label: "Digging: the tunnel is cut while the clearing gun fired within (s)", min: 0.05, max: 3, step: 0.05 }
   );
   DEV_GROUPS.push(["autoguns", "Auto: guns"]);
   DEV_TABS.splice(DEV_TABS.length - 1, 0, ["auto", "Auto", ["auto", "autohub", "autolevel", "autoguns"]]);
@@ -10825,6 +10836,80 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return out;
   }
 
+  // src/auto/clear.js
+  var MM = MODS;
+  var CLEAR_BLOCKS = ["rock", "web", "timber"];
+  function clearPower(id) {
+    const M = MM[id];
+    if (!M) return { bore: 0, eat: 0, pit: 0, explode: 0, fire: 0 };
+    const s = {
+      dmg: M.dmg || 0,
+      speed: M.speed || 0,
+      spread: M.spread || 0,
+      size: M.size || 2,
+      life: M.life || 1,
+      count: 1,
+      recoil: 0,
+      grav: M.grav || 0,
+      drag: M.drag || 0,
+      explode: M.explode || 0,
+      pit: M.pit || 0,
+      fire: M.fire || 0,
+      bounce: M.bounce || 0,
+      bounceE: 0.5,
+      pierce: 0,
+      homing: 0,
+      accel: 0,
+      vmax: 0,
+      bore: M.bore || 0,
+      r: M.r || 0,
+      pull: 0,
+      eat: M.eat || 0,
+      pop: 0
+    };
+    if (M.kind !== "shot" && M.f) {
+      try {
+        M.f(s);
+      } catch (e) {
+      }
+    }
+    if (M.field === "explode") s.explode = Math.max(s.explode, M.r || 0);
+    const n = (v) => Number.isFinite(v) && v > 0 ? v : 0;
+    return { bore: n(s.bore), eat: n(s.eat), pit: n(s.pit), explode: n(s.explode), fire: n(s.fire) };
+  }
+  function modClear(id, block) {
+    const p = clearPower(id), cut = p.bore * 3 + p.eat + p.explode * 0.5;
+    if (block === "rock") return cut;
+    return p.fire * DEV.autoClearFire + cut;
+  }
+  function canClear(gun, block) {
+    if (!gun || !gun.slots) return 0;
+    let k = 0;
+    for (const id of gun.slots) if (id) k += modClear(id, block);
+    return k >= DEV.autoClearMin ? k : 0;
+  }
+  function bestClearer(player, block) {
+    let best = -1, bk = 0;
+    (player.guns || []).forEach((g, i) => {
+      const k = canClear(g, block);
+      if (k > bk) {
+        bk = k;
+        best = i;
+      }
+    });
+    return best;
+  }
+  function teamClearer(team, block, me) {
+    const order = [me, ...team.map((_, i) => i).filter((i) => i !== me)];
+    for (const p of order) {
+      const pl = team[p];
+      if (!pl || pl.alive === false) continue;
+      const g = bestClearer(pl, block);
+      if (g >= 0) return { p, g };
+    }
+    return null;
+  }
+
   // src/art/titlescene.js
   var TITLE_VW = 220;
   var TITLE_FOES = 24;
@@ -12041,6 +12126,23 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     r.retarget = 0.8 + R() * 1.6;
   }
   function startDig(S2, r, dx, dy, why) {
+    if (!r.dig && S2.team && S2.lvl) {
+      const c = teamClearer(S2.team, "rock", r.id);
+      if (!c) {
+        if (why === "aim" || why === "fly") {
+          r.vx = 0;
+          r.vy = Math.min(r.vy, 0);
+          pickTarget(S2, r);
+          return;
+        }
+        S2.blocked = S2.t;
+        S2.digWhy.blocked = (S2.digWhy.blocked || 0) + 1;
+        r.x = Math.max(8, r.x - 1);
+        return;
+      }
+      r.clr = c;
+      r.clrT = 0;
+    }
     if (!r.dig) {
       r.keep = r.kit;
       r.kit = kitOf("saw", [], TITLE_SAW);
@@ -12261,7 +12363,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const dx = r.vx + sv(S2), dy = r.vy, d = Math.hypot(dx, dy) || 1;
     r.dx = dx / d;
     r.dy = dy / d;
-    titleCarve(S2, r.x + PW / 2 + r.dx * 4, r.y + PH / 2 + r.dy * 4, TITLE_DIGR, false);
+    if (!r.clr || (r.clrT || 0) < DEV.autoClearGap) titleCarve(S2, r.x + PW / 2 + r.dx * 4, r.y + PH / 2 + r.dy * 4, TITLE_DIGR, false);
     if (!boxRock(S2, r.x, r.y, false) && !boxRock(S2, r.x + r.dx * 7, r.y + r.dy * 7, false)) r.clearT += dt;
     else r.clearT = 0;
     if (r.clearT > 0.25) {
@@ -12270,6 +12372,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       r.swap = 0.3;
       if (r.keep) r.kit = r.keep;
       r.keep = null;
+      r.clr = null;
       if (r.mode === "fly" && R() < 0.5) pickTarget(S2, r);
     }
   }
@@ -12283,6 +12386,22 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       r.face = Math.cos(r.ang) >= 0 ? 1 : -1;
       r.sawT -= dt;
       const mz2 = gunMuzzle(cx() + Math.cos(r.ang) * 2.5, r.y + PH * 0.45, r.ang, GUN_HELD, r.kit.art), bx = mz2.x + Math.cos(r.ang) * 3, by = mz2.y + Math.sin(r.ang) * 3;
+      const cp = r.clr && S2.team ? S2.team[r.clr.p] : null, cg = cp ? cp.guns[r.clr.g] : null;
+      if (cp && cg) {
+        r.clrT = (r.clrT || 0) + dt;
+        gunTick(cg, dt);
+        const plan = gunPull(cg, cp.guns);
+        if (plan) {
+          const out = planShots(plan, r.ang, mz2.x, mz2.y, R, r.id);
+          for (const s of out) S2.shots.push(s);
+          if (out.length) {
+            r.clrT = 0;
+            snd(S2, "cast", mz2.x, mz2.y, r.kit);
+          }
+        }
+        if (R() < dt * 25) burst(S2, bx, by, 1, R() < 0.5 ? "#ffd27a" : "#fff2c0", 70, "spark", 0.15);
+        return;
+      }
       if (R() < dt * 25) burst(S2, bx, by, 1, R() < 0.5 ? "#ffd27a" : "#fff2c0", 70, "spark", 0.15);
       if ((r.sawS = (r.sawS || 0) - dt) <= 0) {
         r.sawS = r.kit.cd;
@@ -35434,6 +35553,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var PILOT_BRAKE = 60;
   var PILOT_CRAWL = 0.08;
   function pilotPace(P2) {
+    if (P2.blocked) return 0;
     const base = DEV.autoLvlPace;
     let k = base;
     if (P2.elites && P2.elites.some((e) => e.alive !== false && Math.abs(e.x - P2.x) < DEV.autoLvlEliteR)) k *= DEV.autoLvlElite;
@@ -35494,7 +35614,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var levelState = (S2) => S2.lvl && S2.lvl.data || null;
   var levelTeamX = (S2) => S2.scroll + LVL_TEAM;
   function levelScene(vh, seed, n, plan = levelPlan(seed), team) {
-    const L3 = { plan, phase: "arrive", arrived: [], zap: -99, goT: -1, arenaT: -1, bossDead: false, hold: 0, elites: [], chests: [], doneT: -1, meters: [] };
+    const L3 = { plan, phase: "arrive", arrived: [], zap: -99, goT: -1, arenaT: -1, bossDead: false, hold: 0, elites: [], chests: [], doneT: -1, meters: [], blocked: false };
     const S2 = titleScene(vh, seed, vh * 0.24, vh * 0.92, { runners: n, level: { zp: plan.zp, step: levelStep, data: L3 }, team });
     L3.meters = S2.runners.map(() => ({ dmg: meterNew(), hp: meterNew(), dealt: 0 }));
     S2.pace = 0;
@@ -35603,7 +35723,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       S2.pace = 0;
       return;
     }
-    const want = pilotPace({ x: levelTeamX(S2), stopX: stop, elites: L3.elites, chests: L3.chests, hold: L3.hold });
+    if (S2.blocked != null) {
+      L3.blocked = true;
+      S2.blocked = void 0;
+    }
+    if (L3.blocked && S2.team && teamClearer(S2.team, "rock", 0)) L3.blocked = false;
+    const want = pilotPace({ x: levelTeamX(S2), stopX: stop, elites: L3.elites, chests: L3.chests, hold: L3.hold, blocked: L3.blocked });
     S2.pace = pilotEase(S2.pace || 0, want, dt);
   }
   function gather(S2, L3, dt) {
@@ -37311,6 +37436,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const scene = useRef(null);
     const input = useRef({ saveRun: () => saveAutoRun(run) });
     const where = useRef(window.__AUTO_LEVEL ? "level" : "hub");
+    const [blocked, setBlocked] = useState(false);
+    useEffect(() => {
+      const id = setInterval(() => {
+        const L3 = scene.current && levelState(scene.current);
+        setBlocked(!!(L3 && L3.blocked));
+      }, 200);
+      return () => clearInterval(id);
+    }, []);
     useEffect(() => {
       const c = cvs.current;
       if (!c) return void 0;
@@ -37323,6 +37456,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             saveAutoRun(run);
             const S3 = levelScene(vh, window.__AUTO_LEVEL || levelSeed(run), run.players.length, void 0, run.players);
             scene.current = S3;
+            if (window.__TEST_TITLE) window.__autoScene = S3;
             return { S: S3, C: titleCam(vh / 2, vh), warm: 0 };
           }
           const S2 = hubScene(vh, seed, run.players.length, run.tier);
@@ -37378,6 +37512,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         "div",
         { className: "aplay" },
         h("canvas", { ref: cvs, className: "aplaycvs" }),
+        blocked ? h("div", { className: "ablocked" }, "Path blocked") : null,
         h("button", { className: "pausebtn", title: "Pause", onPointerDown: tap(() => {
           SFX.fx("open");
           setPaused(true);

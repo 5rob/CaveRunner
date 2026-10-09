@@ -27,3 +27,5 @@ Tests: `tests/browser/auto-screen.test.js`. Pictures: `node tools/autoshots.js` 
 - The title menu's colours (`.titlemenu`, `.tslot`: dark purple panels, orange edge), not new ones.
 - Slots in scrolling areas are `pan-y`; anything you drag gets `touch-action: none` (`.grab`, as the old Bag).
 - No game logic here: moves on the run go through `src/auto/run.js`.
+
+**Path blocked (stage 5b):** in a level, when no gun in play can clear the rock ahead (`auto/clear.js`), the pilot stops the team and `AutoScreen` shows `.ablocked` ("Path blocked", pulsing, `style.css`) over the play area; it reads `levelState(S).blocked` every 200 ms. Under `__TEST_TITLE` the level scene is on `window.__autoScene` (for `tools/clearshots.js`).

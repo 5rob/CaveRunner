@@ -11,12 +11,14 @@ export const PILOT_BRAKE = 60;        // the pace brakes over this far before a 
 export const PILOT_CRAWL = 0.08;      // … but never below this × normal pace until it's there (so it arrives)
 
 // PilotIn: x the team's place (world x); stopX where it must stop (null: nowhere ahead); elites and chests: world x
-// (an elite dead, a chest opened: no slow); hold: the stick's sideways push, -1 (all the way left) to 1 (all the way right)
-/** @typedef {{ x: number, stopX?: number | null, elites?: { x: number, alive?: boolean }[], chests?: { x: number, open?: boolean }[], hold?: number }} PilotIn */
+// (an elite dead, a chest opened: no slow); hold: the stick's sideways push, -1 (all the way left) to 1 (all the way right);
+// blocked: the way is blocked and no gun in play can clear it (stage 5b): the one case the team stops (0)
+/** @typedef {{ x: number, stopX?: number | null, elites?: { x: number, alive?: boolean }[], chests?: { x: number, open?: boolean }[], hold?: number, blocked?: boolean }} PilotIn */
 
 // the pace the team wants now (0: stopped)
 /** @param {PilotIn} P @returns {number} */
 export function pilotPace(P) {
+  if (P.blocked) return 0;
   const base = DEV.autoLvlPace;
   let k = base;
   if (P.elites && P.elites.some(e => e.alive !== false && Math.abs(e.x - P.x) < DEV.autoLvlEliteR)) k *= DEV.autoLvlElite;

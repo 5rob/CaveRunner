@@ -14,6 +14,7 @@ import { TITLE_VW, TITLE_ZLEN, titleFloor, titlePlan, titleScene, titleSurf, tit
 import { hubArriveT } from './hub.js';
 import { meterAdd, meterNew, meterSet, meterStep } from './meters.js';
 import { pilotEase, pilotPace } from './pilot.js';
+import { teamClearer } from './clear.js';
 
 export const LVL_SCROLL = 34;         // the menu's scroll (world units / s at pace 1: titlescene.js SCROLL)
 export const LVL_PADX = 60;           // the start pad's middle (world x; on screen at the start)
@@ -55,9 +56,10 @@ export function levelPlan(seed, minutes = DEV.autoLvlMin) {
 
 // LevelState: the plan; phase: 'arrive' (teleporting in), 'run' (to the arena), 'arena' (stopped till the boss is dead),
 // 'out' (to the exit pad), 'exit' (gathered on it); arrived per player, zap (when someone last came through), arenaT
-// (when it got there), bossDead; hold (the stick's sideways push, -1 to 1), elites and chests (stage 6, 11: world x), pace (S.pace)
+// (when it got there), bossDead; hold (the stick's sideways push, -1 to 1), elites and chests (stage 6, 11: world x), pace (S.pace);
+// blocked (stage 5b): rock in the way and no gun in play can clear it (the pilot stops the team; the screen's "Path blocked")
 /** @typedef {{ plan: LevelPlan, phase: string, arrived: boolean[], zap: number, goT: number, arenaT: number, bossDead: boolean, hold: number,
- *   elites: { x: number, alive?: boolean }[], chests: { x: number, open?: boolean }[], doneT: number, meters: PlayerMeters[] }} LevelState */
+ *   elites: { x: number, alive?: boolean }[], chests: { x: number, open?: boolean }[], doneT: number, meters: PlayerMeters[], blocked: boolean }} LevelState */
 /** @param {import('../art/titlescene.js').TitleScene} S @returns {LevelState | null} */
 export const levelState = S => (S.lvl && S.lvl.data) || null;
 // the team's place in the level (world x)
@@ -70,7 +72,7 @@ export const levelTeamX = S => S.scroll + LVL_TEAM;
 /** @param {number} vh @param {number} seed @param {number} n @param {LevelPlan} [plan] (default levelPlan(seed)) @param {RunPlayer[]} [team] @returns {import('../art/titlescene.js').TitleScene} */
 export function levelScene(vh, seed, n, plan = levelPlan(seed), team) {
   /** @type {LevelState} */
-  const L = { plan, phase: 'arrive', arrived: [], zap: -99, goT: -1, arenaT: -1, bossDead: false, hold: 0, elites: [], chests: [], doneT: -1, meters: [] };
+  const L = { plan, phase: 'arrive', arrived: [], zap: -99, goT: -1, arenaT: -1, bossDead: false, hold: 0, elites: [], chests: [], doneT: -1, meters: [], blocked: false };
   const S = titleScene(vh, seed, vh * 0.24, vh * 0.92, { runners: n, level: { zp: plan.zp, step: levelStep, data: L }, team });
   L.meters = S.runners.map(() => ({ dmg: meterNew(), hp: meterNew(), dealt: 0 }));
   S.pace = 0; S.still = true;
@@ -148,7 +150,10 @@ export function levelStep(S, dt) {
   if (L.phase === 'out' && levelTeamX(S) >= stop - 0.5) { L.phase = 'exit'; S.still = true; }
   if (L.phase === 'exit') { S.pace = 0; gather(S, L, dt); return; }
   if (L.phase === 'arena') { S.pace = 0; return; }
-  const want = pilotPace({ x: levelTeamX(S), stopX: stop, elites: L.elites, chests: L.chests, hold: L.hold });
+  // blocked (the scene's startDig found no gun in play to clear the rock): stays till one can (a gun fitted)
+  if (S.blocked != null) { L.blocked = true; S.blocked = undefined; }
+  if (L.blocked && S.team && teamClearer(S.team, 'rock', 0)) L.blocked = false;
+  const want = pilotPace({ x: levelTeamX(S), stopX: stop, elites: L.elites, chests: L.chests, hold: L.hold, blocked: L.blocked });
   S.pace = pilotEase(S.pace || 0, want, dt);
 }
 
