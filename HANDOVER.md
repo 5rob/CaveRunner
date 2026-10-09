@@ -3,6 +3,12 @@
 Where things stand, for a fresh session. Read `CLAUDE.md` first (the owner's working style, the
 release loop, testing), then the README of the `src/` folder you're working in.
 
+## BRANCH `autobattler` (2026-10-09): the auto-battler pivot — read AUTOBATTLER.md
+
+Planned with the owner (brief + quiz answers + 15 stages + the PM's kick-start prompt, all in `AUTOBATTLER.md`;
+mock-up `docs/autobattler-mockup.png`). Nothing built yet: next is stage 0 (the second Pages address and APK).
+`main` is untouched and keeps the old game.
+
 ## NEXT (as of v0.0.176, 2026-10-09)
 
 - **v0.0.176 released: the title's gold pickup at 10% volume** (owner's ask; `ui/titlesound.js`, `SFX.ui('coin', 0.1)`).
