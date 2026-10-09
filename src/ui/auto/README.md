@@ -16,6 +16,7 @@ this folder only shows them and takes the taps.
     slot (`.full.k-<kind>`): a gun's sprite (`GunIcon`), a mod's `MODS` glyph, an exo mod's `STAT_PERKS` glyph and
     tint with its tier (I–V), a perk's glyph, gold ● / red ◆ / green ◆; the count (`.acount`) when more than one,
     and always for gold and gems.
+    In a level (stage 6 part 2) the screen passes `run` to `levelScene` (its 7th argument): kills' drops go into `run.bag`; the 200 ms poll reads `L.bagV` (+1 per item taken) into a state so the bag redraws while the level runs.
   - **buttons** `.abtns`: B (red pill), the **pill stick** (`PillStick`, `.apill`, owner after stage 4a: the old `<` `>` circles' height and 23px roundness, filling their space), A (green pill). The pill stick works like the old game's left thumbstick (`ui/hud.js` `Stick`): pointer capture, a knob (`.apillknob`, orange edge while it reads "up") that follows the finger, clamped to the pill (a few px up/down); its state `PillState { active, nx, ny, mag, dx, dy }`: dx by the pill's half-width, dy by its half-height (a small push up reads as up), mag their length clamped to 1; letting go resets it. `touch-action: none`; works with a mouse. B does nothing yet.
   - The run: `loadAutoRun()`, or `newRun()` saved at once. `where` (hub or level): runScene's `next` swaps at `hubLeft` (to the run's level, healed) and `levelDone` (home, `levelCleared`); saved at each swap.
 

@@ -54,10 +54,13 @@ export function AutoScreen() {
   /** @type {{ hp: number, max: number, name: string } | null} */
   const noBoss = null;
   const [boss, setBoss] = useState(noBoss);
+  const [, setBagV] = useState(0);
   useEffect(() => {
     const id = setInterval(() => {
       const L = scene.current && levelState(scene.current);
       setBlocked(!!(L && L.blocked));
+      if (L) setBagV(L.bagV);   // drops went into the bag: redraw it
+
       const b = scene.current ? levelBoss(scene.current) : null;
       setBoss(o => (!b && !o) || (b && o && b.hp === o.hp && b.max === o.max) ? o : b);
     }, 200);
@@ -74,7 +77,7 @@ export function AutoScreen() {
         if (where.current === 'level') {
           healRun(run);
           saveAutoRun(run);
-          const S = levelScene(vh, window.__AUTO_LEVEL || levelSeed(run), run.players.length, undefined, run.players, run.tier);
+          const S = levelScene(vh, window.__AUTO_LEVEL || levelSeed(run), run.players.length, undefined, run.players, run.tier, run);
           scene.current = S;
           if (window.__TEST_TITLE) window.__autoScene = S;   // the shot scripts (tools/clearshots.js) reach the level here
           return { S, C: titleCam(vh / 2, vh), warm: 0 };
