@@ -927,4 +927,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .abtn.ab,.abtn.aa{flex:0 0 30%;border-radius:23px}
 .abtn.ab{background:linear-gradient(#ff6a72,#e0283a);box-shadow:0 4px 0 #7a1020,0 0 14px rgba(255,60,80,0.45)}
 .abtn.aa{background:linear-gradient(#4ef08a,#0fb556);box-shadow:0 4px 0 #0a5a2a,0 0 14px rgba(40,220,110,0.45)}
-.abtn.around{width:46px;flex:none;border-radius:50%;background:#251c3a;border:2px solid #4a3a6e;color:#e7e0ff;box-shadow:0 3px 0 #0b0716}
+/* the pill stick (between B and A): the old arrow circles' height and roundness, filling their space; the knob follows the finger */
+.apill{position:relative;flex:1 1 auto;height:46px;box-sizing:border-box;border-radius:23px;background:#251c3a;border:2px solid #4a3a6e;box-shadow:0 3px 0 #0b0716,inset 0 2px 6px rgba(0,0,0,0.5);touch-action:none;user-select:none;-webkit-user-select:none;display:flex;align-items:center;justify-content:center}
+.apillknob{width:34px;height:34px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#6a58a0,#3a2d5e);border:2px solid #8a76c8;box-sizing:border-box;box-shadow:0 2px 0 #0b0716;pointer-events:none}
+.apillknob.jet{border-color:#ffb347;box-shadow:0 2px 0 #0b0716,0 0 10px rgba(255,160,60,0.7)}

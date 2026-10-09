@@ -35,12 +35,15 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     play: document.querySelectorAll('.auto .aplay canvas').length,
     nav: document.querySelectorAll('.anav .anavc').length, players: document.querySelectorAll('.anav .anavc.on').length,
     slots: document.querySelectorAll('.abag .aslot').length, full: document.querySelectorAll('.abag .aslot.full').length,
-    btns: document.querySelectorAll('.abtns button').length,
+    btns: [...document.querySelector('.abtns').children].map(e => e.className).join('|'),
     gold: (document.querySelector('.aslot.k-gold') || {}).textContent, mod: (document.querySelector('.aslot.k-mod') || {}).textContent,
     gun: !!document.querySelector('.aslot.k-gun canvas'),
   }));
-  check('four sections: play area, 4 nav circles (2 players), 70 bag slots, 4 buttons',
-    n.play === 1 && n.nav === 4 && n.players === 2 && n.slots === 70 && n.btns === 4, n);
+  check('four sections: play area, 4 nav circles (2 players), 70 bag slots; buttons B, pill stick, A',
+    n.play === 1 && n.nav === 4 && n.players === 2 && n.slots === 70 && n.btns === 'abtn ab|apill|abtn aa', n);
+  const pill = await page.evaluate(() => { const p = document.querySelector('.apill').getBoundingClientRect(), b = document.querySelector('.abtn.ab').getBoundingClientRect(), cs = getComputedStyle(document.querySelector('.apill'));
+    return { h: p.height, bh: b.height, w: p.width, r: cs.borderTopLeftRadius, ta: cs.touchAction }; });
+  check('the pill: the buttons height, round ends, wide, touch-action none', Math.abs(pill.h - 46) < 1 && pill.w > 100 && pill.r === '23px' && pill.ta === 'none', pill);
   check('the bag shows the run: gun icon, gold 120, mod ×3', n.full === 3 && n.gun && /120/.test(n.gold) && /3/.test(n.mod), n);
   const order = await page.evaluate(() => ['.aplay', '.anav', '.abag', '.abtns'].map(s => document.querySelector(s).getBoundingClientRect().top));
   check('top to bottom: play, nav, bag, buttons', order.every((v, i) => !i || v > order[i - 1]), order);
@@ -55,14 +58,24 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   check('the canvas animates', t0 && Number(t1) > Number(t0), [t0, t1]);
   check('the scene has the run\'s 2 players', await page.evaluate(() => window.__title.S.runners.length === 2));
 
-  // stage 3b: > walks the team to the gun machine (after the teleport-in), A there does nothing
+  // the pill stick: dragging it right runs the leader right (after the teleport-in), up-right lifts him; A away from the exit does nothing
   for (let i = 0; i < 60 && !(await page.evaluate(() => hubState(window.__title.S).arrived[0])); i++) await page.waitForTimeout(50);
+  const box = await page.locator('.apill').boundingBox();
+  const mx = box.x + box.width / 2, my = box.y + box.height / 2;
   const x0 = await page.evaluate(() => window.__title.S.runners[0].x);
-  await page.locator('.abtn.ar').dispatchEvent('pointerdown');
-  let at = -1;
-  for (let i = 0; i < 80 && at !== 1; i++) { await page.waitForTimeout(50); at = await page.evaluate(() => hubState(window.__title.S).at); }
+  await page.mouse.move(mx, my); await page.mouse.down(); await page.mouse.move(box.x + box.width - 4, my, { steps: 4 });
+  await page.waitForTimeout(700);
   const x1 = await page.evaluate(() => window.__title.S.runners[0].x);
-  check('> walks the leader right to the gun machine', at === 1 && x1 > x0 + 50, [at, x0, x1]);
+  const kn = await page.$eval('.apillknob', k => k.style.transform);
+  check('dragging the pill right runs the leader right, the knob follows', x1 > x0 + 20 && parseFloat(kn.replace('translate(', '')) > 10, [x0, x1, kn]);
+  await page.mouse.move(box.x + box.width - 4, box.y + 2, { steps: 3 });
+  let air = false;
+  for (let i = 0; i < 20 && !air; i++) { await page.waitForTimeout(50); air = await page.evaluate(() => { const S = window.__title.S, r = S.runners[0]; return !r.ground && r.y + 18 < hubState(S).fy - 4; }); }
+  check('pushed up: he jets off the floor', air);
+  await page.mouse.up();
+  let down = false;
+  for (let i = 0; i < 40 && !down; i++) { await page.waitForTimeout(50); down = await page.evaluate(() => window.__title.S.runners[0].ground && window.__title.S.runners[0].vx === 0); }
+  check('let go: the knob back in the middle, he lands and stops', down && (await page.$eval('.apillknob', k => k.style.transform)) === 'translate(0px, 0px)');
   await page.locator('.abtn.aa').dispatchEvent('pointerdown');
   check('A away from the exit does nothing', await page.evaluate(() => hubExitFlash(window.__title.S) === 0));
 
