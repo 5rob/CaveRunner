@@ -22,7 +22,9 @@ mock-up `docs/autobattler-mockup.png`). Progress: AUTOBATTLER.md's Log. `main` k
 - **Stage 5a done (v1.0.7, owner OK'd):** real guns in levels, the starter kit, the meters. Next: stage 5b, the
   clearing rule (`canClear`/`bestClearer`, "Path blocked"), replacing the magic saw.
 - **Stage 5b done (v1.0.8, owner OK'd):** the clearing rule and "Path blocked". Until stage 8 (dragging mods) a team
-  of starter guns stops at its first wall. Next: stage 6, enemies, elites, the boss, drops, death.
+  of starter guns stops at its first wall. 
+- **Stage 6 part 1 done (v1.0.9, owner OK'd):** enemies by tier, elites, the boss and its bar, death. Spider silk does no
+  damage yet. Next: stage 6 part 2, the drops.
 
 ## NEXT (as of v0.0.176, 2026-10-09)
 

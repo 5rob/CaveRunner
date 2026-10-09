@@ -5,6 +5,14 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.9 — CaveRunner Auto: enemies, elites, the boss, death (branch `autobattler`, stage 6 part 1)
+Released 2026-10-10 on the branch (owner OK'd the screenshots, `tools/enemyshots.js`).
+- Level creatures by the run's tier (`enemyFor(id, tier)`; `levelScene`'s 6th argument). Bites and spit hurt the run's
+  players (× `autoFoeDmg`, `levelHurt`); at 0 hp a player flickers out until the hub; all fallen → the hub, healed, tier
+  unchanged (`levelFailed`). Elites (`autoFoeElites`, 2) along the zones, the pilot slows for them. The boss in the
+  arena: a random kind × size/health/damage knobs, its bar over the play area (`.abossbar`); `autoLvlBossT` (120 s)
+  is only a fallback. `auto/enemies.js`, Dev → Auto → "Auto: enemies". Suite `auto-enemies`.
+
 ## v1.0.8 — CaveRunner Auto: the clearing rule (branch `autobattler`, stage 5b)
 Released 2026-10-10 on the branch (owner OK'd the screenshots, `tools/clearshots.js`).
 - In levels the magic saw is gone: at rock a player switches to its best clearing gun (`auto/clear.js` `canClear`,
