@@ -349,6 +349,7 @@ chest slow ×0.5. Grab radius 35% of a tile.
 | 3b | done | v1.0.4 | Agent, ~10 min. `hubGo(S,dir)`, `hubStandX`, state `H.lx/at/goal/dir/tier/exitT`; `hubExit(S)`, `hubAtExit`, `hubExitFlash` (stage 4 hooks these); `hubPrice(id,tier)`; `hubScene(vh,seed,n,tier)`. Leader stands ON the pads. Knobs group `autohub`. |
 | 4a | done | v1.0.5 | Agent. `levelPlan`, `levelScene(vh,seed,n,plan?)`, `levelDone`, `levelHold`, `levelState` (`L.elites/chests/bossDead`), phases arrive/run/arena/out/exit; `pilotPace`/`pilotEase`. Knobs `autolevel`. Notes: players drift while "stopped", menu creatures still spawn (stage 6), players overlap on arrival. |
 | pill | done | v1.0.5 | Owner's change after 4a, agent ~10 min. `<``>` → one pill stick (`.apill`): hub free roam (`hubStick`, run + jet; `hubGo`/`hubStandX` and `autoHubOff/Ease` removed; knobs `autoHubRun/Jet/Space/Walk`), level pace (`levelHold`: right × `autoLvlHurry`, left × `autoLvlSlow`, never 0). Nit: knob pokes a few px above the pill when pushed up. |
+| 4b | done | v1.0.6 | PM built it (small wiring). `hubExit` hides everyone + ignores the stick after; `hubLeft(S)` (`HUB_LEAVE` 0.7 s); `run.seed`, `levelSeed(run)`, `healRun`, `levelCleared` (tier + 1, heal); `runScene` opt `next(S)`; AutoScreen `where` ref (hub/level), saves on each swap. Mid-level quit resumes in the hub (stage 13). Check later: the arena floor looked hilly in `l3-arena.png` (where the team stops vs. the flat span). |
 
 ## 8. The PM's kick-start prompt
 

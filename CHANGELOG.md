@@ -5,6 +5,13 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.6 — CaveRunner Auto: hub ⇄ level (branch `autobattler`, stage 4b)
+Released 2026-10-10 on the branch (owner OK'd the screenshots).
+- A on the hub's exit pad: everyone goes in the flash (`hubExit`), and when it fades (`hubLeft`, `HUB_LEAVE`) the run's
+  level loads (`levelSeed(run)`: the same run and tier, the same level), the team healed (`healRun`). The level's exit
+  pad (`levelDone`) brings it home: tier + 1, healed, saved (`levelCleared`). `newRun(seed?)` carries a seed;
+  `runScene` takes `next(S)` (true: make a new scene). Suites: `auto-run`, `auto-hub`, browser `auto-screen`.
+
 ## v1.0.5 — CaveRunner Auto: the pill stick and the level strip (branch `autobattler`, stage 4a + owner's change)
 Released 2026-10-10 on the branch (owner OK'd the screenshots).
 - The bottom `<` `>` pair is one pill stick (as tall and round as B and A) that works like the old left

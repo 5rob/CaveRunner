@@ -17,7 +17,7 @@ this folder only shows them and takes the taps.
     tint with its tier (I–V), a perk's glyph, gold ● / red ◆ / green ◆; the count (`.acount`) when more than one,
     and always for gold and gems.
   - **buttons** `.abtns`: B (red pill), the **pill stick** (`PillStick`, `.apill`, owner after stage 4a: the old `<` `>` circles' height and 23px roundness, filling their space), A (green pill). The pill stick works like the old game's left thumbstick (`ui/hud.js` `Stick`): pointer capture, a knob (`.apillknob`, orange edge while it reads "up") that follows the finger, clamped to the pill (a few px up/down); its state `PillState { active, nx, ny, mag, dx, dy }`: dx by the pill's half-width, dy by its half-height (a small push up reads as up), mag their length clamped to 1; letting go resets it. `touch-action: none`; works with a mouse. B does nothing yet.
-  - The run: `loadAutoRun()`, or `newRun()` saved at once.
+  - The run: `loadAutoRun()`, or `newRun()` saved at once. `where` (hub or level): runScene's `next` swaps at `hubLeft` (to the run's level, healed) and `levelDone` (home, `levelCleared`); saved at each swap.
 
 Tests: `tests/browser/auto-screen.test.js`. Pictures: `node tools/autoshots.js` (`tests/build/autoshots/`; `ONLY=kl`: the pill stick in the hub mid-jet and in a level; its `o.drag` holds the stick for a shot).
 
