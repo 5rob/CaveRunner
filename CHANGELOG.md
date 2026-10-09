@@ -5,6 +5,14 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.3 — CaveRunner Auto: the hub room (branch `autobattler`, stage 3a)
+Released 2026-10-09 on the branch (owner OK'd the screenshots).
+- ▶ opens on the hub: a dark steel shop room (`auto/hub.js`, `titleScene(…, { hub })`, painter
+  `game/render/hubdraw.js`); the left pad charges, the player comes through in a flash, and the tubes stutter on.
+  Stops left → right: enter pad, gun (gold), exo (teal, new), mod (red), perk (green), exit pad (`HUB_STOPS`).
+- The Jetpack exo's icon is a rocket (`EXO_GLYPH`), in the bag and on the exo machine. Suite `auto-hub`.
+- Owner: leave the empty space above the room as is (they have plans for it).
+
 ## v1.0.2 — CaveRunner Auto: the four-section screen (branch `autobattler`, stage 2)
 Released 2026-10-09 on the branch (owner OK'd the screenshots).
 - ▶ on the title opens the auto screen (`ui/auto/AutoScreen.js`): the menu scene with the run's players (pinch,

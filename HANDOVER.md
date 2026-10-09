@@ -11,7 +11,9 @@ mock-up `docs/autobattler-mockup.png`). Progress: AUTOBATTLER.md's Log. `main` k
   CaveRunner Auto APK (release `app-auto`); `android/README.md` has how. The only change on `main` was the shared
   workflow file. The owner allowed `autobattler` in Settings → Environments → github-pages (needed for the deploy).
 - **Stage 1 done (v1.0.1):** the pure run model, `src/auto/` (README there). 
-- **Stage 2 done (v1.0.2, owner OK'd):** the four-section screen (`src/ui/auto/`). Next: stage 3, the hub strip.
+- **Stage 2 done (v1.0.2, owner OK'd):** the four-section screen (`src/ui/auto/`). 
+- **Stage 3a done (v1.0.3, owner OK'd):** the hub room, machines, teleport-in (`auto/hub.js`, `render/hubdraw.js`). The
+  owner wants the empty space above the room left as is (plans for it). Next: 3b (arrow travel, exit prompt, prices).
 
 ## NEXT (as of v0.0.176, 2026-10-09)
 
