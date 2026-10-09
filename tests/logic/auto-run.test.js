@@ -13,11 +13,14 @@ const filled = run => run.bag.filter(Boolean).length;
 // ---- newRun ----
 let run = G.newRun();
 const p0 = run.players[0];
-check('newRun: tier 1, one player, 70 empty bag slots', run.tier === 1 && run.players.length === 1
-  && run.bag.length === 70 && G.BAG_SLOTS === 70 && run.bag.every(x => x === null));
-check('the player: blue, 4 empty gun slots, 6 perk slots, 5 per exo category, alive at full health',
-  p0.col === G.TITLE_COLS[0] && p0.guns.length === 4 && p0.guns.every(g => g === null) && p0.perks.length === 6
+// (stage 5a: a new run comes with the starter kit, a gun in slot 1 and a Buzzsaw in the bag; the checks after these
+// clear both, so they run on the empty run they were written for)
+check('newRun: tier 1, one player, 70 bag slots, only the Buzzsaw in it', run.tier === 1 && run.players.length === 1
+  && run.bag.length === 70 && G.BAG_SLOTS === 70 && filled(run) === 1 && run.bag[0].kind === 'mod' && run.bag[0].id === 'saw');
+check('the player: blue, the starter gun in slot 1 (active), 3 empty, 6 perk slots, 5 per exo category, alive at full health',
+  p0.col === G.TITLE_COLS[0] && p0.guns.length === 4 && !!p0.guns[0] && p0.active === 0 && p0.guns.slice(1).every(g => g === null) && p0.perks.length === 6
   && G.EXO_CATS.every(c => p0.exo[c].length === 5) && p0.alive && p0.hp === G.PLAYER_HP);
+run.bag.fill(null); p0.guns.fill(null);
 
 // ---- bagAdd and stacking ----
 check('gold goes in', G.bagAdd(run, { kind: 'gold', n: 50 }) === null && G.bagCount(run, 'gold') === 50);
@@ -56,6 +59,7 @@ check('spend: the last of a stack empties its slot', G.spend(run, 'red', 5) && !
 
 // ---- fitGun / setActive ----
 run = G.newRun();
+run.bag.fill(null); run.players[0].guns.fill(null);   // without the starter kit (stage 5a)
 const gA = gun(), gB = gun();
 G.bagAdd(run, { kind: 'gun', gun: gA, n: 1 }); G.bagAdd(run, { kind: 'gun', gun: gB, n: 1 });
 check('fitGun: a gun from the bag into a slot', G.fitGun(run, 0, 0, 2) && run.players[0].guns[2] === gA && run.bag[0] === null);
@@ -98,6 +102,7 @@ check('unfitMod refuses an empty slot', !G.unfitMod(run, 0, 2, 0));
 
 // ---- fitExo ----
 run = G.newRun();
+run.bag.fill(null);   // without the starter kit's Buzzsaw (stage 5a)
 G.bagAdd(run, G.exoMod('speed', 1)); G.bagAdd(run, G.exoMod('speed', 1)); G.bagAdd(run, G.exoMod('hp', 4));
 check('fitExo refuses another category (speed into hp)', !G.fitExo(run, 0, 0, 'hp', 0) && run.players[0].exo.hp[0] === null);
 check('fitExo: speed into speed, one off the stack', G.fitExo(run, 0, 0, 'speed', 0) && run.players[0].exo.speed[0].tier === 1
@@ -148,6 +153,7 @@ check('scrap follows its Dev knob', (() => { const o = G.DEV.autoScrap; G.DEV.au
   const v = G.scrap({ kind: 'gun', n: 1 }, 1); G.DEV.autoScrap = o; return v === Math.round(G.autoGunPrice(1) / 2); })());
 {
   const r = G.newRun();
+  r.bag.fill(null);   // without the starter kit's Buzzsaw (stage 5a)
   G.bagAdd(r, { kind: 'red', n: 2 }); G.bagAdd(r, { kind: 'gold', n: 10 });
   check('scrapAt: the stack becomes gold on the gold stack', G.scrapAt(r, 0) === 80 && r.bag[0] === null && G.bagCount(r, 'gold') === 90);
   check('scrapAt refuses the gold itself', G.scrapAt(r, 1) === 0 && G.bagCount(r, 'gold') === 90);

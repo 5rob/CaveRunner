@@ -28,6 +28,7 @@ import { rustleStep } from '../audio/recipes.js';
 import { pixText, pixWidth } from './pixfont.js';
 import { GUN_HELD, gunMuzzle } from './sprites.js';
 import { GUN_ART } from './gunart.js';
+import { gunPull, gunTick, planShots, shotsOf } from './scenegun.js';
 
 export const TITLE_VW = 220;          // world units across the screen
 export const TITLE_FOES = 24;         // at most this many creatures at once (a rat swarm counts each rat; v0.0.165: ×2)
@@ -100,13 +101,14 @@ export const TITLE_HOME = {
  *   dig: number, clearT: number, keep: TKit | null, dx: number, dy: number, digY: number, sawT: number, switches: number[],
  *   bursty: number, burst: boolean, jet: boolean, jetT: number, jetCd: number, pace: number, spd: number,
  *   nav: { F: any, fx: number, fy: number, t: number }, stepT?: number, sawS?: number, rst?: { t?: number }, rub?: string, rubWas?: boolean,
- *   hide?: boolean, stand?: boolean }} TRunner */
+ *   hide?: boolean, stand?: boolean, dealt?: number }} TRunner */
 // a fixed strip in place of the scrolling ring (CaveRunner Auto's hub, auto/hub.js): w columns, each cell's material from
 // cell(c, r, rows); step runs after titleStep's own (the runners are its: S.still); data is the strip's own state
 /** @typedef {{ w: number, cell: (c: number, r: number, rows: number) => number, step?: (S: TitleScene, dt: number) => void, data?: any }} TitleHub */
 /** @typedef {{ x: number, y: number, vx: number, vy: number, size: number, col: string, look: string, life: number, foe: boolean, spin: number,
  *   grav: number, drag: number, explode: number, pit: number, fire: number, bounce: number, bounceE: number, pierce: number, dmg: number,
- *   homing?: number, accel?: number, vmax?: number, chain?: number, hitFoe?: boolean }} TShot */
+ *   homing?: number, accel?: number, vmax?: number, chain?: number, hitFoe?: boolean,
+ *   real?: boolean, by?: number, trig?: string | null, timer?: number, pay?: Shot[] | null, age?: number }} TShot */
 /** @typedef {{ x: number, y: number, vx: number, vy: number, life: number, max: number, r: number, col: string, kind: string }} TPart */
 /** @typedef {{ x: number, y: number, r: number, t: number, max: number }} TBoom */
 /** @typedef {{ pts: { x: number, y: number }[], t: number, col: string }} TZap */
@@ -122,7 +124,7 @@ export const TITLE_HOME = {
  *   fire: TFire[], dirty: number[][], dirtyAll: boolean, carved: number, burnt: number, swaps: number, groundT: number, flyT: number, kinds: Record<string, number>,
  *   webs: WebLine[], cut: number, lineT: number, silk: { x: number, y: number, ax: number, ay: number, vx: number, vy: number, life: number }[],
  *   nav: { F: any, fx: number, fy: number, t: number }, fireAcc: number, fireN: number, burning: Set<number>, gotN: number, pops: number, lampsPopped: number, kitNames: Set<string>,
- *   digT: number, digs: number, digWhy: Record<string, number>, still?: boolean, zp: TitlePlan, snd: TSnd[], hub?: TitleHub, lvl?: TitleLevel, pace?: number }} TitleScene */
+ *   digT: number, digs: number, digWhy: Record<string, number>, still?: boolean, zp: TitlePlan, snd: TSnd[], hub?: TitleHub, lvl?: TitleLevel, pace?: number, team?: RunPlayer[] }} TitleScene */
 // a finite level in the scrolling ring (CaveRunner Auto, auto/level.js levelScene): zp its plan (made whole up front); step runs
 // after titleStep's own; data is the level's own state. S.pace (0..) scales the scroll (auto/pilot.js)
 /** @typedef {{ zp: TitlePlan, step?: (S: TitleScene, dt: number) => void, data?: any }} TitleLevel */
@@ -547,7 +549,8 @@ function kitOf(shot, mods, art) {
 // opts.runners: how many players (1-4; default TITLE_RUNNERS): CaveRunner Auto shows the run's players
 // opts.hub: a fixed strip instead of the scrolling ring (TitleHub; auto/hub.js hubScene): no creatures, no scroll
 // opts.level: a finite plan in the scrolling ring (TitleLevel; auto/level.js levelScene)
-/** @param {number} vh the view's height in world units @param {number} [seed] @param {number} [top] the action's band (world units) @param {number} [bot] @param {{ runners?: number, hub?: TitleHub, level?: TitleLevel }} [opts] @returns {TitleScene} */
+// opts.team: the run's players (RunPlayer, CaveRunner Auto): each runner fires its player's active gun (art/scenegun.js) in place of the menu's kits
+/** @param {number} vh the view's height in world units @param {number} [seed] @param {number} [top] the action's band (world units) @param {number} [bot] @param {{ runners?: number, hub?: TitleHub, level?: TitleLevel, team?: RunPlayer[] }} [opts] @returns {TitleScene} */
 export function titleScene(vh, seed = 7, top = vh * 0.3, bot = vh * 0.62, opts = {}) {
   const rnd = titleRng(seed), rows = Math.ceil(vh / TCELL) + 1, hub = opts.hub, ncol = hub ? hub.w : Math.ceil((TITLE_VW + 50 + AHEAD) / TCELL);
   /** @type {TitleScene} */
@@ -556,6 +559,7 @@ export function titleScene(vh, seed = 7, top = vh * 0.3, bot = vh * 0.62, opts =
     fire: [], dirty: [], dirtyAll: true, carved: 0, burnt: 0, swaps: 0, groundT: 0, flyT: 0, kinds: {}, webs: [], cut: 0, lineT: 0,
     silk: [], nav: { F: null, fx: 0, fy: 0, t: -9 }, fireAcc: 0, fireN: 0, burning: new Set(), gotN: 0, pops: 0, lampsPopped: 0, kitNames: new Set(), digT: 0, digs: 0, digWhy: {}, snd: [] };
   if (opts.level) { S.zp = opts.level.zp; S.lvl = opts.level; }
+  if (opts.team) S.team = opts.team;
   if (hub) {                            // a fixed strip: every column made now, nothing comes in
     S.hub = hub; S.still = true; S.gen = ncol;
     for (let c = 0; c < ncol; c++) for (let r = 0; r < rows; r++) S.cells[ci(S, c, r)] = hub.cell(c, r, rows);
@@ -893,9 +897,11 @@ function killFoe(S, f) {
   if (S.coins.length > TITLE_GOLD) S.coins.splice(0, S.coins.length - TITLE_GOLD);
 }
 
-/** @param {TitleScene} S @param {Enemy} f @param {number} dmg @param {string} col */
-function hitFoe(S, f, dmg, col) {
+/** @param {TitleScene} S @param {Enemy} f @param {number} dmg @param {string} col @param {number} [by] the runner who did it (its damage dealt, r.dealt) */
+function hitFoe(S, f, dmg, col, by) {
   if (f.hp <= 0) return;
+  const ru = by != null && by >= 0 ? S.runners[by] : null;
+  if (ru) ru.dealt = (ru.dealt || 0) + Math.min(dmg, f.hp);
   f.hp -= dmg; f.flash = 0.08;
   if (f.hp > 0 && dmg >= 0.5) snd(S, 'hurt', f.x - S.scroll, f.ty, f.k);
   if (f.k.kp) f.aggro = true;          // as in the game: hurt a spider, a jelly or a rat and it comes for you
@@ -915,13 +921,22 @@ function shotEnd(S, s) {
     burst(S, s.x, s.y, 4, '#3a3346', 25, 'smoke', 1.2);
     S.shake = Math.min(7, S.shake + 2);
     titleCarve(S, s.x, s.y, r);
-    for (const g of S.foes) if (Math.hypot(g.x - S.scroll - s.x, g.ty - s.y) < r + g.r) hitFoe(S, g, 4, s.col);
+    for (const g of S.foes) if (Math.hypot(g.x - S.scroll - s.x, g.ty - s.y) < r + g.r) hitFoe(S, g, s.real ? s.dmg : 4, s.col, s.by);
     for (const p of S.props) if (p.k === 'lamp' && !p.gone && lampHit(p, s.x, s.y, r)) popLamp(S, p);
   } else if (s.pit) { titleCarve(S, s.x, s.y, s.pit * 0.7); snd(S, 'debris', s.x, s.y); }
   else if (!s.hitFoe) snd(S, 'rock', s.x, s.y);
   // fire reaches past a blast's charred rim, into the moss, timber and plants round it
   if (s.fire || s.explode) titleIgnite(S, s.x, s.y, (s.fire ? 7 : 0) + (s.explode ? s.explode * 0.42 + 5 : 0));
   burst(S, s.x, s.y, 3, s.col, 50, 'spark', 0.25);
+  release(S, s);
+}
+// a trigger's payload out where its carrier is (a real gun's, art/scenegun.js), the way it was going; once
+/** @param {TitleScene} S @param {TShot} s */
+function release(S, s) {
+  if (!s.pay) return;
+  const pay = s.pay, a = Math.atan2(s.vy, s.vx) || 0;
+  s.pay = null;
+  if (S.shots.length < 400) for (const sh of pay) for (const n of shotsOf(sh, a, s.x, s.y, S.rnd, s.by)) S.shots.push(n);
 }
 
 /** @param {TitleScene} S @param {number} dt seconds */
@@ -1262,6 +1277,20 @@ function stepRunnerGun(S, r, dt) {
     r.ang += d * Math.min(1, dt * 10);
   } else r.ang += (0 - r.ang) * Math.min(1, dt * 4);
   r.face = Math.cos(r.ang) >= 0 ? 1 : -1;
+  // CaveRunner Auto: the player's active gun, real (its mana, cast delay and recharge; planCast's shots)
+  const pl = S.team && S.team[r.id];
+  if (pl) {
+    const g = pl.alive === false ? null : pl.guns[pl.active];
+    if (!g) return;
+    gunTick(g, dt);
+    if (!best) return;
+    const plan = gunPull(g, pl.guns);
+    if (!plan) return;
+    const mz = gunMuzzle(gx0 + Math.cos(r.ang) * 2.5, gy0, r.ang, GUN_HELD, r.kit.art), out = planShots(plan, r.ang, mz.x, mz.y, R, r.id);
+    for (const s of out) S.shots.push(s);
+    if (out.length) { burst(S, mz.x, mz.y, 3, out[0].col, 40, 'spark', 0.12); snd(S, 'cast', mz.x, mz.y, r.kit); }
+    return;
+  }
   // every few seconds: another gun
   r.swapT -= dt;
   if (r.swapT <= 0) {
@@ -1500,6 +1529,7 @@ function stepShots(S, dt) {
     s.vy += s.grav * dt;
     if (s.drag) { const k = Math.exp(-s.drag * dt); s.vx *= k; s.vy *= k; }
     s.x += s.vx * dt; s.y += s.vy * dt; s.life -= dt; s.spin += dt * 10;
+    if (s.pay && s.trig === 'timer' && (s.age = (s.age || 0) + dt) >= (s.timer || 0)) release(S, s);
     if (s.look === 'flame' && S.rnd() < dt * 20) burst(S, s.x, s.y, 1, '#ff7a1a', 15, 'fire', 0.3);
     if (s.foe) {
       if (S.runners.some(ru => Math.abs(ru.x + PW / 2 - s.x) < 7 && Math.abs(ru.y + PH / 2 - s.y) < 11)) { s.life = 0; burst(S, s.x, s.y, 6, s.col, 60, 'spark', 0.25); snd(S, 'hit', s.x, s.y); }
@@ -1513,7 +1543,8 @@ function stepShots(S, dt) {
     if (s.life <= 0) continue;
     for (const f of S.foes) {
       if (f.hp > 0 && Math.hypot(f.x - S.scroll - s.x, f.ty - s.y) < f.r + s.size) {
-        hitFoe(S, f, s.dmg * 1.5, s.col);
+        hitFoe(S, f, s.real ? s.dmg : s.dmg * 1.5, s.col, s.by);
+        if (s.trig === 'hit') { s.hitFoe = true; shotEnd(S, s); break; }
         snd(S, 'hit', s.x, s.y);
         if (s.fire) f.burn = Math.max(f.burn || 0, kr('fireBurn', S.rnd));
         // a chain bolt leaps on to the next creature
@@ -1541,6 +1572,7 @@ function stepShots(S, dt) {
       } else shotEnd(S, s);
     } else if (s.life <= 0.02 && (s.explode || s.fire)) shotEnd(S, s);
   }
+  for (const s of S.shots.slice()) if (s.pay && s.life <= 0) release(S, s);
   S.shots = S.shots.filter(s => s.life > 0 && s.x > -10 && s.x < TITLE_VW + 30 && s.y < S.vh);
 }
 

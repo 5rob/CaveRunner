@@ -56,7 +56,7 @@ export function AutoScreen() {
         if (where.current === 'level') {
           healRun(run);
           saveAutoRun(run);
-          const S = levelScene(vh, window.__AUTO_LEVEL || levelSeed(run), run.players.length);
+          const S = levelScene(vh, window.__AUTO_LEVEL || levelSeed(run), run.players.length, undefined, run.players);
           scene.current = S;
           return { S, C: titleCam(vh / 2, vh), warm: 0 };
         }

@@ -9,6 +9,8 @@ import { goldScale } from '../data/creatures.js';
 import { PERKS, STAT_PERKS, perkBag, perkPrice } from '../data/perks.js';
 import { stackKey } from '../spells/collection.js';
 import { TITLE_COLS } from '../art/titlescene.js';
+import { MODS, tierOf } from '../spells/mods.js';
+import { resetGun } from '../spells/guns.js';
 
 export const BAG_COLS = 7, BAG_ROWS = 10, BAG_SLOTS = BAG_COLS * BAG_ROWS;
 export const MAX_PLAYERS = 4, GUN_SLOTS = 4, EXO_SLOTS = 5, PERK_SLOTS = 6, CARROT_MAX = 5;
@@ -42,10 +44,35 @@ export function newPlayer(i) {
     perks: [null, null, null, null, null, null], hp: PLAYER_HP, alive: true };
 }
 
-/** tier 1, one player, an empty bag (the starter kit is stage 5); seed: the run's levels (levelSeed)
+// ---- the starter kit (stage 5a; replaces the Scratch Pistol on this branch) ----
+// the shots a starter gun may hold: tier-1 projectiles that hurt on their own (no diggers, teleports or triggers)
+export const STARTER_SHOTS = Object.keys(MODS).filter(k => MODS[k].kind === 'shot' && tierOf(k) === 1 && !MODS[k].off
+  && !MODS[k].trig && !MODS[k].bore && !MODS[k].tele && k !== 'saw');
+// One kit for each new player: a basic gun (3 slots, no shuffle) with a random starter shot in slot 1, and a Buzzsaw
+// for the bag (the first blocked way teaches you to drag it in). Its numbers: the Dev tab Auto, "Auto: guns".
+/** @param {() => number} [rnd] @returns {{ gun: Gun, saw: BagItem }} */
+export function starterKit(rnd = Math.random) {
+  const shot = STARTER_SHOTS[Math.floor(rnd() * STARTER_SHOTS.length)];
+  const gun = resetGun({ name: 'Starter ' + MODS[shot].name, cap: 3, castDelay: DEV.autoGunDelay, recharge: DEV.autoGunRech,
+    manaMax: DEV.autoGunMana, manaRegen: DEV.autoGunRegen, spread: DEV.autoGunSpread, multi: 1, shuffle: false, speedMul: 1,
+    mana: DEV.autoGunMana, slots: [shot, null, null], hue: Math.floor(rnd() * 360) });
+  return { gun, saw: { kind: 'mod', id: 'saw', n: 1 } };
+}
+// a player gets its kit: the gun in its first slot (active), the Buzzsaw into the bag
+/** @param {AutoRun} run @param {RunPlayer} pl @param {() => number} [rnd] */
+function giveKit(run, pl, rnd) {
+  const k = starterKit(rnd);
+  pl.guns[0] = k.gun; pl.active = 0;
+  bagAdd(run, k.saw);
+}
+
+/** tier 1, one player with its starter kit (its gun, a Buzzsaw in the bag); seed: the run's levels (levelSeed)
  * @param {number} [seed] @returns {AutoRun} */
 export function newRun(seed) {
-  return { tier: 1, players: [newPlayer(0)], bag: Array(BAG_SLOTS).fill(null), seed: seed || 1 + Math.floor(Math.random() * 1e6) };
+  /** @type {AutoRun} */
+  const run = { tier: 1, players: [newPlayer(0)], bag: Array(BAG_SLOTS).fill(null), seed: seed || 1 + Math.floor(Math.random() * 1e6) };
+  giveKit(run, run.players[0]);
+  return run;
 }
 
 // ---- between levels (stage 4b) ----
@@ -252,12 +279,13 @@ export function setActive(run, p, gs) {
   return true;
 }
 
-// A new player (up to 4) for one green gem: the player, or null (no green, or the team is full).
+// A new player (up to 4) for one green gem, with its starter kit: the player, or null (no green, or the team is full).
 /** @param {AutoRun} run @returns {RunPlayer | null} */
 export function addPlayer(run) {
   if (run.players.length >= MAX_PLAYERS || !spend(run, 'green', 1)) return null;
   const pl = newPlayer(run.players.length);
   run.players.push(pl);
+  giveKit(run, pl);
   return pl;
 }
 

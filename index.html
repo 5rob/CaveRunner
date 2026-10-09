@@ -1822,7 +1822,16 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "autoLvlEase", g: "autolevel", label: "Pace changes by at most (× pace / s)", min: 0.2, max: 10, step: 0.1 }
   );
   DEV_GROUPS.push(["autolevel", "Auto: level"]);
-  DEV_TABS.splice(DEV_TABS.length - 1, 0, ["auto", "Auto", ["auto", "autohub", "autolevel"]]);
+  Object.assign(DEV_DEFAULTS, { autoGunDelay: 0.25, autoGunRech: 0.8, autoGunMana: 120, autoGunRegen: 40, autoGunSpread: 4 });
+  DEV_META.push(
+    { k: "autoGunDelay", g: "autoguns", label: "Starter gun: cast delay (s)", min: 0.02, max: 2, step: 0.01 },
+    { k: "autoGunRech", g: "autoguns", label: "Starter gun: recharge (s)", min: 0.05, max: 3, step: 0.05 },
+    { k: "autoGunMana", g: "autoguns", label: "Starter gun: mana", min: 20, max: 1e3, step: 10 },
+    { k: "autoGunRegen", g: "autoguns", label: "Starter gun: mana back a second", min: 5, max: 500, step: 5 },
+    { k: "autoGunSpread", g: "autoguns", label: "Starter gun: spread (degrees)", min: 0, max: 30, step: 1 }
+  );
+  DEV_GROUPS.push(["autoguns", "Auto: guns"]);
+  DEV_TABS.splice(DEV_TABS.length - 1, 0, ["auto", "Auto", ["auto", "autohub", "autolevel", "autoguns"]]);
   var DEV_KEY = "caverunner-dev";
   var DEV = Object.assign({}, DEV_DEFAULTS);
   var dueMs = (floor) => floor === 1 ? DEV.due1 * 6e4 : DEADLINE_MS;
@@ -10385,6 +10394,437 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var CRYSTAL_PAL = ["#2a0306", "#6e0a12", "#a3162a", "#ffffff"], CRYSTAL_R = 11;
   var GREEN_PAL = ["#03240c", "#0b6a26", "#1fae46", "#ffffff"];
 
+  // src/spells/cast.js
+  var MIN_CAST = 0.016;
+  var MIN_RECH = 0.05;
+  function effRecharge(g) {
+    const pas = gunPassives(g);
+    return Math.max(MIN_RECH, (g.recharge + pas.rech) * pas.rechMul);
+  }
+  var BOOST_INT = /* @__PURE__ */ new Set(["count", "bounce", "pierce", "chain", "split", "cluster", "multi", "draw", "embers"]);
+  var BOOST_KEEP = /* @__PURE__ */ new Set(["manaMul"]);
+  var boostRound = (key, v) => BOOST_INT.has(key) ? Math.round(v) : v;
+  function boosted(m, k) {
+    if (k === 1) return m;
+    const src = m;
+    const o = Object.assign({}, m);
+    for (const key in src) if (typeof src[key] === "number" && !BOOST_KEEP.has(key)) o[key] = boostRound(key, src[key] * k);
+    if (o.count != null && src.count >= 1) o.count = Math.max(1, o.count);
+    if (src.draw >= 1) o.draw = Math.max(1, o.draw);
+    if (m.f) {
+      const f = m.f;
+      o.f = (s) => {
+        const before = {};
+        for (const key in s) if (typeof s[key] === "number") before[key] = s[key];
+        f(s);
+        for (const key in before) if (s[key] !== before[key]) s[key] = boostRound(key, before[key] + (s[key] - before[key]) * k);
+      };
+    }
+    o.boosted = k;
+    return o;
+  }
+  function blankShot(sm, spread2) {
+    return {
+      dmg: sm.dmg || 0,
+      speed: sm.speed || 0,
+      spread: (sm.spread || 0) + spread2,
+      size: sm.size || 2,
+      life: sm.life || 1,
+      count: sm.count || 1,
+      bounce: sm.bounce || 0,
+      pierce: sm.pierce || 0,
+      explode: sm.explode || 0,
+      grav: sm.grav || 0,
+      homing: sm.homing || 0,
+      accel: sm.accel || 0,
+      bore: sm.bore || 0,
+      recoil: sm.recoil || 0,
+      col: sm.col,
+      knock: sm.knock || 0,
+      crit: 0,
+      boomer: 0,
+      spiral: 0,
+      pong: 0,
+      orbit: 0,
+      follow: 0,
+      followAim: 0,
+      autoaim: 0,
+      assist: 0,
+      only: null,
+      homeR: sm.homeR || 0,
+      flat: 0,
+      eat: sm.eat || 0,
+      pull: sm.pull || 0,
+      split: 0,
+      cluster: 0,
+      bounceFx: null,
+      friendly: 0,
+      chain: sm.chain || 0,
+      fuse: sm.fuse || 0,
+      beam: sm.beam || 0,
+      payload: null,
+      trig: sm.trig || null,
+      timer: sm.timer != null ? sm.timer : TIMER_ADD,
+      reach: sm.reach != null ? sm.reach : 10,
+      // how far ahead of the muzzle it spawns
+      hidden: sm.hidden || 0,
+      // don't draw it (Buzzsaw cuts unseen)
+      drift: sm.drift || 0,
+      pop: sm.pop || 0,
+      // Pollen: slows, floats, locks on; small pop on contact
+      arc: sm.arc || 0,
+      // Lightning: jagged bolt that throws side arcs
+      fire: sm.fire || 0,
+      // sets grass, moss, timber and creatures alight
+      tele: sm.tele || 0,
+      // Teleport Bolt: you go where it stops
+      // v95 Noita flight and looks: air drag (per s), speed kept per bounce, a hole dug where
+      // it stops on rock, a zig-zag swing (rad/s), how it's drawn and trails, and its glow
+      drag: sm.drag || 0,
+      bounceE: sm.bounceE || 0.92,
+      pit: sm.pit || 0,
+      wig: sm.wig || 0,
+      look: sm.look || null,
+      light: sm.light || null,
+      lightR: sm.lightR || 0,
+      embers: sm.embers || 0,
+      // Brimstone: burning sparks thrown out of the blast
+      vmax: sm.vmax || 0,
+      lifeBoom: sm.lifeBoom || 0,
+      // a top speed (rockets); explodes when its time runs out (bombs)
+      sid: sm.id,
+      // which spell it is, for its sound
+      still: sm.kind === "static" ? 1 : 0,
+      field: sm.field || null,
+      r: sm.r || 0
+    };
+  }
+  function planCast(g, others) {
+    const start2 = g.idx, defs = [];
+    let mods = [];
+    const modsOf = [];
+    const holds = [];
+    let addTrig = null;
+    let boost = 1;
+    let multi = g.multi, cost2 = 0, manaMul = 1, ran = false, wrapped = 0;
+    let delay = g.castDelay;
+    let form = null, hp = 0;
+    const acts = [];
+    const timing = (m) => {
+      if (m.setDelay !== void 0) delay = m.setDelay;
+      else delay += (m.kind === "shot" || m.kind === "static" ? m.delay : m.d) || 0;
+    };
+    const live = () => g.slots.filter((id) => id && MODS[id].kind !== "passive");
+    const casts = (id) => id && (MODS[id].kind === "shot" || MODS[id].kind === "static");
+    const rest = () => {
+      let n = 0;
+      for (let i = g.idx; i < g.order.length; i++) if (casts(g.slots[g.order[i]])) n++;
+      return n;
+    };
+    const onGun = () => g.slots.filter(casts).length;
+    let queued = 0;
+    const queue = [];
+    const copiesOf = (m) => {
+      const all = live().filter((id) => !MODS[id].copy);
+      if (m.copy === "first") return all.slice(0, 1);
+      if (m.copy === "last") return all.slice(-1);
+      if (m.copy === "all") return all;
+      if (m.copy === "shots") return all.filter((id) => MODS[id].kind === "shot");
+      if (m.copy === "statics") return all.filter((id) => MODS[id].kind === "static");
+      if (m.copy === "next2") {
+        const out = [];
+        for (let i = g.idx; i < g.order.length && out.length < 2; i++) {
+          const id = g.slots[g.order[i]];
+          if (id && MODS[id].kind !== "passive") out.push(id);
+        }
+        return out;
+      }
+      if (m.copy === "other") {
+        const pool = [];
+        for (const o of others || []) {
+          if (!o || o === g) continue;
+          for (const id of o.slots) if (id && MODS[id].kind !== "passive" && !MODS[id].copy) pool.push(id);
+        }
+        return pool.length ? [pool[Math.floor(Math.random() * pool.length)]] : [];
+      }
+      return [];
+    };
+    const dress = (sm, list) => {
+      const sh = blankShot(sm, g.spread);
+      for (const m of list) if (m.f) m.f(sh);
+      sh.speed *= g.speedMul || 1;
+      if (sh.flat) sh.grav = 0;
+      return sh;
+    };
+    let drawn = 0;
+    const took = /* @__PURE__ */ new Set();
+    const payloadOf = (n, depth) => {
+      const pm = [], out = [];
+      let want = n, pform = null, pAdd = null, pb = 1;
+      while (out.length < want && drawn++ < 96) {
+        if (g.idx >= g.order.length) {
+          ran = true;
+          if (wrapped++) break;
+          g.idx = 0;
+        }
+        if (took.has(g.idx)) {
+          g.idx++;
+          continue;
+        }
+        took.add(g.idx);
+        const id = g.slots[g.order[g.idx++]];
+        if (!id) continue;
+        if (MODS[id].kind === "passive") continue;
+        const m = boosted(MODS[id], pb);
+        pb = m.boost ? m.boost : 1;
+        cost2 += m.mana || 0;
+        if (m.hp) hp += m.hp;
+        if (m.manaMul) manaMul *= m.manaMul;
+        timing(m);
+        if (m.kind === "mod" || m.kind === "util") {
+          if (m.f) pm.push(m);
+          if (m.multi) want += m.multi;
+          if (m.form) pform = m.form;
+          if (m.addTrig) pAdd = m.addTrig;
+          continue;
+        }
+        const sh = dress(m, pm);
+        pm.length = 0;
+        if (pAdd && m.kind === "shot" && !sh.trig) sh.trig = pAdd;
+        pAdd = null;
+        if (sh.trig) sh.payload = depth < 6 ? payloadOf(m.draw || 1, depth + 1) : [];
+        out.push(sh);
+      }
+      if (pform) out.forEach((sh, i) => {
+        sh.ang = pform[i % pform.length];
+      });
+      return out;
+    };
+    for (let guard = 0; defs.length < multi && guard < 96; guard++) {
+      let id, copied = false;
+      if (queue.length) {
+        id = queue.shift();
+        copied = true;
+      } else {
+        if (g.idx >= g.order.length) {
+          ran = true;
+          if (defs.length >= multi || wrapped++ || !defs.length && !mods.length) break;
+          g.idx = 0;
+        }
+        id = g.slots[g.order[g.idx]];
+        took.add(g.idx);
+        g.idx++;
+      }
+      if (!id) continue;
+      if (MODS[id].kind === "passive") continue;
+      const m = boosted(MODS[id], boost);
+      boost = m.boost ? m.boost : 1;
+      if (m.kind === "mod" || m.kind === "util") {
+        cost2 += m.mana || 0;
+        if (m.hp) hp += m.hp;
+        if (m.act) acts.push(m.act);
+        if (m.manaMul) manaMul *= m.manaMul;
+        if (m.f) mods.push(m);
+        if (m.addTrig) addTrig = m.addTrig;
+        if (!copied && !wrapped) {
+          if (m.multi) multi += m.multi;
+          if (m.form) form = m.form;
+          if (m.myriad) {
+            multi += rest();
+            multi = Math.min(multi, queued + onGun());
+          }
+          if (m.copy === "mods") {
+            for (const oid of live()) if (MODS[oid].f && !mods.some((x) => x.id === oid || x === MODS[oid])) mods.push(MODS[oid]);
+          } else if (m.copy) {
+            let room = 0;
+            for (const c of copiesOf(m)) {
+              queue.push(c);
+              if (casts(c)) {
+                room++;
+                queued++;
+              }
+            }
+            if (m.copy === "all" || m.copy === "shots" || m.copy === "statics") multi += room + rest();
+            else if (m.copy === "next2") multi += room * 2;
+            else multi += room;
+            multi = Math.min(multi, queued + onGun());
+          }
+        }
+        timing(m);
+        continue;
+      }
+      defs.push(m);
+      modsOf.push(mods);
+      mods = [];
+      cost2 += m.mana;
+      timing(m);
+      const kind = m.trig || m.kind === "shot" && addTrig || null;
+      if (m.kind === "shot") addTrig = null;
+      if (kind) holds[defs.length - 1] = { kind, list: payloadOf(m.draw || 1, 1) };
+    }
+    const shots = defs.map((sm, i) => {
+      const sh = dress(sm, modsOf[i]);
+      if (holds[i]) {
+        sh.trig = holds[i].kind;
+        sh.payload = holds[i].list;
+      }
+      return sh;
+    });
+    if (form) shots.forEach((sh, i) => {
+      sh.ang = form[i % form.length];
+    });
+    let more = false;
+    for (let i = g.idx; i < g.order.length; i++) {
+      const id = g.slots[g.order[i]];
+      const k = id && MODS[id].kind;
+      if (k === "shot" || k === "static") {
+        more = true;
+        break;
+      }
+    }
+    return {
+      shots,
+      defs,
+      start: start2,
+      cost: cost2 * manaMul,
+      acts,
+      hp,
+      delay: Math.max(MIN_CAST, delay),
+      wrap: ran || !more
+    };
+  }
+  function gunPassives(g) {
+    let rech = 0, rechMul = 1, manaMax = 0, manaRegen = 0, auto = false;
+    for (const id of g.slots) {
+      if (!id) continue;
+      const m = MODS[id];
+      if (m.rech) rech += m.rech;
+      if (m.rechMul) rechMul *= m.rechMul;
+      if (m.manaMax) manaMax += m.manaMax;
+      if (m.manaRegen) manaRegen += m.manaRegen;
+      if (m.auto) auto = true;
+    }
+    return { rech, rechMul, manaMax, manaRegen, auto };
+  }
+
+  // src/art/scenegun.js
+  var SP = 0.5;
+  var SG_LIFE = 1.6;
+  var SG_LIFE_MAX = 4;
+  var SG_SIZE_MAX = 8;
+  var SG_EXPLODE_MAX = 40;
+  var SG_PIT_MAX = 10;
+  var SG_PELLETS = 12;
+  var GUN_TODO = [
+    // statics and fields (they don't fly: planShots leaves them out)
+    "boom",
+    "brim",
+    "crystal",
+    "dormant",
+    "crystal_t",
+    "dormant_t",
+    "stillc",
+    "shieldc",
+    "vigour",
+    "storm",
+    "vacfield",
+    "glitter",
+    // modifiers whose effect the scene's shot model has no field for yet
+    "knock",
+    "damper",
+    "crit",
+    "spiral",
+    "follow",
+    "followaim",
+    "autoaim",
+    "aimassist",
+    "discrim",
+    "eater",
+    "gpower",
+    "cluster",
+    // a passive with no meaning here (the scene always fires on its own)
+    "auto"
+  ];
+  function gunTick(g, dt) {
+    const pas = gunPassives(g);
+    if (!g.order) shuffleOrder(g);
+    g.delayT = (g.delayT || 0) - dt;
+    g.rechT = (g.rechT || 0) - dt;
+    const max = g.manaMax + pas.manaMax;
+    g.mana = Math.min(max, (g.mana == null ? max : g.mana) + (g.manaRegen + pas.manaRegen) * dt);
+  }
+  var gunReady = (g) => (g.delayT || 0) <= 0 && (g.rechT || 0) <= 0;
+  function gunPull(g, others) {
+    if (!gunReady(g)) return null;
+    if (!g.order) shuffleOrder(g);
+    if (g.idx == null) g.idx = 0;
+    const wrap = () => {
+      g.idx = 0;
+      g.rechT = g.rechLen = effRecharge(g);
+      shuffleOrder(g);
+    };
+    const plan = planCast(g, others);
+    if (!plan.shots.length) {
+      wrap();
+      return null;
+    }
+    if ((g.mana || 0) < plan.cost) {
+      g.idx = plan.start;
+      g.delayT = 0.12;
+      return null;
+    }
+    g.mana = (g.mana || 0) - plan.cost;
+    g.delayT = g.delayMax = plan.delay;
+    if (plan.wrap) wrap();
+    return plan;
+  }
+  function shotsOf(sh, ang, x, y, R, by) {
+    const out = [], n = Math.min(SG_PELLETS, Math.max(1, Math.round(sh.count || 1)));
+    const off = (sh.ang || 0) * Math.PI / 180;
+    const life = Math.min(SG_LIFE_MAX, (sh.fuse ? Math.min(sh.life, sh.fuse + 0.5) : sh.life) * SG_LIFE);
+    for (let i = 0; i < n; i++) {
+      const a = ang + off + (R() - 0.5) * (sh.spread || 0) * Math.PI / 180;
+      const v = (sh.speed || 0) * SP;
+      out.push({
+        x,
+        y,
+        vx: Math.cos(a) * v,
+        vy: Math.sin(a) * v,
+        size: Math.max(1, Math.min(SG_SIZE_MAX, sh.size || 2)),
+        col: sh.col || MODS.bolt.col || "#fff",
+        look: sh.look || "",
+        life,
+        foe: false,
+        spin: R() * 6,
+        grav: (sh.grav || 0) * SP,
+        drag: sh.drag || 0,
+        explode: Math.min(SG_EXPLODE_MAX, sh.explode || 0),
+        pit: Math.min(SG_PIT_MAX, Math.max(sh.pit || 0, sh.bore || 0)),
+        fire: sh.fire || 0,
+        bounce: sh.bounce || 0,
+        bounceE: sh.bounceE || 0.92,
+        pierce: sh.pierce || 0,
+        dmg: sh.dmg || 0,
+        homing: sh.homing || 0,
+        accel: sh.accel || 0,
+        vmax: (sh.vmax || 0) * SP,
+        chain: sh.chain || 0,
+        real: true,
+        by: by == null ? -1 : by,
+        trig: sh.trig || null,
+        timer: sh.timer || 0,
+        pay: sh.payload && sh.payload.length ? sh.payload : null,
+        age: 0
+      });
+    }
+    return out;
+  }
+  function planShots(plan, ang, x, y, R, by) {
+    const out = [];
+    for (const sh of plan.shots) if (!sh.still) for (const s of shotsOf(sh, ang, x, y, R, by)) out.push(s);
+    return out;
+  }
+
   // src/art/titlescene.js
   var TITLE_VW = 220;
   var TITLE_FOES = 24;
@@ -10413,7 +10853,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var SCROLL = 34;
   var sv = (S2) => SCROLL * (S2.pace == null ? 1 : S2.pace);
   var GRAV = 260;
-  var SP = 0.5;
+  var SP2 = 0.5;
   var TITLE_SHOTS = [
     "bolt",
     "spark",
@@ -10960,6 +11400,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       S2.zp = opts.level.zp;
       S2.lvl = opts.level;
     }
+    if (opts.team) S2.team = opts.team;
     if (hub) {
       S2.hub = hub;
       S2.still = true;
@@ -11382,8 +11823,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     S2.gold += amount;
     if (S2.coins.length > TITLE_GOLD) S2.coins.splice(0, S2.coins.length - TITLE_GOLD);
   }
-  function hitFoe(S2, f, dmg, col) {
+  function hitFoe(S2, f, dmg, col, by) {
     if (f.hp <= 0) return;
+    const ru = by != null && by >= 0 ? S2.runners[by] : null;
+    if (ru) ru.dealt = (ru.dealt || 0) + Math.min(dmg, f.hp);
     f.hp -= dmg;
     f.flash = 0.08;
     if (f.hp > 0 && dmg >= 0.5) snd(S2, "hurt", f.x - S2.scroll, f.ty, f.k);
@@ -11401,7 +11844,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       burst(S2, s.x, s.y, 4, "#3a3346", 25, "smoke", 1.2);
       S2.shake = Math.min(7, S2.shake + 2);
       titleCarve(S2, s.x, s.y, r);
-      for (const g of S2.foes) if (Math.hypot(g.x - S2.scroll - s.x, g.ty - s.y) < r + g.r) hitFoe(S2, g, 4, s.col);
+      for (const g of S2.foes) if (Math.hypot(g.x - S2.scroll - s.x, g.ty - s.y) < r + g.r) hitFoe(S2, g, s.real ? s.dmg : 4, s.col, s.by);
       for (const p of S2.props) if (p.k === "lamp" && !p.gone && lampHit(p, s.x, s.y, r)) popLamp(S2, p);
     } else if (s.pit) {
       titleCarve(S2, s.x, s.y, s.pit * 0.7);
@@ -11409,6 +11852,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     } else if (!s.hitFoe) snd(S2, "rock", s.x, s.y);
     if (s.fire || s.explode) titleIgnite(S2, s.x, s.y, (s.fire ? 7 : 0) + (s.explode ? s.explode * 0.42 + 5 : 0));
     burst(S2, s.x, s.y, 3, s.col, 50, "spark", 0.25);
+    release(S2, s);
+  }
+  function release(S2, s) {
+    if (!s.pay) return;
+    const pay = s.pay, a = Math.atan2(s.vy, s.vx) || 0;
+    s.pay = null;
+    if (S2.shots.length < 400) for (const sh of pay) for (const n of shotsOf(sh, a, s.x, s.y, S2.rnd, s.by)) S2.shots.push(n);
   }
   function titleStep(S2, dt) {
     dt = Math.min(dt, 0.05);
@@ -11862,6 +12312,22 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       r.ang += d * Math.min(1, dt * 10);
     } else r.ang += (0 - r.ang) * Math.min(1, dt * 4);
     r.face = Math.cos(r.ang) >= 0 ? 1 : -1;
+    const pl = S2.team && S2.team[r.id];
+    if (pl) {
+      const g = pl.alive === false ? null : pl.guns[pl.active];
+      if (!g) return;
+      gunTick(g, dt);
+      if (!best) return;
+      const plan = gunPull(g, pl.guns);
+      if (!plan) return;
+      const mz2 = gunMuzzle(gx0 + Math.cos(r.ang) * 2.5, gy0, r.ang, GUN_HELD, r.kit.art), out = planShots(plan, r.ang, mz2.x, mz2.y, R, r.id);
+      for (const s of out) S2.shots.push(s);
+      if (out.length) {
+        burst(S2, mz2.x, mz2.y, 3, out[0].col, 40, "spark", 0.12);
+        snd(S2, "cast", mz2.x, mz2.y, r.kit);
+      }
+      return;
+    }
     r.swapT -= dt;
     if (r.swapT <= 0) {
       r.kit = titleKit(R);
@@ -11897,7 +12363,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     for (let i = 0; i < n; i++) {
       const spread2 = K.spread * Math.PI / 180;
       const a = r.ang + (n > 1 ? (i / (n - 1) - 0.5) * spread2 * 2 : (R() - 0.5) * spread2);
-      const v = K.speed * SP * (0.9 + R() * 0.2);
+      const v = K.speed * SP2 * (0.9 + R() * 0.2);
       S2.shots.push({
         x: gx,
         y: gy,
@@ -11909,7 +12375,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         life: K.life * 1.6,
         foe: false,
         spin: R() * 6,
-        grav: K.grav * SP,
+        grav: K.grav * SP2,
         drag: K.drag,
         explode: K.explode,
         pit: K.pit,
@@ -11920,7 +12386,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         dmg: K.dmg,
         homing: K.homing,
         accel: K.accel,
-        vmax: K.vmax * SP,
+        vmax: K.vmax * SP2,
         chain: K.chain
       });
     }
@@ -12202,6 +12668,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       s.y += s.vy * dt;
       s.life -= dt;
       s.spin += dt * 10;
+      if (s.pay && s.trig === "timer" && (s.age = (s.age || 0) + dt) >= (s.timer || 0)) release(S2, s);
       if (s.look === "flame" && S2.rnd() < dt * 20) burst(S2, s.x, s.y, 1, "#ff7a1a", 15, "fire", 0.3);
       if (s.foe) {
         if (S2.runners.some((ru) => Math.abs(ru.x + PW / 2 - s.x) < 7 && Math.abs(ru.y + PH / 2 - s.y) < 11)) {
@@ -12225,7 +12692,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (s.life <= 0) continue;
       for (const f of S2.foes) {
         if (f.hp > 0 && Math.hypot(f.x - S2.scroll - s.x, f.ty - s.y) < f.r + s.size) {
-          hitFoe(S2, f, s.dmg * 1.5, s.col);
+          hitFoe(S2, f, s.real ? s.dmg : s.dmg * 1.5, s.col, s.by);
+          if (s.trig === "hit") {
+            s.hitFoe = true;
+            shotEnd(S2, s);
+            break;
+          }
           snd(S2, "hit", s.x, s.y);
           if (s.fire) f.burn = Math.max(f.burn || 0, kr("fireBurn", S2.rnd));
           if (s.chain && !s.explode) {
@@ -12269,6 +12741,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         } else shotEnd(S2, s);
       } else if (s.life <= 0.02 && (s.explode || s.fire)) shotEnd(S2, s);
     }
+    for (const s of S2.shots.slice()) if (s.pay && s.life <= 0) release(S2, s);
     S2.shots = S2.shots.filter((s) => s.life > 0 && s.x > -10 && s.x < TITLE_VW + 30 && s.y < S2.vh);
   }
   function stepFire(S2, dt) {
@@ -20284,319 +20757,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const R = DEV.aaSnapR, k = R > 0 && bd <= R ? DEV.aaPull * (1 - bd / R) : 0;
     const on = bd <= DEV.aaHit || best === held && bd <= DEV.aaHit * DEV.aaHold ? best : null;
     return { x: p.x + (best.x - p.x) * k, y: p.y + (best.ty - p.y) * k, on };
-  }
-
-  // src/spells/cast.js
-  var MIN_CAST = 0.016;
-  var MIN_RECH = 0.05;
-  function effRecharge(g) {
-    const pas = gunPassives(g);
-    return Math.max(MIN_RECH, (g.recharge + pas.rech) * pas.rechMul);
-  }
-  var BOOST_INT = /* @__PURE__ */ new Set(["count", "bounce", "pierce", "chain", "split", "cluster", "multi", "draw", "embers"]);
-  var BOOST_KEEP = /* @__PURE__ */ new Set(["manaMul"]);
-  var boostRound = (key, v) => BOOST_INT.has(key) ? Math.round(v) : v;
-  function boosted(m, k) {
-    if (k === 1) return m;
-    const src = m;
-    const o = Object.assign({}, m);
-    for (const key in src) if (typeof src[key] === "number" && !BOOST_KEEP.has(key)) o[key] = boostRound(key, src[key] * k);
-    if (o.count != null && src.count >= 1) o.count = Math.max(1, o.count);
-    if (src.draw >= 1) o.draw = Math.max(1, o.draw);
-    if (m.f) {
-      const f = m.f;
-      o.f = (s) => {
-        const before = {};
-        for (const key in s) if (typeof s[key] === "number") before[key] = s[key];
-        f(s);
-        for (const key in before) if (s[key] !== before[key]) s[key] = boostRound(key, before[key] + (s[key] - before[key]) * k);
-      };
-    }
-    o.boosted = k;
-    return o;
-  }
-  function blankShot(sm, spread2) {
-    return {
-      dmg: sm.dmg || 0,
-      speed: sm.speed || 0,
-      spread: (sm.spread || 0) + spread2,
-      size: sm.size || 2,
-      life: sm.life || 1,
-      count: sm.count || 1,
-      bounce: sm.bounce || 0,
-      pierce: sm.pierce || 0,
-      explode: sm.explode || 0,
-      grav: sm.grav || 0,
-      homing: sm.homing || 0,
-      accel: sm.accel || 0,
-      bore: sm.bore || 0,
-      recoil: sm.recoil || 0,
-      col: sm.col,
-      knock: sm.knock || 0,
-      crit: 0,
-      boomer: 0,
-      spiral: 0,
-      pong: 0,
-      orbit: 0,
-      follow: 0,
-      followAim: 0,
-      autoaim: 0,
-      assist: 0,
-      only: null,
-      homeR: sm.homeR || 0,
-      flat: 0,
-      eat: sm.eat || 0,
-      pull: sm.pull || 0,
-      split: 0,
-      cluster: 0,
-      bounceFx: null,
-      friendly: 0,
-      chain: sm.chain || 0,
-      fuse: sm.fuse || 0,
-      beam: sm.beam || 0,
-      payload: null,
-      trig: sm.trig || null,
-      timer: sm.timer != null ? sm.timer : TIMER_ADD,
-      reach: sm.reach != null ? sm.reach : 10,
-      // how far ahead of the muzzle it spawns
-      hidden: sm.hidden || 0,
-      // don't draw it (Buzzsaw cuts unseen)
-      drift: sm.drift || 0,
-      pop: sm.pop || 0,
-      // Pollen: slows, floats, locks on; small pop on contact
-      arc: sm.arc || 0,
-      // Lightning: jagged bolt that throws side arcs
-      fire: sm.fire || 0,
-      // sets grass, moss, timber and creatures alight
-      tele: sm.tele || 0,
-      // Teleport Bolt: you go where it stops
-      // v95 Noita flight and looks: air drag (per s), speed kept per bounce, a hole dug where
-      // it stops on rock, a zig-zag swing (rad/s), how it's drawn and trails, and its glow
-      drag: sm.drag || 0,
-      bounceE: sm.bounceE || 0.92,
-      pit: sm.pit || 0,
-      wig: sm.wig || 0,
-      look: sm.look || null,
-      light: sm.light || null,
-      lightR: sm.lightR || 0,
-      embers: sm.embers || 0,
-      // Brimstone: burning sparks thrown out of the blast
-      vmax: sm.vmax || 0,
-      lifeBoom: sm.lifeBoom || 0,
-      // a top speed (rockets); explodes when its time runs out (bombs)
-      sid: sm.id,
-      // which spell it is, for its sound
-      still: sm.kind === "static" ? 1 : 0,
-      field: sm.field || null,
-      r: sm.r || 0
-    };
-  }
-  function planCast(g, others) {
-    const start2 = g.idx, defs = [];
-    let mods = [];
-    const modsOf = [];
-    const holds = [];
-    let addTrig = null;
-    let boost = 1;
-    let multi = g.multi, cost2 = 0, manaMul = 1, ran = false, wrapped = 0;
-    let delay = g.castDelay;
-    let form = null, hp = 0;
-    const acts = [];
-    const timing = (m) => {
-      if (m.setDelay !== void 0) delay = m.setDelay;
-      else delay += (m.kind === "shot" || m.kind === "static" ? m.delay : m.d) || 0;
-    };
-    const live = () => g.slots.filter((id) => id && MODS[id].kind !== "passive");
-    const casts = (id) => id && (MODS[id].kind === "shot" || MODS[id].kind === "static");
-    const rest = () => {
-      let n = 0;
-      for (let i = g.idx; i < g.order.length; i++) if (casts(g.slots[g.order[i]])) n++;
-      return n;
-    };
-    const onGun = () => g.slots.filter(casts).length;
-    let queued = 0;
-    const queue = [];
-    const copiesOf = (m) => {
-      const all = live().filter((id) => !MODS[id].copy);
-      if (m.copy === "first") return all.slice(0, 1);
-      if (m.copy === "last") return all.slice(-1);
-      if (m.copy === "all") return all;
-      if (m.copy === "shots") return all.filter((id) => MODS[id].kind === "shot");
-      if (m.copy === "statics") return all.filter((id) => MODS[id].kind === "static");
-      if (m.copy === "next2") {
-        const out = [];
-        for (let i = g.idx; i < g.order.length && out.length < 2; i++) {
-          const id = g.slots[g.order[i]];
-          if (id && MODS[id].kind !== "passive") out.push(id);
-        }
-        return out;
-      }
-      if (m.copy === "other") {
-        const pool = [];
-        for (const o of others || []) {
-          if (!o || o === g) continue;
-          for (const id of o.slots) if (id && MODS[id].kind !== "passive" && !MODS[id].copy) pool.push(id);
-        }
-        return pool.length ? [pool[Math.floor(Math.random() * pool.length)]] : [];
-      }
-      return [];
-    };
-    const dress = (sm, list) => {
-      const sh = blankShot(sm, g.spread);
-      for (const m of list) if (m.f) m.f(sh);
-      sh.speed *= g.speedMul || 1;
-      if (sh.flat) sh.grav = 0;
-      return sh;
-    };
-    let drawn = 0;
-    const took = /* @__PURE__ */ new Set();
-    const payloadOf = (n, depth) => {
-      const pm = [], out = [];
-      let want = n, pform = null, pAdd = null, pb = 1;
-      while (out.length < want && drawn++ < 96) {
-        if (g.idx >= g.order.length) {
-          ran = true;
-          if (wrapped++) break;
-          g.idx = 0;
-        }
-        if (took.has(g.idx)) {
-          g.idx++;
-          continue;
-        }
-        took.add(g.idx);
-        const id = g.slots[g.order[g.idx++]];
-        if (!id) continue;
-        if (MODS[id].kind === "passive") continue;
-        const m = boosted(MODS[id], pb);
-        pb = m.boost ? m.boost : 1;
-        cost2 += m.mana || 0;
-        if (m.hp) hp += m.hp;
-        if (m.manaMul) manaMul *= m.manaMul;
-        timing(m);
-        if (m.kind === "mod" || m.kind === "util") {
-          if (m.f) pm.push(m);
-          if (m.multi) want += m.multi;
-          if (m.form) pform = m.form;
-          if (m.addTrig) pAdd = m.addTrig;
-          continue;
-        }
-        const sh = dress(m, pm);
-        pm.length = 0;
-        if (pAdd && m.kind === "shot" && !sh.trig) sh.trig = pAdd;
-        pAdd = null;
-        if (sh.trig) sh.payload = depth < 6 ? payloadOf(m.draw || 1, depth + 1) : [];
-        out.push(sh);
-      }
-      if (pform) out.forEach((sh, i) => {
-        sh.ang = pform[i % pform.length];
-      });
-      return out;
-    };
-    for (let guard = 0; defs.length < multi && guard < 96; guard++) {
-      let id, copied = false;
-      if (queue.length) {
-        id = queue.shift();
-        copied = true;
-      } else {
-        if (g.idx >= g.order.length) {
-          ran = true;
-          if (defs.length >= multi || wrapped++ || !defs.length && !mods.length) break;
-          g.idx = 0;
-        }
-        id = g.slots[g.order[g.idx]];
-        took.add(g.idx);
-        g.idx++;
-      }
-      if (!id) continue;
-      if (MODS[id].kind === "passive") continue;
-      const m = boosted(MODS[id], boost);
-      boost = m.boost ? m.boost : 1;
-      if (m.kind === "mod" || m.kind === "util") {
-        cost2 += m.mana || 0;
-        if (m.hp) hp += m.hp;
-        if (m.act) acts.push(m.act);
-        if (m.manaMul) manaMul *= m.manaMul;
-        if (m.f) mods.push(m);
-        if (m.addTrig) addTrig = m.addTrig;
-        if (!copied && !wrapped) {
-          if (m.multi) multi += m.multi;
-          if (m.form) form = m.form;
-          if (m.myriad) {
-            multi += rest();
-            multi = Math.min(multi, queued + onGun());
-          }
-          if (m.copy === "mods") {
-            for (const oid of live()) if (MODS[oid].f && !mods.some((x) => x.id === oid || x === MODS[oid])) mods.push(MODS[oid]);
-          } else if (m.copy) {
-            let room = 0;
-            for (const c of copiesOf(m)) {
-              queue.push(c);
-              if (casts(c)) {
-                room++;
-                queued++;
-              }
-            }
-            if (m.copy === "all" || m.copy === "shots" || m.copy === "statics") multi += room + rest();
-            else if (m.copy === "next2") multi += room * 2;
-            else multi += room;
-            multi = Math.min(multi, queued + onGun());
-          }
-        }
-        timing(m);
-        continue;
-      }
-      defs.push(m);
-      modsOf.push(mods);
-      mods = [];
-      cost2 += m.mana;
-      timing(m);
-      const kind = m.trig || m.kind === "shot" && addTrig || null;
-      if (m.kind === "shot") addTrig = null;
-      if (kind) holds[defs.length - 1] = { kind, list: payloadOf(m.draw || 1, 1) };
-    }
-    const shots = defs.map((sm, i) => {
-      const sh = dress(sm, modsOf[i]);
-      if (holds[i]) {
-        sh.trig = holds[i].kind;
-        sh.payload = holds[i].list;
-      }
-      return sh;
-    });
-    if (form) shots.forEach((sh, i) => {
-      sh.ang = form[i % form.length];
-    });
-    let more = false;
-    for (let i = g.idx; i < g.order.length; i++) {
-      const id = g.slots[g.order[i]];
-      const k = id && MODS[id].kind;
-      if (k === "shot" || k === "static") {
-        more = true;
-        break;
-      }
-    }
-    return {
-      shots,
-      defs,
-      start: start2,
-      cost: cost2 * manaMul,
-      acts,
-      hp,
-      delay: Math.max(MIN_CAST, delay),
-      wrap: ran || !more
-    };
-  }
-  function gunPassives(g) {
-    let rech = 0, rechMul = 1, manaMax = 0, manaRegen = 0, auto = false;
-    for (const id of g.slots) {
-      if (!id) continue;
-      const m = MODS[id];
-      if (m.rech) rech += m.rech;
-      if (m.rechMul) rechMul *= m.rechMul;
-      if (m.manaMax) manaMax += m.manaMax;
-      if (m.manaRegen) manaRegen += m.manaRegen;
-      if (m.auto) auto = true;
-    }
-    return { rech, rechMul, manaMax, manaRegen, auto };
   }
 
   // src/spells/paths.js
@@ -34772,8 +34932,36 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       alive: true
     };
   }
+  var STARTER_SHOTS = Object.keys(MODS).filter((k) => MODS[k].kind === "shot" && tierOf(k) === 1 && !MODS[k].off && !MODS[k].trig && !MODS[k].bore && !MODS[k].tele && k !== "saw");
+  function starterKit(rnd2 = Math.random) {
+    const shot = STARTER_SHOTS[Math.floor(rnd2() * STARTER_SHOTS.length)];
+    const gun = resetGun({
+      name: "Starter " + MODS[shot].name,
+      cap: 3,
+      castDelay: DEV.autoGunDelay,
+      recharge: DEV.autoGunRech,
+      manaMax: DEV.autoGunMana,
+      manaRegen: DEV.autoGunRegen,
+      spread: DEV.autoGunSpread,
+      multi: 1,
+      shuffle: false,
+      speedMul: 1,
+      mana: DEV.autoGunMana,
+      slots: [shot, null, null],
+      hue: Math.floor(rnd2() * 360)
+    });
+    return { gun, saw: { kind: "mod", id: "saw", n: 1 } };
+  }
+  function giveKit(run, pl, rnd2) {
+    const k = starterKit(rnd2);
+    pl.guns[0] = k.gun;
+    pl.active = 0;
+    bagAdd(run, k.saw);
+  }
   function newRun(seed) {
-    return { tier: 1, players: [newPlayer(0)], bag: Array(BAG_SLOTS).fill(null), seed: seed || 1 + Math.floor(Math.random() * 1e6) };
+    const run = { tier: 1, players: [newPlayer(0)], bag: Array(BAG_SLOTS).fill(null), seed: seed || 1 + Math.floor(Math.random() * 1e6) };
+    giveKit(run, run.players[0]);
+    return run;
   }
   function healRun(run) {
     for (const p of run.players) {
@@ -34955,6 +35143,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (run.players.length >= MAX_PLAYERS || !spend(run, "green", 1)) return null;
     const pl = newPlayer(run.players.length);
     run.players.push(pl);
+    giveKit(run, pl);
     return pl;
   }
   function exoBonus(pl) {
@@ -35216,6 +35405,31 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return m && m.takes ? { n: 1, kind: m.takes } : null;
   }
 
+  // src/auto/meters.js
+  var METER_SPAN = 30;
+  var METER_DT = 0.25;
+  function meterNew(span = METER_SPAN, dt = METER_DT) {
+    const n = Math.max(1, Math.round(span / dt));
+    return { dt, n, buf: new Array(n).fill(0), i: 0, t: 0 };
+  }
+  function meterAdd(M, v) {
+    M.buf[M.i] += v;
+  }
+  function meterSet(M, v) {
+    M.buf[M.i] = v;
+  }
+  function meterStep(M, dt, carry = false) {
+    M.t += dt;
+    while (M.t >= M.dt) {
+      M.t -= M.dt;
+      const was = M.buf[M.i];
+      M.i = (M.i + 1) % M.n;
+      M.buf[M.i] = carry ? was : 0;
+    }
+  }
+  var meterValues = (M) => M.buf.slice(M.i + 1).concat(M.buf.slice(0, M.i + 1));
+  var meterSum = (M) => M.buf.reduce((a, b) => a + b, 0);
+
   // src/auto/pilot.js
   var PILOT_BRAKE = 60;
   var PILOT_CRAWL = 0.08;
@@ -35279,9 +35493,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   var levelState = (S2) => S2.lvl && S2.lvl.data || null;
   var levelTeamX = (S2) => S2.scroll + LVL_TEAM;
-  function levelScene(vh, seed, n, plan = levelPlan(seed)) {
-    const L3 = { plan, phase: "arrive", arrived: [], zap: -99, goT: -1, arenaT: -1, bossDead: false, hold: 0, elites: [], chests: [], doneT: -1 };
-    const S2 = titleScene(vh, seed, vh * 0.24, vh * 0.92, { runners: n, level: { zp: plan.zp, step: levelStep, data: L3 } });
+  function levelScene(vh, seed, n, plan = levelPlan(seed), team) {
+    const L3 = { plan, phase: "arrive", arrived: [], zap: -99, goT: -1, arenaT: -1, bossDead: false, hold: 0, elites: [], chests: [], doneT: -1, meters: [] };
+    const S2 = titleScene(vh, seed, vh * 0.24, vh * 0.92, { runners: n, level: { zp: plan.zp, step: levelStep, data: L3 }, team });
+    L3.meters = S2.runners.map(() => ({ dmg: meterNew(), hp: meterNew(), dealt: 0 }));
     S2.pace = 0;
     S2.still = true;
     S2.foes.length = 0;
@@ -35308,10 +35523,23 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const L3 = levelState(S2);
     return !!L3 && L3.phase === "exit" && L3.doneT >= 0;
   }
+  function levelMeters(S2, L3, dt) {
+    S2.runners.forEach((r, i) => {
+      const M = L3.meters[i];
+      if (!M) return;
+      meterStep(M.dmg, dt);
+      meterStep(M.hp, dt, true);
+      meterAdd(M.dmg, (r.dealt || 0) - M.dealt);
+      M.dealt = r.dealt || 0;
+      const pl = S2.team && S2.team[i];
+      if (pl) meterSet(M.hp, pl.alive === false ? 0 : pl.hp);
+    });
+  }
   var stopAt = (L3) => L3.phase === "run" || L3.phase === "arrive" ? L3.plan.arena.mid : L3.plan.exitX;
   function levelStep(S2, dt) {
     const L3 = levelState(S2);
     if (!L3) return;
+    levelMeters(S2, L3, dt);
     const P2 = L3.plan;
     if (L3.phase === "arrive") {
       const fy = titleFloor(P2.padX, S2);
@@ -37093,7 +37321,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           if (where.current === "level") {
             healRun(run);
             saveAutoRun(run);
-            const S3 = levelScene(vh, window.__AUTO_LEVEL || levelSeed(run), run.players.length);
+            const S3 = levelScene(vh, window.__AUTO_LEVEL || levelSeed(run), run.players.length, void 0, run.players);
             scene.current = S3;
             return { S: S3, C: titleCam(vh / 2, vh), warm: 0 };
           }
