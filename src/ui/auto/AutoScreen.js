@@ -10,7 +10,7 @@ import { TITLE_VW, titleCam } from '../../art/titlescene.js';
 import { HUB_W, hubScene, hubStopX } from '../../auto/hub.js';
 import { MODS } from '../../spells/mods.js';
 import { PERKS, STAT_PERKS } from '../../data/perks.js';
-import { BAG_SLOTS, EXO_STATS, MAX_PLAYERS, newRun } from '../../auto/run.js';
+import { BAG_SLOTS, EXO_GLYPH, EXO_STATS, MAX_PLAYERS, newRun } from '../../auto/run.js';
 import { loadAutoRun, saveAutoRun } from '../../auto/save.js';
 import { GunIcon } from '../editor.js';
 import { PauseMenu } from '../pause.js';
@@ -90,7 +90,7 @@ function ItemIcon({ it }) {
   /** @type {{ glyph: string, col: string, tier?: number } | null} */
   let g = null;
   if (it.kind === 'mod') { const m = MODS[it.id || '']; g = m ? { glyph: m.glyph, col: m.col } : { glyph: '?', col: '#888' }; }
-  else if (it.kind === 'exo') { const sp = STAT_PERKS[EXO_STATS[it.cat || 'hp'][0]]; g = { glyph: sp.glyph, col: sp.tint, tier: it.tier }; }
+  else if (it.kind === 'exo') { const sp = STAT_PERKS[EXO_STATS[it.cat || 'hp'][0]]; g = { glyph: EXO_GLYPH[it.cat || 'hp'], col: sp.tint, tier: it.tier }; }
   else if (it.kind === 'perk') { const pk = PERKS[it.id || '']; g = pk ? { glyph: pk.glyph, col: pk.tint } : { glyph: '?', col: '#888' }; }
   else if (it.kind === 'gold') g = { glyph: '●', col: '#ffc93c' };
   else if (it.kind === 'red') g = { glyph: '◆', col: '#ff4f5e' };

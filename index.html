@@ -34704,6 +34704,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var MAX_PLAYERS = 4, GUN_SLOTS = 4, EXO_SLOTS = 5, PERK_SLOTS = 6, CARROT_MAX = 5;
   var EXO_CATS = ["hp", "speed", "jet", "carrot"];
   var EXO_STATS = { hp: ["hp"], speed: ["walk"], jet: ["fuel", "refuel"], carrot: ["carrot"] };
+  var EXO_GLYPH = { hp: "♥", speed: "➤", jet: "🚀", carrot: "⌖" };
   var five2 = (v) => Math.max(5, Math.round(v / 5) * 5);
   var autoGunPrice = (tier) => five2(DEV.autoGunBase * Math.pow(DEV.autoGunGrow, Math.max(0, tier - 1)));
   var autoExoPrice = (tier) => five2(autoGunPrice(tier) * DEV.autoExoPrice / 100);
@@ -34947,7 +34948,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     mod: { hue: "#ff3a4a", icon: "⚙️", takes: "red" },
     perk: { hue: "#3dff7a", icon: "✦", takes: "green" }
   };
-  var HUB_EXO_GLYPHS = EXO_CATS.map((c) => STAT_PERKS[EXO_STATS[c][0]].glyph);
+  var HUB_EXO_GLYPHS = EXO_CATS.map((c) => EXO_GLYPH[c]);
   var HUB_EXO_T = 1.2;
   var hubFloor = (vh) => Math.floor(Math.max(HUB_ROOM + 8, vh * 0.86) / TCELL) * TCELL;
   var hubCell = (fy) => (c, r) => {
@@ -36684,7 +36685,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       g = m ? { glyph: m.glyph, col: m.col } : { glyph: "?", col: "#888" };
     } else if (it.kind === "exo") {
       const sp = STAT_PERKS[EXO_STATS[it.cat || "hp"][0]];
-      g = { glyph: sp.glyph, col: sp.tint, tier: it.tier };
+      g = { glyph: EXO_GLYPH[it.cat || "hp"], col: sp.tint, tier: it.tier };
     } else if (it.kind === "perk") {
       const pk = PERKS[it.id || ""];
       g = pk ? { glyph: pk.glyph, col: pk.tint } : { glyph: "?", col: "#888" };

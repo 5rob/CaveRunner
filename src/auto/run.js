@@ -17,6 +17,9 @@ export const EXO_CATS = ['hp', 'speed', 'jet', 'carrot'];
 // which STAT_PERKS each exo category draws its values from (jet = fuel and recharge together)
 /** @type {Record<ExoCat, string[]>} */
 export const EXO_STATS = { hp: ['hp'], speed: ['walk'], jet: ['fuel', 'refuel'], carrot: ['carrot'] };
+// each category's icon (the bag, the exo machine's hologram): its stat's glyph, but the Jetpack a rocket (owner: ▮ read as a box)
+/** @type {Record<string, string>} */
+export const EXO_GLYPH = { hp: '♥', speed: '➤', jet: '🚀', carrot: '⌖' };
 
 /** @param {number} v */
 const five = v => Math.max(5, Math.round(v / 5) * 5);

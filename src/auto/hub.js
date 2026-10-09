@@ -11,7 +11,7 @@ import { PH, PW } from '../core/consts.js';
 import { STAT_PERKS } from '../data/perks.js';
 import { LIGHT_RUN, LIGHT_WAIT, tubeLevel } from '../world/shoplights.js';
 import { TCELL, TM, titleScene } from '../art/titlescene.js';
-import { EXO_CATS, EXO_STATS } from './run.js';
+import { EXO_CATS, EXO_GLYPH } from './run.js';
 
 export const HUB_EDGE = 56;           // the first and last stop's distance from the strip's ends (world units)
 export const HUB_GAP = 100;           // stop to stop (a machine is 56 wide)
@@ -40,7 +40,7 @@ export const HUB_MACHINES = {
   perk: { hue: '#3dff7a', icon: '✦', takes: 'green' },
 };
 // the exo machine's hologram: each category's glyph (STAT_PERKS), one after another
-export const HUB_EXO_GLYPHS = EXO_CATS.map(c => STAT_PERKS[EXO_STATS[c][0]].glyph);
+export const HUB_EXO_GLYPHS = EXO_CATS.map(c => EXO_GLYPH[c]);
 export const HUB_EXO_T = 1.2;         // each shows this long
 
 // where the floor is (its top, world y) in a view vh high: the room sits low in the view, a whole cell
