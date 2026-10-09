@@ -31,7 +31,7 @@ release loop, testing), then the README of the `src/` folder you're working in.
   lines hang and swing; the game's don't).
 - Known failing as before: logic `spider` ("every roaming spider moves about": 1 still of 69), browser `vendshop`.
 
-## v0.0.175 — the pause menu's Master / FX / Music sliders: on branch `pause-volumes`, screenshot sent, waiting on the owner's OK
+## v0.0.175 — the pause menu's Master / FX / Music sliders: RELEASED on `main` 2026-10-09 (owner OK'd)
 
 CHANGELOG v0.0.175.
 
