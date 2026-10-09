@@ -5,10 +5,15 @@
 // (render/pads.js drawPad, drawPads: the beam, the charge, the flash, the lightning), the ceiling tubes
 // (render/shoplights.js drawTubes: the fixture, the stuttering tube, its cone and pool). Three passes:
 // hubBack (before the dark), hubLight (what the tubes and the pads cut out of the dark) and hubGlow (added light).
+// Stage 3b: each machine's asking price on its coin panel (drawPrice: the blocky font, art/pixfont.js, as main's
+// vending machines), the exit pad's flash (hubExit), and over the exit pad the "Tap A" hint (drawHint: main's machine
+// hint, the green-edged panel, ui's .pickpanel, ported to the canvas).
 // Hashes of time only, never Math.random.
 
 import { gunArtCanvas } from '../../art/gunart.js';
-import { HUB_EXO_GLYPHS, HUB_EXO_T, HUB_MACHINES, HUB_STOPS, HUB_ZAP, hubCharge, hubState, hubTube } from '../../auto/hub.js';
+import { PH } from '../../core/consts.js';
+import { pixText, pixWidth } from '../../art/pixfont.js';
+import { HUB_EXO_GLYPHS, HUB_EXO_T, HUB_MACHINES, HUB_STOPS, HUB_ZAP, hubAtExit, hubCharge, hubExitFlash, hubPrice, hubState, hubTube } from '../../auto/hub.js';
 import { drawBolt } from './looks.js';
 
 const MW = 56, MH = 84;                     // a machine's cabinet (render/shops.js: MACHINE_W, MACHINE_H)
@@ -139,7 +144,7 @@ export function hubBack(ctx, S) {
       ctx.fillRect(st.x - TUBE_W / 2, y + 3, 3, 2); ctx.fillRect(st.x + TUBE_W / 2 - 3, y + 3, 3, 2);
     }
     if (st.id === 'enter' || st.id === 'exit') drawHubPad(ctx, st.x, H.fy, t + i);
-    else drawMachine(ctx, st.x, H.fy, HUB_MACHINES[st.id], t);
+    else { drawMachine(ctx, st.x, H.fy, HUB_MACHINES[st.id], t); drawPrice(ctx, st.x, H.fy, hubPrice(st.id, H.tier), t); }
   });
 }
 
@@ -154,8 +159,9 @@ export function hubLight(S, pool) {
     const lv = hubTube(S, i);
     if (lv > 0) { pool(st.x, H.fy - 40, 70, lv, 0.45); pool(st.x, H.roof + 8, 30, lv * 0.8, 0.3); }
     if (st.id === 'enter' || st.id === 'exit') {
-      const a = st.id === 'enter' ? 0.35 + 0.6 * ch * ch + 0.6 * fl : 0.3;
-      pool(st.x, H.fy - 16, 34 + (st.id === 'enter' ? 30 * fl : 0), Math.min(1, a), 0.2);
+      const f = st.id === 'enter' ? fl : hubExitFlash(S);
+      const a = st.id === 'enter' ? 0.35 + 0.6 * ch * ch + 0.6 * fl : 0.3 + 0.6 * f;
+      pool(st.x, H.fy - 16, 34 + 30 * f, Math.min(1, a), 0.2);
     }
   });
 }
@@ -183,10 +189,11 @@ export function hubGlow(ctx, S) {
       pl.addColorStop(0, `rgba(210,235,255,${0.22 * lv})`); pl.addColorStop(1, 'rgba(210,235,255,0)');
       ctx.fillStyle = pl; ctx.beginPath(); ctx.ellipse(x, fy, TUBE_W / 2 + 26, 7, 0, 0, Math.PI * 2); ctx.fill();
     }
-    if (st.id === 'enter' || st.id === 'exit') padGlow(ctx, S, x, fy, i, st.id === 'enter' ? hubCharge(S) : { ch: 0, fl: 0 }, st.id === 'enter' ? H.zap : -99);
+    if (st.id === 'enter' || st.id === 'exit') padGlow(ctx, S, x, fy, i, st.id === 'enter' ? hubCharge(S) : { ch: 0, fl: hubExitFlash(S) }, st.id === 'enter' ? H.zap : H.exitT);
   });
   ctx.restore();
-  void t;
+  // the leader at the exit pad: "Tap A" over it (not while it flashes)
+  if (hubAtExit(S) && hubExitFlash(S) <= 0) drawHint(ctx, HUB_STOPS[HUB_STOPS.length - 1].x, fy - PH - 8, 'Tap A to exit', t);
 }
 
 // one pad's light (render/pads.js drawPads)
@@ -254,4 +261,56 @@ function padGlow(ctx, S, x, y, seed, c, zapAt) {
     }
     drawBolt(G, pts, '#7cc8ff', 0.9, Math.max(0, 1 - age));
   }
+}
+
+// a gem (the crystal machines' price): a small cut diamond, lit top left
+/** @param {CanvasRenderingContext2D} ctx @param {number} x its middle @param {number} y @param {number} r @param {string} col */
+function drawGem(ctx, x, y, r, col) {
+  ctx.fillStyle = col;
+  ctx.beginPath(); ctx.moveTo(x, y - r); ctx.lineTo(x + r, y); ctx.lineTo(x, y + r); ctx.lineTo(x - r, y); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.6)';
+  ctx.beginPath(); ctx.moveTo(x, y - r); ctx.lineTo(x, y); ctx.lineTo(x - r, y); ctx.closePath(); ctx.fill();
+}
+
+const PRICE_COL = { gold: '#ffc93c', red: '#ff4f5e', green: '#5ee05a' };
+// A machine's price on its coin panel (fy - 22, 12 high): "120 G." in gold, or "1" and a gem in the gem's colour, in the
+// terminal font (main's vend.js: pixText, bold), shrunk to fit, with a faint glow
+/** @param {CanvasRenderingContext2D} ctx @param {number} cx @param {number} fy @param {{ n: number, kind: 'gold' | 'red' | 'green' } | null} p @param {number} t */
+export function drawPrice(ctx, cx, fy, p, t) {
+  if (!p) return;
+  const s = p.kind === 'gold' ? String(p.n).replace(/B(?=(d{3})+(?!d))/g, ',') + ' G.' : String(p.n);
+  const gem = p.kind === 'gold' ? 0 : 5, B = 0.5, room = MW - 26;
+  const px = Math.min(0.9, (room - gem) / Math.max(1, pixWidth(s, 1, B))), ph = px * 1.3;
+  const w = pixWidth(s, px, B) + gem, x0 = cx - w / 2, base = fy - 22 + 6 + 3.5 * ph;
+  const col = PRICE_COL[p.kind];
+  ctx.save();
+  ctx.shadowColor = col; ctx.shadowBlur = 3;
+  ctx.globalAlpha = 0.9 + 0.1 * Math.sin(t * 5 + cx);
+  ctx.fillStyle = col;
+  pixText(ctx, s, x0, base, px, ph, B, 8);
+  ctx.shadowBlur = 0;
+  if (gem) drawGem(ctx, x0 + w - 2, fy - 22 + 6.5, 2.2, col);
+  ctx.restore();
+}
+
+// main's machine hint (ui .buypanel.pickpanel: a dark see-through panel, a green edge, the key in a thin white ring,
+// the words in bold green) at x, its bottom at y, gently bobbing
+/** @param {CanvasRenderingContext2D} ctx @param {number} x @param {number} y @param {string} text @param {number} t */
+export function drawHint(ctx, x, y, text, t) {
+  ctx.save();
+  ctx.font = '700 6px system-ui, sans-serif';
+  const tw = ctx.measureText(text).width, kr = 3.6, w = tw + kr * 2 + 10, h = 12;
+  const l = x - w / 2, top = y - h + Math.sin(t * 3) * 0.6;
+  ctx.fillStyle = 'rgba(18,20,26,0.55)'; ctx.strokeStyle = '#00ff3c'; ctx.lineWidth = 0.5;
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(l, top, w, h, 3); else ctx.rect(l, top, w, h);
+  ctx.fill(); ctx.stroke();
+  const ky = top + h / 2;
+  ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 0.5;
+  ctx.beginPath(); ctx.arc(l + 4 + kr, ky, kr, 0, Math.PI * 2); ctx.stroke();
+  ctx.fillStyle = '#ffffff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = '700 4.6px system-ui, sans-serif'; ctx.fillText('A', l + 4 + kr, ky + 0.2);
+  ctx.fillStyle = '#00ff3c'; ctx.textAlign = 'left';
+  ctx.font = '700 6px system-ui, sans-serif'; ctx.fillText(text, l + 7 + kr * 2, ky + 0.3);
+  ctx.restore();
 }

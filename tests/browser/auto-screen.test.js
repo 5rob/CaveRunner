@@ -55,6 +55,17 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   check('the canvas animates', t0 && Number(t1) > Number(t0), [t0, t1]);
   check('the scene has the run\'s 2 players', await page.evaluate(() => window.__title.S.runners.length === 2));
 
+  // stage 3b: > walks the team to the gun machine (after the teleport-in), A there does nothing
+  for (let i = 0; i < 60 && !(await page.evaluate(() => hubState(window.__title.S).arrived[0])); i++) await page.waitForTimeout(50);
+  const x0 = await page.evaluate(() => window.__title.S.runners[0].x);
+  await page.locator('.abtn.ar').dispatchEvent('pointerdown');
+  let at = -1;
+  for (let i = 0; i < 80 && at !== 1; i++) { await page.waitForTimeout(50); at = await page.evaluate(() => hubState(window.__title.S).at); }
+  const x1 = await page.evaluate(() => window.__title.S.runners[0].x);
+  check('> walks the leader right to the gun machine', at === 1 && x1 > x0 + 50, [at, x0, x1]);
+  await page.locator('.abtn.aa').dispatchEvent('pointerdown');
+  check('A away from the exit does nothing', await page.evaluate(() => hubExitFlash(window.__title.S) === 0));
+
   // the bag scrolls
   const sc = await page.evaluate(() => { const b = document.querySelector('.abag'); const was = b.scrollTop; b.scrollTop = 9999; return { was, now: b.scrollTop, over: b.scrollHeight > b.clientHeight, ta: getComputedStyle(b).touchAction }; });
   check('the bag scrolls up and down (pan-y)', sc.over && sc.now > sc.was && sc.ta === 'pan-y', sc);

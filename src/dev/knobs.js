@@ -597,8 +597,16 @@ DEV_META.push(
   { k: 'autoGreen',    g: 'auto', label: 'Scrap: a green gem (gold × the tier’s gold scale)', min: 0, max: 2000, step: 1 },
   { k: 'autoModGold',  g: 'auto', label: 'Scrap: a gun mod (gold × the tier’s gold scale)', min: 0, max: 500, step: 1 });
 DEV_GROUPS.push(['auto', 'Auto: economy']);
+// CaveRunner Auto's hub (auto/hub.js, stage 3b): the team walking between the stops
+Object.assign(DEV_DEFAULTS, { autoHubWalk: 80, autoHubEase: 26, autoHubOff: 38, autoHubSpace: 16 });
+DEV_META.push(
+  { k: 'autoHubWalk',  g: 'autohub', label: 'Walk speed between stops (world units / s)', min: 10, max: 400, step: 5 },
+  { k: 'autoHubEase',  g: 'autohub', label: 'Eases to a stop over the last (world units)', min: 0, max: 100, step: 1 },
+  { k: 'autoHubOff',   g: 'autohub', label: 'Stops this far beside a machine’s middle (world units)', min: 0, max: 60, step: 1 },
+  { k: 'autoHubSpace', g: 'autohub', label: 'Players line up this far apart (world units)', min: 4, max: 40, step: 1 });
+DEV_GROUPS.push(['autohub', 'Auto: hub']);
 // before the last tab: that one also takes any group in no tab
-DEV_TABS.splice(DEV_TABS.length - 1, 0, ['auto', 'Auto', ['auto']]);
+DEV_TABS.splice(DEV_TABS.length - 1, 0, ['auto', 'Auto', ['auto', 'autohub']]);
 export const DEV_KEY = 'caverunner-dev';
 /** @type {DevKnobs} */
 export const DEV = Object.assign({}, DEV_DEFAULTS);

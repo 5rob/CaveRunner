@@ -3,11 +3,12 @@
 // scene on a canvas, ui/scenecanvas.js runScene: the hub, auto/hub.js, with the run's players; ⏸ top right opens the pause
 // menu), the context nav (the player row: a colour ring per player, an empty circle per locked one),
 // the bag (10 rows × 7, scrolls up and down; the run's items with stack counts) and the buttons
-// (B, <, >, A). Taps on the nav and the buttons do nothing yet (later stages).
+// (B, <, >, A). In the hub (stage 3b) < and > walk the team between the stops (auto/hub.js hubGo), and A at the
+// exit pad flashes it (hubExit; stage 4 starts the level from there). The nav and B do nothing yet (later stages).
 
 import { SFX } from '../../audio/sfx.js';
 import { TITLE_VW, titleCam } from '../../art/titlescene.js';
-import { HUB_W, hubScene, hubStopX } from '../../auto/hub.js';
+import { HUB_W, hubExit, hubGo, hubScene, hubStopX } from '../../auto/hub.js';
 import { MODS } from '../../spells/mods.js';
 import { PERKS, STAT_PERKS } from '../../data/perks.js';
 import { BAG_SLOTS, EXO_GLYPH, EXO_STATS, MAX_PLAYERS, newRun } from '../../auto/run.js';
@@ -35,6 +36,8 @@ export function AutoScreen() {
   const pausedRef = useRef(false);
   pausedRef.current = paused;
   const cvs = useRef(null);
+  /** @type {{ current: import('../../art/titlescene.js').TitleScene | null }} */
+  const scene = useRef(null);
   const input = useRef({ saveRun: () => saveAutoRun(run) });
   useEffect(() => {
     const c = cvs.current;
@@ -44,7 +47,8 @@ export function AutoScreen() {
       make: (w, hh, seed) => {
         const k = w / TITLE_VW, vh = hh / k;
         // the run is in the hub (it always is, for now): the strip, the player teleporting in, the camera on him
-        const S = hubScene(vh, seed, run.players.length);
+        const S = hubScene(vh, seed, run.players.length, run.tier);
+        scene.current = S;
         const C = titleCam(vh / 2, vh);
         C.w = HUB_W; C.zmin = TITLE_VW / HUB_W; C.x = hubStopX('enter') + 40; C.lock = 0;
         return { S, C, warm: 0 };
@@ -55,6 +59,9 @@ export function AutoScreen() {
   /** @param {() => void} fn @returns {(e: any) => void} */
   const tap = fn => e => { e.preventDefault(); fn(); };
   const nothing = () => { SFX.unlock(); SFX.ui('tap'); };
+  /** @param {number} dir */
+  const go = dir => () => { SFX.unlock(); SFX.ui('tap'); if (scene.current) hubGo(scene.current, dir); };
+  const press = () => { SFX.unlock(); SFX.ui('tap'); if (scene.current && hubExit(scene.current)) SFX.fx('open'); };
   return h('div', { className: 'auto' },
     h('div', { className: 'aplay' },
       h('canvas', { ref: cvs, className: 'aplaycvs' }),
@@ -70,9 +77,9 @@ export function AutoScreen() {
       ...Array.from({ length: BAG_SLOTS }, (_, i) => h(BagSlot, { key: i, i, it: run.bag[i] }))),
     h('div', { className: 'abtns' },
       h('button', { className: 'abtn ab', onPointerDown: tap(nothing) }, 'B'),
-      h('button', { className: 'abtn around al', onPointerDown: tap(nothing) }, '<'),
-      h('button', { className: 'abtn around ar', onPointerDown: tap(nothing) }, '>'),
-      h('button', { className: 'abtn aa', onPointerDown: tap(nothing) }, 'A')),
+      h('button', { className: 'abtn around al', onPointerDown: tap(go(-1)) }, '<'),
+      h('button', { className: 'abtn around ar', onPointerDown: tap(go(1)) }, '>'),
+      h('button', { className: 'abtn aa', onPointerDown: tap(press) }, 'A')),
     paused ? h(PauseMenu, { input, label: 'Tier ' + run.tier, close: () => { SFX.fx('close'); setPaused(false); } }) : null);
 }
 

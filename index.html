@@ -1786,7 +1786,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "autoModGold", g: "auto", label: "Scrap: a gun mod (gold × the tier’s gold scale)", min: 0, max: 500, step: 1 }
   );
   DEV_GROUPS.push(["auto", "Auto: economy"]);
-  DEV_TABS.splice(DEV_TABS.length - 1, 0, ["auto", "Auto", ["auto"]]);
+  Object.assign(DEV_DEFAULTS, { autoHubWalk: 80, autoHubEase: 26, autoHubOff: 38, autoHubSpace: 16 });
+  DEV_META.push(
+    { k: "autoHubWalk", g: "autohub", label: "Walk speed between stops (world units / s)", min: 10, max: 400, step: 5 },
+    { k: "autoHubEase", g: "autohub", label: "Eases to a stop over the last (world units)", min: 0, max: 100, step: 1 },
+    { k: "autoHubOff", g: "autohub", label: "Stops this far beside a machine’s middle (world units)", min: 0, max: 60, step: 1 },
+    { k: "autoHubSpace", g: "autohub", label: "Players line up this far apart (world units)", min: 4, max: 40, step: 1 }
+  );
+  DEV_GROUPS.push(["autohub", "Auto: hub"]);
+  DEV_TABS.splice(DEV_TABS.length - 1, 0, ["auto", "Auto", ["auto", "autohub"]]);
   var DEV_KEY = "caverunner-dev";
   var DEV = Object.assign({}, DEV_DEFAULTS);
   var dueMs = (floor) => floor === 1 ? DEV.due1 * 6e4 : DEADLINE_MS;
@@ -34957,9 +34965,21 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return r >= fr - 14 ? TM.SWALL : TM.BWALL;
   };
   var hubState = (S2) => S2.hub && S2.hub.data;
-  function hubScene(vh, seed, n) {
+  function hubScene(vh, seed, n, tier = 1) {
     const fy = hubFloor(vh);
-    const H = { fy, roof: fy - HUB_ROOM, on: HUB_STOPS.map(() => -1), zap: -99, arrived: [] };
+    const H = {
+      fy,
+      roof: fy - HUB_ROOM,
+      on: HUB_STOPS.map(() => -1),
+      zap: -99,
+      arrived: [],
+      tier,
+      lx: hubStopX("enter"),
+      at: 0,
+      goal: 0,
+      dir: 1,
+      exitT: -99
+    };
     const S2 = titleScene(vh, seed, fy - HUB_ROOM, fy, { runners: n, hub: { w: HUB_W / TCELL, cell: hubCell(fy), step: hubStep, data: H } });
     S2.runners.forEach((r, i) => {
       r.x = hubStopX("enter") - PW / 2 - i * 18;
@@ -35007,13 +35027,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       r.vy = 0;
       r.ground = true;
       r.mode = "run";
-      r.stand = true;
     });
+    hubWalk(S2, H, dt);
     for (let i = 0; i < H.on.length; i++) {
       const at = LIGHT_WAIT + i * LIGHT_RUN * 1.6;
       if (H.on[i] < 0 && S2.t >= at) H.on[i] = at;
     }
-    void dt;
   }
   function hubTube(S2, i) {
     const H = hubState(S2);
@@ -35022,6 +35041,75 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function hubCharge(S2) {
     const t = S2.t;
     return { ch: t < HUB_ARRIVE ? Math.max(0, t / HUB_ARRIVE) : 0, fl: t >= HUB_ARRIVE ? Math.max(0, 1 - (t - HUB_ARRIVE) / HUB_FLASH) : 0 };
+  }
+  function hubStandX(i, dir) {
+    const st = HUB_STOPS[i];
+    return st.id === "enter" || st.id === "exit" ? st.x : st.x - dir * DEV.autoHubOff;
+  }
+  function hubGo(S2, dir) {
+    const H = hubState(S2);
+    if (!H || !H.arrived[0]) return false;
+    const goal = Math.max(0, Math.min(HUB_STOPS.length - 1, H.goal + dir));
+    if (goal === H.goal && H.at === goal) return false;
+    H.goal = goal;
+    H.dir = Math.sign(hubStandX(goal, dir) - H.lx) || dir;
+    if (Math.abs(hubStandX(goal, H.dir) - H.lx) > 0.01) H.at = -1;
+    return true;
+  }
+  function walkTo(x, tx2, dt, k = 1, ease = DEV.autoHubEase) {
+    const d = tx2 - x, a = Math.abs(d);
+    if (a < 0.05) return d;
+    const v = DEV.autoHubWalk * k * Math.min(1, Math.max(0.12, a / Math.max(1, ease)));
+    return Math.sign(d) * Math.min(a, v * dt);
+  }
+  var IN_L = HUB_WALL * TCELL + PW, IN_R = HUB_W - HUB_WALL * TCELL - PW;
+  function hubWalk(S2, H, dt) {
+    const L3 = S2.runners[0];
+    if (!L3 || !H.arrived[0]) return;
+    if (H.at < 0) {
+      const tx2 = hubStandX(H.goal, H.dir);
+      H.lx += walkTo(H.lx, tx2, dt);
+      if (Math.abs(tx2 - H.lx) < 0.05) {
+        H.lx = tx2;
+        H.at = H.goal;
+      }
+    }
+    S2.runners.forEach((r, i) => {
+      if (!H.arrived[i]) return;
+      const cx = r.x + PW / 2;
+      const tx2 = i === 0 ? H.lx : Math.max(IN_L, Math.min(IN_R, H.lx - H.dir * DEV.autoHubSpace * i));
+      const mv = i === 0 ? tx2 - cx : walkTo(cx, tx2, dt, 1.25, Math.min(DEV.autoHubEase, 6));
+      r.x += mv;
+      const moving = Math.abs(mv) > 1e-3;
+      r.vx = moving ? mv / Math.max(dt, 1e-3) : 0;
+      if (moving) {
+        r.face = Math.sign(mv);
+        r.gait += Math.abs(mv) * 0.3;
+      }
+      r.stand = !moving;
+    });
+  }
+  function hubAtExit(S2) {
+    const H = hubState(S2);
+    return !!H && H.at === HUB_STOPS.length - 1;
+  }
+  function hubExit(S2) {
+    const H = hubState(S2);
+    if (!H || !hubAtExit(S2)) return false;
+    H.exitT = S2.t;
+    S2.flash = Math.max(S2.flash, 0.5);
+    S2.snd.push({ k: "arc", x: hubStopX("exit"), y: H.fy - PH / 2 });
+    return true;
+  }
+  function hubExitFlash(S2) {
+    const H = hubState(S2);
+    return H ? Math.max(0, Math.min(1, 1 - (S2.t - H.exitT) / HUB_FLASH)) : 0;
+  }
+  function hubPrice(id, tier) {
+    if (id === "gun") return { n: autoGunPrice(tier), kind: "gold" };
+    if (id === "exo") return { n: autoExoPrice(tier), kind: "gold" };
+    const m = HUB_MACHINES[id];
+    return m && m.takes ? { n: 1, kind: m.takes } : null;
   }
 
   // src/auto/save.js
@@ -35232,7 +35320,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         ctx.fillRect(st.x + TUBE_W2 / 2 - 3, y + 3, 3, 2);
       }
       if (st.id === "enter" || st.id === "exit") drawHubPad(ctx, st.x, H.fy, t + i);
-      else drawMachine(ctx, st.x, H.fy, HUB_MACHINES[st.id], t);
+      else {
+        drawMachine(ctx, st.x, H.fy, HUB_MACHINES[st.id], t);
+        drawPrice(ctx, st.x, H.fy, hubPrice(st.id, H.tier), t);
+      }
     });
   }
   function hubLight(S2, pool) {
@@ -35246,8 +35337,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         pool(st.x, H.roof + 8, 30, lv * 0.8, 0.3);
       }
       if (st.id === "enter" || st.id === "exit") {
-        const a = st.id === "enter" ? 0.35 + 0.6 * ch * ch + 0.6 * fl : 0.3;
-        pool(st.x, H.fy - 16, 34 + (st.id === "enter" ? 30 * fl : 0), Math.min(1, a), 0.2);
+        const f = st.id === "enter" ? fl : hubExitFlash(S2);
+        const a = st.id === "enter" ? 0.35 + 0.6 * ch * ch + 0.6 * fl : 0.3 + 0.6 * f;
+        pool(st.x, H.fy - 16, 34 + 30 * f, Math.min(1, a), 0.2);
       }
     });
   }
@@ -35284,10 +35376,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         ctx.ellipse(x, fy, TUBE_W2 / 2 + 26, 7, 0, 0, Math.PI * 2);
         ctx.fill();
       }
-      if (st.id === "enter" || st.id === "exit") padGlow(ctx, S2, x, fy, i, st.id === "enter" ? hubCharge(S2) : { ch: 0, fl: 0 }, st.id === "enter" ? H.zap : -99);
+      if (st.id === "enter" || st.id === "exit") padGlow(ctx, S2, x, fy, i, st.id === "enter" ? hubCharge(S2) : { ch: 0, fl: hubExitFlash(S2) }, st.id === "enter" ? H.zap : H.exitT);
     });
     ctx.restore();
-    void t;
+    if (hubAtExit(S2) && hubExitFlash(S2) <= 0) drawHint(ctx, HUB_STOPS[HUB_STOPS.length - 1].x, fy - PH - 8, "Tap A to exit", t);
   }
   function padGlow(ctx, S2, x, y, seed, c, zapAt) {
     const t = S2.t, { ch, fl } = c;
@@ -35357,6 +35449,71 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
       drawBolt(G, pts, "#7cc8ff", 0.9, Math.max(0, 1 - age));
     }
+  }
+  function drawGem(ctx, x, y, r, col) {
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    ctx.moveTo(x, y - r);
+    ctx.lineTo(x + r, y);
+    ctx.lineTo(x, y + r);
+    ctx.lineTo(x - r, y);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,0.6)";
+    ctx.beginPath();
+    ctx.moveTo(x, y - r);
+    ctx.lineTo(x, y);
+    ctx.lineTo(x - r, y);
+    ctx.closePath();
+    ctx.fill();
+  }
+  var PRICE_COL = { gold: "#ffc93c", red: "#ff4f5e", green: "#5ee05a" };
+  function drawPrice(ctx, cx, fy, p, t) {
+    if (!p) return;
+    const s = p.kind === "gold" ? String(p.n).replace(/B(?=(d{3})+(?!d))/g, ",") + " G." : String(p.n);
+    const gem = p.kind === "gold" ? 0 : 5, B = 0.5, room = MW - 26;
+    const px = Math.min(0.9, (room - gem) / Math.max(1, pixWidth(s, 1, B))), ph = px * 1.3;
+    const w = pixWidth(s, px, B) + gem, x0 = cx - w / 2, base = fy - 22 + 6 + 3.5 * ph;
+    const col = PRICE_COL[p.kind];
+    ctx.save();
+    ctx.shadowColor = col;
+    ctx.shadowBlur = 3;
+    ctx.globalAlpha = 0.9 + 0.1 * Math.sin(t * 5 + cx);
+    ctx.fillStyle = col;
+    pixText(ctx, s, x0, base, px, ph, B, 8);
+    ctx.shadowBlur = 0;
+    if (gem) drawGem(ctx, x0 + w - 2, fy - 22 + 6.5, 2.2, col);
+    ctx.restore();
+  }
+  function drawHint(ctx, x, y, text, t) {
+    ctx.save();
+    ctx.font = "700 6px system-ui, sans-serif";
+    const tw = ctx.measureText(text).width, kr2 = 3.6, w = tw + kr2 * 2 + 10, h4 = 12;
+    const l = x - w / 2, top = y - h4 + Math.sin(t * 3) * 0.6;
+    ctx.fillStyle = "rgba(18,20,26,0.55)";
+    ctx.strokeStyle = "#00ff3c";
+    ctx.lineWidth = 0.5;
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(l, top, w, h4, 3);
+    else ctx.rect(l, top, w, h4);
+    ctx.fill();
+    ctx.stroke();
+    const ky = top + h4 / 2;
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 0.5;
+    ctx.beginPath();
+    ctx.arc(l + 4 + kr2, ky, kr2, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = "#ffffff";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font = "700 4.6px system-ui, sans-serif";
+    ctx.fillText("A", l + 4 + kr2, ky + 0.2);
+    ctx.fillStyle = "#00ff3c";
+    ctx.textAlign = "left";
+    ctx.font = "700 6px system-ui, sans-serif";
+    ctx.fillText(text, l + 7 + kr2 * 2, ky + 0.3);
+    ctx.restore();
   }
 
   // src/game/render/titledraw.js
@@ -36593,6 +36750,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const pausedRef = useRef(false);
     pausedRef.current = paused;
     const cvs = useRef(null);
+    const scene = useRef(null);
     const input = useRef({ saveRun: () => saveAutoRun(run) });
     useEffect(() => {
       const c = cvs.current;
@@ -36601,7 +36759,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         size: () => ({ w: c.clientWidth, hh: c.clientHeight }),
         make: (w, hh, seed) => {
           const k = w / TITLE_VW, vh = hh / k;
-          const S2 = hubScene(vh, seed, run.players.length);
+          const S2 = hubScene(vh, seed, run.players.length, run.tier);
+          scene.current = S2;
           const C = titleCam(vh / 2, vh);
           C.w = HUB_W;
           C.zmin = TITLE_VW / HUB_W;
@@ -36619,6 +36778,16 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const nothing = () => {
       SFX.unlock();
       SFX.ui("tap");
+    };
+    const go = (dir) => () => {
+      SFX.unlock();
+      SFX.ui("tap");
+      if (scene.current) hubGo(scene.current, dir);
+    };
+    const press = () => {
+      SFX.unlock();
+      SFX.ui("tap");
+      if (scene.current && hubExit(scene.current)) SFX.fx("open");
     };
     return h(
       "div",
@@ -36659,9 +36828,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         "div",
         { className: "abtns" },
         h("button", { className: "abtn ab", onPointerDown: tap(nothing) }, "B"),
-        h("button", { className: "abtn around al", onPointerDown: tap(nothing) }, "<"),
-        h("button", { className: "abtn around ar", onPointerDown: tap(nothing) }, ">"),
-        h("button", { className: "abtn aa", onPointerDown: tap(nothing) }, "A")
+        h("button", { className: "abtn around al", onPointerDown: tap(go(-1)) }, "<"),
+        h("button", { className: "abtn around ar", onPointerDown: tap(go(1)) }, ">"),
+        h("button", { className: "abtn aa", onPointerDown: tap(press) }, "A")
       ),
       paused ? h(PauseMenu, { input, label: "Tier " + run.tier, close: () => {
         SFX.fx("close");
