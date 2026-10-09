@@ -32,7 +32,7 @@ check('mods: rarer than gold, more common than green (one green a level)', modRa
 D.autoLvlMin = 0.25; D.autoFoeElites = 0; D.autoLvlBossT = 600; D.autoFoeDmg = 0; D.autoLootMod = 100;
 const until = (S, done, cap) => { for (let i = 0; i < cap; i++) { if (done(S)) return i; G.titleStep(S, dt); } return done(S) ? cap : -1; };
 const run = G.newRun(5);
-const S = G.levelScene(190, 33, 1, G.levelPlan(33), run.players, 2, run);
+const S = G.levelScene(190, 33, 1, G.levelPlan(33, undefined, 0), run.players, 2, run);
 const L = G.levelState(S);
 check('the team is in', until(S, s => L.phase === 'run', 600) >= 0);
 const r0 = S.runners[0];

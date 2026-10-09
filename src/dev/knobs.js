@@ -620,6 +620,16 @@ DEV_META.push(
   { k: 'autoLvlBossT',  g: 'autolevel', label: 'Boss arena: given up after (s; a fallback if the boss can’t be reached)', min: 5, max: 600, step: 5 },
   { k: 'autoLvlEase',   g: 'autolevel', label: 'Pace changes by at most (× pace / s)', min: 0.2, max: 10, step: 0.1 });
 DEV_GROUPS.push(['autolevel', 'Auto: level']);
+// CaveRunner Auto's blocked zones (auto/blocked.js, stage 6b)
+Object.assign(DEV_DEFAULTS, { autoBlockN: 2, autoBlockMin: 0.2, autoBlockMax: 1, autoBlockFull: 0.85, autoWebSlow: 0.2, autoWebHalt: 0.25 });
+DEV_META.push(
+  { k: 'autoBlockN',    g: 'autoblocks', label: 'Blocked zones a level (a fraction: a chance of one more)', min: 0, max: 8, step: 0.1 },
+  { k: 'autoBlockMin',  g: 'autoblocks', label: 'Severity: at least (0 a low lump … 1 blocked all the way)', min: 0, max: 1, step: 0.05 },
+  { k: 'autoBlockMax',  g: 'autoblocks', label: 'Severity: at most', min: 0, max: 1, step: 0.05 },
+  { k: 'autoBlockFull', g: 'autoblocks', label: 'Severity from which it’s blocked all the way (no jetting over)', min: 0.1, max: 1, step: 0.05 },
+  { k: 'autoWebSlow',   g: 'autoblocks', label: 'Each web line a player is caught in slows him by (× pace; they multiply)', min: 0, max: 0.9, step: 0.01 },
+  { k: 'autoWebHalt',   g: 'autoblocks', label: 'Slowed below this the team halts (clears the webs, or is blocked)', min: 0, max: 1, step: 0.01 });
+DEV_GROUPS.push(['autoblocks', 'Auto: blocks']);
 // CaveRunner Auto's starter gun (auto/run.js starterKit, stage 5a): its numbers, for each new player
 Object.assign(DEV_DEFAULTS, { autoGunDelay: 0.25, autoGunRech: 0.8, autoGunMana: 120, autoGunRegen: 40, autoGunSpread: 4 });
 DEV_META.push(
@@ -654,7 +664,7 @@ DEV_META.push(
   { k: 'autoLootBossGold',  g: 'autoloot', label: 'The boss’s gold (× a normal kill’s)', min: 1, max: 100, step: 1 });
 DEV_GROUPS.push(['autoloot', 'Auto: loot']);
 // before the last tab: that one also takes any group in no tab
-DEV_TABS.splice(DEV_TABS.length - 1, 0, ['auto', 'Auto', ['auto', 'autohub', 'autolevel', 'autoguns', 'autofoes', 'autoloot']]);
+DEV_TABS.splice(DEV_TABS.length - 1, 0, ['auto', 'Auto', ['auto', 'autohub', 'autolevel', 'autoblocks', 'autoguns', 'autofoes', 'autoloot']]);
 export const DEV_KEY = 'caverunner-dev';
 /** @type {DevKnobs} */
 export const DEV = Object.assign({}, DEV_DEFAULTS);

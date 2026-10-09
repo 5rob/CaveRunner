@@ -68,6 +68,7 @@ export * from './auto/meters.js';
 export * from './auto/clear.js';
 export * from './auto/enemies.js';
 export * from './auto/loot.js';
+export * from './auto/blocked.js';
 export * from './art/scenegun.js';
 export * from './audio/recipes.js';
 export * from './audio/sfx.js';

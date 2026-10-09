@@ -55,10 +55,11 @@ export const TITLE_AIM = 90;         // he shoots only at creatures this near (w
 // beamD (a timber frame's lit and shaded wood, burn away), grass (the bright tufts on a moss patch),
 // rub and rubM (a rubble mound, its mossy top)
 // STEEL, BWALL (a brick back wall, open) and SWALL (a steel back wall, open): the auto hub's room (auto/hub.js)
-export const TM = { AIR: 0, ROCK: 1, MOSS: 2, BRICK: 3, WOOD: 4, CHAR: 5, BEAM: 6, BEAMD: 7, GRASS: 8, RUB: 9, RUBM: 10, STEEL: 11, BWALL: 12, SWALL: 13 };
-export const TITLE_SOLID = [0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0];
+export const TM = { AIR: 0, ROCK: 1, MOSS: 2, BRICK: 3, WOOD: 4, CHAR: 5, BEAM: 6, BEAMD: 7, GRASS: 8, RUB: 9, RUBM: 10, STEEL: 11, BWALL: 12, SWALL: 13,
+  ROOT: 14, SILT: 15, SILTD: 16, IRON: 17, IROND: 18, CRYS: 19, CRYSL: 20, NEST: 21, NESTD: 22 };   // 14 on: CaveRunner Auto's blocked zones (auto/blocked.js)
+export const TITLE_SOLID = [0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1];
 const SOLID = TITLE_SOLID;
-const FUEL = [0, 0, 2, 0, 3, 0, 3, 3, 1, 0, 1, 0, 0, 0];   // the fuel kind each burns as (world/fire.js: 1 grass, 2 moss, 3 timber)
+const FUEL = [0, 0, 2, 0, 3, 0, 3, 3, 1, 0, 1, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 1, 1];   // the fuel kind each burns as (world/fire.js: 1 grass, 2 moss, 3 timber)
 export const FRAME_GAP = 72;          // the built-up layers: a timber frame every this far (world units)
 export const FRAME_W = 36;            // its width, post to post
 const SCROLL = 34;                    // the world's scroll speed (world units / s)
@@ -125,12 +126,15 @@ export const TITLE_HOME = {
  *   fire: TFire[], dirty: number[][], dirtyAll: boolean, carved: number, burnt: number, swaps: number, groundT: number, flyT: number, kinds: Record<string, number>,
  *   webs: WebLine[], cut: number, lineT: number, silk: { x: number, y: number, ax: number, ay: number, vx: number, vy: number, life: number }[],
  *   nav: { F: any, fx: number, fy: number, t: number }, fireAcc: number, fireN: number, burning: Set<number>, gotN: number, pops: number, lampsPopped: number, kitNames: Set<string>,
- *   digT: number, digs: number, digWhy: Record<string, number>, still?: boolean, zp: TitlePlan, snd: TSnd[], hub?: TitleHub, lvl?: TitleLevel, pace?: number, team?: RunPlayer[], blocked?: number, tier?: number, loot?: TLoot[] }} TitleScene */
+ *   digT: number, digs: number, digWhy: Record<string, number>, still?: boolean, zp: TitlePlan, snd: TSnd[], hub?: TitleHub, lvl?: TitleLevel, pace?: number, team?: RunPlayer[], blocked?: number, blockedKind?: string, tier?: number, loot?: TLoot[] }} TitleScene */
 // a finite level in the scrolling ring (CaveRunner Auto, auto/level.js levelScene): zp its plan (made whole up front); step runs
 // after titleStep's own; data is the level's own state. S.pace (0..) scales the scroll (auto/pilot.js)
 // hurt(S, i, dmg): a creature hit player i for dmg (its kind's damage; auto/enemies.js levelHurt)
 /** @typedef {{ zp: TitlePlan, step?: (S: TitleScene, dt: number) => void, data?: any, hurt?: (S: TitleScene, i: number, dmg: number) => void,
- *   loot?: (S: TitleScene, f: Enemy) => BagItem[], fits?: (S: TitleScene, it: BagItem) => boolean, take?: (S: TitleScene, it: BagItem) => boolean, lootCol?: (it: BagItem) => string }} TitleLevel */
+ *   loot?: (S: TitleScene, f: Enemy) => BagItem[], fits?: (S: TitleScene, it: BagItem) => boolean, take?: (S: TitleScene, it: BagItem) => boolean, lootCol?: (it: BagItem) => string,
+ *   blockCell?: (B: import('../auto/blocked.js').ZoneBlock, wx: number, y: number, cy: number, fy: number, cur: number) => number,
+ *   blockCol?: (S: TitleScene, B: import('../auto/blocked.js').ZoneBlock, c: number, wx: number, cy: number, fy: number) => void, blockKind?: (S: TitleScene, wx: number) => string }} TitleLevel */
+// blockCell, blockCol, blockKind (CaveRunner Auto stage 6b, auto/blocked.js): a blocked zone's cells and web lines, and what a dig goes into
 // loot (CaveRunner Auto, auto/level.js): what a kill drops (its gold spills as nuggets, the rest as TLoot pickups); fits: would it go in the bag;
 // take: put it in the bag (false: it didn't fit). A pickup: the item, its colour, nopull (s before it can fly), wait (the bag is full)
 /** @typedef {{ x: number, y: number, vx: number, vy: number, it: BagItem, col: string, t: number, nopull: number, wait?: boolean, fly?: boolean, amount?: number }} TLoot */
@@ -139,7 +143,7 @@ export const TITLE_HOME = {
 /** @typedef {{ k: string, x: number, y: number, a?: any }} TSnd */
 // a zone of the plan (titlePlan): its kind, x0..x1, i its place in the plan; its roof's and floor's offset (co, fo), hills' height (ca, fa),
 // stretch (cf, ff) and phases (ph); dens its plants and webs
-/** @typedef {{ z: string, x0: number, x1: number, i: number, ph: number[], ca: number, fa: number, cf: number, ff: number, co: number, fo: number, dens: number, mine?: TMine, flat?: boolean }} TZone */
+/** @typedef {{ z: string, x0: number, x1: number, i: number, ph: number[], ca: number, fa: number, cf: number, ff: number, co: number, fo: number, dens: number, mine?: TMine, flat?: boolean, blk?: import('../auto/blocked.js').ZoneBlock }} TZone */
 // (flat: a level's pad or arena, auto/level.js: no rubble, no ledges)
 // a mine works' own layout (v0.0.170, mkMine): n tunnels stacked (0 the lowest), `ein` the one the cave comes in at, `eout`
 // the one it leaves by; `lf` how high the stack sits (0 low .. 1 high, where there's room); `sh` the rock shelf over each;
@@ -406,6 +410,10 @@ function genCol(S, c) {
   const lk = Math.floor(wx / 90), lx0 = lk * 90 + 15 + h2(lk, 8) * 35, lw = 14 + h2(lk, 9) * 14;
   const lmid = lx0 + lw / 2, lc = titleCeil(lmid, S), lf = titleFloor(lmid, S), ly = lc + 14 + h2(lk, 10) * Math.max(0, lf - lc - 52);
   const ledge = !Zn.flat && (z === 'moss' || z === 'grove' || z === 'webs') && built(lmid, S) === 0 && h2(lk, 11) < 0.5 && wx >= lx0 && wx < lx0 + lw && lf - lc > 60;
+  // a blocked zone (CaveRunner Auto, auto/blocked.js): its blockage over the open band (a mine's: its tunnels' stack)
+  const bk0 = Zn.blk, bk = bk0 && S.lvl && S.lvl.blockCell ? S.lvl.blockCell : null;
+  const by0 = M && bands.length ? bands[bands.length - 1].c - 14 : cy, by1 = M && bands.length ? bands[0].f + 3 : fy;
+  if (bk0 && S.lvl && S.lvl.blockCol) S.lvl.blockCol(S, bk0, c, wx, by0, by1);
   for (let r = 0; r < S.rows; r++) {
     const y = (r + 0.5) * TCELL, zc = titleZoneAt(wx, y, S);   // the skin (moss or bricks) frays at a border
     let m = TM.AIR;
@@ -430,6 +438,7 @@ function genCol(S, c) {
     if (m === TM.AIR && y >= fy - rub && y < fy) m = y < fy - rub + 2 && h2(c, r) < 0.7 ? TM.RUBM : TM.RUB;
     if (m === TM.AIR && y >= fy - tuft * TCELL && y < fy && zc !== 'paved') m = TM.GRASS;
     if (z === 'winding' && TITLE_SOLID[m] && windAir(wx, y, Zn, S)) m = TM.AIR;
+    if (bk) m = bk(bk0, wx, y, by0, by1, m);
     S.cells[base + r] = m;
   }
   // a lantern hanging on its chain under each tunnel's roof: between the frames, and some inside them
@@ -1116,10 +1125,12 @@ function startDig(S, r, dx, dy, why) {
   // CaveRunner Auto's level (stage 5b, the clearing rule): his own best clearing gun, else a teammate's; no gun in play
   // can clear rock: he doesn't dig (the scroll's push: blocked, the pilot stops the team; his own aim: somewhere else)
   if (!r.dig && S.team && S.lvl) {
-    const c = teamClearer(S.team, 'rock', r.id);
+    const kind = S.lvl.blockKind ? S.lvl.blockKind(S, r.x + PW / 2 + S.scroll + 8 * Math.sign(dx || 1)) : 'rock';
+    const c = teamClearer(S.team, kind, r.id);
     if (!c) {
       if (why === 'aim' || why === 'fly') { r.vx = 0; r.vy = Math.min(r.vy, 0); pickTarget(S, r); return; }
-      S.blocked = S.t; S.digWhy.blocked = (S.digWhy.blocked || 0) + 1;
+      if (jetOver(S, r)) return;   // stage 6b: a partial blockage he can't clear, he jets over it
+      S.blocked = S.t; S.blockedKind = kind; S.digWhy.blocked = (S.digWhy.blocked || 0) + 1;
       r.x = Math.max(8, r.x - 1);
       return;
     }
@@ -1128,6 +1139,23 @@ function startDig(S, r, dx, dy, why) {
   if (!r.dig) { r.keep = r.kit; r.kit = kitOf('saw', [], TITLE_SAW); r.swap = 0.2; S.digs++; r.digY = r.y; S.digWhy[why] = (S.digWhy[why] || 0) + 1; }
   const d = Math.hypot(dx, dy) || 1;
   r.dig = Math.max(r.dig, 1e-3); r.clearT = 0; r.dx = dx / d; r.dy = dy / d;
+}
+// a wall ahead he can't clear (CaveRunner Auto's level): open air above it, tall enough for him, within reach? Up he
+// jets to it (flying, aimed just over it). false: there's none (blocked all the way)
+/** @param {TitleScene} S @param {TRunner} r */
+function jetOver(S, r) {
+  const sx = r.x + PW / 2 + 10;
+  let run = 0;
+  for (let y = r.y + PH; y > S.top - 30; y -= TCELL) {
+    if (titleSolid(S, sx, y) || titleSolid(S, sx + 8, y)) { run = 0; continue; }
+    run += TCELL;
+    if (run >= PH + 4) {
+      setMode(S, r, 'fly', 1.5); r.tx = r.x + 12; r.ty = y - 2; r.retarget = 1.2; r.vy = Math.min(r.vy, -60); r.ground = false;
+      r.burst = false; r.x = Math.max(8, r.x - 1);
+      return true;
+    }
+  }
+  return false;
 }
 /** @param {TitleScene} S @param {TRunner} r @param {string} mode @param {number} t */
 function setMode(S, r, mode, t) {
@@ -1402,6 +1430,13 @@ function cutWebs(S, wx, y, r) {
     if (Math.hypot(p.x - wx, p.y - y) <= r + 1.5) { cutWeb(S, L, u, false); n++; }
   }
   if (n) burst(S, wx - S.scroll, y, 3, '#eef0f6', 40, 'spark', 0.3);
+}
+// CaveRunner Auto's web thicket (auto/blocked.js): a player's clearing gun at the webs round him; fire burns them, else cut
+/** @param {TitleScene} S @param {TRunner} r @param {boolean} fire @param {number} rad */
+export function titleClearWebs(S, r, fire, rad) {
+  const cx = r.x + PW / 2 + 6, cy = r.y + PH / 2;
+  if (fire) { titleIgnite(S, cx, cy, rad, 1); burst(S, cx, cy, 4, '#ff9a3a', 50, 'spark', 0.3); }
+  else cutWebs(S, cx + S.scroll, cy, rad);
 }
 
 // The creatures' frame, as the game's (game/systems/enemies.js stepEnemies and the acts in

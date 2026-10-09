@@ -10,11 +10,12 @@
 
 import { PH, PW } from '../core/consts.js';
 import { DEV } from '../dev/knobs.js';
-import { TITLE_VW, TITLE_ZLEN, titleFloor, titlePlan, titleScene, titleSurf, titleZoneAdd } from '../art/titlescene.js';
+import { TITLE_VW, TITLE_ZLEN, titleClearWebs, titleFloor, titlePlan, titleScene, titleSurf, titleZoneAdd } from '../art/titlescene.js';
 import { hubArriveT } from './hub.js';
 import { meterAdd, meterNew, meterSet, meterStep } from './meters.js';
 import { pilotEase, pilotPace } from './pilot.js';
-import { teamClearer } from './clear.js';
+import { clearPower, teamClearer } from './clear.js';
+import { blockCell, blockCol, blockKind, planBlocks, webSlow } from './blocked.js';
 import { elitePlan, levelFoes, levelHurt } from './enemies.js';
 import { bagFits, killLoot, lootCol } from './loot.js';
 import { bagAdd } from './run.js';
@@ -42,14 +43,17 @@ function flatZone(P, x0, x1, co) {
 /** @typedef {{ zp: import('../art/titlescene.js').TitlePlan, seed: number, padX: number, z0: number, z1: number, len: number,
  *   arena: { x0: number, x1: number, mid: number }, exitX: number }} LevelPlan */
 
-// The finite plan: same seed, same level. minutes (default the knob) at normal pace (DEV.autoLvlPace) of random zones
-/** @param {number} seed @param {number} [minutes] @returns {LevelPlan} */
-export function levelPlan(seed, minutes = DEV.autoLvlMin) {
+// The finite plan: same seed, same level. minutes (default the knob) at normal pace (DEV.autoLvlPace) of random zones;
+// blocks of them blocked (stage 6b, auto/blocked.js planBlocks; default DEV.autoBlockN; 0: none)
+/** @param {number} seed @param {number} [minutes] @param {number} [blocks] @returns {LevelPlan} */
+export function levelPlan(seed, minutes = DEV.autoLvlMin, blocks = DEV.autoBlockN) {
   const P = titlePlan(seed);
   flatZone(P, -300, LVL_PAD, 0);
   const want = Math.max(TITLE_ZLEN[0], minutes * 60 * LVL_SCROLL * DEV.autoLvlPace);
   let x = LVL_PAD;
-  while (x - LVL_PAD < want) x = titleZoneAdd(P, x).x1;
+  const zs = [];
+  while (x - LVL_PAD < want) { const z = titleZoneAdd(P, x); zs.push(z.i); x = z.x1; }
+  planBlocks(P, zs, seed, blocks);
   const a = flatZone(P, x, x + LVL_ARENA, -14);
   const e = flatZone(P, a.x1, a.x1 + LVL_EXITW, 0);
   flatZone(P, e.x1, 1e9, 400);   // solid rock: the roof far below the floor (it closes over ZMIX)
@@ -65,7 +69,8 @@ export function levelPlan(seed, minutes = DEV.autoLvlMin) {
 // run (stage 6 part 2: the drops go into its bag; none: they're just taken), bagV (+1 each time something goes in: the screen redraws the bag)
 /** @typedef {{ plan: LevelPlan, phase: string, arrived: boolean[], zap: number, goT: number, arenaT: number, bossDead: boolean, hold: number,
  *   elites: import('./enemies.js').LevelFoe[], chests: { x: number, open?: boolean }[], doneT: number, meters: PlayerMeters[], blocked: boolean,
- *   boss: Enemy | null, failed: boolean, run?: AutoRun | null, bagV: number }} LevelState */
+ *   boss: Enemy | null, failed: boolean, run?: AutoRun | null, bagV: number, blockKind?: string, webK?: number, webT?: number }} LevelState */
+// (blockKind: what the block is, rock / web / timber (stage 6b); webK: the team's pace through webs (1 free, auto/blocked.js webSlow); webT: the next cut)
 /** @param {import('../art/titlescene.js').TitleScene} S @returns {LevelState | null} */
 export const levelState = S => (S.lvl && S.lvl.data) || null;
 // the team's place in the level (world x)
@@ -85,7 +90,7 @@ export function levelScene(vh, seed, n, plan = levelPlan(seed), team, tier = 1, 
     loot: (S, f) => killLoot(f.k.boss ? 'boss' : f.k.elite ? 'elite' : 'foe', S.tier || 1, S.rnd, f.k.gold),
     fits: (_S, it) => !L.run || bagFits(L.run, it),
     take: (_S, it) => { if (L.run && bagAdd(L.run, it)) return false; L.bagV++; return true; },
-    lootCol }, team, tier });
+    lootCol, blockCell, blockCol, blockKind }, team, tier });
   L.elites = elitePlan(plan, S.rnd);
   L.meters = S.runners.map(() => ({ dmg: meterNew(), hp: meterNew(), dealt: 0 }));
   S.pace = 0; S.still = true;
@@ -171,9 +176,21 @@ export function levelStep(S, dt) {
   if (L.phase === 'exit') { S.pace = 0; gather(S, L, dt); return; }
   if (L.phase === 'arena') { S.pace = 0; return; }
   // blocked (the scene's startDig found no gun in play to clear the rock): stays till one can (a gun fitted)
-  if (S.blocked != null) { L.blocked = true; S.blocked = undefined; }
-  if (L.blocked && S.team && teamClearer(S.team, 'rock', 0)) L.blocked = false;
-  const want = pilotPace({ x: levelTeamX(S), stopX: stop, elites: L.elites, chests: L.chests, hold: L.hold, blocked: L.blocked });
+  if (S.blocked != null) { L.blocked = true; L.blockKind = S.blockedKind || 'rock'; S.blocked = undefined; }
+  // webs (stage 6b): they slow the team; tangled enough, it halts till a gun that clears webs burns or cuts them, else blocked
+  const ws = webSlow(S);
+  L.webK = ws.halt ? 0 : ws.k;
+  if (ws.halt && ws.i >= 0) {
+    const cl = S.team ? teamClearer(S.team, 'web', ws.i) : null;
+    if (cl || !S.team) {
+      if ((L.webT = (L.webT || 0) - dt) <= 0) {
+        const gun = cl && S.team ? S.team[cl.p].guns[cl.g] : null, fire = !!gun && gun.slots.some(id => !!id && clearPower(id).fire > 0);
+        L.webT = 0.15; titleClearWebs(S, S.runners[ws.i], fire, 12);
+      }
+    } else if (!cl) { L.blocked = true; L.blockKind = 'web'; }
+  }
+  if (L.blocked && S.team && teamClearer(S.team, L.blockKind || 'rock', 0)) L.blocked = false;
+  const want = L.webK * pilotPace({ x: levelTeamX(S), stopX: stop, elites: L.elites, chests: L.chests, hold: L.hold, blocked: L.blocked });
   S.pace = pilotEase(S.pace || 0, want, dt);
 }
 
