@@ -5,6 +5,14 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.10 — CaveRunner Auto: drops (branch `autobattler`, stage 6 part 2)
+Released 2026-10-10 on the branch (owner OK'd the screenshots, `tools/autolootshots.js`).
+- `auto/loot.js` `killLoot`: gold from every kill; a gun mod at `autoLootMod` % (`rollMod` by tier); elites + red gems,
+  sometimes an exo mod, gold × knob; the boss a green gem + an exo mod + gold × knob. Drops fly out, then to the nearest
+  living player into the bag (`levelScene`'s 7th argument, `run`); a full bag leaves them waiting on the ground; left
+  behind off-screen, lost. Red and green gems are the game's crystals at full size (owner: so they stand out). Dev →
+  Auto → "Auto: loot". Suite `auto-loot`.
+
 ## v1.0.9 — CaveRunner Auto: enemies, elites, the boss, death (branch `autobattler`, stage 6 part 1)
 Released 2026-10-10 on the branch (owner OK'd the screenshots, `tools/enemyshots.js`).
 - Level creatures by the run's tier (`enemyFor(id, tier)`; `levelScene`'s 6th argument). Bites and spit hurt the run's
