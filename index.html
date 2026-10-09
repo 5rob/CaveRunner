@@ -1833,6 +1833,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "autoLvlEase", g: "autolevel", label: "Pace changes by at most (× pace / s)", min: 0.2, max: 10, step: 0.1 }
   );
   DEV_GROUPS.push(["autolevel", "Auto: level"]);
+  Object.assign(DEV_DEFAULTS, { autoBlockN: 2, autoBlockMin: 0.2, autoBlockMax: 1, autoBlockFull: 0.85, autoBlockThin: 16, autoBlockWide: 0.75, autoWebSlow: 0.2, autoWebHalt: 0.25 });
+  DEV_META.push(
+    { k: "autoBlockN", g: "autoblocks", label: "Blocked zones a level (a fraction: a chance of one more)", min: 0, max: 8, step: 0.1 },
+    { k: "autoBlockMin", g: "autoblocks", label: "Severity: at least (0 a low lump … 1 blocked all the way)", min: 0, max: 1, step: 0.05 },
+    { k: "autoBlockMax", g: "autoblocks", label: "Severity: at most", min: 0, max: 1, step: 0.05 },
+    { k: "autoBlockFull", g: "autoblocks", label: "Severity from which it’s blocked all the way (no jetting over)", min: 0.1, max: 1, step: 0.05 },
+    { k: "autoBlockThin", g: "autoblocks", label: "Thinnest blockage (world units)", min: 6, max: 80, step: 2 },
+    { k: "autoBlockWide", g: "autoblocks", label: "Widest blockage (share of its zone)", min: 0.1, max: 1, step: 0.05 },
+    { k: "autoWebSlow", g: "autoblocks", label: "Each web line a player is caught in slows him by (× pace; they multiply)", min: 0, max: 0.9, step: 0.01 },
+    { k: "autoWebHalt", g: "autoblocks", label: "Slowed below this the team halts (clears the webs, or is blocked)", min: 0, max: 1, step: 0.01 }
+  );
+  DEV_GROUPS.push(["autoblocks", "Auto: blocks"]);
   Object.assign(DEV_DEFAULTS, { autoGunDelay: 0.25, autoGunRech: 0.8, autoGunMana: 120, autoGunRegen: 40, autoGunSpread: 4 });
   DEV_META.push(
     { k: "autoGunDelay", g: "autoguns", label: "Starter gun: cast delay (s)", min: 0.02, max: 2, step: 0.01 },
@@ -1866,7 +1878,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "autoLootBossGold", g: "autoloot", label: "The boss’s gold (× a normal kill’s)", min: 1, max: 100, step: 1 }
   );
   DEV_GROUPS.push(["autoloot", "Auto: loot"]);
-  DEV_TABS.splice(DEV_TABS.length - 1, 0, ["auto", "Auto", ["auto", "autohub", "autolevel", "autoguns", "autofoes", "autoloot"]]);
+  DEV_TABS.splice(DEV_TABS.length - 1, 0, ["auto", "Auto", ["auto", "autohub", "autolevel", "autoblocks", "autoguns", "autofoes", "autoloot"]]);
   var DEV_KEY = "caverunner-dev";
   var DEV = Object.assign({}, DEV_DEFAULTS);
   var dueMs = (floor) => floor === 1 ? DEV.due1 * 6e4 : DEADLINE_MS;
@@ -10953,10 +10965,34 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var TITLE_LINKS = 8;
   var TITLE_WEBFIRE = 3;
   var TITLE_AIM = 90;
-  var TM = { AIR: 0, ROCK: 1, MOSS: 2, BRICK: 3, WOOD: 4, CHAR: 5, BEAM: 6, BEAMD: 7, GRASS: 8, RUB: 9, RUBM: 10, STEEL: 11, BWALL: 12, SWALL: 13 };
-  var TITLE_SOLID = [0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0];
+  var TM = {
+    AIR: 0,
+    ROCK: 1,
+    MOSS: 2,
+    BRICK: 3,
+    WOOD: 4,
+    CHAR: 5,
+    BEAM: 6,
+    BEAMD: 7,
+    GRASS: 8,
+    RUB: 9,
+    RUBM: 10,
+    STEEL: 11,
+    BWALL: 12,
+    SWALL: 13,
+    ROOT: 14,
+    SILT: 15,
+    SILTD: 16,
+    IRON: 17,
+    IROND: 18,
+    CRYS: 19,
+    CRYSL: 20,
+    NEST: 21,
+    NESTD: 22
+  };
+  var TITLE_SOLID = [0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1];
   var SOLID = TITLE_SOLID;
-  var FUEL = [0, 0, 2, 0, 3, 0, 3, 3, 1, 0, 1, 0, 0, 0];
+  var FUEL = [0, 0, 2, 0, 3, 0, 3, 3, 1, 0, 1, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 1, 1];
   var FRAME_GAP = 72;
   var FRAME_W = 36;
   var SCROLL = 34;
@@ -11240,6 +11276,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const lk = Math.floor(wx / 90), lx0 = lk * 90 + 15 + h2(lk, 8) * 35, lw = 14 + h2(lk, 9) * 14;
     const lmid = lx0 + lw / 2, lc = titleCeil(lmid, S2), lf = titleFloor(lmid, S2), ly = lc + 14 + h2(lk, 10) * Math.max(0, lf - lc - 52);
     const ledge = !Zn.flat && (z === "moss" || z === "grove" || z === "webs") && built(lmid, S2) === 0 && h2(lk, 11) < 0.5 && wx >= lx0 && wx < lx0 + lw && lf - lc > 60;
+    const bk0 = Zn.blk, bk = bk0 && S2.lvl && S2.lvl.blockCell ? S2.lvl.blockCell : null;
+    const by0 = M && bands.length ? bands[bands.length - 1].c - 14 : cy, by1 = M && bands.length ? bands[0].f + 3 : fy;
+    if (bk0 && S2.lvl && S2.lvl.blockCol) S2.lvl.blockCol(S2, bk0, c, wx, by0, by1);
     for (let r = 0; r < S2.rows; r++) {
       const y = (r + 0.5) * TCELL, zc = titleZoneAt(wx, y, S2);
       let m = TM.AIR;
@@ -11264,6 +11303,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (m === TM.AIR && y >= fy - rub && y < fy) m = y < fy - rub + 2 && h2(c, r) < 0.7 ? TM.RUBM : TM.RUB;
       if (m === TM.AIR && y >= fy - tuft * TCELL && y < fy && zc !== "paved") m = TM.GRASS;
       if (z === "winding" && TITLE_SOLID[m] && windAir(wx, y, Zn, S2)) m = TM.AIR;
+      if (bk) m = bk(bk0, wx, y, by0, by1, m);
       S2.cells[base + r] = m;
     }
     if (b > 0.95) {
@@ -12166,7 +12206,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   function startDig(S2, r, dx, dy, why) {
     if (!r.dig && S2.team && S2.lvl) {
-      const c = teamClearer(S2.team, "rock", r.id);
+      const kind = S2.lvl.blockKind ? S2.lvl.blockKind(S2, r.x + PW / 2 + S2.scroll + 8 * Math.sign(dx || 1)) : "rock";
+      const c = teamClearer(S2.team, kind, r.id);
       if (!c) {
         if (why === "aim" || why === "fly") {
           r.vx = 0;
@@ -12174,7 +12215,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           pickTarget(S2, r);
           return;
         }
+        if (jetOver(S2, r)) return;
         S2.blocked = S2.t;
+        S2.blockedKind = kind;
         S2.digWhy.blocked = (S2.digWhy.blocked || 0) + 1;
         r.x = Math.max(8, r.x - 1);
         return;
@@ -12195,6 +12238,29 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     r.clearT = 0;
     r.dx = dx / d;
     r.dy = dy / d;
+  }
+  function jetOver(S2, r) {
+    const sx = r.x + PW / 2 + 10;
+    let run = 0;
+    for (let y = r.y + PH; y > S2.top - 30; y -= TCELL) {
+      if (titleSolid(S2, sx, y) || titleSolid(S2, sx + 8, y)) {
+        run = 0;
+        continue;
+      }
+      run += TCELL;
+      if (run >= PH + 4) {
+        setMode(S2, r, "fly", 1.5);
+        r.tx = r.x + 12;
+        r.ty = y - 2;
+        r.retarget = 1.2;
+        r.vy = Math.min(r.vy, -60);
+        r.ground = false;
+        r.burst = false;
+        r.x = Math.max(8, r.x - 1);
+        return true;
+      }
+    }
+    return false;
   }
   function setMode(S2, r, mode, t) {
     if (r.mode !== mode) r.switches.push(S2.t);
@@ -12571,6 +12637,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
     }
     if (n) burst(S2, wx - S2.scroll, y, 3, "#eef0f6", 40, "spark", 0.3);
+  }
+  function titleClearWebs(S2, r, fire, rad) {
+    const cx = r.x + PW / 2 + 6, cy = r.y + PH / 2;
+    if (fire) {
+      titleIgnite(S2, cx, cy, rad, 1);
+      burst(S2, cx, cy, 4, "#ff9a3a", 50, "spark", 0.3);
+    } else cutWebs(S2, cx + S2.scroll, cy, rad);
   }
   function stepFoes(S2, dt) {
     const R = S2.rnd, CS = csolid(S2), sees = 1 / DEV.zoom;
@@ -35656,6 +35729,206 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return cur < want ? Math.min(want, cur + v) : Math.max(want, cur - v);
   }
 
+  // src/auto/blocked.js
+  var BLOCK_VARIANTS = [
+    { id: "collapse", name: "Collapse", bases: ["timber", "paved"], clears: "rock", look: "rubble heap with broken frames" },
+    { id: "deadend", name: "Rounded dead end", bases: ["moss", "grove"], clears: "rock", look: "a mossy rounded rock face" },
+    { id: "thicket", name: "Web thicket", bases: ["webs", "winding"], clears: "web", look: "webs criss-crossed roof to floor" },
+    { id: "timberfall", name: "Fallen timber", bases: ["timber", "paved", "grove"], clears: "timber", look: "crossed logs heaped up" },
+    { id: "rockslide", name: "Rockslide", bases: ["moss", "winding", "webs"], clears: "rock", look: "a long scree slope" },
+    { id: "roots", name: "Root tangle", bases: ["grove", "moss"], clears: "timber", look: "roots hanging from the roof" },
+    { id: "silt", name: "Silted pass", bases: ["winding", "moss"], clears: "rock", look: "flat banded mud" },
+    { id: "cart", name: "Jammed mine cart", bases: ["timber"], clears: "rock", look: "an iron cart on its side in rubble" },
+    { id: "brickwall", name: "Brick wall", bases: ["paved", "timber"], clears: "rock", look: "a straight brick wall" },
+    { id: "stalactites", name: "Stalactites and stalagmites", bases: ["moss", "webs", "winding"], clears: "rock", look: "rock spikes, floor and roof (owner: the ground rock)" },
+    { id: "nest", name: "Nest plug", bases: ["webs", "grove"], clears: "web", look: "a resin plug wrapped in webs" }
+  ];
+  var blockVariant = (id) => BLOCK_VARIANTS.find((v) => v.id === id) || BLOCK_VARIANTS[0];
+  var variantsFor = (base) => BLOCK_VARIANTS.filter((v) => v.bases.includes(base));
+  function rollBlock(R, Z, variant) {
+    const can = variantsFor(Z.z), v = variant ? blockVariant(variant) : can.length ? can[Math.floor(R() * can.length)] : BLOCK_VARIANTS[1];
+    const lo = Math.min(DEV.autoBlockMin, DEV.autoBlockMax), hi = Math.max(DEV.autoBlockMin, DEV.autoBlockMax);
+    const sev = lo + R() * (hi - lo), zw = Z.x1 - Z.x0;
+    const wMin = Math.min(DEV.autoBlockThin, zw * 0.5), wMax = Math.max(wMin, zw * DEV.autoBlockWide);
+    const w = wMin + Math.pow(R(), 1.2) * (wMax - wMin), x0 = Z.x0 + R() * (zw - w);
+    const ramp = () => R() < 0.3 ? R() * 0.06 : 0.12 + R() * 0.33;
+    return {
+      variant: v.id,
+      base: Z.z,
+      sev,
+      clears: v.clears,
+      x0,
+      x1: x0 + w,
+      full: sev >= DEV.autoBlockFull,
+      rl: ramp(),
+      rr: ramp(),
+      lean: (R() - 0.5) * 0.5,
+      k: Math.floor(R() * 1e3)
+    };
+  }
+  var zoneKind = (Z) => Z.blk ? "blocked" : Z.z;
+  function planBlocks(P2, zs, seed, n = DEV.autoBlockN) {
+    const R = titleRng(seed * 4099 + 77 >>> 0);
+    let k = Math.floor(n) + (R() < n - Math.floor(n) ? 1 : 0);
+    const pool = zs.slice(1);
+    while (k-- > 0 && pool.length) {
+      const i = pool.splice(Math.floor(R() * pool.length), 1)[0], Z = P2.z[i];
+      Z.blk = rollBlock(R, Z);
+    }
+  }
+  var h22 = (a, b) => {
+    const s = Math.sin(a * 127.1 + b * 311.7) * 43758.5453;
+    return s - Math.floor(s);
+  };
+  function blockCell(B, wx, y, cy, fy, cur) {
+    if (wx < B.x0 || wx >= B.x1 || y < cy - 4 || y > fy + 4) return cur;
+    const H = Math.max(1, fy - cy), c = Math.floor(wx / 2), r = Math.floor(y / 2);
+    const up = fy - y;
+    const u = (wx - B.x0) / (B.x1 - B.x0) + (B.lean || 0) * (up / H - 0.5) + (titleNoise(y / 6, 409 + (B.k || 0)) - 0.5) * 0.08;
+    if (u < 0 || u >= 1) return cur;
+    if (!B.full && up > H - PH * 1.6 - 12) return cur;
+    const rl = B.rl ?? 0, rr2 = B.rr ?? 0;
+    const env = Math.min(1, rl > 0 ? u / rl : 1, rr2 > 0 ? (1 - u) / rr2 : 1), ease = env * env * (3 - 2 * env);
+    const frac = (B.full ? 1.2 : Math.min(0.75, 0.15 + B.sev / Math.max(0.01, DEV.autoBlockFull) * 0.6)) * ease;
+    const n = titleNoise(wx / 7, 401) * 6 - 3;
+    switch (B.variant) {
+      case "collapse": {
+        const h4 = H * frac * Math.pow(Math.sin(Math.PI * u), 0.4) + n;
+        if (up > h4) return cur;
+        if (Math.abs(((wx - y * 0.7) % 22 + 22) % 22 - 11) < 1.6 && up < h4 - 3) return TM.BEAMD;
+        if (Math.abs(((wx + y * 1.3) % 31 + 31) % 31 - 15) < 1.2 && up < h4 - 3) return TM.BEAM;
+        return h22(c, r) < 0.55 ? TM.RUB : h22(c, r) < 0.8 ? TM.ROCK : TM.RUBM;
+      }
+      case "deadend": {
+        const mid = fy - H * frac / 2, half = H * frac / 2 + 2, t = (y - mid) / half;
+        if (Math.abs(t) > 1) return cur;
+        const face = (B.x1 - B.x0) * 0.8 * (1 - Math.sqrt(1 - t * t));
+        const d = wx - B.x0 - face + n * 0.5;
+        if (d < 0) return cur;
+        return d < 3 ? h22(c, r) < 0.3 ? TM.GRASS : TM.MOSS : TM.ROCK;
+      }
+      case "thicket":
+        return cur;
+      // its webs: blockCol
+      case "timberfall": {
+        const h4 = H * frac * (0.75 + 0.25 * Math.sin(Math.PI * u)) + n;
+        if (up > h4) return cur;
+        const a = ((wx + up * 0.9) % 13 + 13) % 13, b = ((wx - up * 1.4) % 17 + 17) % 17;
+        if (a < 4 || b < 4) return a < 1 || b < 1 ? TM.BEAMD : TM.WOOD;
+        return up < 6 ? TM.RUB : cur === TM.AIR ? TM.AIR : cur;
+      }
+      case "rockslide": {
+        const h4 = H * frac * Math.min(1, u * 1.4) * (u > 0.85 ? (1 - u) / 0.15 : 1) + n * 1.5;
+        if (up > h4) return cur;
+        return h22(c, r) < 0.25 ? TM.RUB : TM.ROCK;
+      }
+      case "roots": {
+        const down = y - cy;
+        if (down < 3 + 3 * titleNoise(wx / 4, 403)) return TM.ROOT;
+        return rootAt(B, wx, down, H * frac) ? TM.ROOT : cur;
+      }
+      case "silt": {
+        const h4 = H * frac * Math.min(1, Math.min(u, 1 - u) * 6) + n * 0.3;
+        if (up > h4) return cur;
+        return Math.floor(up / 3) % 2 ? TM.SILT : TM.SILTD;
+      }
+      case "cart": {
+        const h4 = H * frac, bx = (wx - B.x0) / (B.x1 - B.x0);
+        if (up < h4 * 0.35 + n) return h22(c, r) < 0.6 ? TM.RUB : TM.ROCK;
+        if (bx > 0.15 && bx < 0.85 && up < h4) {
+          const edge = bx < 0.22 || bx > 0.78 || up > h4 - 3 || Math.abs(bx - 0.5) < 0.03;
+          return edge ? TM.IRON : TM.IROND;
+        }
+        if (up < h4 * 0.6 && Math.abs(bx - 0.08) < 0.06) return TM.IRON;
+        return cur;
+      }
+      case "brickwall": {
+        const h4 = H * frac;
+        return up <= h4 ? TM.BRICK : cur;
+      }
+      case "stalactites": {
+        const k0 = Math.floor(wx / 9), s = B.k || 0, dn = y - cy;
+        for (let k = k0 - 1; k <= k0 + 1; k++) {
+          const cx = k * 9 + 9 * h22(k, s + 21), hw = 2.5 + 5 * h22(k, s + 22), d = Math.abs(wx - cx) / hw;
+          if (d >= 1) continue;
+          const hf = h22(k, s + 23) < 0.2 ? 0 : H * frac * 0.62 * (0.35 + 0.65 * h22(k, s + 3));
+          const hc = h22(k, s + 24) < 0.2 ? 0 : H * frac * 0.55 * (0.3 + 0.7 * h22(k, s + 7));
+          if (up < hf * (1 - d) || dn < hc * (1 - d)) return TM.ROCK;
+        }
+        return cur;
+      }
+      case "nest": {
+        const mid = (cy + fy) / 2, ry = H * frac * 0.45, rx = (B.x1 - B.x0) * 0.22, d = Math.hypot((wx - (B.x0 + B.x1) / 2) / rx, (y - mid) / Math.max(1, ry));
+        if (d < 1 + n * 0.05) return d > 0.85 ? TM.NESTD : TM.NEST;
+        return cur;
+      }
+    }
+    return cur;
+  }
+  function rootAt(B, wx, down, len) {
+    const k0 = Math.floor(wx / 6), s = B.k || 0;
+    for (let k = k0 - 3; k <= k0 + 3; k++) {
+      if (h22(k, s + 1) < 0.22) continue;
+      const L3 = len * (0.25 + 0.85 * h22(k, s + 2));
+      if (down > L3) continue;
+      const t = down / L3, w0 = 0.8 + 2.6 * Math.pow(h22(k, s + 3), 1.5);
+      const sway = Math.sin(down / (5 + 9 * h22(k, s + 4)) + h22(k, s + 5) * 6.3) * (1 + 4 * h22(k, s + 6)) * t;
+      const x = k * 6 + 6 * h22(k, s + 7) + sway + (h22(k, s + 8) - 0.5) * 0.6 * down;
+      if (Math.abs(wx - x) < w0 * (1 - t * 0.85)) return true;
+      const fd = L3 * (0.3 + 0.4 * h22(k, s + 9)), side = h22(k, s + 10) < 0.5 ? -1 : 1;
+      if (h22(k, s + 11) < 0.45 && down > fd && down < fd + L3 * 0.5) {
+        const ft = (down - fd) / (L3 * 0.5);
+        if (Math.abs(wx - (x + side * (down - fd) * 0.7)) < Math.max(0.6, w0 * 0.6 * (1 - ft))) return true;
+      }
+    }
+    return false;
+  }
+  function blockCol(S2, B, c, wx, cy, fy) {
+    if (B.variant !== "thicket" && B.variant !== "nest" || wx < B.x0 || wx >= B.x1 || c % 2) return;
+    const R = S2.rnd, dens = B.variant === "nest" ? 0.35 : 0.25 + B.sev * 0.75, n = B.variant === "nest" ? 1 : B.full ? 3 : 1 + (R() < B.sev ? 1 : 0);
+    for (let i = 0; i < n; i++) if (R() < dens) webPair(S2, B, wx, cy, fy);
+  }
+  function webPair(S2, B, wx, cy, fy) {
+    const R = S2.rnd;
+    const down = R() < 0.6, bx = Math.max(B.x0, Math.min(B.x1, wx + (R() - 0.5) * 50));
+    const by = down ? fy - 0.5 : cy + 0.5 + R() * 6, ay = down ? cy + 0.5 : cy + 0.5;
+    const L3 = { ax: wx, ay, bx, by, a0x: wx, a0y: ay, b0x: bx, b0y: by, ain: { x: wx, y: ay - 1.5 }, bin: { x: bx, y: down ? by + 1.5 : by - 1.5 }, owner: null, sag: 0 };
+    L3.sag = DEV.webSag * Math.abs(bx - wx) * (down ? 1 : 2.5);
+    S2.webs.push(L3);
+    if (R() < 0.5) {
+      const lx = wx + (R() - 0.5) * 30, ly = fy - 6 - R() * (fy - cy) * 0.5;
+      const M = { ax: wx, ay: fy - 0.5, bx: lx, by: ly, a0x: wx, a0y: fy - 0.5, b0x: lx, b0y: ly, ain: { x: wx, y: fy + 1 }, bin: { x: lx, y: ly }, owner: null, sag: 0 };
+      S2.webs.push(M);
+    }
+  }
+  function blockKind(S2, wx) {
+    const Z = titleZoneSpan(wx, S2), B = Z.blk;
+    return B && wx >= B.x0 - 8 && wx < B.x1 + 8 ? B.clears : "rock";
+  }
+  function websOn(S2, r) {
+    const cx = r.x + PW / 2 + S2.scroll, cy = r.y + PH / 2;
+    let n = 0;
+    for (const L3 of S2.webs) {
+      if (L3.out || cx < Math.min(L3.a0x, L3.b0x) - 6 || cx > Math.max(L3.a0x, L3.b0x) + 6) continue;
+      const vx = L3.b0x - L3.a0x, vy = L3.b0y - L3.a0y, u = Math.max(0, Math.min(1, ((cx - L3.a0x) * vx + (cy - L3.a0y) * vy) / (vx * vx + vy * vy || 1)));
+      const w = titleWebAt(L3, u);
+      if (Math.hypot(w.x - cx, w.y - cy) < 6) n++;
+    }
+    return n;
+  }
+  function webSlow(S2) {
+    let k = 1, i = -1;
+    for (const r of S2.runners) {
+      if (r.out || r.hide) continue;
+      const q = Math.pow(1 - DEV.autoWebSlow, websOn(S2, r));
+      if (q < k) {
+        k = q;
+        i = r.id;
+      }
+    }
+    return { k, i, halt: k < DEV.autoWebHalt };
+  }
+
   // src/auto/enemies.js
   var FALL_FLICKER = 0.6;
   var BOSS_IN = 90;
@@ -35797,12 +36070,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     P2.z.push(z);
     return z;
   }
-  function levelPlan(seed, minutes = DEV.autoLvlMin) {
+  function levelPlan(seed, minutes = DEV.autoLvlMin, blocks = DEV.autoBlockN) {
     const P2 = titlePlan(seed);
     flatZone(P2, -300, LVL_PAD, 0);
     const want = Math.max(TITLE_ZLEN[0], minutes * 60 * LVL_SCROLL * DEV.autoLvlPace);
     let x = LVL_PAD;
-    while (x - LVL_PAD < want) x = titleZoneAdd(P2, x).x1;
+    const zs = [];
+    while (x - LVL_PAD < want) {
+      const z = titleZoneAdd(P2, x);
+      zs.push(z.i);
+      x = z.x1;
+    }
+    planBlocks(P2, zs, seed, blocks);
     const a = flatZone(P2, x, x + LVL_ARENA, -14);
     const e = flatZone(P2, a.x1, a.x1 + LVL_EXITW, 0);
     flatZone(P2, e.x1, 1e9, 400);
@@ -35851,7 +36130,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         L3.bagV++;
         return true;
       },
-      lootCol
+      lootCol,
+      blockCell,
+      blockCol,
+      blockKind
     }, team, tier });
     L3.elites = elitePlan(plan, S2.rnd);
     L3.meters = S2.runners.map(() => ({ dmg: meterNew(), hp: meterNew(), dealt: 0 }));
@@ -35968,10 +36250,26 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     if (S2.blocked != null) {
       L3.blocked = true;
+      L3.blockKind = S2.blockedKind || "rock";
       S2.blocked = void 0;
     }
-    if (L3.blocked && S2.team && teamClearer(S2.team, "rock", 0)) L3.blocked = false;
-    const want = pilotPace({ x: levelTeamX(S2), stopX: stop, elites: L3.elites, chests: L3.chests, hold: L3.hold, blocked: L3.blocked });
+    const ws = webSlow(S2);
+    L3.webK = ws.halt ? 0 : ws.k;
+    if (ws.halt && ws.i >= 0) {
+      const cl = S2.team ? teamClearer(S2.team, "web", ws.i) : null;
+      if (cl || !S2.team) {
+        if ((L3.webT = (L3.webT || 0) - dt) <= 0) {
+          const gun = cl && S2.team ? S2.team[cl.p].guns[cl.g] : null, fire = !!gun && gun.slots.some((id) => !!id && clearPower(id).fire > 0);
+          L3.webT = 0.15;
+          titleClearWebs(S2, S2.runners[ws.i], fire, 12);
+        }
+      } else if (!cl) {
+        L3.blocked = true;
+        L3.blockKind = "web";
+      }
+    }
+    if (L3.blocked && S2.team && teamClearer(S2.team, L3.blockKind || "rock", 0)) L3.blocked = false;
+    const want = L3.webK * pilotPace({ x: levelTeamX(S2), stopX: stop, elites: L3.elites, chests: L3.chests, hold: L3.hold, blocked: L3.blocked });
     S2.pace = pilotEase(S2.pace || 0, want, dt);
   }
   function gather(S2, L3, dt) {
@@ -36464,6 +36762,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (m === TM.BEAM || m === TM.WOOD) return J(mixc(TIMBER, TIMBER, 0, 0.95));
     if (m === TM.BEAMD) return J(mixc(TIMBER, TIMBER, 0, 0.7));
     if (m === TM.CHAR) return mixc([30, 26, 26], [52, 44, 40], h4);
+    if (m === TM.ROOT) return J(mixc([92, 64, 40], [120, 86, 52], h4));
+    if (m === TM.SILT) return J(mixc([118, 104, 78], [128, 112, 84], h4));
+    if (m === TM.SILTD) return J(mixc([92, 80, 60], [100, 88, 66], h4));
+    if (m === TM.IRON) return J(mixc([96, 100, 108], [120, 124, 132], h4));
+    if (m === TM.IROND) return J(mixc([58, 54, 56], [72, 62, 58], h4));
+    if (m === TM.CRYS) return J(mixc([70, 150, 200], [110, 190, 230], h4));
+    if (m === TM.CRYSL) return J(mixc([190, 236, 255], [220, 248, 255], h4));
+    if (m === TM.NEST) return J(mixc([150, 140, 110], [176, 166, 132], h4));
+    if (m === TM.NESTD) return J(mixc([206, 204, 196], [226, 224, 218], h4));
     if (m === TM.STEEL) return c % 8 === 0 || r % 6 === 0 ? [34, 38, 46] : c % 8 === 1 && r % 6 === 1 ? [96, 104, 118] : mixc([62, 68, 80], [74, 80, 92], h4);
     if (m === TM.BWALL) {
       const k = c + r % 2 * 3;

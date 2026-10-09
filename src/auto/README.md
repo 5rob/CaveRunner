@@ -42,7 +42,23 @@ art, …), never `game/`, `ui/` or `main.js`. Everything here is pure: the logic
 
 - `loot.js` — the drops (stage 6 part 2), pure. `killLoot(kind: foe | elite | boss, tier, rnd, gold?)` → BagItems: gold every kill (the creature's own, already × `goldScale` by `enemyFor`, + up to 2 × the scale; × `autoLootEliteGold` / `autoLootBossGold`), a gun mod at `autoLootMod` % (`rollMod(rnd, tier)`); an elite: `autoLootRed` red gems + an exo mod (random cat, the run's tier) at `autoLootExo` %; the boss: a green gem + an exo mod. `bagFits(run, item)`, `lootCol(item)` (the pickup's colour). In a level: `levelScene(…, tier, run)` gives `opts.level` the hooks `loot` / `fits` / `take` / `lootCol`; `art/titlescene.js` killFoe spills the gold as nuggets and the rest as `S.loot` pickups (`TLoot`, drawn by `titledraw.js` drawLoot: a small glowing gem in the item's colour), thrown up, then after `LOOT_WAIT` vacuumed (from anywhere, through rock) to the nearest player still in and `bagAdd`ed at 12 (`L.bagV` + 1). The bag full: they wait on the ground (`g.wait`; gold nuggets too) until it has room; left off the screen they're gone. The menu (no level) drops gold only. `titleKill(S, f)` kills one outright (tests, shots). Knobs: Dev → Auto → "Auto: loot". Pictures: `tools/autolootshots.js`.
 
-Tests: `tests/logic/auto-loot.test.js`, `tests/logic/auto-enemies.test.js`, `tests/logic/auto-clear.test.js`, `tests/logic/auto-guns.test.js`, `tests/logic/auto-run.test.js`, `tests/logic/auto-hub.test.js`, `tests/logic/auto-level.test.js`. Pictures: `tools/levelshots.js`, `tools/gunshots.js`, `tools/clearshots.js`.
+- `blocked.js` — blocked zones (stage 6b part 1), pure. `levelPlan(seed, minutes?, blocks = DEV.autoBlockN)` calls `planBlocks` (its own random: the rest of the level is unchanged; never the first random zone): about `autoBlockN` zones get `Z.blk` (`ZoneBlock` { variant, base, sev, clears, x0, x1, full }); the zone keeps its base kind `Z.z` and generates as that zone (`zoneKind(Z)` → 'blocked'). `rollBlock(R, Z, variant?)`: a variant suiting the base, severity in `autoBlockMin`..`autoBlockMax`, `full` from `autoBlockFull` (else a partial heap: a team that can't clear it jets over, titlescene `jetOver`). The scene: `opts.level` hooks `blockCell` (each cell of the span, in genCol after the zone's own; a mine's whole tunnel stack), `blockCol` (the thicket's and nest's web lines), `blockKind` (startDig asks what it digs into: `teamClearer(team, kind)`; none → `S.blockedKind` → `L.blockKind`, unblocked when a gun in play clears that kind). Webs: `websOn(S, r)`, `webSlow(S)`: each line a player is caught in × (1 − `autoWebSlow`), the team at its most tangled player's pace (`L.webK`); under `autoWebHalt` it halts while the clearer burns (a fire gun: `titleIgnite`) or cuts (`titleClearWebs`) them, or is blocked (kind web). New materials (`TM` 14–22: ROOT, SILT/SILTD, IRON/IROND, CRYS/CRYSL, NEST/NESTD; painter colours in titledraw.js). Knobs: Dev → Auto → "Auto: blocks". Pictures: `tools/blockshots.js` (b-<variant>.png).
+  | variant | name | bases | clears |
+  |---|---|---|---|
+  | collapse | Collapse (rubble, broken frames) | timber, paved | rock |
+  | deadend | Rounded dead end (mossy) | moss, grove | rock |
+  | thicket | Web thicket | webs, winding | web |
+  | timberfall | Fallen timber | timber, paved, grove | timber |
+  | rockslide | Rockslide | moss, winding, webs | rock |
+  | roots | Root tangle (from the roof) | grove, moss | timber |
+  | silt | Silted pass | winding, moss | rock |
+  | cart | Jammed mine cart | timber | rock |
+  | brickwall | Brick wall | paved, timber | rock |
+  | stalactites | Stalactites and stalagmites (the ground's rock; owner: was crystal growth) | moss, webs, winding | rock |
+  | nest | Nest plug (resin + webs) | webs, grove | web |
+  Part 2 (left): ~12 more variants (to ~23), per-player web slowing (now the team's pace only), the owner's strike/keep round on the shots, the screen's hint for a web block, docs (HANDOVER, CHANGELOG, AUTOBATTLER), version bump.
+
+Tests: `tests/logic/auto-blocked.test.js`, `tests/logic/auto-loot.test.js`, `tests/logic/auto-enemies.test.js`, `tests/logic/auto-clear.test.js`, `tests/logic/auto-guns.test.js`, `tests/logic/auto-run.test.js`, `tests/logic/auto-hub.test.js`, `tests/logic/auto-level.test.js`. Pictures: `tools/levelshots.js`, `tools/gunshots.js`, `tools/clearshots.js`.
 
 ## Rules
 

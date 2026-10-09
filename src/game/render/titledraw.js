@@ -58,6 +58,16 @@ function cellRGB(m, c, r, up) {
   if (m === TM.BEAM || m === TM.WOOD) return J(mixc(TIMBER, TIMBER, 0, 0.95));
   if (m === TM.BEAMD) return J(mixc(TIMBER, TIMBER, 0, 0.7));
   if (m === TM.CHAR) return mixc([30, 26, 26], [52, 44, 40], h);
+  // CaveRunner Auto's blocked zones (auto/blocked.js): roots, silt (two bands), a cart's iron, crystal (and its light core), a nest's resin
+  if (m === TM.ROOT) return J(mixc([92, 64, 40], [120, 86, 52], h));
+  if (m === TM.SILT) return J(mixc([118, 104, 78], [128, 112, 84], h));
+  if (m === TM.SILTD) return J(mixc([92, 80, 60], [100, 88, 66], h));
+  if (m === TM.IRON) return J(mixc([96, 100, 108], [120, 124, 132], h));
+  if (m === TM.IROND) return J(mixc([58, 54, 56], [72, 62, 58], h));
+  if (m === TM.CRYS) return J(mixc([70, 150, 200], [110, 190, 230], h));
+  if (m === TM.CRYSL) return J(mixc([190, 236, 255], [220, 248, 255], h));
+  if (m === TM.NEST) return J(mixc([150, 140, 110], [176, 166, 132], h));
+  if (m === TM.NESTD) return J(mixc([206, 204, 196], [226, 224, 218], h));
   // the auto hub's room (auto/hub.js): steel plates (a seam every 8 cells, rivets), the brick back wall (the bricks, darker),
   // the steel wainscot (tall panels)
   if (m === TM.STEEL) return c % 8 === 0 || r % 6 === 0 ? [34, 38, 46] : (c % 8 === 1 && r % 6 === 1) ? [96, 104, 118] : mixc([62, 68, 80], [74, 80, 92], h);
