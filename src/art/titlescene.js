@@ -921,15 +921,22 @@ function killFoe(S, f) {
   // split into big, medium and small nuggets (world/nuggets.js spillGold), thrown up out of it
   // CaveRunner Auto: the level's drops (auto/loot.js killLoot): the gold as nuggets, the rest as pickups (S.loot) thrown up
   const items = S.lvl && S.lvl.loot ? S.lvl.loot(S, f) : null;
-  const amount = items ? items.filter(it => it.kind === 'gold').reduce((a, it) => a + it.n, 0) : Math.round(f.k.gold + Math.floor(S.rnd() * 3));
-  spillGold(S.coins, f.x, f.ty, amount);
-  S.gold += amount;
-  if (items) for (const it of items) {
-    if (it.kind === 'gold') continue;
-    const a = -Math.PI / 2 + (S.rnd() - 0.5) * 1.6, sp = 70 + S.rnd() * 60;
-    (S.loot || (S.loot = [])).push({ x: f.x, y: f.ty, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, it, col: S.lvl && S.lvl.lootCol ? S.lvl.lootCol(it) : '#ffffff', t: S.rnd() * 6, nopull: LOOT_WAIT + S.rnd() * 0.3 });
-  }
+  if (items) titleSpill(S, f.x, f.ty, items);
+  else { const amount = Math.round(f.k.gold + Math.floor(S.rnd() * 3)); spillGold(S.coins, f.x, f.ty, amount); S.gold += amount; }
   if (S.coins.length > TITLE_GOLD) S.coins.splice(0, S.coins.length - TITLE_GOLD);
+}
+
+// CaveRunner Auto: BagItems thrown out at (world x, y): the gold as nuggets (S.coins), the rest as pickups (S.loot) thrown up;
+// both vacuumed into the bag (stepLoot, the coins'). up: how hard they're thrown up (× the kill's; a chest's spill: auto/chests.js)
+/** @param {TitleScene} S @param {number} x @param {number} y @param {BagItem[]} items @param {number} [up] */
+export function titleSpill(S, x, y, items, up = 1) {
+  const amount = items.filter(it => it.kind === 'gold').reduce((a, it) => a + it.n, 0);
+  if (amount > 0) { spillGold(S.coins, x, y, amount); S.gold += amount; }
+  for (const it of items) {
+    if (it.kind === 'gold') continue;
+    const a = -Math.PI / 2 + (S.rnd() - 0.5) * 1.6, sp = (70 + S.rnd() * 60) * up;
+    (S.loot || (S.loot = [])).push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, it, col: S.lvl && S.lvl.lootCol ? S.lvl.lootCol(it) : '#ffffff', t: S.rnd() * 6, nopull: LOOT_WAIT + S.rnd() * 0.3 });
+  }
 }
 
 // a creature killed outright (the logic suites: auto-loot)

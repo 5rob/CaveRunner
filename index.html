@@ -1938,6 +1938,19 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "autoLootBossGold", g: "autoloot", label: "The boss’s gold (× a normal kill’s)", min: 1, max: 100, step: 1 }
   );
   DEV_GROUPS.push(["autoloot", "Auto: loot"]);
+  Object.assign(DEV_DEFAULTS, { autoChestN: 3, autoChestR: 40, autoChestGoldN: 25, autoChestGold: 45, autoChestMod: 25, autoChestExo: 15, autoChestRed: 10, autoChestPerk: 3, autoChestGreen: 2 });
+  DEV_META.push(
+    { k: "autoChestN", g: "autochests", label: "Chests a level", min: 0, max: 12, step: 1 },
+    { k: "autoChestR", g: "autochests", label: "Tap A opens a chest within (world units of a player)", min: 5, max: 150, step: 1 },
+    { k: "autoChestGoldN", g: "autochests", label: "A chest’s gold (about; × the tier’s gold scale)", min: 1, max: 200, step: 1 },
+    { k: "autoChestGold", g: "autochests", label: "Holds gold (weight)", min: 0, max: 100, step: 1 },
+    { k: "autoChestMod", g: "autochests", label: "Holds a gun mod (weight)", min: 0, max: 100, step: 1 },
+    { k: "autoChestExo", g: "autochests", label: "Holds an exo mod (weight)", min: 0, max: 100, step: 1 },
+    { k: "autoChestRed", g: "autochests", label: "Holds a red gem (weight)", min: 0, max: 100, step: 1 },
+    { k: "autoChestPerk", g: "autochests", label: "Holds a perk (weight)", min: 0, max: 100, step: 1 },
+    { k: "autoChestGreen", g: "autochests", label: "Holds a green gem (weight)", min: 0, max: 100, step: 1 }
+  );
+  DEV_GROUPS.push(["autochests", "Auto: chests"]);
   Object.assign(DEV_DEFAULTS, { autoGrab: 0.35 });
   DEV_META.push(
     { k: "autoGrab", g: "autobag", label: "Grab radius: a touch picks up an item this near its centre (× the tile width); elsewhere it scrolls", min: 0.1, max: 0.5, step: 0.01 }
@@ -1975,7 +1988,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "autoLumpMs", g: "autothrow", label: "Lump: hold still on the stack this long (ms) to lift it all", min: 150, max: 1500, step: 10 }
   );
   DEV_GROUPS.push(["autothrow", "Auto: throw"]);
-  DEV_TABS.splice(DEV_TABS.length - 1, 0, ["auto", "Auto", ["auto", "autohub", "autolevel", "autoblocks", "autoguns", "autofoes", "autoloot", "autobag", "autothrow"]]);
+  DEV_TABS.splice(DEV_TABS.length - 1, 0, ["auto", "Auto", ["auto", "autohub", "autolevel", "autoblocks", "autoguns", "autofoes", "autoloot", "autochests", "autobag", "autothrow"]]);
   var DEV_KEY = "caverunner-dev";
   var DEV = Object.assign({}, DEV_DEFAULTS);
   var dueMs = (floor) => floor === 1 ? DEV.due1 * 6e4 : DEADLINE_MS;
@@ -12083,15 +12096,25 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       S2.flash = Math.min(0.35, S2.flash + 0.15);
     }
     const items = S2.lvl && S2.lvl.loot ? S2.lvl.loot(S2, f) : null;
-    const amount = items ? items.filter((it) => it.kind === "gold").reduce((a, it) => a + it.n, 0) : Math.round(f.k.gold + Math.floor(S2.rnd() * 3));
-    spillGold(S2.coins, f.x, f.ty, amount);
-    S2.gold += amount;
-    if (items) for (const it of items) {
-      if (it.kind === "gold") continue;
-      const a = -Math.PI / 2 + (S2.rnd() - 0.5) * 1.6, sp = 70 + S2.rnd() * 60;
-      (S2.loot || (S2.loot = [])).push({ x: f.x, y: f.ty, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, it, col: S2.lvl && S2.lvl.lootCol ? S2.lvl.lootCol(it) : "#ffffff", t: S2.rnd() * 6, nopull: LOOT_WAIT + S2.rnd() * 0.3 });
+    if (items) titleSpill(S2, f.x, f.ty, items);
+    else {
+      const amount = Math.round(f.k.gold + Math.floor(S2.rnd() * 3));
+      spillGold(S2.coins, f.x, f.ty, amount);
+      S2.gold += amount;
     }
     if (S2.coins.length > TITLE_GOLD) S2.coins.splice(0, S2.coins.length - TITLE_GOLD);
+  }
+  function titleSpill(S2, x, y, items, up = 1) {
+    const amount = items.filter((it) => it.kind === "gold").reduce((a, it) => a + it.n, 0);
+    if (amount > 0) {
+      spillGold(S2.coins, x, y, amount);
+      S2.gold += amount;
+    }
+    for (const it of items) {
+      if (it.kind === "gold") continue;
+      const a = -Math.PI / 2 + (S2.rnd() - 0.5) * 1.6, sp = (70 + S2.rnd() * 60) * up;
+      (S2.loot || (S2.loot = [])).push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, it, col: S2.lvl && S2.lvl.lootCol ? S2.lvl.lootCol(it) : "#ffffff", t: S2.rnd() * 6, nopull: LOOT_WAIT + S2.rnd() * 0.3 });
+    }
   }
   var titleKill = (S2, f) => killFoe(S2, f);
   function hitFoe(S2, f, dmg, col, by) {
@@ -35654,86 +35677,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
   }
 
-  // src/auto/loot.js
-  function killLoot(kind, tier, rnd2, gold) {
-    const sc = goldScale(tier), base = gold == null ? sc : gold;
-    const mul = kind === "boss" ? DEV.autoLootBossGold : kind === "elite" ? DEV.autoLootEliteGold : 1;
-    const out = [{ kind: "gold", n: Math.max(1, Math.round((base + Math.floor(rnd2() * 3) * sc) * mul)) }];
-    if (rnd2() * 100 < DEV.autoLootMod) out.push({ kind: "mod", id: rollMod(rnd2, Math.max(1, tier)), n: 1 });
-    const exo = () => exoMod(EXO_CATS[Math.floor(rnd2() * EXO_CATS.length) % EXO_CATS.length], tier);
-    if (kind === "elite") {
-      if (DEV.autoLootRed > 0) out.push({ kind: "red", n: DEV.autoLootRed });
-      if (rnd2() * 100 < DEV.autoLootExo) out.push(exo());
-    }
-    if (kind === "boss") out.push({ kind: "green", n: 1 }, exo());
-    return out;
-  }
-  function bagFits(run, it) {
-    const key = itemKey(it);
-    return !!key && run.bag.some((s) => s && itemKey(s) === key) || run.bag.indexOf(null) >= 0;
-  }
-  function lootCol(it) {
-    if (it.kind === "mod") {
-      const m = MODS[it.id || ""];
-      return m ? m.col : "#cccccc";
-    }
-    if (it.kind === "exo") return STAT_PERKS[EXO_STATS[it.cat || "hp"][0]].tint;
-    if (it.kind === "red") return "#ff4f5e";
-    if (it.kind === "green") return "#5ee05a";
-    return "#ffc93c";
-  }
-
-  // src/auto/payout.js
-  var PAY_CYCLE = 1.6;
-  var PAY_IDS = ["gun", "exo", "mod", "perk"];
-  var SHAKE_F02 = 3, SHAKE_F12 = 30;
-  var payPhase = (t) => SHAKE_F02 * t + SHAKE_F12 * PAY_CYCLE * Math.pow(Math.min(1, t / PAY_CYCLE), 3) / 3;
-  function machinePay(run, id, tier) {
-    const p = hubPrice(id, tier), paid = run.paid && run.paid[id] || 0;
-    if (!p || p.n <= 0) return { n: 0, left: paid, price: 0 };
-    const n = Math.floor(paid / p.n);
-    return { n, left: paid - n * p.n, price: p.n };
-  }
-  var GIFT_PERKS = Object.keys(PERKS).filter((id) => !PERKS[id].stat);
-  function machineItem(id, tier, rnd2) {
-    const t = Math.max(1, tier | 0);
-    if (id === "gun") return { kind: "gun", gun: shopGun(rnd2, t, false), n: 1 };
-    if (id === "exo") return exoMod(EXO_CATS[Math.floor(rnd2() * EXO_CATS.length) % EXO_CATS.length], t);
-    if (id === "mod") {
-      const m = crystalRoll(rnd2, t, []);
-      return m ? { kind: "mod", id: m, n: 1 } : null;
-    }
-    if (id === "perk") return { kind: "perk", id: GIFT_PERKS[Math.floor(rnd2() * GIFT_PERKS.length) % GIFT_PERKS.length], n: 1 };
-    return null;
-  }
-  function stepPay(S2, H) {
-    for (const id of PAY_IDS) {
-      const at = H.vend[id];
-      if (at === void 0 || at < 0) {
-        if (machinePay({ paid: H.paid }, id, H.tier).n > 0) {
-          H.vend[id] = S2.t;
-          S2.snd.push({ k: "arc", x: hubStopX(id), y: H.fy - 40 });
-        }
-        continue;
-      }
-      if (S2.t - at < PAY_CYCLE) continue;
-      H.vend[id] = -1;
-      const due = machinePay({ paid: H.paid }, id, H.tier);
-      if (due.n <= 0) continue;
-      H.paid[id] = due.left;
-      H.paidV++;
-      const x = hubStopX(id);
-      for (let k = 0; k < due.n; k++) {
-        const it = machineItem(id, H.tier, S2.rnd);
-        if (!it) continue;
-        const vx = (x < 300 ? 1 : -1) * (30 + 40 * S2.rnd());
-        (S2.loot || (S2.loot = [])).push({ x, y: H.fy - 14, vx, vy: -150 - 40 * S2.rnd(), it, col: lootCol(it), t: 0, nopull: 0.7 + 0.15 * k });
-      }
-      S2.flash = Math.max(S2.flash, 0.25);
-      S2.snd.push({ k: "coin", x, y: H.fy - 14 });
-    }
-  }
-
   // src/auto/hub.js
   var HUB_EDGE = 56;
   var HUB_GAP = 100;
@@ -35967,6 +35910,178 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (id === "exo") return { n: autoExoPrice(tier), kind: "gold" };
     const m = HUB_MACHINES[id];
     return m && m.takes ? { n: 1, kind: m.takes } : null;
+  }
+
+  // src/auto/loot.js
+  function killLoot(kind, tier, rnd2, gold) {
+    const sc = goldScale(tier), base = gold == null ? sc : gold;
+    const mul = kind === "boss" ? DEV.autoLootBossGold : kind === "elite" ? DEV.autoLootEliteGold : 1;
+    const out = [{ kind: "gold", n: Math.max(1, Math.round((base + Math.floor(rnd2() * 3) * sc) * mul)) }];
+    if (rnd2() * 100 < DEV.autoLootMod) out.push({ kind: "mod", id: rollMod(rnd2, Math.max(1, tier)), n: 1 });
+    const exo = () => exoMod(EXO_CATS[Math.floor(rnd2() * EXO_CATS.length) % EXO_CATS.length], tier);
+    if (kind === "elite") {
+      if (DEV.autoLootRed > 0) out.push({ kind: "red", n: DEV.autoLootRed });
+      if (rnd2() * 100 < DEV.autoLootExo) out.push(exo());
+    }
+    if (kind === "boss") out.push({ kind: "green", n: 1 }, exo());
+    return out;
+  }
+  function bagFits(run, it) {
+    const key = itemKey(it);
+    return !!key && run.bag.some((s) => s && itemKey(s) === key) || run.bag.indexOf(null) >= 0;
+  }
+  function lootCol(it) {
+    if (it.kind === "mod") {
+      const m = MODS[it.id || ""];
+      return m ? m.col : "#cccccc";
+    }
+    if (it.kind === "exo") return STAT_PERKS[EXO_STATS[it.cat || "hp"][0]].tint;
+    if (it.kind === "red") return "#ff4f5e";
+    if (it.kind === "green") return "#5ee05a";
+    return "#ffc93c";
+  }
+
+  // src/auto/payout.js
+  var PAY_CYCLE = 1.6;
+  var PAY_IDS = ["gun", "exo", "mod", "perk"];
+  var SHAKE_F02 = 3, SHAKE_F12 = 30;
+  var payPhase = (t) => SHAKE_F02 * t + SHAKE_F12 * PAY_CYCLE * Math.pow(Math.min(1, t / PAY_CYCLE), 3) / 3;
+  function machinePay(run, id, tier) {
+    const p = hubPrice(id, tier), paid = run.paid && run.paid[id] || 0;
+    if (!p || p.n <= 0) return { n: 0, left: paid, price: 0 };
+    const n = Math.floor(paid / p.n);
+    return { n, left: paid - n * p.n, price: p.n };
+  }
+  var GIFT_PERKS = Object.keys(PERKS).filter((id) => !PERKS[id].stat);
+  function machineItem(id, tier, rnd2) {
+    const t = Math.max(1, tier | 0);
+    if (id === "gun") return { kind: "gun", gun: shopGun(rnd2, t, false), n: 1 };
+    if (id === "exo") return exoMod(EXO_CATS[Math.floor(rnd2() * EXO_CATS.length) % EXO_CATS.length], t);
+    if (id === "mod") {
+      const m = crystalRoll(rnd2, t, []);
+      return m ? { kind: "mod", id: m, n: 1 } : null;
+    }
+    if (id === "perk") return { kind: "perk", id: GIFT_PERKS[Math.floor(rnd2() * GIFT_PERKS.length) % GIFT_PERKS.length], n: 1 };
+    return null;
+  }
+  function stepPay(S2, H) {
+    for (const id of PAY_IDS) {
+      const at = H.vend[id];
+      if (at === void 0 || at < 0) {
+        if (machinePay({ paid: H.paid }, id, H.tier).n > 0) {
+          H.vend[id] = S2.t;
+          S2.snd.push({ k: "arc", x: hubStopX(id), y: H.fy - 40 });
+        }
+        continue;
+      }
+      if (S2.t - at < PAY_CYCLE) continue;
+      H.vend[id] = -1;
+      const due = machinePay({ paid: H.paid }, id, H.tier);
+      if (due.n <= 0) continue;
+      H.paid[id] = due.left;
+      H.paidV++;
+      const x = hubStopX(id);
+      for (let k = 0; k < due.n; k++) {
+        const it = machineItem(id, H.tier, S2.rnd);
+        if (!it) continue;
+        const vx = (x < 300 ? 1 : -1) * (30 + 40 * S2.rnd());
+        (S2.loot || (S2.loot = [])).push({ x, y: H.fy - 14, vx, vy: -150 - 40 * S2.rnd(), it, col: lootCol(it), t: 0, nopull: 0.7 + 0.15 * k });
+      }
+      S2.flash = Math.max(S2.flash, 0.25);
+      S2.snd.push({ k: "coin", x, y: H.fy - 14 });
+    }
+  }
+
+  // src/auto/chests.js
+  var EDGE = 40;
+  var BLK_GAP = 24;
+  function rng(seed) {
+    let a = seed >>> 0 || 1;
+    return () => {
+      a = a + 1831565813 | 0;
+      let t = Math.imul(a ^ a >>> 15, 1 | a);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+  function chestPlan(plan, n = DEV.autoChestN) {
+    const R = rng(plan.seed * 7919 + 11), out = [];
+    n = Math.max(0, Math.round(n));
+    const z0 = plan.z0 + EDGE, z1 = plan.z1 - EDGE, len = (z1 - z0) / Math.max(1, n);
+    const blocked = (x) => plan.zp.z.some((Z) => Z.blk && x > Z.blk.x0 - BLK_GAP && x < Z.blk.x1 + BLK_GAP || Z.flat && x > Z.x0 - EDGE && x < Z.x1 + EDGE);
+    for (let i = 0; i < n; i++) {
+      for (let k = 0; k < 30; k++) {
+        const x = z0 + (i + 0.15 + R() * 0.7) * len;
+        if (!blocked(x)) {
+          out.push({ x });
+          break;
+        }
+      }
+    }
+    return out;
+  }
+  function chestRoll(rnd2, tier) {
+    const w = [["gold", DEV.autoChestGold], ["mod", DEV.autoChestMod], ["exo", DEV.autoChestExo], ["red", DEV.autoChestRed], ["perk", DEV.autoChestPerk], ["green", DEV.autoChestGreen]];
+    const tot = w.reduce((a, [, v]) => a + Math.max(0, +v), 0);
+    let r = rnd2() * tot, kind = "gold";
+    for (const [k, v] of w) {
+      r -= Math.max(0, +v);
+      if (r < 0) {
+        kind = String(k);
+        break;
+      }
+    }
+    const t = Math.max(1, tier);
+    if (kind === "mod") return [{ kind: "mod", id: rollMod(rnd2, t), n: 1 }];
+    if (kind === "exo") return [exoMod(EXO_CATS[Math.floor(rnd2() * EXO_CATS.length) % EXO_CATS.length], t)];
+    if (kind === "red" || kind === "green") return [{ kind, n: 1 }];
+    if (kind === "perk") return [machineItem("perk", t, rnd2)];
+    return [{ kind: "gold", n: Math.max(1, Math.round(DEV.autoChestGoldN * goldScale(t) * (0.75 + rnd2() * 0.5))) }];
+  }
+  var chestsOf = (S2) => S2.lvl && S2.lvl.data && S2.lvl.data.chests || [];
+  function chestsStep(S2) {
+    for (const c of chestsOf(S2)) {
+      if (c.set) continue;
+      if (c.y == null) c.y = titleFloor(c.x, S2);
+      const sx = c.x - S2.scroll;
+      if (sx > TITLE_VW + 20 || c.x >= S2.gen * TCELL - 8) continue;
+      let y = Math.round(c.y);
+      if (titleSolid(S2, sx, y - 1)) {
+        for (let k = 0; k < 60 && titleSolid(S2, sx, y - 1); k++) y--;
+      } else {
+        for (let k = 0; k < 60 && !titleSolid(S2, sx, y); k++) y++;
+      }
+      c.y = y;
+      c.set = true;
+    }
+  }
+  function chestInRange(S2) {
+    const L3 = S2.lvl && S2.lvl.data;
+    if (!L3 || L3.phase === "arrive") return null;
+    let best = null, bd = DEV.autoChestR;
+    for (const c of chestsOf(S2)) {
+      if (c.open) continue;
+      for (const r of S2.runners) {
+        if (r.out || r.hide) continue;
+        const d = Math.abs(S2.scroll + r.x + PW / 2 - c.x);
+        if (d <= bd) {
+          bd = d;
+          best = c;
+        }
+      }
+    }
+    return best;
+  }
+  function chestOpen(S2) {
+    const c = chestInRange(S2);
+    if (!c) return false;
+    c.open = true;
+    c.openT = S2.t;
+    c.items = chestRoll(S2.rnd, S2.tier || 1);
+    const y = (c.y == null ? titleFloor(c.x, S2) : c.y) - 8;
+    titleSpill(S2, c.x, y, c.items, 1.3);
+    S2.snd.push({ k: "coin", x: c.x - S2.scroll, y });
+    return true;
   }
 
   // src/auto/meters.js
@@ -36475,6 +36590,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       blockKind
     }, team, tier });
     L3.elites = elitePlan(plan, S2.rnd);
+    L3.chests = chestPlan(plan);
     L3.meters = S2.runners.map(() => ({ dmg: meterNew(), hp: meterNew(), dealt: 0 }));
     S2.pace = 0;
     S2.still = true;
@@ -36524,6 +36640,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (!L3) return;
     levelMeters(S2, L3, dt);
     levelFoes(S2, L3, levelTeamX(S2));
+    chestsStep(S2);
     const P2 = L3.plan;
     if (L3.phase === "arrive") {
       const fy = titleFloor(P2.padX, S2);
@@ -37377,12 +37494,61 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   // src/game/render/leveldraw.js
   function levelBack(ctx, S2) {
     for (const p of levelPads(S2)) drawHubPad(ctx, p.x, p.fy, S2.t + (p.id === "enter" ? 0 : 5));
+    const L3 = levelState(S2);
+    if (L3) for (const c of L3.chests) {
+      const x = c.x - S2.scroll;
+      if (x > -20 && x < TITLE_VW + 20 && c.y != null) drawChest(ctx, x, c.y, c.open ? S2.t - (c.openT || 0) : -1);
+    }
+  }
+  function drawChest(ctx, x, y, age) {
+    const l = Math.round(x - 7), b = Math.round(y);
+    const R = (c, px, py, w, h4) => {
+      ctx.fillStyle = c;
+      ctx.fillRect(l + px, b + py, w, h4);
+    };
+    R("rgba(0,0,0,0.35)", -1, -1, 16, 1);
+    R("#3a2210", 0, -8, 14, 8);
+    R("#8a5328", 1, -7, 12, 6);
+    R("#6e3f1c", 1, -4, 12, 1);
+    R("#a8682f", 1, -7, 12, 1);
+    R("#4b4f5c", 2, -8, 1, 8);
+    R("#4b4f5c", 11, -8, 1, 8);
+    if (age < 0) {
+      R("#3a2210", 0, -12, 14, 4);
+      R("#9a5f2c", 1, -11, 12, 2);
+      R("#b97a3a", 1, -11, 12, 1);
+      R("#4b4f5c", 2, -12, 1, 4);
+      R("#4b4f5c", 11, -12, 1, 4);
+      R("#3a2210", 5, -10, 4, 4);
+      R("#ffc93c", 6, -9, 2, 2);
+      R("#7a5a10", 6, -8, 2, 1);
+      return;
+    }
+    const glow2 = Math.max(0, 1 - age / 2.5);
+    R("#1c120a", 1, -8, 12, 2);
+    if (glow2 > 0) R("rgba(255,214,110," + (0.8 * glow2).toFixed(3) + ")", 2, -8, 10, 1);
+    const pop = age < 0.25 ? Math.sin(age / 0.25 * Math.PI) * 5 : 0, ang = Math.min(1, age / 0.3) * 1.9;
+    ctx.save();
+    ctx.translate(l + 14, b - 8 - pop);
+    ctx.rotate(ang);
+    ctx.fillStyle = "#3a2210";
+    ctx.fillRect(-14, -4, 14, 4);
+    ctx.fillStyle = "#9a5f2c";
+    ctx.fillRect(-13, -3, 12, 2);
+    ctx.fillStyle = "#4b4f5c";
+    ctx.fillRect(-12, -4, 1, 4);
+    ctx.fillRect(-3, -4, 1, 4);
+    ctx.restore();
   }
   function levelLight(S2, pool) {
     const L3 = levelState(S2);
     if (!L3) return;
     const { ch, fl } = L3.phase === "arrive" || S2.t < 3 ? hubCharge(S2) : { ch: 0, fl: 0 };
     for (const p of levelPads(S2)) pool(p.x, p.fy - 16, 34 + 30 * (p.id === "enter" ? fl : 0), Math.min(1, p.id === "enter" ? 0.35 + 0.6 * ch * ch + 0.6 * fl : 0.45), 0.2);
+    for (const c of L3.chests) {
+      const x = c.x - S2.scroll;
+      if (x > -30 && x < TITLE_VW + 30 && c.y != null) pool(x, c.y - 6, c.open ? 16 : 22, c.open ? 0.25 : 0.4, 0.2);
+    }
   }
   function levelGlow(ctx, S2) {
     const L3 = levelState(S2);
@@ -37394,6 +37560,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       else padGlow(ctx, S2, p.x, p.fy, 5, { ch: 0, fl: 0 }, -99);
     }
     ctx.restore();
+    const c = chestInRange(S2);
+    if (c && c.y != null) drawHint(ctx, c.x - S2.scroll, c.y - 28, "Tap A to open", S2.t);
   }
 
   // src/game/render/titledraw.js
@@ -38835,7 +39003,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const pressA = () => {
       SFX.unlock();
       SFX.ui("tap");
-      if (scene.current && hubExit(scene.current)) SFX.fx("open");
+      if (scene.current && (hubExit(scene.current) || !!scene.current.lvl && chestOpen(scene.current))) SFX.fx("open");
     };
     const srcItem = (src) => {
       if (src.from === "bag") return run.bag[src.i] || null;

@@ -46,7 +46,7 @@ check('easing: a step at most the knob × dt', near(G.pilotEase(0, 1, 0.1), D.au
 
 // ---- headless: pad → arena → exit ----
 const keep = { m: D.autoLvlMin, b: D.autoLvlBossT, e: D.autoFoeElites };
-D.autoLvlMin = 0.25; D.autoLvlBossT = 2; D.autoFoeElites = 0;   // (no elites: they'd slow the pace these measure)
+D.autoLvlMin = 0.25; D.autoLvlBossT = 2; D.autoFoeElites = 0; const chN = D.autoChestN; D.autoChestN = 0;   // (no elites or chests: they'd slow the pace these measure)
 const P = G.levelPlan(11, undefined, 0), S = G.levelScene(190, 11, 4, P), L = G.levelState(S);
 check('a short level for the run', P.len < 800, P.len);
 check('the team on the start pad, hidden till it comes through, nothing moving', L.phase === 'arrive' && S.runners.every(r => r.hide) && S.pace === 0);
@@ -78,6 +78,6 @@ check('stick full left slows the team to the minimum, still moving', G.levelTeam
 G.levelHold(S2, 1);
 for (let i = 0; i < 90; i++) G.titleStep(S2, dt);
 check('stick full right hurries it', Math.abs(S2.pace - D.autoLvlPace * D.autoLvlHurry) < 1e-6, S2.pace);
-D.autoLvlMin = keep.m; D.autoLvlBossT = keep.b; D.autoFoeElites = keep.e;
+D.autoLvlMin = keep.m; D.autoLvlBossT = keep.b; D.autoFoeElites = keep.e; D.autoChestN = chN;
 console.log(fails ? `${fails} FAILED` : 'all passed');
 process.exit(fails ? 1 : 0);

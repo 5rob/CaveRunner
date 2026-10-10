@@ -19,6 +19,7 @@ import { blockCell, blockCol, blockKind, planBlocks, webSlow } from './blocked.j
 import { elitePlan, levelFoes, levelHurt } from './enemies.js';
 import { bagFits, killLoot, lootCol } from './loot.js';
 import { bagAdd } from './run.js';
+import { chestPlan, chestsStep } from './chests.js';
 import { CLEARED_N, clearedLand } from '../art/cleared.js';
 
 export const LVL_SCROLL = 34;         // the menu's scroll (world units / s at pace 1: titlescene.js SCROLL)
@@ -69,7 +70,7 @@ export function levelPlan(seed, minutes = DEV.autoLvlMin, blocks = DEV.autoBlock
 // boss (stage 6: the arena's boss once it's in), failed (every player fallen: the screen takes the team home);
 // run (stage 6 part 2: the drops go into its bag; none: they're just taken), bagV (+1 each time something goes in: the screen redraws the bag)
 /** @typedef {{ plan: LevelPlan, phase: string, arrived: boolean[], zap: number, goT: number, arenaT: number, bossDead: boolean, hold: number,
- *   elites: import('./enemies.js').LevelFoe[], chests: { x: number, open?: boolean }[], doneT: number, meters: PlayerMeters[], blocked: boolean,
+ *   elites: import('./enemies.js').LevelFoe[], chests: import('./chests.js').LevelChest[], doneT: number, meters: PlayerMeters[], blocked: boolean,
  *   boss: Enemy | null, failed: boolean, run?: AutoRun | null, bagV: number, blockKind?: string, webK?: number, webT?: number, lootT?: number, clearT?: number }} LevelState */
 // (blockKind: what the block is, rock / web / timber (stage 6b); webK: the team's pace through webs (1 free, auto/blocked.js webSlow); webT: the next cut)
 /** @param {import('../art/titlescene.js').TitleScene} S @returns {LevelState | null} */
@@ -93,6 +94,7 @@ export function levelScene(vh, seed, n, plan = levelPlan(seed), team, tier = 1, 
     take: (_S, it) => { if (L.run && bagAdd(L.run, it)) return false; L.bagV++; return true; },
     lootCol, blockCell, blockCol, blockKind }, team, tier });
   L.elites = elitePlan(plan, S.rnd);
+  L.chests = chestPlan(plan);
   L.meters = S.runners.map(() => ({ dmg: meterNew(), hp: meterNew(), dealt: 0 }));
   S.pace = 0; S.still = true;
   S.foes.length = 0;
@@ -146,6 +148,7 @@ export function levelStep(S, dt) {
   if (!L) return;
   levelMeters(S, L, dt);
   levelFoes(S, L, levelTeamX(S));
+  chestsStep(S);
   const P = L.plan;
   if (L.phase === 'arrive') {
     const fy = titleFloor(P.padX, S);
