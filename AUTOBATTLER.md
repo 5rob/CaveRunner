@@ -374,6 +374,7 @@ chest slow ×0.5. Grab radius 35% of a tile.
 | feedback round 2 (c) | done | v1.0.27 | PM alone. Owner: the pull lighting missing (a wiring bug, fixed; never-fired mods dimmed), grab radius wider (0.45), stats span "all" (whole level), hold a graph to pin it above the player row (stacked per side, nav slide). |
 | feedback round 2 (d) | done | v1.0.28 | PM: steering recheck (helmet pick steers + followed, B at the player row lets go, whole screen). Agent (~21 min, worktree `cr-death`): the old jetpack flame + smoke; the old ragdoll, slow stop, "Tap A to Teleport back to Hub", helmet light, blast, home. Not done: the camera doesn't move onto the last ragdoll by itself. |
 | feedback round 2 (e) | done | v1.0.29 | PM alone. Owner: the jet flame must point away from travel (the hub never ran `jetStep`; the level tilt used screen speed) — fixed; full gold stream at twice the drag (`PAY_MAX` 180). |
+| feedback round 2 (f) | done | v1.0.30 | PM: B hides the nav (a play tap shows it), one fixed camera (no gestures), jet thrust by the stick's height, auto-loot race. Agent (~13 min, worktree `cr-roam`): hold a helmet in a level → manual mode (scroll stops, damped follow forward/back, team behind, B lets go). Open: the view doesn't follow inside the arena; followers can trail the wrong side backing up. |
 
 ## 8. The PM's kick-start prompt
 

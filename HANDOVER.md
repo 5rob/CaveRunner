@@ -8,7 +8,9 @@ release loop, testing), then the README of the `src/` folder you're working in.
 Planned with the owner (brief + quiz answers + 16 stages + the PM's kick-start prompt, all in `AUTOBATTLER.md`;
 mock-up `docs/autobattler-mockup.png`). Progress: AUTOBATTLER.md's Log. `main` keeps the old game.
 
-**Where it stands (2026-10-10, v1.0.29 live at /auto/): all stages 0–14 built; feedback rounds 1 and 2 released.** Round 2e (v1.0.29):
+**Where it stands (2026-10-11, v1.0.30 live at /auto/): all stages 0–14 built; feedback rounds 1 and 2 released.** Round 2f (v1.0.30):
+B hides the nav, one fixed camera, hold a helmet in a level for manual mode (scroll stops, damped follow, team behind), jet thrust
+by the stick's height (open: no follow inside the arena; followers may trail the wrong side backing up). Round 2e (v1.0.29):
 the jet flame away from travel (hub and level), full gold stream at twice the drag. Round 2d (v1.0.28):
 steering rechecked (helmet pick, B lets go), the old jetpack flame and smoke, the old ragdoll and the teleport home after a wipe
 (open: the camera doesn't move onto the last ragdoll by itself). Round 2c (v1.0.27):

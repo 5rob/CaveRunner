@@ -53,10 +53,9 @@ G.titleKill(S, f2);
 const n2 = (S.loot || []).length;
 until(S, () => false, 45);
 check('the bag full: the drop waits on the ground', n2 >= 1 && (S.loot || []).length === n2 && S.loot.every(g => g.wait), [n2, (S.loot || []).length]);
-S.coins.length = 0;   // (its gold would take the freed slot first: the flake)
 run.bag[3] = null;
 // (any kind: the drop is random, a mod, a gem or an exo mod; it was 'mod' only and flaked)
-const came = until(S, s => !(s.loot || []).length, 300);
+const came = until(S, s => { s.coins.length = 0; return !!run.bag[3]; }, 300);   // (the team's other kills' gold kept out of the slot; their drops keep coming, so: till the slot fills)   // (the team's other kills' gold kept out of the slot)
 check('a slot frees: it comes in', came >= 0 && !!run.bag[3] && run.bag[3].kind !== 'perk', [came, run.bag[3] && run.bag[3].kind]);
 
 // ---- the menu is unchanged: no loot ----

@@ -5,6 +5,20 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.30 — CaveRunner Auto: feedback round 2, sixth batch (branch `autobattler`)
+Released 2026-10-11 on the branch (owner OK'd; shots `tools/roamshots.js`).
+- B at the player row hides the nav (the rows slide out, the slot closes); a tap on the play area brings it back
+  (`navHidden`, `.anavwrap.hid`). No camera gestures any more: one fixed view (`runScene` option `still`; no pinch,
+  drag or tap-to-follow).
+- Manual mode (agent): a helmet TAP opens the player's menu; a HOLD in a level steers him (in the hub the hold is still the
+  gun arc). The level's own scroll stops; the view follows him forward and back at `autoRoamCam` × his offset (damped),
+  at most `autoRoamBack` screens behind the furthest point (a level keeps `TITLE_BACK` of cave, props, creatures and
+  drops behind the screen); the team lines up behind him; B: the pilot again. `auto/level.js` `levelLead`, `roamStep`,
+  `roamFollow`; suites `auto-roam`, `auto-steer` (rewritten).
+- The jet: lowering the stick lowers the thrust and the flame until he sinks (`jetLift`, `jetThrottle`, `JET_SINK`; hub
+  and a steered player).
+- `auto-loot`'s "a slot frees" no longer flakes (the team's other kills' gold and drops raced for the slot).
+
 ## v1.0.29 — CaveRunner Auto: feedback round 2, fifth batch (branch `autobattler`)
 Released 2026-10-10 on the branch (owner OK'd; shot `tools/pillshots.js`).
 - Fix: the jet flame away from the way he travels. The hub never ran the jetpack step (`S.still`): `hubMove` now calls
