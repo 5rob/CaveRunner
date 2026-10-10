@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v1.0.26</title>
-<!-- VERSION = 'v1000026' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v1.0.27</title>
+<!-- VERSION = 'v1000027' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -929,7 +929,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 /* the nav as a stack (feedback round 2): .anavwrap holds the nav's place; each row (.anavslot) sits at its bottom, lifted
    above it by its translateY (animated); the nav's own row .anav, raised ones .anavup, a leaving one .anavout */
 .anavwrap{position:relative;flex:none;height:66px;z-index:6}
-.anavslot{position:absolute;left:0;right:0;bottom:0;height:66px;transition:transform .28s cubic-bezier(.3,.8,.3,1)}
+.anavslot{position:absolute;left:0;right:0;bottom:0;height:66px;transition:transform .28s cubic-bezier(.3,.8,.3,1);z-index:1}
+.anavs.cold{opacity:.45}
+/* pinned graphs (feedback round 2): above the nav's row, under the raised rows; damage left, health right; no box */
+.apins{position:absolute;left:0;right:0;bottom:72px;height:0;z-index:0;pointer-events:none;transition:transform .28s cubic-bezier(.3,.8,.3,1)}
+.apin{position:absolute;bottom:0;width:calc(50% - 8px);height:34px;transition:transform .28s cubic-bezier(.3,.8,.3,1)}
+.apin.dmg{left:4px}.apin.hp{right:4px}
+.apinin{position:relative;width:100%;height:100%;animation:anavin .28s cubic-bezier(.3,.8,.3,1) both}
+.apinc{display:block;width:100%;height:100%}
+.apindot{position:absolute;left:-2px;top:2px;width:6px;height:6px;border-radius:50%;box-shadow:0 0 4px rgba(0,0,0,0.8)}
 .anavslot.panel{height:168px}
 .anavrow{display:flex;justify-content:space-around;align-items:center;padding:6px 8px;height:66px;width:100%;transition:border-color .15s;
   box-shadow:0 -4px 14px rgba(0,0,0,0.5)}
@@ -1045,7 +1053,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v1.0.26';</script>
+<script>const VERSION = 'v1.0.27';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -1988,7 +1996,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "autoChestGreen", g: "autochests", label: "Holds a green gem (weight)", min: 0, max: 100, step: 1 }
   );
   DEV_GROUPS.push(["autochests", "Auto: chests"]);
-  Object.assign(DEV_DEFAULTS, { autoGrab: 0.35 });
+  Object.assign(DEV_DEFAULTS, { autoGrab: 0.45 });
   DEV_META.push(
     { k: "autoGrab", g: "autobag", label: "Grab radius: a touch picks up an item this near its centre (× the tile width); elsewhere it scrolls", min: 0.1, max: 0.5, step: 0.01 }
   );
@@ -14885,7 +14893,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var METER_DT = 0.25;
   function meterNew(span = METER_SPAN, dt = METER_DT) {
     const n = Math.max(1, Math.round(span / dt));
-    return { dt, n, buf: new Array(n).fill(0), i: 0, t: 0 };
+    return { dt, n, buf: new Array(n).fill(0), i: 0, t: 0, all: [] };
   }
   function meterAdd(M, v) {
     M.buf[M.i] += v;
@@ -14898,6 +14906,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     while (M.t >= M.dt) {
       M.t -= M.dt;
       const was = M.buf[M.i];
+      if (M.all) M.all.push(was);
       M.i = (M.i + 1) % M.n;
       M.buf[M.i] = carry ? was : 0;
     }
@@ -14905,11 +14914,28 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var meterValues = (M) => M.buf.slice(M.i + 1).concat(M.buf.slice(0, M.i + 1));
   var meterSum = (M) => M.buf.reduce((a, b) => a + b, 0);
   function meterTail(M, span) {
+    if (span <= 0) return meterAll(M);
     if (!M) return new Array(Math.max(2, Math.round(span / METER_DT))).fill(0);
     const k = Math.max(2, Math.min(M.n, Math.round(span / M.dt)));
     return meterValues(M).slice(M.n - k);
   }
-  var STAT_SPANS = [5, 15, 30];
+  var ALL_PTS = 240;
+  function meterAll(M) {
+    if (!M) return [0, 0];
+    const v = (M.all || []).concat(M.buf[M.i]);
+    if (v.length < 2) return [v[0] || 0, v[0] || 0];
+    if (v.length <= ALL_PTS) return v;
+    const out = [], k = v.length / ALL_PTS;
+    for (let j = 0; j < ALL_PTS; j++) {
+      const a = Math.floor(j * k), b = Math.max(a + 1, Math.floor((j + 1) * k));
+      let s = 0;
+      for (let i = a; i < b; i++) s += v[i];
+      out.push(s / (b - a));
+    }
+    return out;
+  }
+  var STAT_SPANS = [5, 15, 30, 0];
+  var spanLabel = (s) => s > 0 ? s + "s" : "all";
   var nextSpan = (s) => STAT_SPANS[(STAT_SPANS.indexOf(s) + 1) % STAT_SPANS.length];
 
   // src/auto/pilot.js
@@ -29465,6 +29491,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const [arc, setArc] = useState(noArc);
     const noBurst = null;
     const [burst3, setBurst] = useState(noBurst);
+    const noPins = [];
+    const [pins, setPins] = useState(noPins);
+    const togglePin = (p, kind, span) => setPins((ps) => ps.some((q) => q.p === p && q.kind === kind) ? ps.filter((q) => !(q.p === p && q.kind === kind)) : [...ps, { p, kind, span }]);
     useEffect(() => {
       const paidV = { current: 0 }, bagV = { current: 0 };
       const id = setInterval(() => {
@@ -29885,10 +29914,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       addEventListener("pointerup", up);
       addEventListener("pointercancel", cancel);
     };
-    const meters = () => {
+    const meters = () => metersOf(navRef.current.p);
+    const metersOf = (p) => {
       const L = scene.current && levelState(scene.current);
-      return L && L.meters[navRef.current.p] || null;
+      return L && L.meters[p] || null;
     };
+    const pinNav = (kind, span) => togglePin(navRef.current.p, kind, span);
     return h(
       "div",
       { className: "auto" },
@@ -29908,7 +29939,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           setPaused(true);
         }) }, "⏸")
       ),
-      h(NavStack, { nav, run, openAt, down, drag, holdHelm, holdGun, meters }),
+      h(NavStack, { nav, run, openAt, down, drag, holdHelm, holdGun, meters, pins, metersOf, pinNav }),
       h(
         "div",
         { className: "abag" + (drag && drag.over && drag.over.key === "bag" && drag.over.ok ? " drop" : "") },
@@ -29981,13 +30012,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     );
   }
   var ROW_H = 66, STACK_GAP = 6, PANEL_H = 168, LEAVE_MS = 260;
-  function NavStack({ nav, run, openAt, down, drag, holdHelm, holdGun, meters }) {
+  function NavStack({ nav, run, openAt, down, drag, holdHelm, holdGun, meters, pins, metersOf, pinNav }) {
     const path = navPath(nav);
     const pl = run.players[nav.p];
     const gun = nav.level === "gun" && pl ? pl.guns[nav.g] : null;
     const items = path.map((s) => ({ key: s.level, s }));
     if (gun) items.splice(items.length - 1, 0, { key: "panel", s: nav, panel: true });
     const [lit, setLit] = useState(null);
+    const steps = gun ? pullSteps(gun) : null;
+    const cold = new Set(gun && steps ? gun.slots.map((id, i) => id && !steps.some((st) => st.slot === i) ? i : -1).filter((i) => i >= 0) : []);
     const noGone = [];
     const [gone, setGone] = useState(noGone);
     const prev = useRef(items);
@@ -30018,7 +30051,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           gun: g,
           sig: it.s.p + "|" + it.s.g + "|" + g.slots.join() + "|" + g.multi + "|" + g.shuffle + "|" + g.castDelay + "|" + g.recharge,
           col: MACHINE_EDGE,
-          onLit: cur ? setLit : void 0,
+          onLit: cls === "anavout" ? void 0 : setLit,
           cls
         }) : null;
       }
@@ -30036,13 +30069,16 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         holdHelm,
         holdGun: hg,
         meters,
+        pinNav,
         slide: ready.current,
+        cold: cls === "anav" ? cold : null,
         lit: cls === "anav" && nav.level === "gun" ? lit : null
       });
     };
     return h(
       "div",
       { className: "anavwrap" },
+      h(PinStack, { pins, run, metersOf, lift: off[0] || 0 }),
       ...items.map((it, i) => h(
         "div",
         { key: it.key, className: "anavslot" + (it.panel ? " panel" : ""), style: { transform: "translateY(" + -off[i] + "px)" } },
@@ -30083,7 +30119,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       h(GunFire, { gun, sim })
     );
   }
-  function NavRow({ row, level, cls, pick, open, down, drag, holdHelm, holdGun, meters, lit, slide }) {
+  function NavRow({ row, level, cls, pick, open, down, drag, holdHelm, holdGun, meters, lit, slide, cold, pinNav }) {
     const [slideIn] = useState(!!slide);
     const over = drag && drag.over && drag.over.ok ? drag.over.key : "";
     const on = new Set(lit ? lit.slots : []), pc = lit ? PULL_COL[lit.pull % PULL_COL.length] : "";
@@ -30103,7 +30139,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           "div",
           {
             key: c.key,
-            className: "aslot anavs" + (it ? " full k-" + it.kind : "") + (over === "n" + i ? " drop" : "") + (lift ? " lift" : ""),
+            className: "aslot anavs" + (it ? " full k-" + it.kind : "") + (over === "n" + i ? " drop" : "") + (lift ? " lift" : "") + (cold && cold.has(i) ? " cold" : ""),
             style: itemEdge(it),
             "data-nslot": i,
             onPointerDown: it ? grab : void 0
@@ -30141,7 +30177,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         "data-level": level,
         style: row.col ? { borderColor: row.col, boxShadow: "0 0 12px " + row.col + "55" } : void 0
       },
-      row.shape === "stats" ? h(StatsRow, { meters }) : row.cells.map(cell)
+      row.shape === "stats" ? h(StatsRow, { meters, pin: pinNav }) : row.cells.map(cell)
     );
   }
   function BagSlot({ i, it, down, lift, drop }) {
@@ -30284,7 +30320,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     c.dataset.n = String(vals.length);
     c.dataset.peak = String(peak);
   }
-  function StatsRow({ meters }) {
+  function StatsRow({ meters, pin }) {
     const [span, setSpan] = useState(5);
     const dmg = useRef(null);
     const hp = useRef(null);
@@ -30298,19 +30334,62 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const id = setInterval(draw, 250);
       return () => clearInterval(id);
     }, [span]);
-    const cycle = (e) => {
+    const press = (e) => {
       e.preventDefault();
       SFX.unlock();
-      SFX.ui("tap");
-      setSpan(nextSpan);
+      const kind = e.target && e.target.closest && e.target.closest(".astatg.hp") ? "hp" : "dmg";
+      const id = e.pointerId;
+      let held = false;
+      const t = setTimeout(() => {
+        held = true;
+        SFX.fx("open");
+        pin(kind, span);
+      }, DEV.autoHoldMs);
+      const up = (ev) => {
+        if (ev.pointerId !== id) return;
+        clearTimeout(t);
+        removeEventListener("pointerup", up);
+        removeEventListener("pointercancel", up);
+        if (!held && ev.type === "pointerup") {
+          SFX.ui("tap");
+          setSpan(nextSpan);
+        }
+      };
+      addEventListener("pointerup", up);
+      addEventListener("pointercancel", up);
     };
     return h(
       "div",
-      { className: "astats", "data-span": span, onPointerDown: cycle },
+      { className: "astats", "data-span": span, onPointerDown: press },
       h("canvas", { ref: dmg, className: "astatg dmg" }),
       h("canvas", { ref: hp, className: "astatg hp" }),
-      h("i", { className: "astatspan" }, span + "s")
+      h("i", { className: "astatspan" }, spanLabel(span))
     );
+  }
+  var PIN_H = 34, PIN_GAP = 4;
+  function PinStack({ pins, run, metersOf, lift }) {
+    const side = (kind) => {
+      const mine = pins.filter((q) => q.kind === kind);
+      return mine.map((q, i) => h(
+        "div",
+        { key: kind + q.p, className: "apin " + kind, "data-p": q.p, style: { transform: "translateY(" + -(mine.length - 1 - i) * (PIN_H + PIN_GAP) + "px)" } },
+        h(PinGraph, { pin: q, col: (run.players[q.p] || { col: "#fff" }).col, metersOf })
+      ));
+    };
+    return h("div", { className: "apins", style: { transform: "translateY(" + -lift + "px)" } }, ...side("dmg"), ...side("hp"));
+  }
+  function PinGraph({ pin, col, metersOf }) {
+    const ref = useRef(null);
+    useEffect(() => {
+      const draw = () => {
+        const M = metersOf(pin.p);
+        paintGraph(ref.current, meterTail(M && M[pin.kind], pin.span), pin.kind === "hp" ? "#5ee05a" : "#ff4a4a");
+      };
+      draw();
+      const id = setInterval(draw, 250);
+      return () => clearInterval(id);
+    }, []);
+    return h("div", { className: "apinin" }, h("i", { className: "apindot", style: { background: col } }), h("canvas", { ref, className: "apinc" }));
   }
   function CoinBurst({ burst: burst3 }) {
     return h(

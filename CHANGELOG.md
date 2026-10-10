@@ -5,6 +5,17 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.27 — CaveRunner Auto: feedback round 2, third batch (branch `autobattler`)
+Released 2026-10-10 on the branch (owner OK'd; shots `tools/pinshots.js`).
+- Fix: the mod slots now light in each pull's colour with the gun panel's preview (v1.0.25 built it but the panel never
+  passed its lights on: `onLit` was only given to the stack's last item, the slots row). A fitted mod no pull fires is
+  dimmed (`pullSteps`, `.anavs.cold`), as the old Bag.
+- Easier to pick up: `autoGrab` 0.35 → 0.45.
+- Stats: a 4th span, "all", the whole level so far (`meters.js` `M.all`, `meterAll` averaged to `ALL_PTS`, `spanLabel`).
+  A graph held `autoHoldMs` is pinned above the player row on its side (damage left, health right; no box; a dot in the
+  player's colour); the newest at the bottom, older ones rise; held again it's unpinned. The pins ride up with the nav
+  stack (`PinStack`, `PinGraph`).
+
 ## v1.0.26 — CaveRunner Auto: feedback round 2, second batch (branch `autobattler`)
 Released 2026-10-10 on the branch (owner OK'd; shots `tools/hubshots.js`, the old shop's `tools/oldshopshots.js`).
 - The hub is the old shop's room (agent, then PM rounds): the old 120 between stops (was 100), the room 96 high, the

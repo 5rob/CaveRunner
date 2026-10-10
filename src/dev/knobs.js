@@ -687,7 +687,7 @@ DEV_META.push(
   { k: 'autoChestGreen', g: 'autochests', label: 'Holds a green gem (weight)', min: 0, max: 100, step: 1 });
 DEV_GROUPS.push(['autochests', 'Auto: chests']);
 // CaveRunner Auto's bag (ui/auto/AutoScreen.js, stage 8b): a touch grabs an item only this near its icon's centre
-Object.assign(DEV_DEFAULTS, { autoGrab: 0.35 });
+Object.assign(DEV_DEFAULTS, { autoGrab: 0.45 });   // (owner, feedback round 2: was 0.35, too hard to pick up)
 DEV_META.push(
   { k: 'autoGrab', g: 'autobag', label: 'Grab radius: a touch picks up an item this near its centre (× the tile width); elsewhere it scrolls', min: 0.1, max: 0.5, step: 0.01 });
 // stage 9: hold a helmet this long for its gun arc; the arc's radius (px)

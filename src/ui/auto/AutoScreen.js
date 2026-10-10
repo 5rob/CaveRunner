@@ -32,10 +32,10 @@ import { BAG_SLOTS, EXO_STATS, MAX_PLAYERS, addPlayer, bagAdd, fitExo, fitGun, f
   scrapAt, setActive, spend, unfitExo, unfitMod, unfitPerk } from '../../auto/run.js';
 import { loadAutoRun, saveAutoRun } from '../../auto/save.js';
 import { EXO_NAMES, arcPick, gunArc, navBack, navOpen, navPath, navPick, navRow, navStart } from '../../auto/nav.js';
-import { meterTail, nextSpan } from '../../auto/meters.js';
+import { meterTail, nextSpan, spanLabel } from '../../auto/meters.js';
 import { CARD_ICON, GunCard, ModCard, PerkCard } from '../cards.js';
 import { GunFire, GunIcon, GunStats, PULL_COL } from '../editor.js';
-import { fireSimNew, fireSimStep } from '../../spells/bagsim.js';
+import { fireSimNew, fireSimStep, pullSteps } from '../../spells/bagsim.js';
 import { GlyphIcon, HelmetIcon, PixIcon } from './icons.js';
 import { PauseMenu } from '../pause.js';
 import { runScene } from '../scenecanvas.js';
@@ -104,6 +104,12 @@ export function AutoScreen() {
   /** @type {{ x: number, y: number, n: number, k: number } | null} */
   const noBurst = null;
   const [burst, setBurst] = useState(noBurst);
+  // (feedback round 2) graphs pinned above the nav (a stats graph held): player p's damage (left) or health (right) over span
+  /** @type {Pin[]} */
+  const noPins = [];
+  const [pins, setPins] = useState(noPins);
+  /** hold a graph: pin it (the newest at the bottom of its side), held again: unpin @param {number} p @param {'dmg' | 'hp'} kind @param {number} span */
+  const togglePin = (p, kind, span) => setPins(ps => ps.some(q => q.p === p && q.kind === kind) ? ps.filter(q => !(q.p === p && q.kind === kind)) : [...ps, { p, kind, span }]);
   useEffect(() => {
     const paidV = { current: 0 }, bagV = { current: 0 };
     const id = setInterval(() => {
@@ -435,7 +441,11 @@ export function AutoScreen() {
     addEventListener('pointermove', move, { passive: false }); addEventListener('pointerup', up); addEventListener('pointercancel', cancel);
   };
   /** the nav's player's meters (in a level; the hub has none) @returns {PlayerMeters | null} */
-  const meters = () => { const L = scene.current && levelState(scene.current); return (L && L.meters[navRef.current.p]) || null; };
+  const meters = () => metersOf(navRef.current.p);
+  /** player p's meters (in a level) @param {number} p @returns {PlayerMeters | null} */
+  const metersOf = p => { const L = scene.current && levelState(scene.current); return (L && L.meters[p]) || null; };
+  /** @param {'dmg' | 'hp'} kind @param {number} span */
+  const pinNav = (kind, span) => togglePin(navRef.current.p, kind, span);
   return h('div', { className: 'auto' },
     h('div', { className: 'aplay' + (drag && drag.over && drag.over.key === 'play' && drag.over.ok ? ' drop' : '') },
       h('canvas', { ref: cvs, className: 'aplaycvs' }),
@@ -443,7 +453,7 @@ export function AutoScreen() {
       boss ? h('div', { className: 'abossbar' }, h('b', null, boss.name),
         h('div', { className: 'abosstrack' }, h('i', { style: { width: (100 * boss.hp / Math.max(1, boss.max)).toFixed(1) + '%' } }))) : null,
       h('button', { className: 'pausebtn', title: 'Pause', onPointerDown: tap(() => { SFX.fx('open'); setPaused(true); }) }, '⏸')),
-    h(NavStack, { nav, run, openAt, down, drag, holdHelm, holdGun, meters }),
+    h(NavStack, { nav, run, openAt, down, drag, holdHelm, holdGun, meters, pins, metersOf, pinNav }),
     h('div', { className: 'abag' + (drag && drag.over && drag.over.key === 'bag' && drag.over.ok ? ' drop' : '') },
       ...Array.from({ length: BAG_SLOTS }, (_, i) => h(BagSlot, { key: i, i, it: run.bag[i], down,
         lift: !!drag && drag.src.from === 'bag' && drag.src.i === i,
@@ -520,9 +530,9 @@ const ROW_H = 66, STACK_GAP = 6, PANEL_H = 168, LEAVE_MS = 260;
 /**
  * @param {{ nav: NavState, run: AutoRun, openAt: (s: NavState, w: string | number) => void, down: (e: any, src: DragSrc) => void,
  *   drag: Drag | null, holdHelm: (e: any, i: number) => void, holdGun: (e: any, s: NavState, i: number) => void,
- *   meters: () => PlayerMeters | null }} props
+ *   meters: () => PlayerMeters | null, pins: Pin[], metersOf: (p: number) => PlayerMeters | null, pinNav: (kind: 'dmg' | 'hp', span: number) => void }} props
  */
-function NavStack({ nav, run, openAt, down, drag, holdHelm, holdGun, meters }) {
+function NavStack({ nav, run, openAt, down, drag, holdHelm, holdGun, meters, pins, metersOf, pinNav }) {
   const path = navPath(nav);
   const pl = run.players[nav.p];
   const gun = nav.level === 'gun' && pl ? pl.guns[nav.g] : null;
@@ -530,6 +540,9 @@ function NavStack({ nav, run, openAt, down, drag, holdHelm, holdGun, meters }) {
   const items = path.map(s => ({ key: s.level, s }));
   if (gun) items.splice(items.length - 1, 0, { key: 'panel', s: nav, panel: true });
   const [lit, setLit] = useState(null);
+  // (as the old Bag) a fitted mod no pull ever fires is dimmed
+  const steps = gun ? pullSteps(gun) : null;
+  const cold = new Set(gun && steps ? gun.slots.map((id, i) => (id && !steps.some(st => st.slot === i) ? i : -1)).filter(i => i >= 0) : []);
   // rows that just left (B, or a tap on a raised row): kept LEAVE_MS to slide out
   /** @type {{ it: StackItem, k: number }[]} */
   const noGone = [];
@@ -558,7 +571,7 @@ function NavStack({ nav, run, openAt, down, drag, holdHelm, holdGun, meters }) {
     if (it.panel) {
       const g = run.players[it.s.p] && run.players[it.s.p].guns[it.s.g];
       return g ? h(GunPanel, { gun: g, sig: it.s.p + '|' + it.s.g + '|' + g.slots.join() + '|' + g.multi + '|' + g.shuffle + '|' + g.castDelay + '|' + g.recharge,
-        col: MACHINE_EDGE, onLit: cur ? setLit : undefined, cls }) : null;
+        col: MACHINE_EDGE, onLit: cls === 'anavout' ? undefined : setLit, cls }) : null;
     }
     const s = it.s;
     /** @param {string | number} w */
@@ -566,9 +579,10 @@ function NavStack({ nav, run, openAt, down, drag, holdHelm, holdGun, meters }) {
     /** @param {any} e @param {number} i */
     const hg = (e, i) => holdGun(e, s, i);
     return h(NavRow, { row: navRow(s, run, MAX_PLAYERS), level: s.level, cls, pick: cur ? undefined : navPick(nav, s.level),
-      open, down, drag: cls === 'anav' ? drag : null, holdHelm, holdGun: hg, meters, slide: ready.current, lit: cls === 'anav' && nav.level === 'gun' ? lit : null });
+      open, down, drag: cls === 'anav' ? drag : null, holdHelm, holdGun: hg, meters, pinNav, slide: ready.current, cold: cls === 'anav' ? cold : null, lit: cls === 'anav' && nav.level === 'gun' ? lit : null });
   };
   return h('div', { className: 'anavwrap' },
+    h(PinStack, { pins, run, metersOf, lift: off[0] || 0 }),
     ...items.map((it, i) => h('div', { key: it.key, className: 'anavslot' + (it.panel ? ' panel' : ''), style: { transform: 'translateY(' + (-off[i]) + 'px)' } },
       body(it, i === last ? 'anav' : it.panel ? 'up' : 'anavup', i === last))),
     ...gone.map(o => h('div', { key: 'gone-' + o.it.key + o.k, className: 'anavslot' + (o.it.panel ? ' panel' : '') }, body(o.it, 'anavout', false))));
@@ -612,8 +626,9 @@ function GunPanel({ gun, sig, col, onLit, cls }) {
 // pull lighting the mod slots.
 /** @param {{ row: import('../../auto/nav.js').NavRow, level: string, cls: string, pick?: string | number, open: (w: string | number) => void,
  *   down: (e: any, src: DragSrc) => void, drag: Drag | null, holdHelm: (e: any, i: number) => void, holdGun: (e: any, i: number) => void,
- *   meters: () => PlayerMeters | null, lit: { slots: number[], pull: number } | null, slide?: boolean }} props */
-function NavRow({ row, level, cls, pick, open, down, drag, holdHelm, holdGun, meters, lit, slide }) {
+ *   meters: () => PlayerMeters | null, lit: { slots: number[], pull: number } | null, slide?: boolean, cold?: Set<number> | null,
+ *   pinNav: (kind: 'dmg' | 'hp', span: number) => void }} props */
+function NavRow({ row, level, cls, pick, open, down, drag, holdHelm, holdGun, meters, lit, slide, cold, pinNav }) {
   const [slideIn] = useState(!!slide);
   const over = drag && drag.over && drag.over.ok ? drag.over.key : '';
   const on = new Set(lit ? lit.slots : []), pc = lit ? PULL_COL[lit.pull % PULL_COL.length] : '';
@@ -631,7 +646,7 @@ function NavRow({ row, level, cls, pick, open, down, drag, holdHelm, holdGun, me
       const lift = !!drag && drag.src.from === 'nav' && drag.src.i === i;
       /** @param {any} e */
       const grab = e => down(e, { from: 'nav', i });
-      return h('div', { key: c.key, className: 'aslot anavs' + (it ? ' full k-' + it.kind : '') + (over === 'n' + i ? ' drop' : '') + (lift ? ' lift' : ''),
+      return h('div', { key: c.key, className: 'aslot anavs' + (it ? ' full k-' + it.kind : '') + (over === 'n' + i ? ' drop' : '') + (lift ? ' lift' : '') + (cold && cold.has(i) ? ' cold' : ''),
         style: itemEdge(it), 'data-nslot': i, onPointerDown: it ? grab : undefined },
         it ? h(ItemIcon, { it }) : null, it ? h(Grab) : null,
         on.has(i) ? h('i', { className: 'pulse on', style: { background: pc, borderColor: pc, color: pc } }) : null);
@@ -651,7 +666,7 @@ function NavRow({ row, level, cls, pick, open, down, drag, holdHelm, holdGun, me
   };
   return h('div', { className: 'anavrow ' + cls + ' l-' + level + (row.shape === 'slots' ? ' slots' : '') + (pick !== undefined ? ' picked' : '') + (slideIn ? ' slide' : ''), 'data-level': level,
     style: row.col ? { borderColor: row.col, boxShadow: '0 0 12px ' + row.col + '55' } : undefined },
-    row.shape === 'stats' ? h(StatsRow, { meters }) : row.cells.map(cell));
+    row.shape === 'stats' ? h(StatsRow, { meters, pin: pinNav }) : row.cells.map(cell));
 }
 
 // one bag slot: empty, or the item's icon and its count
@@ -789,9 +804,10 @@ function paintGraph(c, vals, col) {
 }
 
 // the nav's Stats level: red = damage dealt, green = health (the player's meters, auto/meters.js; a 0.25 s bucket
-// each), over the last 5 / 15 / 30 s (a tap cycles; the span small in the corner). Redrawn 4 times a second.
-/** @param {{ meters: () => PlayerMeters | null }} props */
-function StatsRow({ meters }) {
+// each), over the last 5 / 15 / 30 s or the whole level (a tap cycles; the span small in the corner). Redrawn 4 times a
+// second. (feedback round 2) Held DEV.autoHoldMs, the graph under the finger is pinned above the nav (pin), or unpinned.
+/** @param {{ meters: () => PlayerMeters | null, pin: (kind: 'dmg' | 'hp', span: number) => void }} props */
+function StatsRow({ meters, pin }) {
   const [span, setSpan] = useState(5);
   /** @type {{ current: HTMLCanvasElement | null }} */
   const dmg = useRef(null);
@@ -807,12 +823,55 @@ function StatsRow({ meters }) {
     const id = setInterval(draw, 250);
     return () => clearInterval(id);
   }, [span]);
-  /** @param {any} e */
-  const cycle = e => { e.preventDefault(); SFX.unlock(); SFX.ui('tap'); setSpan(nextSpan); };
-  return h('div', { className: 'astats', 'data-span': span, onPointerDown: cycle },
+  /** a tap cycles the span; a hold pins the graph under the finger @param {any} e */
+  const press = e => {
+    e.preventDefault(); SFX.unlock();
+    /** @type {'dmg' | 'hp'} */
+    const kind = e.target && e.target.closest && e.target.closest('.astatg.hp') ? 'hp' : 'dmg';
+    const id = e.pointerId;
+    let held = false;
+    const t = setTimeout(() => { held = true; SFX.fx('open'); pin(kind, span); }, DEV.autoHoldMs);
+    /** @param {any} ev */
+    const up = ev => {
+      if (ev.pointerId !== id) return;
+      clearTimeout(t); removeEventListener('pointerup', up); removeEventListener('pointercancel', up);
+      if (!held && ev.type === 'pointerup') { SFX.ui('tap'); setSpan(nextSpan); }
+    };
+    addEventListener('pointerup', up); addEventListener('pointercancel', up);
+  };
+  return h('div', { className: 'astats', 'data-span': span, onPointerDown: press },
     h('canvas', { ref: dmg, className: 'astatg dmg' }),
     h('canvas', { ref: hp, className: 'astatg hp' }),
-    h('i', { className: 'astatspan' }, span + 's'));
+    h('i', { className: 'astatspan' }, spanLabel(span)));
+}
+
+// ---- feedback round 2: pinned graphs ----
+/** @typedef {{ p: number, kind: 'dmg' | 'hp', span: number }} Pin */
+const PIN_H = 34, PIN_GAP = 4;
+// The pinned graphs, over the play area just above the player row (the nav's row at the top level; raised, lift px up, it
+// carries them up with it): damage on the left, health on the right, as in the stats row; no box. Each side a stack, the newest at the bottom, the older ones risen (the nav stack's slide in and lift).
+// Taps go through them (pointer-events none). A dot in the player's colour marks whose line it is
+/** @param {{ pins: Pin[], run: AutoRun, metersOf: (p: number) => PlayerMeters | null, lift: number }} props */
+function PinStack({ pins, run, metersOf, lift }) {
+  /** @param {'dmg' | 'hp'} kind */
+  const side = kind => {
+    const mine = pins.filter(q => q.kind === kind);
+    return mine.map((q, i) => h('div', { key: kind + q.p, className: 'apin ' + kind, 'data-p': q.p, style: { transform: 'translateY(' + (-(mine.length - 1 - i) * (PIN_H + PIN_GAP)) + 'px)' } },
+      h(PinGraph, { pin: q, col: (run.players[q.p] || { col: '#fff' }).col, metersOf })));
+  };
+  return h('div', { className: 'apins', style: { transform: 'translateY(' + (-lift) + 'px)' } }, ...side('dmg'), ...side('hp'));
+}
+/** one pinned graph: its line redrawn 4 times a second @param {{ pin: Pin, col: string, metersOf: (p: number) => PlayerMeters | null }} props */
+function PinGraph({ pin, col, metersOf }) {
+  /** @type {{ current: HTMLCanvasElement | null }} */
+  const ref = useRef(null);
+  useEffect(() => {
+    const draw = () => { const M = metersOf(pin.p); paintGraph(ref.current, meterTail(M && M[pin.kind], pin.span), pin.kind === 'hp' ? '#5ee05a' : '#ff4a4a'); };
+    draw();
+    const id = setInterval(draw, 250);
+    return () => clearInterval(id);
+  }, []);
+  return h('div', { className: 'apinin' }, h('i', { className: 'apindot', style: { background: col } }), h('canvas', { ref, className: 'apinc' }));
 }
 
 // a scrap: coins burst out of the gold tile, and the gold it made floats up

@@ -14,7 +14,17 @@ check('30 s: the whole ring', G.meterTail(M, 30).length === 120);
 check('more than the ring: the ring', G.meterTail(M, 60).length === 120);
 const flat = G.meterTail(null, 15);
 check('no meter (the hub): a flat line of zeros', flat.length === 60 && flat.every(v => v === 0), flat.length);
-check('spans cycle 5 → 15 → 30 → 5', G.nextSpan(5) === 15 && G.nextSpan(15) === 30 && G.nextSpan(30) === 5);
+check('spans cycle 5 → 15 → 30 → all → 5', G.nextSpan(5) === 15 && G.nextSpan(15) === 30 && G.nextSpan(30) === 0 && G.nextSpan(0) === 5 && G.spanLabel(0) === 'all');
+{ // (feedback round 2) the whole level: every bucket kept, averaged down to ALL_PTS
+  const A = G.meterNew();
+  for (let i = 0; i < 2000; i++) { G.meterAdd(A, i < 1000 ? 1 : 3); G.meterStep(A, G.METER_DT); }
+  const all = G.meterTail(A, 0);
+  check('all: the whole level (2000 buckets, more than the 30 s ring), averaged to ALL_PTS', A.all.length === 2000 && all.length === G.ALL_PTS, [A.all.length, all.length]);
+  check('… oldest first: 1s then 3s (the last point has the bucket in progress)', Math.abs(all[0] - 1) < 1e-9 && Math.abs(all[all.length - 2] - 3) < 1e-9, [all[0], all[all.length - 2]]);
+  const B = G.meterNew(); for (let i = 0; i < 10; i++) { G.meterAdd(B, i); G.meterStep(B, G.METER_DT); }
+  check('all, early on: every bucket so far plus now', G.meterTail(B, 0).length === 11);
+  check('all, no meter: flat', G.meterTail(null, 0).every(v => v === 0));
+}
 
 const a = G.gunArc(200, 500, 412, 110, 30);
 check('the arc: 4 circles, left to right, all above the helmet', a.length === 4 && a.every((p, i) => p.y < 500 && (!i || p.x > a[i - 1].x)), a);

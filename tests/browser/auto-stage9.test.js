@@ -84,10 +84,21 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     peaks: [...document.querySelectorAll('.astats canvas')].map(c => c.dataset.peak), h: document.querySelector('.anav').getBoundingClientRect().height }));
   check('stats: two graphs, 5s, flat in the hub, the row still 66px', st.n === 2 && st.span === '5s' && st.peaks.every(p => p === '0') && Math.abs(st.h - 66) < 1, st);
   const spans = [];
-  for (let i = 0; i < 3; i++) { await page.locator('.astats').dispatchEvent('pointerdown'); await page.waitForTimeout(80); spans.push(await page.$eval('.astatspan', e => e.textContent)); }
-  check('a tap cycles 15s → 30s → 5s', spans.join() === '15s,30s,5s', spans);
-  const n30 = await page.evaluate(async () => { document.querySelector('.astats').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })); document.querySelector('.astats').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })); await new Promise(r => setTimeout(r, 400)); return document.querySelector('.astats canvas').dataset.n; });
+  const tapStats = async () => { await page.locator('.astats').dispatchEvent('pointerdown'); await page.evaluate(() => dispatchEvent(new PointerEvent('pointerup'))); await page.waitForTimeout(80); };
+  for (let i = 0; i < 4; i++) { await tapStats(); spans.push(await page.$eval('.astatspan', e => e.textContent)); }
+  check('a tap cycles 15s → 30s → all → 5s', spans.join() === '15s,30s,all,5s', spans);
+  await tapStats(); await tapStats(); await page.waitForTimeout(400);
+  const n30 = await page.$eval('.astats canvas', c => c.dataset.n);
   check('30 s: 120 samples', n30 === '120', n30);
+  // (feedback round 2) hold a graph: pinned above the nav on its side; held again: unpinned
+  const holdGraph = async sel => { await page.locator(sel).dispatchEvent('pointerdown'); await page.waitForTimeout(500); await page.evaluate(() => dispatchEvent(new PointerEvent('pointerup'))); await page.waitForTimeout(350); };
+  await holdGraph('.astatg.hp');
+  const pin = await page.evaluate(() => { const p = document.querySelector('.apin.hp'), n = document.querySelector('.anav').getBoundingClientRect(); if (!p) return null; const r = p.getBoundingClientRect(); return { right: r.left > n.left + n.width / 2, above: r.bottom <= n.top, span: document.querySelector('.astatspan').textContent }; });
+  check('held the health graph: pinned above the nav, on the right; the span unchanged', !!pin && pin.right && pin.above && pin.span === '30s', pin);
+  await holdGraph('.astatg.dmg');
+  check('held the damage graph: pinned on the left', !!(await page.$('.apin.dmg')) && (await page.$$('.apin')).length === 2);
+  await holdGraph('.astatg.hp');
+  check('held again: unpinned', !(await page.$('.apin.hp')) && !!(await page.$('.apin.dmg')));
 
   // scrap
   await page.locator('.abtn.ab').dispatchEvent('pointerdown'); await page.locator('.abtn.ab').dispatchEvent('pointerdown');
