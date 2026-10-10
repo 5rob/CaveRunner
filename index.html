@@ -939,6 +939,21 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .anavs{flex:0 0 48px;width:48px;height:48px}
 .anavs:not(.full){opacity:.55}
 .anavsoon{font:800 14px ui-monospace,SFMono-Regular,Menlo,monospace;color:#9a8ab8}
+/* stage 9: a helmet takes holds (the gun arc); the arc; the stats row; a scrap's coin burst */
+.anav.l-players .anavc.on{touch-action:none;-webkit-touch-callout:none;user-select:none;-webkit-user-select:none}
+.aarc{position:fixed;inset:0;z-index:45;pointer-events:none}
+.aarcc{position:fixed;width:46px;height:46px;margin:-23px 0 0 -23px;animation:aarcin .14s ease-out both}
+.aarcc.drop{scale:1.18}
+@keyframes aarcin{from{transform:scale(.3);opacity:0}to{transform:scale(1);opacity:1}}
+.astats{position:relative;flex:1;align-self:stretch;display:flex;gap:8px;touch-action:none;cursor:pointer}
+.astatg{flex:1;min-width:0;height:100%;border-radius:8px;background:#140e22;border:1px solid #2a2140;box-sizing:border-box}
+.astatg.dmg{border-color:rgba(255,74,74,0.35)}.astatg.hp{border-color:rgba(94,224,90,0.35)}
+.astatspan{position:absolute;right:4px;top:1px;font:800 10px ui-monospace,SFMono-Regular,Menlo,monospace;font-style:normal;color:#9a8ab8;pointer-events:none}
+.acoins{position:fixed;z-index:55;width:0;height:0;pointer-events:none}
+.acoins i{position:absolute;width:10px;height:10px;margin:-5px 0 0 -5px;border-radius:50%;background:#ffc93c;box-shadow:inset -2px -2px 0 #c98a12,0 0 6px rgba(255,201,60,0.8);animation:acoin .7s ease-out both}
+@keyframes acoin{0%{transform:translate(0,0) scale(.4);opacity:1}60%{opacity:1}100%{transform:translate(var(--dx),var(--dy)) scale(1);opacity:0}}
+.acoins b{position:absolute;left:0;top:-14px;transform:translateX(-50%);font:900 14px ui-monospace,SFMono-Regular,Menlo,monospace;color:#ffc93c;text-shadow:0 1px 0 #000;animation:acoinup .9s ease-out both;white-space:nowrap}
+@keyframes acoinup{from{transform:translate(-50%,0);opacity:1}to{transform:translate(-50%,-30px);opacity:0}}
 .anavp{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;
   font:900 15px ui-monospace,SFMono-Regular,Menlo,monospace;color:#0b0716;box-shadow:inset 0 -3px 0 rgba(0,0,0,0.3)}
 .abag{flex:1 1 0;min-height:0;overflow-y:auto;overflow-x:hidden;touch-action:pan-y;-webkit-overflow-scrolling:touch;
@@ -952,7 +967,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .aslot.lift{opacity:.35}
 .aslot.drop{border-color:#5ee05a!important;box-shadow:0 0 0 2px #5ee05a,0 0 14px rgba(94,224,90,0.7)!important;opacity:1!important}
 .anavc.drop{box-shadow:0 0 0 3px #5ee05a,0 0 16px rgba(94,224,90,0.8)!important;opacity:1!important}
-.abag.drop{border-color:#5ee05a}
+.abag.drop{border-color:#5ee05a}.aplay.drop{border-color:#5ee05a;box-shadow:0 0 14px rgba(94,224,90,0.6)}
 /* the dragged ghost sits above the finger, so the lit target shows */
 .aghost{position:fixed;z-index:50;width:56px;height:56px;margin:-64px 0 0 -28px;pointer-events:none;opacity:.92;transform:scale(1.15);
   box-shadow:0 6px 18px rgba(0,0,0,0.6)}
@@ -1926,6 +1941,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   Object.assign(DEV_DEFAULTS, { autoGrab: 0.35 });
   DEV_META.push(
     { k: "autoGrab", g: "autobag", label: "Grab radius: a touch picks up an item this near its centre (× the tile width); elsewhere it scrolls", min: 0.1, max: 0.5, step: 0.01 }
+  );
+  Object.assign(DEV_DEFAULTS, { autoHoldMs: 350, autoArcR: 110 });
+  DEV_META.push(
+    { k: "autoHoldMs", g: "autobag", label: "Gun arc: hold a player’s helmet this long (ms) to fan out his 4 guns", min: 150, max: 1e3, step: 10 },
+    { k: "autoArcR", g: "autobag", label: "Gun arc: its radius (px) above the helmet", min: 70, max: 160, step: 2 }
   );
   DEV_GROUPS.push(["autobag", "Auto: bag"]);
   DEV_TABS.splice(DEV_TABS.length - 1, 0, ["auto", "Auto", ["auto", "autohub", "autolevel", "autoblocks", "autoguns", "autofoes", "autoloot", "autobag"]]);
@@ -12931,6 +12951,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     collideNuggets(S2.coins, solid);
   }
+  function leaveItem(S2, it, col) {
+    const rs = S2.runners.filter((r) => !r.out), ru = rs.length ? rs.reduce((a, b) => b.x > a.x ? b : a) : S2.runners[0];
+    const x = S2.scroll + (ru ? ru.x + PW / 2 : 40) + 36, y = ru ? ru.y : S2.top + 20;
+    const g = { x, y, vx: 30, vy: -110, it, col, t: 0, nopull: 0, left: true };
+    (S2.loot || (S2.loot = [])).push(g);
+    return g;
+  }
   var LOOT_WAIT = 0.6;
   function stepLoot(S2, dt) {
     if (!S2.loot || !S2.loot.length) return;
@@ -12941,7 +12968,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       g.t += dt;
       if (g.nopull > 0) g.nopull -= dt;
       g.wait = !!(L3 && L3.fits && !L3.fits(S2, g.it));
-      g.fly = !(g.nopull > 0) && !g.wait && !ru.out;
+      g.fly = !g.left && !(g.nopull > 0) && !g.wait && !ru.out;
       if (g.fly) {
         const grab = 260 + 900 * Math.max(0, 1 - d / COIN_PULL);
         g.vx += dx / d * grab * dt * 6;
@@ -35768,6 +35795,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   var meterValues = (M) => M.buf.slice(M.i + 1).concat(M.buf.slice(0, M.i + 1));
   var meterSum = (M) => M.buf.reduce((a, b) => a + b, 0);
+  function meterTail(M, span) {
+    if (!M) return new Array(Math.max(2, Math.round(span / METER_DT))).fill(0);
+    const k = Math.max(2, Math.min(M.n, Math.round(span / M.dt)));
+    return meterValues(M).slice(M.n - k);
+  }
+  var STAT_SPANS = [5, 15, 30];
+  var nextSpan = (s) => STAT_SPANS[(STAT_SPANS.indexOf(s) + 1) % STAT_SPANS.length];
 
   // src/auto/pilot.js
   var PILOT_BRAKE = 60;
@@ -36417,7 +36451,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   function cleared(S2, L3, dt) {
     if ((L3.clearT ?? -1) < 0) {
-      const left = (S2.loot ? S2.loot.length : 0) + S2.coins.length;
+      const left = (S2.loot ? S2.loot.filter((g) => !g.left).length : 0) + S2.coins.length;
       if (left === 0 || S2.t - (L3.lootT ?? S2.t) >= DEV.autoClearWait) L3.clearT = S2.t;
       return;
     }
@@ -36563,6 +36597,26 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (nav.level === "cat") return { shape: "slots", col: MACHINE_COL.cat, cells: pl.exo[nav.cat].map((it, i) => ({ key: "x" + i, item: it })) };
     if (nav.level === "perks") return { shape: "slots", col: MACHINE_COL.perks, cells: pl.perks.map((it, i) => ({ key: "k" + i, item: it })) };
     return { shape: "stats", col, cells: [] };
+  }
+  function gunArc(cx, cy, vw, r, pad, n = 4) {
+    const pts = Array.from({ length: n }, (_, i) => {
+      const a = (140 - 100 * i / Math.max(1, n - 1)) * Math.PI / 180;
+      return { x: cx + Math.cos(a) * r, y: cy - Math.sin(a) * r };
+    });
+    const lo = Math.min(...pts.map((p) => p.x)), hi = Math.max(...pts.map((p) => p.x));
+    const dx = lo < pad ? pad - lo : hi > vw - pad ? vw - pad - hi : 0;
+    return pts.map((p) => ({ x: p.x + dx, y: p.y }));
+  }
+  function arcPick(pts, x, y, rad) {
+    let best = -1, bd = rad;
+    pts.forEach((p, i) => {
+      const d = Math.hypot(p.x - x, p.y - y);
+      if (d <= bd) {
+        bd = d;
+        best = i;
+      }
+    });
+    return best;
   }
 
   // src/ui/auto/icons.js
@@ -38430,6 +38484,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const noDrag = null;
     const [drag, setDrag] = useState(noDrag);
     const press = useRef(null);
+    const noArc = null;
+    const [arc, setArc] = useState(noArc);
+    const noBurst = null;
+    const [burst3, setBurst] = useState(noBurst);
     useEffect(() => {
       const id = setInterval(() => {
         const L3 = scene.current && levelState(scene.current);
@@ -38570,9 +38628,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     };
     const dropAt2 = (src, x, y) => {
       const el = document.elementFromPoint(x, y);
-      const t = el && el.closest("[data-nslot],[data-gslot],.abag");
+      const t = el && el.closest("[data-nslot],[data-gslot],.abag,.aplay");
       const it = srcItem(src), n = navRef.current;
       if (!t || !it) return null;
+      const gt = el && el.closest(".abag [data-slot]");
+      if (gt && src.from === "bag" && it.kind !== "gold") {
+        const j = Number(gt.dataset.slot), g = run.bag[j];
+        if (g && g.kind === "gold") return { key: "s" + j, to: "scrap", s: j, ok: true };
+      }
+      if (t.classList.contains("aplay")) return { key: "play", to: "play", s: -1, ok: src.from === "bag" && !!scene.current };
       if (t.dataset.nslot !== void 0) {
         const s = Number(t.dataset.nslot);
         const ok = src.from === "bag" && (n.level === "gun" && it.kind === "mod" || n.level === "cat" && it.kind === "exo" && it.cat === n.cat || n.level === "perks" && it.kind === "perk" && !!it.id && !!PERKS[it.id] && !PERKS[it.id].stat);
@@ -38585,13 +38649,28 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       return { key: "bag", to: "bag", s: -1, ok: src.from === "nav" };
     };
     const drop = (src, x, y, p) => {
-      const at = dropAt2(src, x, y), n = navRef.current;
+      const at = dropAt2(src, x, y), n = navRef.current, it0 = srcItem(src);
       let done = false;
       if (at && at.ok) {
         if (src.from === "bag" && at.to === "nav") {
           if (n.level === "gun") done = fitMod(run, src.i, n.p, n.g, at.s);
           else if (n.level === "cat") done = fitExo(run, src.i, n.p, n.cat, at.s);
           else if (n.level === "perks") done = fitPerk(run, src.i, n.p, at.s);
+        } else if (src.from === "bag" && at.to === "play" && scene.current && it0) {
+          leaveItem(scene.current, it0, lootCol(it0));
+          run.bag[src.i] = null;
+          done = true;
+        } else if (src.from === "bag" && at.to === "scrap") {
+          const tile = document.querySelector('.abag [data-slot="' + at.s + '"]');
+          const r = tile ? tile.getBoundingClientRect() : null;
+          const g = scrapAt(run, src.i);
+          done = g > 0;
+          if (done && r) {
+            const k = Date.now();
+            setBurst({ x: r.left + r.width / 2, y: r.top + r.height / 2, n: g, k });
+            setTimeout(() => setBurst((b) => b && b.k === k ? null : b), 900);
+            SFX.ui("coin");
+          }
         } else if (src.from === "bag" && at.to === "gun") done = fitGun(run, src.i, n.p, at.s);
         else if (src.from === "nav" && at.to === "bag") {
           if (n.level === "gun") done = unfitMod(run, n.p, n.g, src.i);
@@ -38613,12 +38692,68 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       nothing();
       setNav((n) => navOpen(n, w, run));
     };
+    const holdHelm = (e, i) => {
+      e.preventDefault();
+      if (press.current || !run.players[i]) return;
+      const r = e.currentTarget.getBoundingClientRect(), id = e.pointerId;
+      let pts = null;
+      let hi = -1;
+      const timer = setTimeout(() => {
+        pts = gunArc(r.left + r.width / 2, r.top + r.height / 2, innerWidth, DEV.autoArcR, 30);
+        SFX.unlock();
+        SFX.ui("tap");
+        setArc({ p: i, pts, hi: -1 });
+      }, DEV.autoHoldMs);
+      const finish = () => {
+        clearTimeout(timer);
+        removeEventListener("pointermove", move);
+        removeEventListener("pointerup", up);
+        removeEventListener("pointercancel", cancel);
+      };
+      const move = (ev) => {
+        if (ev.pointerId !== id || !pts) return;
+        ev.preventDefault();
+        const k = arcPick(pts, ev.clientX, ev.clientY, 30), pl = run.players[i];
+        const h23 = pl && pl.guns[k] ? k : -1;
+        if (h23 !== hi) {
+          hi = h23;
+          setArc((a) => a && { ...a, hi: h23 });
+        }
+      };
+      const up = (ev) => {
+        if (ev.pointerId !== id) return;
+        finish();
+        if (!pts) {
+          openNav(i);
+          return;
+        }
+        setArc(null);
+        if (hi >= 0 && setActive(run, i, hi)) {
+          saveAutoRun(run);
+          SFX.fx("open");
+          setV((v) => v + 1);
+        }
+      };
+      const cancel = (ev) => {
+        if (ev.pointerId === id) {
+          finish();
+          setArc(null);
+        }
+      };
+      addEventListener("pointermove", move, { passive: false });
+      addEventListener("pointerup", up);
+      addEventListener("pointercancel", cancel);
+    };
+    const meters = () => {
+      const L3 = scene.current && levelState(scene.current);
+      return L3 && L3.meters[navRef.current.p] || null;
+    };
     return h(
       "div",
       { className: "auto" },
       h(
         "div",
-        { className: "aplay" },
+        { className: "aplay" + (drag && drag.over && drag.over.key === "play" && drag.over.ok ? " drop" : "") },
         h("canvas", { ref: cvs, className: "aplaycvs" }),
         blocked ? h("div", { className: "ablocked" }, "Path blocked") : null,
         boss ? h(
@@ -38632,7 +38767,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           setPaused(true);
         }) }, "⏸")
       ),
-      h(NavRow, { row: navRow(nav, run, MAX_PLAYERS), level: nav.level, open: openNav, down, drag }),
+      h(NavRow, { row: navRow(nav, run, MAX_PLAYERS), level: nav.level, open: openNav, down, drag, holdHelm, meters }),
       h(
         "div",
         { className: "abag" + (drag && drag.over && drag.over.key === "bag" && drag.over.ok ? " drop" : "") },
@@ -38641,7 +38776,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           i,
           it: run.bag[i],
           down,
-          lift: !!drag && drag.src.from === "bag" && drag.src.i === i
+          lift: !!drag && drag.src.from === "bag" && drag.src.i === i,
+          drop: !!drag && !!drag.over && drag.over.ok && drag.over.key === "s" + i
         }))
       ),
       h(
@@ -38654,6 +38790,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         h(PillStick, { onMove: steer }),
         h("button", { className: "abtn aa", onPointerDown: tap(pressA) }, "A")
       ),
+      arc ? h(GunArc, { arc, run }) : null,
+      burst3 ? h(CoinBurst, { key: burst3.k, burst: burst3 }) : null,
       drag ? h(Ghost, { drag, it: srcItem(drag.src) }) : null,
       card ? h(CardPop, { it: card, close: () => setCard(null) }) : null,
       paused ? h(PauseMenu, { input, label: "Tier " + run.tier, close: () => {
@@ -38709,7 +38847,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       h("div", { className: "apillknob" + (knob2.jet ? " jet" : ""), style: { transform: "translate(" + knob2.x + "px," + knob2.y + "px)" } })
     );
   }
-  function NavRow({ row, level, open, down, drag }) {
+  function NavRow({ row, level, open, down, drag, holdHelm, meters }) {
     const over = drag && drag.over && drag.over.ok ? drag.over.key : "";
     const cell = (c, i) => {
       const to = c.open;
@@ -38717,6 +38855,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         e.preventDefault();
         if (to !== void 0) open(to);
       };
+      const hold = (e) => holdHelm(e, i);
       if (row.shape === "slots") {
         const it = c.item || null;
         const lift = !!drag && drag.src.from === "nav" && drag.src.i === i;
@@ -38750,7 +38889,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         "data-gslot": level === "guns" ? i : void 0,
         title: c.glyph ? c.label : void 0,
         style,
-        onPointerDown: go
+        onPointerDown: c.helm && level === "players" ? hold : go
       }, inner);
     };
     return h(
@@ -38760,15 +38899,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         "data-level": level,
         style: row.col ? { borderColor: row.col, boxShadow: "0 0 12px " + row.col + "55" } : void 0
       },
-      row.shape === "stats" ? h("span", { className: "anavsoon" }, "Stats — soon") : row.cells.map(cell)
+      row.shape === "stats" ? h(StatsRow, { meters }) : row.cells.map(cell)
     );
   }
-  function BagSlot({ i, it, down, lift }) {
+  function BagSlot({ i, it, down, lift, drop }) {
     const grab = (e) => down(e, { from: "bag", i });
     return h(
       "div",
       {
-        className: "aslot" + (it ? " full k-" + it.kind : "") + (lift ? " lift" : ""),
+        className: "aslot" + (it ? " full k-" + it.kind : "") + (lift ? " lift" : "") + (drop ? " drop" : ""),
         "data-slot": i,
         style: itemEdge(it),
         onPointerDown: it ? grab : void 0
@@ -38861,6 +39000,85 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         const S2 = STAT_PERKS[st];
         return h("p", { key: st, className: "pinfo" }, S2.say(S2.vals[tier - 1]));
       })
+    );
+  }
+  function GunArc({ arc, run }) {
+    const row = navRow({ level: "guns", p: arc.p, g: 0, cat: "hp" }, run, MAX_PLAYERS);
+    return h("div", { className: "aarc" }, ...row.cells.map((c, i) => {
+      const pt = arc.pts[i];
+      if (!pt) return null;
+      const style = { left: pt.x + "px", top: pt.y + "px", ...c.col && !c.dim ? { borderColor: c.col, boxShadow: "0 0 10px " + (c.glow || c.col) } : {} };
+      return h("div", {
+        key: c.key,
+        className: "anavc gun aarcc" + (c.dim ? " locked" : " on") + (c.sel ? " sel" : "") + (arc.hi === i ? " drop" : ""),
+        "data-arc": i,
+        style
+      }, c.gun ? h(GunIcon, { gun: c.gun }) : null);
+    }));
+  }
+  function paintGraph(c, vals, col) {
+    if (!c) return;
+    const dpr = window.devicePixelRatio || 1, W = Math.max(1, Math.round(c.clientWidth * dpr)), H = Math.max(1, Math.round(c.clientHeight * dpr));
+    if (c.width !== W || c.height !== H) {
+      c.width = W;
+      c.height = H;
+    }
+    const ctx = c.getContext("2d");
+    if (!ctx) return;
+    ctx.clearRect(0, 0, W, H);
+    const peak = Math.max(...vals, 0), top = 4 * dpr, bot = H - 4 * dpr, step2 = W / Math.max(1, vals.length - 1);
+    ctx.strokeStyle = col;
+    ctx.lineWidth = 1.5 * dpr;
+    ctx.lineJoin = "round";
+    ctx.globalAlpha = 0.9;
+    ctx.beginPath();
+    vals.forEach((v, i) => {
+      const x = i * step2, y = peak > 0 ? bot - v / peak * (bot - top) : bot;
+      if (i) ctx.lineTo(x, y);
+      else ctx.moveTo(x, y);
+    });
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+    c.dataset.n = String(vals.length);
+    c.dataset.peak = String(peak);
+  }
+  function StatsRow({ meters }) {
+    const [span, setSpan] = useState(5);
+    const dmg = useRef(null);
+    const hp = useRef(null);
+    useEffect(() => {
+      const draw2 = () => {
+        const M = meters();
+        paintGraph(dmg.current, meterTail(M && M.dmg, span), "#ff4a4a");
+        paintGraph(hp.current, meterTail(M && M.hp, span), "#5ee05a");
+      };
+      draw2();
+      const id = setInterval(draw2, 250);
+      return () => clearInterval(id);
+    }, [span]);
+    const cycle = (e) => {
+      e.preventDefault();
+      SFX.unlock();
+      SFX.ui("tap");
+      setSpan(nextSpan);
+    };
+    return h(
+      "div",
+      { className: "astats", "data-span": span, onPointerDown: cycle },
+      h("canvas", { ref: dmg, className: "astatg dmg" }),
+      h("canvas", { ref: hp, className: "astatg hp" }),
+      h("i", { className: "astatspan" }, span + "s")
+    );
+  }
+  function CoinBurst({ burst: burst3 }) {
+    return h(
+      "div",
+      { className: "acoins", style: { left: burst3.x + "px", top: burst3.y + "px" } },
+      ...Array.from({ length: 9 }, (_, i) => {
+        const a = i / 9 * Math.PI * 2 - Math.PI / 2, d = 26 + i % 3 * 9;
+        return h("i", { key: i, style: { "--dx": (Math.cos(a) * d).toFixed(1) + "px", "--dy": (Math.sin(a) * d - 14).toFixed(1) + "px", animationDelay: i % 3 * 30 + "ms" } });
+      }),
+      h("b", null, "+" + burst3.n)
     );
   }
 

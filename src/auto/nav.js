@@ -99,3 +99,25 @@ export function navRow(nav, run, max) {
   if (nav.level === 'perks') return { shape: 'slots', col: MACHINE_COL.perks, cells: pl.perks.map((it, i) => ({ key: 'k' + i, item: it })) };
   return { shape: 'stats', col, cells: [] };
 }
+
+/**
+ * The gun arc (stage 9): where a held helmet's 4 gun circles sit, centres in px, from left to right on an arc of radius
+ * `r` above (cx, cy), from 140° to 40°; shifted sideways so none comes nearer than `pad` to the screen's edges (0..vw).
+ * @param {number} cx @param {number} cy @param {number} vw @param {number} r @param {number} pad @param {number} [n]
+ * @returns {{ x: number, y: number }[]}
+ */
+export function gunArc(cx, cy, vw, r, pad, n = 4) {
+  const pts = Array.from({ length: n }, (_, i) => {
+    const a = (140 - 100 * i / Math.max(1, n - 1)) * Math.PI / 180;
+    return { x: cx + Math.cos(a) * r, y: cy - Math.sin(a) * r };
+  });
+  const lo = Math.min(...pts.map(p => p.x)), hi = Math.max(...pts.map(p => p.x));
+  const dx = lo < pad ? pad - lo : hi > vw - pad ? vw - pad - hi : 0;
+  return pts.map(p => ({ x: p.x + dx, y: p.y }));
+}
+/** which arc circle a point is on (within `rad` px of its centre; the nearest), or -1 @param {{ x: number, y: number }[]} pts @param {number} x @param {number} y @param {number} rad */
+export function arcPick(pts, x, y, rad) {
+  let best = -1, bd = rad;
+  pts.forEach((p, i) => { const d = Math.hypot(p.x - x, p.y - y); if (d <= bd) { bd = d; best = i; } });
+  return best;
+}

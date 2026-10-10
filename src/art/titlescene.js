@@ -137,7 +137,7 @@ export const TITLE_HOME = {
 // blockCell, blockCol, blockKind (CaveRunner Auto stage 6b, auto/blocked.js): a blocked zone's cells and web lines, and what a dig goes into
 // loot (CaveRunner Auto, auto/level.js): what a kill drops (its gold spills as nuggets, the rest as TLoot pickups); fits: would it go in the bag;
 // take: put it in the bag (false: it didn't fit). A pickup: the item, its colour, nopull (s before it can fly), wait (the bag is full)
-/** @typedef {{ x: number, y: number, vx: number, vy: number, it: BagItem, col: string, t: number, nopull: number, wait?: boolean, fly?: boolean, amount?: number }} TLoot */
+/** @typedef {{ x: number, y: number, vx: number, vy: number, it: BagItem, col: string, t: number, nopull: number, wait?: boolean, fly?: boolean, amount?: number, left?: boolean }} TLoot */
 // a sound the scene asks for this frame (v0.0.174): ui/titlesound.js plays it with the game's own voice. k its name, x, y where (screen
 // units), a what it needs (a creature's kind, a shot, a radius)
 /** @typedef {{ k: string, x: number, y: number, a?: any }} TSnd */
@@ -1610,6 +1610,18 @@ function stepGold(S, dt) {
   collideNuggets(S.coins, solid);
 }
 
+// CaveRunner Auto stage 9: an item dropped out of the bag onto the play area lies on the ground a little in front of the
+// team (S.loot, `left`: never vacuumed back; in a level it scrolls away as any drop left behind)
+/** @param {TitleScene} S @param {BagItem} it @param {string} col @returns {TLoot} */
+export function leaveItem(S, it, col) {
+  const rs = S.runners.filter(r => !r.out), ru = rs.length ? rs.reduce((a, b) => (b.x > a.x ? b : a)) : S.runners[0];
+  const x = S.scroll + (ru ? ru.x + PW / 2 : 40) + 36, y = ru ? ru.y : S.top + 20;
+  /** @type {TLoot} */
+  const g = { x, y, vx: 30, vy: -110, it, col, t: 0, nopull: 0, left: true };
+  (S.loot || (S.loot = [])).push(g);
+  return g;
+}
+
 const LOOT_WAIT = 0.6;   // a drop flies to the team after this long (s), once it has been seen thrown up
 // CaveRunner Auto's drops (S.loot, killFoe): each falls and bounces as a nugget, then (once LOOT_WAIT is up) is vacuumed to
 // the nearest player still in, from anywhere, straight through rock, and goes into the bag (S.lvl.take) at 12. The bag
@@ -1624,7 +1636,7 @@ function stepLoot(S, dt) {
     g.t += dt;
     if (g.nopull > 0) g.nopull -= dt;
     g.wait = !!(L && L.fits && !L.fits(S, g.it));
-    g.fly = !(g.nopull > 0) && !g.wait && !ru.out;
+    g.fly = !g.left && !(g.nopull > 0) && !g.wait && !ru.out;
     if (g.fly) {
       const grab = 260 + 900 * Math.max(0, 1 - d / COIN_PULL);
       g.vx += (dx / d) * grab * dt * 6; g.vy += (dy / d) * grab * dt * 6;

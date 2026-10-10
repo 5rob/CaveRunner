@@ -671,6 +671,11 @@ DEV_GROUPS.push(['autoloot', 'Auto: loot']);
 Object.assign(DEV_DEFAULTS, { autoGrab: 0.35 });
 DEV_META.push(
   { k: 'autoGrab', g: 'autobag', label: 'Grab radius: a touch picks up an item this near its centre (× the tile width); elsewhere it scrolls', min: 0.1, max: 0.5, step: 0.01 });
+// stage 9: hold a helmet this long for its gun arc; the arc's radius (px)
+Object.assign(DEV_DEFAULTS, { autoHoldMs: 350, autoArcR: 110 });
+DEV_META.push(
+  { k: 'autoHoldMs', g: 'autobag', label: 'Gun arc: hold a player’s helmet this long (ms) to fan out his 4 guns', min: 150, max: 1000, step: 10 },
+  { k: 'autoArcR', g: 'autobag', label: 'Gun arc: its radius (px) above the helmet', min: 70, max: 160, step: 2 });
 DEV_GROUPS.push(['autobag', 'Auto: bag']);
 // before the last tab: that one also takes any group in no tab
 DEV_TABS.splice(DEV_TABS.length - 1, 0, ['auto', 'Auto', ['auto', 'autohub', 'autolevel', 'autoblocks', 'autoguns', 'autofoes', 'autoloot', 'autobag']]);
