@@ -931,10 +931,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .anavc.on{background:#1d1531}
 .anavc.sel{box-shadow:0 0 0 3px #fff,0 0 12px rgba(255,255,255,0.5)!important}
 .anavc.locked.gun{opacity:.35}
-.anavc.gun .gicon{width:80%;height:auto}
+.anavc.gun .gicon{width:70%;height:auto}
 .anavg{font:900 24px system-ui,sans-serif;line-height:1;display:flex;align-items:center;justify-content:center}
 .apix,.ahelm{display:block;flex:none;pointer-events:none}
-.apixg{display:block;flex:none;width:76%;height:76%;image-rendering:pixelated;pointer-events:none}
+.apixg{display:block;flex:none;width:64%;height:64%;image-rendering:pixelated;pointer-events:none}
 .anav.slots{justify-content:flex-start;gap:6px;overflow-x:auto;overflow-y:hidden;touch-action:pan-x;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
 .anavs{flex:0 0 48px;width:48px;height:48px}
 .anavs:not(.full){opacity:.55}
@@ -946,7 +946,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .aslot{position:relative;aspect-ratio:1;border-radius:10px;background:#1d1531;border:2px solid rgba(255,255,255,0.1);
   box-sizing:border-box;display:flex;align-items:center;justify-content:center;overflow:hidden}
 .aslot.full{border-color:var(--ic,rgba(255,179,90,0.45));background:#2c1f45}
-.aslot .gicon{width:92%;height:auto}
+.aslot .gicon{width:88%;height:auto}
 /* stage 8b: the grab handle (a circle round the icon's centre, the autoGrab radius): only it takes a drag, the rest of the tile scrolls */
 .agrab{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);border-radius:50%;touch-action:none;cursor:grab;z-index:2}
 .aslot.lift{opacity:.35}
@@ -990,6 +990,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .acard .pdemo{border-top-color:#3d2f5c}
 .acard .tile,.acard .dtile{background:#1d1531}
 .acard .aumarks{display:none}
+.acard .tg{width:28px;height:28px;display:flex;align-items:center;justify-content:center}
+.acard .tg .apixg{width:100%;height:100%}
 </style>
 </head>
 <body>
@@ -29650,6 +29652,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
 
   // src/ui/cards.js
+  var CARD_ICON = { fn: null };
+  var cardGlyph = (glyph, col) => CARD_ICON.fn ? CARD_ICON.fn(glyph, col) : glyph;
   var GUN_STATS = [
     { k: "cap", label: "slots", better: 1, get: (g) => g.cap, fmt: (v) => String(v) },
     { k: "delay", label: "cast delay", better: -1, get: (g) => g.castDelay, fmt: (v) => v.toFixed(2) + "s" },
@@ -29764,7 +29768,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
                   setInfo(id);
                 } : void 0
               },
-              h("span", { className: "tg" }, m ? m.glyph : ""),
+              h("span", { className: "tg" }, m ? cardGlyph(m.glyph, famCol(id)) : ""),
               m ? h("span", { className: "tn" }, m.name) : null,
               m && m.mark ? h("span", { className: "tmark" }, m.mark) : null
             );
@@ -29864,7 +29868,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         className: "tile" + (faded ? " off" : "") + (MODS[did].kind === "shot" ? " shot" : ""),
         style: { borderColor: famCol(did), color: famCol(did) }
       },
-      h("span", { className: "tg" }, MODS[did].glyph),
+      h("span", { className: "tg" }, cardGlyph(MODS[did].glyph, famCol(did))),
       h("span", { className: "tn" }, MODS[did].name)
     );
     const drow = (ok, tiles, note, key) => h(
@@ -30001,7 +30005,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       h(
         "div",
         { className: "phead" },
-        h("div", { className: "pglyph", style: { borderColor: famCol(id), color: famCol(id) } }, m.glyph, tgtBadge(id)),
+        h("div", { className: "pglyph", style: { borderColor: famCol(id), color: famCol(id) } }, cardGlyph(m.glyph, famCol(id)), tgtBadge(id)),
         h(
           "div",
           { className: "ptitle" },
@@ -30050,7 +30054,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       h(
         "div",
         { className: "phead" },
-        h("div", { className: "pglyph", style: { borderColor: pk.tint, color: pk.tint } }, pk.glyph),
+        h("div", { className: "pglyph", style: { borderColor: pk.tint, color: pk.tint } }, cardGlyph(pk.glyph, pk.tint)),
         h(
           "div",
           { className: "ptitle" },
@@ -38728,8 +38732,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const style = c.col && !c.dim ? { borderColor: c.col, boxShadow: "0 0 10px " + (c.glow || c.col + "66") } : void 0;
       let inner = null;
       if (c.gun) inner = h(GunIcon, { gun: c.gun });
-      else if (c.helm && c.col) inner = h(HelmetIcon, { col: c.col });
-      else if (c.icon) inner = h(PixIcon, { id: c.icon, size: 28 });
+      else if (c.helm && c.col) inner = h(HelmetIcon, { col: c.col, size: 35 });
+      else if (c.icon) inner = h(PixIcon, { id: c.icon, size: 20 });
       else if (c.glyph) inner = h("span", { className: "anavg" }, c.glyph);
       else if (c.label) inner = h("span", { className: "anavp", style: { background: c.col } }, c.label);
       return h("div", {
@@ -38775,7 +38779,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const m = MODS[it.id || ""];
       g = m ? { glyph: m.glyph, col: m.col } : { glyph: "?", col: "#888" };
     } else if (it.kind === "exo") {
-      return h("span", { className: "aglyph" }, h(PixIcon, { id: it.cat || "hp", size: 26 }), it.tier ? h("i", { className: "atier" }, ROMAN2[it.tier - 1]) : null);
+      return h("span", { className: "aglyph" }, h(PixIcon, { id: it.cat || "hp", size: "64%" }), it.tier ? h("i", { className: "atier" }, ROMAN2[it.tier - 1]) : null);
     } else if (it.kind === "perk") {
       const pk = PERKS[it.id || ""];
       g = pk ? { glyph: pk.glyph, col: pk.tint } : { glyph: "?", col: "#888" };
@@ -38811,6 +38815,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   var hasCard = (it) => it.kind === "mod" && !!it.id && !!MODS[it.id] || it.kind === "gun" && !!it.gun || it.kind === "perk" && !!it.id && !!PERKS[it.id] || it.kind === "exo" && !!it.cat && !!it.tier;
   function CardPop({ it, close }) {
+    CARD_ICON.fn = (glyph, col) => h(GlyphIcon, { glyph, col });
+    useEffect(() => () => {
+      CARD_ICON.fn = null;
+    }, []);
     const shut = (e) => {
       e.preventDefault();
       close();
@@ -38834,7 +38842,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       h(
         "div",
         { className: "phead" },
-        h("div", { className: "pglyph", style: { borderColor: S0.tint } }, h(PixIcon, { id: cat, size: 26 })),
+        h("div", { className: "pglyph", style: { borderColor: S0.tint } }, h(PixIcon, { id: cat, size: "64%" })),
         h(
           "div",
           { className: "ptitle" },

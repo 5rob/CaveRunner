@@ -99,7 +99,7 @@ export const NAV_ICONS = {
 };
 
 // one icon as SVG squares, centred in its box (it keeps its shape: width over height)
-/** @param {{ id: string, size?: number }} props */
+/** @param {{ id: string, size?: number | string }} props a size in px, or a share of its box ('64%') */
 export function PixIcon({ id, size = 26 }) {
   const ic = NAV_ICONS[id];
   if (!ic) return null;

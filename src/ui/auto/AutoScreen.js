@@ -27,7 +27,7 @@ import { BAG_SLOTS, EXO_STATS, MAX_PLAYERS, fitExo, fitGun, fitMod, fitPerk, hea
   unfitExo, unfitMod, unfitPerk } from '../../auto/run.js';
 import { loadAutoRun, saveAutoRun } from '../../auto/save.js';
 import { EXO_NAMES, navBack, navOpen, navRow, navStart } from '../../auto/nav.js';
-import { GunCard, ModCard, PerkCard } from '../cards.js';
+import { CARD_ICON, GunCard, ModCard, PerkCard } from '../cards.js';
 import { GunIcon } from '../editor.js';
 import { GlyphIcon, HelmetIcon, PixIcon } from './icons.js';
 import { PauseMenu } from '../pause.js';
@@ -331,8 +331,8 @@ function NavRow({ row, level, open, down, drag }) {
     const style = c.col && !c.dim ? { borderColor: c.col, boxShadow: '0 0 10px ' + (c.glow || c.col + '66') } : undefined;
     let inner = null;
     if (c.gun) inner = h(GunIcon, { gun: c.gun });
-    else if (c.helm && c.col) inner = h(HelmetIcon, { col: c.col });     // a player: his helmet (owner)
-    else if (c.icon) inner = h(PixIcon, { id: c.icon, size: 28 });      // themed pixel icons, not emoji (owner)
+    else if (c.helm && c.col) inner = h(HelmetIcon, { col: c.col, size: 35 });     // a player: his helmet (owner)
+    else if (c.icon) inner = h(PixIcon, { id: c.icon, size: 20 });      // themed pixel icons, not emoji (owner)
     else if (c.glyph) inner = h('span', { className: 'anavg' }, c.glyph);
     else if (c.label) inner = h('span', { className: 'anavp', style: { background: c.col } }, c.label);
     return h('div', { key: c.key, className: cls, 'data-player': level === 'players' ? i : undefined, 'data-open': c.open, 'data-gslot': level === 'guns' ? i : undefined,
@@ -361,7 +361,7 @@ function ItemIcon({ it }) {
   let g = null;
   if (it.kind === 'mod') { const m = MODS[it.id || '']; g = m ? { glyph: m.glyph, col: m.col } : { glyph: '?', col: '#888' }; }
   else if (it.kind === 'exo') {
-    return h('span', { className: 'aglyph' }, h(PixIcon, { id: it.cat || 'hp', size: 26 }), it.tier ? h('i', { className: 'atier' }, ROMAN[it.tier - 1]) : null);
+    return h('span', { className: 'aglyph' }, h(PixIcon, { id: it.cat || 'hp', size: '64%' }), it.tier ? h('i', { className: 'atier' }, ROMAN[it.tier - 1]) : null);
   }
   else if (it.kind === 'perk') { const pk = PERKS[it.id || '']; g = pk ? { glyph: pk.glyph, col: pk.tint } : { glyph: '?', col: '#888' }; }
   else if (it.kind === 'gold') g = { glyph: '●', col: '#ffc93c' };
@@ -413,6 +413,9 @@ const hasCard = it => (it.kind === 'mod' && !!it.id && !!MODS[it.id]) || (it.kin
 // a tapped item's card (the old Bag's: ModCard, GunCard, PerkCard; an exo mod's own small one), over a shade
 /** @param {{ it: BagItem, close: () => void }} props */
 function CardPop({ it, close }) {
+  // the cards' glyphs as the screen's pixel icons while this is open (owner)
+  CARD_ICON.fn = (glyph, col) => h(GlyphIcon, { glyph, col });
+  useEffect(() => () => { CARD_ICON.fn = null; }, []);
   /** @param {any} e */
   const shut = e => { e.preventDefault(); close(); };
   let c = null;
@@ -432,7 +435,7 @@ function ExoCard({ cat, tier, onClose }) {
   const shut = e => { e.preventDefault(); onClose(); };
   return h('div', { className: 'pop scroll top aexocard' },
     h('div', { className: 'phead' },
-      h('div', { className: 'pglyph', style: { borderColor: S0.tint } }, h(PixIcon, { id: cat, size: 26 })),
+      h('div', { className: 'pglyph', style: { borderColor: S0.tint } }, h(PixIcon, { id: cat, size: '64%' })),
       h('div', { className: 'ptitle' },
         h('b', { style: { color: S0.tint } }, EXO_NAMES[cat] + ' ' + ROMAN[tier - 1]),
         h('span', null, 'Exo mod · tier ' + ROMAN[tier - 1] + ' of V · fits the suit’s ' + EXO_NAMES[cat] + ' slots')),
