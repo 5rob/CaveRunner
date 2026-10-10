@@ -129,27 +129,37 @@ export function HelmetIcon({ col, size = 38 }) {
   return h('canvas', { ref, className: 'ahelm', style: { width: size + 'px', height: size + 'px' } });
 }
 
-// a text glyph (a mod's, a perk's) centred by its ink, not its font box (owner: the mods' symbols sat off-centre:
-// each font puts them at its own height), in its colour with a soft glow
-/** @param {{ glyph: string, col: string, size?: number }} props */
-export function GlyphIcon({ glyph, col, size = 30 }) {
+// a text glyph (a mod's, a perk's), owner: centred by its ink (each font puts a symbol at its own height), scaled up to
+// fill its tile inside a padding (.apixg in style.css), and in the game's pixel look: drawn on a GLYPH_PX-pixel grid,
+// each pixel solid or clear, shown crisp (image-rendering: pixelated), with a soft glow in its colour
+export const GLYPH_PX = 18;
+/** @param {{ glyph: string, col: string }} props */
+export function GlyphIcon({ glyph, col }) {
   /** @type {{ current: HTMLCanvasElement | null }} */
   const ref = useRef(null);
   useEffect(() => {
     const c = ref.current;
     if (!c) return;
-    const dpr = Math.min(3, window.devicePixelRatio || 1), W = Math.round(size * dpr);
-    c.width = W; c.height = W;
-    const ctx = c.getContext('2d');
+    const N = GLYPH_PX;
+    c.width = N; c.height = N;
+    const ctx = c.getContext('2d', { willReadFrequently: true });
     if (!ctx) return;
-    ctx.clearRect(0, 0, W, W);
-    ctx.font = '900 ' + Math.round(W * 0.66) + 'px system-ui, sans-serif';
+    ctx.clearRect(0, 0, N, N);
     ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
-    const m = ctx.measureText(glyph), l = m.actualBoundingBoxLeft || 0, r = m.actualBoundingBoxRight || m.width;
-    const up = m.actualBoundingBoxAscent || W * 0.5, dn = m.actualBoundingBoxDescent || 0;
-    ctx.shadowColor = col; ctx.shadowBlur = 6 * dpr;
+    // its ink at a reference size, then the size that makes the ink just fill the grid
+    ctx.font = '900 100px system-ui, sans-serif';
+    let m = ctx.measureText(glyph);
+    const iw = (m.actualBoundingBoxLeft || 0) + (m.actualBoundingBoxRight || m.width), ih = (m.actualBoundingBoxAscent || 70) + (m.actualBoundingBoxDescent || 0);
+    const fs = 100 * N / Math.max(1, iw, ih);
+    ctx.font = '900 ' + fs.toFixed(2) + 'px system-ui, sans-serif';
+    m = ctx.measureText(glyph);
+    const l = m.actualBoundingBoxLeft || 0, r = m.actualBoundingBoxRight || m.width, up = m.actualBoundingBoxAscent || fs * 0.7, dn = m.actualBoundingBoxDescent || 0;
     ctx.fillStyle = col;
-    ctx.fillText(glyph, W / 2 - (r - l) / 2 + l, W / 2 + (up - dn) / 2);
-  }, [glyph, col, size]);
-  return h('canvas', { ref, className: 'apix', style: { width: size + 'px', height: size + 'px' } });
+    ctx.fillText(glyph, N / 2 - (r - l) / 2 + l, N / 2 + (up - dn) / 2);
+    // the pixel look: each pixel solid or clear, full colour
+    const im = ctx.getImageData(0, 0, N, N), d = im.data;
+    for (let i = 3; i < d.length; i += 4) d[i] = d[i] >= 100 ? 255 : 0;
+    ctx.putImageData(im, 0, 0);
+  }, [glyph, col]);
+  return h('canvas', { ref, className: 'apixg', style: { filter: 'drop-shadow(0 0 3px ' + col + ')' } });
 }

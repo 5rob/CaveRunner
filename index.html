@@ -934,6 +934,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .anavc.gun .gicon{width:80%;height:auto}
 .anavg{font:900 24px system-ui,sans-serif;line-height:1;display:flex;align-items:center;justify-content:center}
 .apix,.ahelm{display:block;flex:none;pointer-events:none}
+.apixg{display:block;flex:none;width:76%;height:76%;image-rendering:pixelated;pointer-events:none}
 .anav.slots{justify-content:flex-start;gap:6px;overflow-x:auto;overflow-y:hidden;touch-action:pan-x;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
 .anavs{flex:0 0 48px;width:48px;height:48px}
 .anavs:not(.full){opacity:.55}
@@ -36642,28 +36643,34 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }, [col, size]);
     return h("canvas", { ref, className: "ahelm", style: { width: size + "px", height: size + "px" } });
   }
-  function GlyphIcon({ glyph, col, size = 30 }) {
+  var GLYPH_PX = 18;
+  function GlyphIcon({ glyph, col }) {
     const ref = useRef(null);
     useEffect(() => {
       const c = ref.current;
       if (!c) return;
-      const dpr = Math.min(3, window.devicePixelRatio || 1), W = Math.round(size * dpr);
-      c.width = W;
-      c.height = W;
-      const ctx = c.getContext("2d");
+      const N = GLYPH_PX;
+      c.width = N;
+      c.height = N;
+      const ctx = c.getContext("2d", { willReadFrequently: true });
       if (!ctx) return;
-      ctx.clearRect(0, 0, W, W);
-      ctx.font = "900 " + Math.round(W * 0.66) + "px system-ui, sans-serif";
+      ctx.clearRect(0, 0, N, N);
       ctx.textBaseline = "alphabetic";
       ctx.textAlign = "left";
-      const m = ctx.measureText(glyph), l = m.actualBoundingBoxLeft || 0, r = m.actualBoundingBoxRight || m.width;
-      const up = m.actualBoundingBoxAscent || W * 0.5, dn = m.actualBoundingBoxDescent || 0;
-      ctx.shadowColor = col;
-      ctx.shadowBlur = 6 * dpr;
+      ctx.font = "900 100px system-ui, sans-serif";
+      let m = ctx.measureText(glyph);
+      const iw = (m.actualBoundingBoxLeft || 0) + (m.actualBoundingBoxRight || m.width), ih = (m.actualBoundingBoxAscent || 70) + (m.actualBoundingBoxDescent || 0);
+      const fs = 100 * N / Math.max(1, iw, ih);
+      ctx.font = "900 " + fs.toFixed(2) + "px system-ui, sans-serif";
+      m = ctx.measureText(glyph);
+      const l = m.actualBoundingBoxLeft || 0, r = m.actualBoundingBoxRight || m.width, up = m.actualBoundingBoxAscent || fs * 0.7, dn = m.actualBoundingBoxDescent || 0;
       ctx.fillStyle = col;
-      ctx.fillText(glyph, W / 2 - (r - l) / 2 + l, W / 2 + (up - dn) / 2);
-    }, [glyph, col, size]);
-    return h("canvas", { ref, className: "apix", style: { width: size + "px", height: size + "px" } });
+      ctx.fillText(glyph, N / 2 - (r - l) / 2 + l, N / 2 + (up - dn) / 2);
+      const im = ctx.getImageData(0, 0, N, N), d = im.data;
+      for (let i = 3; i < d.length; i += 4) d[i] = d[i] >= 100 ? 255 : 0;
+      ctx.putImageData(im, 0, 0);
+    }, [glyph, col]);
+    return h("canvas", { ref, className: "apixg", style: { filter: "drop-shadow(0 0 3px " + col + ")" } });
   }
 
   // src/game/render/hubdraw.js

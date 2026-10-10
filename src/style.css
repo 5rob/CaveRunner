@@ -925,6 +925,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .anavc.gun .gicon{width:80%;height:auto}
 .anavg{font:900 24px system-ui,sans-serif;line-height:1;display:flex;align-items:center;justify-content:center}
 .apix,.ahelm{display:block;flex:none;pointer-events:none}
+.apixg{display:block;flex:none;width:76%;height:76%;image-rendering:pixelated;pointer-events:none}
 .anav.slots{justify-content:flex-start;gap:6px;overflow-x:auto;overflow-y:hidden;touch-action:pan-x;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
 .anavs{flex:0 0 48px;width:48px;height:48px}
 .anavs:not(.full){opacity:.55}
