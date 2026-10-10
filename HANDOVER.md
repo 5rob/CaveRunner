@@ -38,6 +38,8 @@ mock-up `docs/autobattler-mockup.png`). Progress: AUTOBATTLER.md's Log. `main` k
 - **Stage 9 done (v1.0.15, owner OK'd):** the gun arc, stats graphs, scrap, dropping items on the play area. Notes:
   the arc crowds the left corner for player 1, empty arc circles faint; only bag items scrap or drop. Next: stage 10,
   throwing gold and gems, the machines pay out.
+- **Stage 10 done (v1.0.16):** throwing and payouts. The owner will test and tune it later (the stream is thin: slow
+  start, quick pull — knobs in "Auto: throw"). Only the gun machine's payout is browser-tested. Next: stage 11, chests.
 
 ## NEXT (as of v0.0.176, 2026-10-09)
 

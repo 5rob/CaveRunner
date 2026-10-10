@@ -359,6 +359,7 @@ chest slow ×0.5. Grab radius 35% of a tile.
 | 8a | done | v1.0.13 | Agent ~8 min + 4 PM/owner rounds. Split by PM: 8a nav, 8b drag. `auto/nav.js` (`navStart/Open/Back/Row`, `NAV_MENU`, `EXO_NAMES`, `MACHINE_COL`), `NavRow`; `ui/auto/icons.js` (`PixIcon` pixel maps `NAV_ICONS`, `HelmetIcon` via sprites `helmetIcon`/`paintHelmet` + `pixelSprite`, `GlyphIcon` ink-centred `GLYPH_PX` grid, no glow). |
 | 8b | done | v1.0.14 | Agent ~10 min + 3 PM/owner rounds. Drag/tap in AutoScreen (ghost `.aghost`, `.drop`, grab handle by `autoGrab`, 6 px to drag), `CardPop` (`.acard` theme), `ExoCard`; `itemEdge` (`--ic`), `PixIcon tint`/`tintShade`, `CARD_ICON` in cards.js. Not done: gun out of its circle, slot-to-slot, bag reorder. |
 | 9 | done | v1.0.15 | Agent ~13 min. `holdHelm`, `GunArc`, `StatsRow`/`paintGraph`, `CoinBurst`; nav.js `gunArc`/`arcPick`; meters.js `meterTail`/`STAT_SPANS`/`nextSpan`; titlescene `leaveItem` (`left` loot, owner's ask). Knobs `autoHoldMs`, `autoArcR`. Helmet tap opens on release. Polish later: the arc at the left edge, faint empty circles. |
+| 10 | done | v1.0.16 | Split by PM: 10a throws (agent ~10 min: `auto/throw.js`, `H.thrown/paid/back`, `throwPress`, `drawThrown`, knobs "Auto: throw"), 10b payout (agent ~14 min: `auto/payout.js`, `run.paid`, `stepPay`, `payRing`, hub `fits/take`). PM: gun sprite in flight, drawPrice regex. Owner to tune the stream later. |
 
 ## 8. The PM's kick-start prompt
 

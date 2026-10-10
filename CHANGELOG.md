@@ -5,6 +5,16 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.16 — CaveRunner Auto: throwing currency, the machines pay out (branch `autobattler`, stage 10)
+Released 2026-10-10 on the branch (owner: "I'll test it and work on it later. Keep going").
+- In the hub, from a gold, red or green stack in the bag: a flick throws one, move-and-hold streams them, holding still
+  lifts the whole stack as a lump (`auto/throw.js`). Machines take only their currency (gun/exo gold, mod red, perk
+  green), within `autoThrowPull`; the rest bounces off and comes back to the bag. Dev → Auto → "Auto: throw".
+- A ring round each machine's hologram fills with paid / price (`run.paid`, saved); paid in full the machine shakes and
+  flashes and its item flies into the bag (`auto/payout.js` `machinePay`, `machineItem`: a gun by `shopGun`, an exo
+  mod, a mod by `crystalRoll`, a perk); change carries over; a full bag leaves it on the floor. A gun flies as its sprite.
+  The machines' prices get thousands commas again (a regex that had lost its backslashes). Suites `auto-throw`, `auto-payout`.
+
 ## v1.0.15 — CaveRunner Auto: gun swap arc, stats, scrap, dropping items (branch `autobattler`, stage 9)
 Released 2026-10-10 on the branch (owner OK'd the shots, `tools/arcshots.js`).
 - Hold a player's helmet (`autoHoldMs` 350) and his 4 guns fan out in an arc (`gunArc`, `arcPick`, `autoArcR`); slide
