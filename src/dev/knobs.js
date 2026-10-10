@@ -622,6 +622,13 @@ DEV_META.push(
   { k: 'autoClearT',    g: 'autolevel', label: 'LEVEL CLEARED shows for (s; then the team walks to the exit)', min: 1, max: 10, step: 0.1 },
   { k: 'autoClearWait', g: 'autolevel', label: 'LEVEL CLEARED waits for the boss’s loot at most (s; a full bag leaves it lying)', min: 0, max: 20, step: 0.5 });
 DEV_GROUPS.push(['autolevel', 'Auto: level']);
+// (feedback round 2) manual mode (a helmet held in a level, auto/level.js roamStep): the view follows the steered player at
+// autoRoamCam × his offset from the middle (world units / s per world unit: slower the nearer he is); he can go back at
+// most autoRoamBack screens behind the furthest the level got (capped by what the scene keeps: titlescene.js TITLE_BACK)
+Object.assign(DEV_DEFAULTS, { autoRoamCam: 2.5, autoRoamBack: 1.5 });
+DEV_META.push(
+  { k: 'autoRoamCam',  g: 'autolevel', label: 'Manual mode: the view follows the steered player at (× his offset from the middle, per s)', min: 0.2, max: 10, step: 0.1 },
+  { k: 'autoRoamBack', g: 'autolevel', label: 'Manual mode: he can roam back at most (screens behind the furthest point)', min: 0, max: 1.6, step: 0.05 });
 // CaveRunner Auto's blocked zones (auto/blocked.js, stage 6b)
 Object.assign(DEV_DEFAULTS, { autoBlockN: 2, autoBlockMin: 0.2, autoBlockMax: 1, autoBlockFull: 0.85, autoBlockThin: 16, autoBlockWide: 0.75, autoWebSlow: 0.2, autoWebHalt: 0.25, autoWallMin: 20, autoWallMax: 35 });
 DEV_META.push(

@@ -1936,6 +1936,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "autoClearWait", g: "autolevel", label: "LEVEL CLEARED waits for the boss’s loot at most (s; a full bag leaves it lying)", min: 0, max: 20, step: 0.5 }
   );
   DEV_GROUPS.push(["autolevel", "Auto: level"]);
+  Object.assign(DEV_DEFAULTS, { autoRoamCam: 2.5, autoRoamBack: 1.5 });
+  DEV_META.push(
+    { k: "autoRoamCam", g: "autolevel", label: "Manual mode: the view follows the steered player at (× his offset from the middle, per s)", min: 0.2, max: 10, step: 0.1 },
+    { k: "autoRoamBack", g: "autolevel", label: "Manual mode: he can roam back at most (screens behind the furthest point)", min: 0, max: 1.6, step: 0.05 }
+  );
   Object.assign(DEV_DEFAULTS, { autoBlockN: 2, autoBlockMin: 0.2, autoBlockMax: 1, autoBlockFull: 0.85, autoBlockThin: 16, autoBlockWide: 0.75, autoWebSlow: 0.2, autoWebHalt: 0.25, autoWallMin: 20, autoWallMax: 35 });
   DEV_META.push(
     { k: "autoWallMin", g: "autoblocks", label: "The level’s first wall: at least this many seconds in at full hurry (normal pace: × the hurry knob)", min: 0, max: 120, step: 1 },
@@ -11666,7 +11671,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     };
   }
   function titleScene(vh, seed = 7, top = vh * 0.3, bot = vh * 0.62, opts = {}) {
-    const rnd2 = titleRng(seed), rows = Math.ceil(vh / TCELL) + 1, hub = opts.hub, ncol = hub ? hub.w : Math.ceil((TITLE_VW + 50 + AHEAD) / TCELL);
+    const rnd2 = titleRng(seed), rows = Math.ceil(vh / TCELL) + 1, hub = opts.hub, ncol = hub ? hub.w : Math.ceil((TITLE_VW + 50 + AHEAD + (opts.level ? TITLE_BACK : 0)) / TCELL);
     const S2 = {
       t: 0,
       vh,
@@ -11786,6 +11791,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     };
   }
   var AHEAD = 130;
+  var TITLE_BACK = 400;
+  var behind = (S2, d) => S2.lvl ? -TITLE_BACK : d;
   var snd = (S2, k, x, y, a) => {
     if (S2.snd.length < 80) S2.snd.push({ k, x, y, a });
   };
@@ -12366,8 +12373,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
       }
     }
-    S2.props = S2.props.filter((p) => !p.gone && p.ox + (p.span || 0) - S2.scroll > -60);
-    S2.webs = S2.webs.filter((L) => Math.max(L.a0x, L.b0x) - S2.scroll > -40);
+    S2.props = S2.props.filter((p) => !p.gone && p.ox + (p.span || 0) - S2.scroll > behind(S2, -60));
+    S2.webs = S2.webs.filter((L) => Math.max(L.a0x, L.b0x) - S2.scroll > behind(S2, -40));
     if (S2.hub && S2.hub.step) S2.hub.step(S2, dt);
     if (S2.lvl && S2.lvl.step) S2.lvl.step(S2, dt);
   }
@@ -12996,7 +13003,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
       }
     }
-    S2.foes = S2.foes.filter((e) => e.hp > 0 && e.x - S2.scroll > -40 && e.y < S2.vh + 20);
+    S2.foes = S2.foes.filter((e) => e.hp > 0 && e.x - S2.scroll > behind(S2, -40) && e.y < S2.vh + 20);
     for (const b of S2.silk) {
       b.life -= dt;
       const n = Math.ceil(Math.hypot(b.vx, b.vy) * dt / 2);
@@ -13167,7 +13174,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         continue;
       }
       if (stepNugget(g, dt, solid)) snd(S2, "coinland", g.x - S2.scroll, g.y);
-      if (g.x - S2.scroll < -30) S2.coins.splice(i, 1);
+      if (g.x - S2.scroll < behind(S2, -30)) S2.coins.splice(i, 1);
     }
     collideNuggets(S2.coins, solid);
   }
@@ -13206,7 +13213,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
       g.amount = g.it.kind === "red" || g.it.kind === "green" ? 25 : 5;
       stepNugget(g, dt, solid);
-      if (g.x - S2.scroll < -30) S2.loot.splice(i, 1);
+      if (g.x - S2.scroll < behind(S2, -30)) S2.loot.splice(i, 1);
     }
   }
   function stepShots(S2, dt) {
@@ -15850,6 +15857,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     const stop = stopAt(L);
     if (L.phase !== "exit" && levelTeamX(S2) > stop) S2.scroll = stop - LVL_TEAM;
+    L.far = Math.max(L.far ?? S2.scroll, S2.scroll);
+    if (S2.scroll < roamMin(L)) S2.scroll = roamMin(L);
     if (L.phase === "run" && levelTeamX(S2) >= stop - 0.5) {
       L.phase = "arena";
       L.arenaT = S2.t;
@@ -15899,8 +15908,30 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
     }
     if (L.blocked && S2.team && (teamClearer(S2.team, L.blockKind || "rock", 0) || levelFree(S2, L))) L.blocked = false;
+    const lead = levelLead(S2);
+    if (lead && (L.phase === "run" || L.phase === "out")) {
+      roamStep2(S2, L, lead);
+      return;
+    }
     const want = L.webK * pilotPace({ x: levelTeamX(S2), stopX: stop, elites: L.elites, chests: L.chests, hold: L.hold, blocked: L.blocked });
     S2.pace = pilotEase(S2.pace || 0, want, dt);
+  }
+  var levelLead = (S2) => S2.runners.find((r) => !!r.ctl && !r.out) || null;
+  var roamPace = (off) => DEV.autoRoamCam * off / LVL_SCROLL;
+  var roamMin = (L) => (L.far ?? 0) - Math.min(DEV.autoRoamBack * TITLE_VW, TITLE_BACK - 50);
+  function roamStep2(S2, L, lead) {
+    S2.pace = roamPace(lead.x + PW / 2 - TITLE_VW / 2);
+    if (S2.scroll <= roamMin(L) + 0.01 && S2.pace < 0) S2.pace = 0;
+    roamFollow(S2, lead);
+  }
+  function roamFollow(S2, lead) {
+    let k = 0;
+    for (const r of S2.runners) {
+      if (r === lead || r.out || r.dig) continue;
+      r.tx = Math.max(8, Math.min(TITLE_VW * 0.62, lead.x - (lead.face || 1) * (14 + 12 * k++)));
+      if (r.mode === "run") r.spd = 1;
+      r.retarget = Math.max(r.retarget, 0.3);
+    }
   }
   function cleared(S2, L, dt) {
     if ((L.clearT ?? -1) < 0) {
@@ -27552,7 +27583,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       );
     };
     const shown = info && MODS[info];
-    const behind = (e) => {
+    const behind2 = (e) => {
       e.preventDefault();
       const el = e.currentTarget;
       el.style.pointerEvents = "none";
@@ -27609,7 +27640,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const card = shown ? h(
       "div",
       { key: "card" },
-      h("div", { className: "shade", onPointerDown: behind }),
+      h("div", { className: "shade", onPointerDown: behind2 }),
       h(ModCard, {
         id: info,
         onClose: () => setInfo(null),
@@ -30112,8 +30143,20 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (press.current || !run.players[i]) return;
       const r = e.currentTarget.getBoundingClientRect(), id = e.pointerId;
       let pts = null;
-      let hi = -1;
+      let hi = -1, roam = false;
       const timer = setTimeout(() => {
+        const S2 = scene.current, C = cam.current;
+        if (S2 && S2.lvl) {
+          roam = true;
+          SFX.unlock();
+          SFX.fx("open");
+          const p = S2.runners.find((q) => q.id === i);
+          if (C && p && !p.out) {
+            C.lock = i;
+            levelControl(S2, i, null);
+          }
+          return;
+        }
         pts = gunArc(r.left + r.width / 2, r.top + r.height / 2, innerWidth, DEV.autoArcR, 30);
         SFX.unlock();
         SFX.ui("tap");
@@ -30138,6 +30181,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const up = (ev) => {
         if (ev.pointerId !== id) return;
         finish();
+        if (roam) return;
         if (!pts) {
           openAt({ ...navRef.current, level: "players" }, i);
           return;

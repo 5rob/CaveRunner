@@ -573,7 +573,7 @@ function kitOf(shot, mods, art) {
 // opts.team: the run's players (RunPlayer, CaveRunner Auto): each runner fires its player's active gun (art/scenegun.js) in place of the menu's kits
 /** @param {number} vh the view's height in world units @param {number} [seed] @param {number} [top] the action's band (world units) @param {number} [bot] @param {{ runners?: number, hub?: TitleHub, level?: TitleLevel, team?: RunPlayer[], tier?: number }} [opts] @returns {TitleScene} */
 export function titleScene(vh, seed = 7, top = vh * 0.3, bot = vh * 0.62, opts = {}) {
-  const rnd = titleRng(seed), rows = Math.ceil(vh / TCELL) + 1, hub = opts.hub, ncol = hub ? hub.w : Math.ceil((TITLE_VW + 50 + AHEAD) / TCELL);
+  const rnd = titleRng(seed), rows = Math.ceil(vh / TCELL) + 1, hub = opts.hub, ncol = hub ? hub.w : Math.ceil((TITLE_VW + 50 + AHEAD + (opts.level ? TITLE_BACK : 0)) / TCELL);
   /** @type {TitleScene} */
   const S = { t: 0, vh, top, bot, seed, rnd, zp: titlePlan(seed), scroll: 0, shake: 0, spawn: 0, kills: 0, gold: 0, got: 0, runner: null, runners: [], foes: [], shots: [],
     parts: [], coins: [], booms: [], zaps: [], flash: 0, rows, ncol, cells: new Uint8Array(rows * ncol), gen: -25, props: [],
@@ -609,6 +609,12 @@ export function titleRunner(S, i, x, y) {
 // the terrain is made this far past the screen's right edge (v0.0.170: was 40, and a rat swarm coming in
 // at the edge spread past it, into what wasn't made yet, and sank into the rock)
 const AHEAD = 130;
+// (CaveRunner Auto's level, feedback round 2: roaming back by hand) a level keeps this much more behind the screen's left
+// edge: its ring of columns is this much wider, and props, webs, creatures, coins and loot are culled only past it
+export const TITLE_BACK = 400;
+// how far behind the screen's left edge things are culled (world units, negative): d on the title, TITLE_BACK in a level
+/** @param {TitleScene} S @param {number} d */
+const behind = (S, d) => (S.lvl ? -TITLE_BACK : d);
 // a sound for the title's player (ui/titlesound.js), at screen point (x, y); a frame's are played and cleared there
 /** @param {TitleScene} S @param {string} k @param {number} x @param {number} y @param {any} [a] */
 const snd = (S, k, x, y, a) => { if (S.snd.length < 80) S.snd.push({ k, x, y, a }); };
@@ -1099,8 +1105,8 @@ export function titleStep(S, dt) {
       else { p.gone = true; burst(S, p.x, p.y, 3, '#5a8a3a', 40, 'chunk', 0.7); }
     }
   }
-  S.props = S.props.filter(p => !p.gone && p.ox + (p.span || 0) - S.scroll > -60);
-  S.webs = S.webs.filter(L => Math.max(L.a0x, L.b0x) - S.scroll > -40);
+  S.props = S.props.filter(p => !p.gone && p.ox + (p.span || 0) - S.scroll > behind(S, -60));
+  S.webs = S.webs.filter(L => Math.max(L.a0x, L.b0x) - S.scroll > behind(S, -40));
   if (S.hub && S.hub.step) S.hub.step(S, dt);
   if (S.lvl && S.lvl.step) S.lvl.step(S, dt);
 }
@@ -1600,7 +1606,7 @@ function stepFoes(S, dt) {
       if (e.burnAcc >= 0.5 || e.burn <= 0) { const d = e.burnAcc; e.burnAcc = 0; hitFoe(S, e, d, '#ff9a2e'); }
     }
   }
-  S.foes = S.foes.filter(e => e.hp > 0 && e.x - S.scroll > -40 && e.y < S.vh + 20);
+  S.foes = S.foes.filter(e => e.hp > 0 && e.x - S.scroll > behind(S, -40) && e.y < S.vh + 20);
   // spider strings in flight (game/creatures/spider.js spiderFrame): rock stops them; reaching him, gone
   for (const b of S.silk) {
     b.life -= dt;
@@ -1725,7 +1731,7 @@ function stepGold(S, dt) {
       continue;
     }
     if (stepNugget(g, dt, solid)) snd(S, 'coinland', g.x - S.scroll, g.y);
-    if (g.x - S.scroll < -30) S.coins.splice(i, 1);
+    if (g.x - S.scroll < behind(S, -30)) S.coins.splice(i, 1);
   }
   collideNuggets(S.coins, solid);
 }
@@ -1769,7 +1775,7 @@ function stepLoot(S, dt) {
     }
     g.amount = g.it.kind === 'red' || g.it.kind === 'green' ? 25 : 5;     // a gem lies as the biggest nugget (drawn as the game's crystal)
     stepNugget(g, dt, solid);
-    if (g.x - S.scroll < -30) S.loot.splice(i, 1);
+    if (g.x - S.scroll < behind(S, -30)) S.loot.splice(i, 1);
   }
 }
 

@@ -1,6 +1,6 @@
 // CaveRunner Auto feedback round 2 (src/auto/level.js levelControl, art/titlescene.js ctlStep): in a level the selected
 // player is steered by the pill stick: pushed right he walks through the world faster than the scroll (gains on screen),
-// left he drops back, up he jets; the stick at rest he stands (the world carries him back); his gun still fires by itself;
+// left he drops back, up he jets; the stick at rest he stands (manual mode: the view eases to him); his gun still fires by itself;
 // let go (B) he's back on the autopilot. A fallen player isn't steered.
 const G = require('../load');
 let fails = 0;
@@ -18,7 +18,7 @@ G.levelControl(S, r.id, null);
 check('picked: he is steered (the stick at rest), the other is not', !!r.ctl && !r.ctl.active && !o.ctl);
 const x0 = r.x;
 run(1.5);
-check('the stick at rest: he stands, the world carries him back on screen', r.x < x0 - 5 && Math.abs(r.cvx || 0) < 1, [x0, r.x]);
+check('the stick at rest: he stands; (manual mode, auto-roam) the view eases to him, so he drifts toward the middle', Math.abs(r.x + G.PW / 2 - G.TITLE_VW / 2) < Math.abs(x0 + G.PW / 2 - G.TITLE_VW / 2) && Math.abs(r.cvx || 0) < 1, [x0, r.x]);
 
 r.x = 40;
 G.levelControl(S, r.id, push(1, 0));

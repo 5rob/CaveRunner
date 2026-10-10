@@ -208,7 +208,7 @@ export function AutoScreen() {
   const steer = st => {
     const S = scene.current;
     if (!S) return;
-    // (feedback round 2) a player picked (tapped in the play area): the stick steers him; none: it hurries or slows the team
+    // (feedback round 2) a player in manual mode (his helmet held: the camera's lock): the stick steers him; none: it hurries or slows the team
     const sel = S.lvl && cam.current ? cam.current.lock : -1;
     if (S.lvl && sel >= 0) { levelHold(S, 0); levelControl(S, sel, st); }
     else if (S.lvl) levelHold(S, st.active && st.mag > DEAD ? st.nx * (st.mag - DEAD) / (1 - DEAD) : 0);
@@ -418,8 +418,10 @@ export function AutoScreen() {
     const cancel = ev => { if (ev.pointerId === id) finish(); };
     addEventListener('pointerup', up); addEventListener('pointercancel', cancel);
   };
-  // stage 9: a press on a player's helmet. Let go soon: his menu (a tap). Held DEV.autoHoldMs: his 4 guns fan out in an
-  // arc above it; slide onto one (it lights) and let go: that gun fires (setActive, saved); let go on none: nothing
+  // stage 9: a press on a player's helmet. Let go soon: his menu (a tap). Held DEV.autoHoldMs: in a level (feedback round 2)
+  // manual mode for him (auto/level.js: the pill stick steers him, the view follows, the team behind him; B lets him go);
+  // in the hub (player 1 is always steered there) his 4 guns fan out in an arc above it; slide onto one (it lights) and
+  // let go: that gun fires (setActive, saved); let go on none: nothing
   /** @param {any} e @param {number} i */
   const holdHelm = (e, i) => {
     e.preventDefault();
@@ -427,8 +429,15 @@ export function AutoScreen() {
     const r = e.currentTarget.getBoundingClientRect(), id = e.pointerId;
     /** @type {{ x: number, y: number }[] | null} */
     let pts = null;
-    let hi = -1;
+    let hi = -1, roam = false;
     const timer = setTimeout(() => {
+      const S = scene.current, C = cam.current;
+      if (S && S.lvl) {
+        roam = true; SFX.unlock(); SFX.fx('open');
+        const p = S.runners.find(q => q.id === i);
+        if (C && p && !p.out) { C.lock = i; levelControl(S, i, null); }
+        return;
+      }
       pts = gunArc(r.left + r.width / 2, r.top + r.height / 2, innerWidth, DEV.autoArcR, 30);
       SFX.unlock(); SFX.ui('tap');
       setArc({ p: i, pts, hi: -1 });
@@ -449,6 +458,7 @@ export function AutoScreen() {
     const up = ev => {
       if (ev.pointerId !== id) return;
       finish();
+      if (roam) return;
       if (!pts) { openAt({ ...navRef.current, level: 'players' }, i); return; }
       setArc(null);
       if (hi >= 0 && setActive(run, i, hi)) { saveAutoRun(run); SFX.fx('open'); setV(v => v + 1); }

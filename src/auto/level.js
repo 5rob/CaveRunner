@@ -10,7 +10,7 @@
 
 import { PH, PW } from '../core/consts.js';
 import { DEV } from '../dev/knobs.js';
-import { TITLE_VW, TITLE_ZLEN, titleClearWebs, titleRng, titleFloor, titlePlan, titleScene, titleSurf, titleZoneAdd } from '../art/titlescene.js';
+import { TITLE_BACK, TITLE_VW, TITLE_ZLEN, titleClearWebs, titleRng, titleFloor, titlePlan, titleScene, titleSurf, titleZoneAdd } from '../art/titlescene.js';
 import { hubArriveT } from './hub.js';
 import { meterAdd, meterNew, meterSet, meterStep } from './meters.js';
 import { pilotEase, pilotPace } from './pilot.js';
@@ -112,7 +112,8 @@ export function levelFree(S, L, r) {
 /** @typedef {{ plan: LevelPlan, phase: string, arrived: boolean[], zap: number, goT: number, arenaT: number, bossDead: boolean, hold: number,
  *   elites: import('./enemies.js').LevelFoe[], chests: import('./chests.js').LevelChest[], doneT: number, meters: PlayerMeters[], blocked: boolean,
  *   boss: Enemy | null, failed: boolean, run?: AutoRun | null, bagV: number, blockKind?: string, webK?: number, webT?: number, lootT?: number, clearT?: number,
- *   deadT?: number, pace0?: number, lastI?: number, tpT?: number, boomed?: boolean }} LevelState */
+ *   deadT?: number, pace0?: number, lastI?: number, tpT?: number, boomed?: boolean, far?: number }} LevelState */
+// (far: the furthest the scroll got, world units: manual mode roams back at most DEV.autoRoamBack screens behind it)
 // (blockKind: what the block is, rock / web / timber (stage 6b); webK: the team's pace through webs (1 free, auto/blocked.js webSlow); webT: the next cut)
 /** @param {import('../art/titlescene.js').TitleScene} S @returns {LevelState | null} */
 export const levelState = S => (S.lvl && S.lvl.data) || null;
@@ -239,9 +240,11 @@ export function levelStep(S, dt) {
     }
     return;
   }
-  // the scroll stops at the stop point
+  // the scroll stops at the stop point (and, roaming back, at the furthest back manual mode may go)
   const stop = stopAt(L);
   if (L.phase !== 'exit' && levelTeamX(S) > stop) S.scroll = stop - LVL_TEAM;
+  L.far = Math.max(L.far ?? S.scroll, S.scroll);
+  if (S.scroll < roamMin(L)) S.scroll = roamMin(L);
   if (L.phase === 'run' && levelTeamX(S) >= stop - 0.5) { L.phase = 'arena'; L.arenaT = S.t; }
   if (L.phase === 'arena' && (L.bossDead || S.t - L.arenaT >= DEV.autoLvlBossT)) { L.bossDead = true; L.phase = 'cleared'; L.lootT = S.t; L.clearT = -1; }   // (the timeout: a fallback, a boss out of reach)
   if (L.phase === 'cleared') { S.pace = 0; cleared(S, L, dt); return; }
@@ -263,8 +266,43 @@ export function levelStep(S, dt) {
     } else if (!cl) { L.blocked = true; L.blockKind = 'web'; }
   }
   if (L.blocked && S.team && (teamClearer(S.team, L.blockKind || 'rock', 0) || levelFree(S, L))) L.blocked = false;
+  // (feedback round 2) manual mode: a player steered by hand (a helmet held): the view follows him, not the pilot
+  const lead = levelLead(S);
+  if (lead && (L.phase === 'run' || L.phase === 'out')) { roamStep(S, L, lead); return; }
   const want = L.webK * pilotPace({ x: levelTeamX(S), stopX: stop, elites: L.elites, chests: L.chests, hold: L.hold, blocked: L.blocked });
   S.pace = pilotEase(S.pace || 0, want, dt);
+}
+
+// MANUAL MODE (owner, feedback round 2): a helmet held in a level (ui/auto/AutoScreen.js holdHelm) steers that player by hand
+// (levelControl). The level's own scroll stops; the view follows him instead, forward or back: the scroll moves at
+// DEV.autoRoamCam × his offset from the screen's middle (roamPace: slower the nearer he is, a damped follow), never further
+// back than roamMin. The others follow him (roamFollow). B lets him go: the pilot's pace again (it eases back up)
+// the steered player (none: null)
+/** @param {import('../art/titlescene.js').TitleScene} S */
+export const levelLead = S => S.runners.find(r => !!r.ctl && !r.out) || null;
+// the scroll's pace (× LVL_SCROLL; negative: back) for a steered player off the middle by off (screen units, + right)
+/** @param {number} off */
+export const roamPace = off => DEV.autoRoamCam * off / LVL_SCROLL;
+// the furthest back the scroll may go (world units): DEV.autoRoamBack screens behind the furthest point, at most what the
+// scene keeps behind its left edge (titlescene.js TITLE_BACK, less a margin)
+/** @param {LevelState} L */
+export const roamMin = L => (L.far ?? 0) - Math.min(DEV.autoRoamBack * TITLE_VW, TITLE_BACK - 50);
+/** @param {import('../art/titlescene.js').TitleScene} S @param {LevelState} L @param {import('../art/titlescene.js').TRunner} lead */
+function roamStep(S, L, lead) {
+  S.pace = roamPace(lead.x + PW / 2 - TITLE_VW / 2);
+  if (S.scroll <= roamMin(L) + 0.01 && S.pace < 0) S.pace = 0;
+  roamFollow(S, lead);
+}
+// the others line up behind him (on the autopilot still: they run, fly and saw as ever; only where they head is his)
+/** @param {import('../art/titlescene.js').TitleScene} S @param {import('../art/titlescene.js').TRunner} lead */
+export function roamFollow(S, lead) {
+  let k = 0;
+  for (const r of S.runners) {
+    if (r === lead || r.out || r.dig) continue;
+    r.tx = Math.max(8, Math.min(TITLE_VW * 0.62, lead.x - (lead.face || 1) * (14 + 12 * k++)));
+    if (r.mode === 'run') r.spd = 1;
+    r.retarget = Math.max(r.retarget, 0.3);
+  }
 }
 
 // LEVEL CLEARED (stage 7): the boss's loot vacuumed (S.loot and S.coins empty; at most DEV.autoClearWait s, as a full bag
