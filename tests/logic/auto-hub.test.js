@@ -143,5 +143,24 @@ check('the old shop\'s spacing, room height and way-in margin', G.HUB_GAP === G.
   check('the old demo timing (in, then sit)', L.ph === 'in' && M.ph === 'sit', [L, M]);
 }
 
+{ // (feedback round 2) the jet flame points away from the way he travels: the hub's stick, a level's autopilot
+  const Sj = G.hubScene(190, 3, 1);
+  for (let i = 0; i < 90; i++) G.titleStep(Sj, 1 / 30);
+  const Lj = Sj.runners[0];
+  stick(Sj, 0.7, -0.7);
+  for (let i = 0; i < 20; i++) G.titleStep(Sj, 1 / 30);
+  const f1 = G.titleFlameDir(Lj);
+  stick(Sj, -0.7, -0.7);
+  for (let i = 0; i < 20; i++) G.titleStep(Sj, 1 / 30);
+  const f2 = G.titleFlameDir(Lj);
+  check('hub: jetting up and right, the flame points down and left; up and left, down and right', Lj.flame > 0 && f1.fx < -0.3 && f1.fy > 0 && f2.fx > 0.3, [f1, f2]);
+  stick(Sj, 0, 0, 0);
+  const Sl = G.levelScene(200, 7, 1), R0 = Sl.runners[0];
+  for (let i = 0; i < 120; i++) G.titleStep(Sl, 1 / 30);   // (through the start pad)
+  R0.wvx = 60; R0.vx = 0;
+  for (let i = 0; i < 30; i++) { R0.wvx = 60; G.titleStep(Sl, 1 / 30); }
+  check('level: an autopilot player going right through the world (keeping pace on screen): the flame leans back', G.titleFlameDir(R0).fx < -0.2, G.titleFlameDir(R0));
+}
+
 console.log(fails ? fails + ' FAILED' : 'all passed');
 process.exit(fails ? 1 : 0);

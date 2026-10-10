@@ -105,7 +105,7 @@ export const TITLE_HOME = {
  *   bursty: number, burst: boolean, jet: boolean, jetT: number, jetCd: number, pace: number, spd: number,
  *   nav: { F: any, fx: number, fy: number, t: number }, stepT?: number, sawS?: number, rst?: { t?: number }, rub?: string, rubWas?: boolean,
  *   hide?: boolean, out?: boolean, outT?: number, stand?: boolean, dealt?: number, clr?: { p: number, g: number } | null, clrT?: number,
- *   ctl?: RunnerCtl | null, cvx?: number, jx?: number, jy?: number, smokeAcc?: number, smokeN?: number, rag?: import('../world/ragdoll.js').Ragdoll | null, lamp?: boolean }} TRunner */
+ *   ctl?: RunnerCtl | null, cvx?: number, jetIn?: { nx: number, ny: number } | null, jx?: number, jy?: number, smokeAcc?: number, smokeN?: number, rag?: import('../world/ragdoll.js').Ragdoll | null, lamp?: boolean }} TRunner */
 /** a player steered by hand (CaveRunner Auto, feedback round 2: the selected player in a level): the pill stick's push
  * @typedef {{ active: boolean, nx: number, ny: number, mag: number }} RunnerCtl */
 // a fixed strip in place of the scrolling ring (CaveRunner Auto's hub, auto/hub.js): w columns, each cell's material from
@@ -1129,11 +1129,14 @@ export function titleFlameDir(r) {
   const d = Math.hypot(fx, fy) || 1; fx /= d; fy /= d;
   return { fx, fy };
 }
+// (feedback round 2: the flame away from the way he travels) a stick (a steered player's r.ctl, the hub's player 1 r.jetIn) sets
+// the thrust; else it leans the way he's going through the world (the hub: his speed; a level: r.wvx, the scroll counted)
 /** @param {TitleScene} S @param {TRunner} r @param {number} dt */
-function jetStep(S, r, dt) {
+export function jetStep(S, r, dt) {
   let jx, jy;
-  if (r.ctl && r.ctl.active && r.ctl.mag > DEAD) { jx = r.ctl.nx; jy = r.ctl.ny; }
-  else { const tl = Math.max(-DEV.autoJetTilt, Math.min(DEV.autoJetTilt, r.vx / 60)), d = Math.hypot(tl, 1); jx = tl / d; jy = -1 / d; }
+  const st = r.ctl && r.ctl.active && r.ctl.mag > DEAD ? r.ctl : r.jetIn;
+  if (st) { jx = st.nx; jy = st.ny; }
+  else { const wv = S.hub ? r.vx : r.wvx, tl = Math.max(-DEV.autoJetTilt, Math.min(DEV.autoJetTilt, wv / 70)), d = Math.hypot(tl, 1); jx = tl / d; jy = -1 / d; }
   const k = Math.min(1, 10 * dt);
   r.jx = (r.jx == null ? jx : r.jx) + (jx - (r.jx == null ? jx : r.jx)) * k;
   r.jy = (r.jy == null ? jy : r.jy) + (jy - (r.jy == null ? jy : r.jy)) * k;

@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v1.0.28</title>
-<!-- VERSION = 'v1000028' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v1.0.29</title>
+<!-- VERSION = 'v1000029' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -1053,7 +1053,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v1.0.28';</script>
+<script>const VERSION = 'v1.0.29';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -1974,7 +1974,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "autoBossDmg", g: "autofoes", label: "Boss damage (× a normal one)", min: 0.5, max: 10, step: 0.25 }
   );
   DEV_GROUPS.push(["autofoes", "Auto: enemies"]);
-  Object.assign(DEV_DEFAULTS, { autoJetTilt: 0.6, autoJetSmoke: 1, autoDeathStop: 1.5, autoTpBlink: 1, autoTpBoomWait: 0.6, autoTpBoomR: 60 });
+  Object.assign(DEV_DEFAULTS, { autoJetTilt: 1, autoJetSmoke: 1, autoDeathStop: 1.5, autoTpBlink: 1, autoTpBoomWait: 0.6, autoTpBoomR: 60 });
   DEV_META.push(
     { k: "autoJetTilt", g: "autodeath", label: "Jet flame: the autopilot’s tilt with its speed across (at most)", min: 0, max: 1.5, step: 0.05 },
     { k: "autoJetSmoke", g: "autodeath", label: "Jet smoke (× the old game’s rate)", min: 0, max: 3, step: 0.05 },
@@ -2022,7 +2022,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     autoThrowBack: 3,
     autoPayReach: 30,
     autoPayHold: 300,
-    autoPayK: 4,
+    autoPayK: 2,
     autoStreamRate0: 2,
     autoStreamRate1: 14,
     autoStreamRamp: 1.5
@@ -12387,11 +12387,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   function jetStep(S2, r, dt) {
     let jx, jy;
-    if (r.ctl && r.ctl.active && r.ctl.mag > DEAD) {
-      jx = r.ctl.nx;
-      jy = r.ctl.ny;
+    const st = r.ctl && r.ctl.active && r.ctl.mag > DEAD ? r.ctl : r.jetIn;
+    if (st) {
+      jx = st.nx;
+      jy = st.ny;
     } else {
-      const tl = Math.max(-DEV.autoJetTilt, Math.min(DEV.autoJetTilt, r.vx / 60)), d = Math.hypot(tl, 1);
+      const wv = S2.hub ? r.vx : r.wvx, tl = Math.max(-DEV.autoJetTilt, Math.min(DEV.autoJetTilt, wv / 70)), d = Math.hypot(tl, 1);
       jx = tl / d;
       jy = -1 / d;
     }
@@ -14453,7 +14454,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return null;
   }
   var PAY_DEAD = 8;
-  var PAY_MAX = 90;
+  var PAY_MAX = 180;
   var PAY_TAP = { vx: 55, vy: -110 };
   var PAY_REST = 0.25;
   function payVel(face, dx, dy) {
@@ -14723,6 +14724,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       r.stand = !moving;
     });
     for (const r of S2.runners) r.ang = r.face < 0 ? Math.PI - HUB_GUN_ANG : HUB_GUN_ANG;
+    L.jetIn = jet ? { nx: st.nx, ny: st.ny } : null;
+    for (const r of S2.runners) if (!r.hide) jetStep(S2, r, dt);
   }
   var HUB_GUN_ANG = 0.35;
   function hubAtExit(S2) {

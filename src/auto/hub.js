@@ -14,7 +14,7 @@ import { approach } from '../core/util.js';
 import { DEV } from '../dev/knobs.js';
 import { STAT_PERKS } from '../data/perks.js';
 import { LIGHT_RUN, LIGHT_WAIT, tubeLevel } from '../world/shoplights.js';
-import { TCELL, TM, titleScene } from '../art/titlescene.js';
+import { TCELL, TM, jetStep, titleScene } from '../art/titlescene.js';
 import { EXO_CATS, EXO_GLYPH, autoExoPrice, autoGunPrice } from './run.js';
 import { stepThrown } from './throw.js';
 import { stepPay } from './payout.js';
@@ -236,6 +236,9 @@ function hubMove(S, H, dt) {
   });
   // (owner, feedback round 1) the gun held the way each faces: the resting angle, mirrored facing left
   for (const r of S.runners) r.ang = r.face < 0 ? Math.PI - HUB_GUN_ANG : HUB_GUN_ANG;
+  // (feedback round 2) the old jetpack here too: player 1's flame away from his stick's push, its smoke
+  L.jetIn = jet ? { nx: st.nx, ny: st.ny } : null;
+  for (const r of S.runners) if (!r.hide) jetStep(S, r, dt);
 }
 const HUB_GUN_ANG = 0.35;              // the gun's resting angle in the hub (a little down, facing right)
 

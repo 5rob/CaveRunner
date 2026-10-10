@@ -666,7 +666,7 @@ DEV_META.push(
 DEV_GROUPS.push(['autofoes', 'Auto: enemies']);
 // the jetpack (art/titlescene.js jetStep, feedback round 2: the old game's flame and smoke) and a death (auto/death.js: the ragdoll,
 // the slow stop, Tap A, the helmet light, the blast, home)
-Object.assign(DEV_DEFAULTS, { autoJetTilt: 0.6, autoJetSmoke: 1, autoDeathStop: 1.5, autoTpBlink: 1, autoTpBoomWait: 0.6, autoTpBoomR: 60 });
+Object.assign(DEV_DEFAULTS, { autoJetTilt: 1, autoJetSmoke: 1, autoDeathStop: 1.5, autoTpBlink: 1, autoTpBoomWait: 0.6, autoTpBoomR: 60 });
 DEV_META.push(
   { k: 'autoJetTilt',    g: 'autodeath', label: 'Jet flame: the autopilot’s tilt with its speed across (at most)', min: 0, max: 1.5, step: 0.05 },
   { k: 'autoJetSmoke',   g: 'autodeath', label: 'Jet smoke (× the old game’s rate)', min: 0, max: 3, step: 0.05 },
@@ -708,7 +708,7 @@ DEV_META.push(
   { k: 'autoArcR', g: 'autobag', label: 'Gun arc: its radius (px) above the helmet', min: 70, max: 160, step: 2 });
 DEV_GROUPS.push(['autobag', 'Auto: bag']);
 // stage 10a: throwing gold and gems into the hub's machines (auto/throw.js, ui/auto/AutoScreen.js)
-Object.assign(DEV_DEFAULTS, { autoThrowPull: 45, autoThrowSuck: 500, autoThrowBack: 3, autoPayReach: 30, autoPayHold: 300, autoPayK: 4,
+Object.assign(DEV_DEFAULTS, { autoThrowPull: 45, autoThrowSuck: 500, autoThrowBack: 3, autoPayReach: 30, autoPayHold: 300, autoPayK: 2,
   autoStreamRate0: 2, autoStreamRate1: 14, autoStreamRamp: 1.5 });
 DEV_META.push(
   { k: 'autoThrowPull',   g: 'autothrow', label: 'A machine pulls in what it takes within (world units of its coin slot)', min: 5, max: 200, step: 1 },

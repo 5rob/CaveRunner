@@ -5,6 +5,13 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.29 — CaveRunner Auto: feedback round 2, fifth batch (branch `autobattler`)
+Released 2026-10-10 on the branch (owner OK'd; shot `tools/pillshots.js`).
+- Fix: the jet flame away from the way he travels. The hub never ran the jetpack step (`S.still`): `hubMove` now calls
+  `jetStep` for everyone, player 1's thrust from his stick (`r.jetIn`); a level's autopilot leans it by his speed through
+  the world (`r.wvx`, the scroll counted; it was his speed on screen, ~0). `autoJetTilt` 0.6 → 1. Checks in `auto-hub`.
+- Paying: full stream at twice the drag (`PAY_MAX` 90 → 180 px, `autoPayK` 4 → 2: the same top speed).
+
 ## v1.0.28 — CaveRunner Auto: feedback round 2, fourth batch (branch `autobattler`)
 Released 2026-10-10 on the branch (owner OK'd; shots `tools/deathshots.js`).
 - Steering recheck: a player picked by his helmet in a level is the one the stick steers (the camera follows him);

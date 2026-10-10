@@ -101,7 +101,7 @@ export function hubPayAt(S) {
   return null;
 }
 export const PAY_DEAD = 8;       // a drag on A shorter than this (css px) is no drag: the tap's throw
-export const PAY_MAX = 90;       // the drag counts up to this far (css px)
+export const PAY_MAX = 180;      // the drag counts up to this far (css px; owner, feedback round 2: was 90, too touchy)
 export const PAY_TAP = { vx: 55, vy: -110 };   // no drag: a little hop forward, onto the floor in front of him
 export const PAY_REST = 0.25;    // a paid thing lies this long on the floor (s) before the machine pulls it in
 /** a paid thing's velocity (world / s) from the drag on A (css px from where it was pressed), facing face (±1)
