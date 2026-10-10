@@ -135,7 +135,7 @@ export const TITLE_HOME = {
 /** @typedef {{ zp: TitlePlan, step?: (S: TitleScene, dt: number) => void, data?: any, hurt?: (S: TitleScene, i: number, dmg: number) => void,
  *   loot?: (S: TitleScene, f: Enemy) => BagItem[], fits?: (S: TitleScene, it: BagItem) => boolean, take?: (S: TitleScene, it: BagItem) => boolean, lootCol?: (it: BagItem) => string,
  *   blockCell?: (B: import('../auto/blocked.js').ZoneBlock, wx: number, y: number, cy: number, fy: number, cur: number) => number,
- *   blockCol?: (S: TitleScene, B: import('../auto/blocked.js').ZoneBlock, c: number, wx: number, cy: number, fy: number) => void, blockKind?: (S: TitleScene, wx: number) => string, free?: (S: TitleScene, r?: TRunner) => boolean }} TitleLevel */
+ *   blockCol?: (S: TitleScene, B: import('../auto/blocked.js').ZoneBlock, c: number, wx: number, cy: number, fy: number) => void, blockKind?: (S: TitleScene, wx: number) => string, free?: (S: TitleScene, r?: TRunner) => boolean, spawn?: (S: TitleScene) => { gap: number, cap: number } }} TitleLevel */
 // blockCell, blockCol, blockKind (CaveRunner Auto stage 6b, auto/blocked.js): a blocked zone's cells and web lines, and what a dig goes into
 // loot (CaveRunner Auto, auto/level.js): what a kill drops (its gold spills as nuggets, the rest as TLoot pickups); fits: would it go in the bag;
 // take: put it in the bag (false: it didn't fit). A pickup: the item, its colour, nopull (s before it can fly), wait (the bag is full)
@@ -627,15 +627,15 @@ const wsolid = S => { const C = csolid(S); return (x, y) => !!C(Math.floor(x / C
 // (TITLE_HOME, weighted), made as makeLevel makes them (enemyFor: the real kind, floor 1), in WORLD
 // coordinates, so the game's own brains move them over the terrain. A jellyfish in the open, a
 // spider on the roof or the floor, rats a few at once on the floor (no nests on the title)
-/** @param {TitleScene} S @param {number} [x] */
-function addFoe(S, x) {
+/** @param {TitleScene} S @param {number} [x] @param {number} [cap] (a swarm stops at it too) */
+function addFoe(S, x, cap = TITLE_FOES) {
   const R = S.rnd, wx = (x === undefined ? TITLE_VW + 16 : x) + S.scroll;
   const home = TITLE_HOME[titleZone(wx, S)];
   let roll = R() * home.reduce((a, h) => a + h[1], 0), id = home[0][0];
   for (const [q, w] of home) { if (roll < w) { id = q; break; } roll -= w; }
   S.kinds[id] = (S.kinds[id] || 0) + 1;
   const n = id === 'rotta' ? 3 + Math.floor(R() * 4) : id === 'hamahakki' ? 1 + Math.floor(R() * 2) : 1;
-  for (let i = 0; i < n && S.foes.length < TITLE_FOES; i++) {
+  for (let i = 0; i < n && S.foes.length < Math.min(cap, TITLE_FOES); i++) {
     const ex = wx + i * (8 + R() * 8);
     if (i && titleZone(ex, S) !== titleZone(wx, S)) break;          // a swarm stops at its zone's end
     if (ex >= S.gen * TCELL - 6) break;                               // … and where the terrain isn't made yet
@@ -1000,7 +1000,9 @@ export function titleStep(S, dt) {
   S.shake = Math.max(0, S.shake - dt * 18);
   S.flash = Math.max(0, S.flash - dt * 1.6);
   S.spawn -= dt;
-  if (S.spawn <= 0 && !S.hub && S.foes.length < TITLE_FOES - 10) { addFoe(S); S.spawn = 0.4 + R() * 0.6; }
+  // (CaveRunner Auto's level: S.lvl.spawn sets the gap and how many at once, a trickle that builds: auto/level.js levelSpawn)
+  const sp = S.lvl && S.lvl.spawn ? S.lvl.spawn(S) : { gap: 0.4, cap: TITLE_FOES - 10 };
+  if (S.spawn <= 0 && !S.hub && S.foes.length < sp.cap) { addFoe(S, undefined, sp.cap); S.spawn = sp.gap * (1 + R() * 1.5); }
   if (!S.still) { for (const r of S.runners) if (!r.out) stepRunner(S, r, dt); separate(S, dt); }
   stepFoes(S, dt);
   stepShots(S, dt);
@@ -1162,7 +1164,8 @@ function startDig(S, r, dx, dy, why) {
 function jetOver(S, r) {
   const sx = r.x + PW / 2 + 10;
   let run = 0;
-  for (let y = r.y + PH; y > S.top - 30; y -= TCELL) {
+  // (from a little below his feet: already flying through the gap over it, the air under him counts too)
+  for (let y = r.y + PH + 10; y > S.top - 30; y -= TCELL) {
     if (titleSolid(S, sx, y) || titleSolid(S, sx + 8, y)) { run = 0; continue; }
     run += TCELL;
     if (run >= PH + 4) {

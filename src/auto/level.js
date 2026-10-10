@@ -86,6 +86,14 @@ function plantWall(P, zs, seed) {
   Object.assign(Z.blk, { sev: 1, full: true });
   return Z.blk.x0;
 }
+// The level's creatures (owner, feedback round 1: too many; start with a trickle): a new one every DEV.autoFoeGap0 s with at
+// most autoFoeCap0 alive at the start, easing to autoFoeGap1 s and autoFoeCap1 by the arena (the level's progress)
+/** @param {import('../art/titlescene.js').TitleScene} S @param {LevelState} L @returns {{ gap: number, cap: number }} */
+export function levelSpawn(S, L) {
+  const p = Math.max(0, Math.min(1, (levelTeamX(S) - L.plan.z0) / Math.max(1, L.plan.len)));
+  return { gap: DEV.autoFoeGap0 + (DEV.autoFoeGap1 - DEV.autoFoeGap0) * p, cap: Math.round(DEV.autoFoeCap0 + (DEV.autoFoeCap1 - DEV.autoFoeCap0) * p) };
+}
+
 // nothing blocks yet: arriving, or the team still short of the level's wall; with r, that runner's own front (he flies
 // ahead of the team: he mustn't start a free dig into the wall)
 /** @param {import('../art/titlescene.js').TitleScene} S @param {LevelState} L @param {import('../art/titlescene.js').TRunner} [r] */
@@ -123,7 +131,7 @@ export function levelScene(vh, seed, n, plan = levelPlan(seed), team, tier = 1, 
     loot: (S, f) => killLoot(f.k.boss ? 'boss' : f.k.elite ? 'elite' : 'foe', S.tier || 1, S.rnd, f.k.gold),
     fits: (_S, it) => !L.run || bagFits(L.run, it),
     take: (_S, it) => { if (L.run && bagAdd(L.run, it)) return false; L.bagV++; return true; },
-    lootCol, blockCell, blockCol, blockKind, free: (S, r) => levelFree(S, L, r) }, team, tier });
+    lootCol, blockCell, blockCol, blockKind, free: (S, r) => levelFree(S, L, r), spawn: S => levelSpawn(S, L) }, team, tier });
   L.elites = elitePlan(plan, S.rnd);
   L.chests = chestPlan(plan);
   L.meters = S.runners.map(() => ({ dmg: meterNew(), hp: meterNew(), dealt: 0 }));

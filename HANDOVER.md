@@ -8,8 +8,9 @@ release loop, testing), then the README of the `src/` folder you're working in.
 Planned with the owner (brief + quiz answers + 16 stages + the PM's kick-start prompt, all in `AUTOBATTLER.md`;
 mock-up `docs/autobattler-mockup.png`). Progress: AUTOBATTLER.md's Log. `main` keeps the old game.
 
-**Where it stands (2026-10-10, v1.0.21 live at /auto/): all stages 0–14 built; feedback round 1 released.** Round 1
-(v1.0.21, the PM alone): hub movement now the old game's exactly; old saves get the starter kit (`kitMissing`); the
+**Where it stands (2026-10-10, v1.0.22 live at /auto/): all stages 0–14 built; feedback round 1 released.** Round 1
+(v1.0.22: the pill stick as the old thumbstick, its knob free past the pill; creatures start as a trickle, `levelSpawn`;
+jet-over fix. v1.0.21, the PM alone): hub movement now the old game's exactly; old saves get the starter kit (`kitMissing`); the
 boss is finished (aimed at by its edge and from behind, `autoBossHp` 12); one of the level's blocked zones is made full
 past a random 20 s+ (`plantWall`, `levelFree`, knobs `autoWallMin/Max`). Waiting on the owner: try it on the phone and OK it.
 Open, in order of weight:
@@ -18,7 +19,7 @@ Open, in order of weight:
 3. The owner will tune the gold stream (Dev → Auto → "Auto: throw": slow start, quick pull) and test the payouts.
 4. Polish noted: the gun arc crowds the left corner for player 1, empty arc circles faint; chest small, grass over it;
    the menu icons small after the ×1.5 padding; only bag items scrap/drop (not slot items); no dragging a gun out of
-   its circle, no slot-to-slot moves; `auto-loot` flakes rarely in a full run.
+   its circle, no slot-to-slot moves; `auto-loot` flakes rarely in a full run (logic and browser: chance, passes alone).
 5. Old-game code still bundled through `cards.js` / `editor.js` (GunIcon) / `pause.js` (`save/save.js`).
 How the PM worked: one agent per stage in a hand-made worktree (`git worktree add ../cr-stageN -b stageN autobattler`
 + `node_modules`; the Agent tool's own worktree option fails on the path's casing), the time-box brief word for word

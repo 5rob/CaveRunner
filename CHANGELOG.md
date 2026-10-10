@@ -5,6 +5,17 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.22 — CaveRunner Auto: feedback round 1, second batch (branch `autobattler`)
+Released 2026-10-10 on the branch (owner OK'd the stick shot, `tools/pillshots.js`).
+- The pill stick reads exactly as the old left thumbstick: one reach every way (`PILL_REACH` 54 px, the old 150 px
+  stick's 75 × 0.72), the knob free out to it past the pill's edges. Before, up/down was measured against the pill's
+  small height, so a slight vertical wobble stole the sideways push (the "force blocking fast lateral movement").
+- Creatures in a level start as a trickle: a new one every `autoFoeGap0` (4) s, at most `autoFoeCap0` (3) alive,
+  easing to every `autoFoeGap1` (1.5) s and `autoFoeCap1` (10) by the arena (`level.js` `levelSpawn`, `S.lvl.spawn`;
+  a rat swarm stops at the cap too).
+- Fix (stage 6b): flying through the gap over a low blocked zone, the jet-over check counted only the air above his
+  feet and could call it blocked; it now counts from a little below them.
+
 ## v1.0.21 — CaveRunner Auto: feedback round 1 (branch `autobattler`)
 Released 2026-10-10 on the branch.
 - Hub: player 1 moves exactly as in the old game (its walk, jetpack and gravity numbers, `core/consts.js`; the jet aims

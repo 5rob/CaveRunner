@@ -479,6 +479,7 @@ export function AutoScreen() {
 // its direction
 /** @typedef {{ active: boolean, nx: number, ny: number, mag: number, dx: number, dy: number }} PillState */
 const PILL_REST = { active: false, nx: 0, ny: 0, mag: 0, dx: 0, dy: 0 };
+const PILL_REACH = 54;                 // the knob's reach (px): the old 150 px stick's 75 × 0.72 (ui/hud.js Stick maxD)
 
 // The pill stick: one pill between B and A; a knob in it follows the finger (clamped to the pill, a little up and down
 // too). Pointer capture, so the finger may wander off it; letting go puts the knob back and the push to rest
@@ -491,16 +492,15 @@ function PillStick({ onMove }) {
   const update = e => {
     const el = ref.current;
     if (!el) return;
-    const r = el.getBoundingClientRect(), kr = r.height * 0.36;
-    const hw = Math.max(1, r.width / 2 - kr), hh = Math.max(1, r.height / 2 - kr * 0.55);
-    let dx = (e.clientX - (r.left + r.width / 2)) / hw, dy = (e.clientY - (r.top + r.height / 2)) / hh;
-    const d = Math.hypot(dx, dy);
-    if (d > 1) { dx /= d; dy /= d; }
-    const mag = Math.min(1, d);
+    // (owner, feedback round 1) the old left stick's maths exactly (ui/hud.js Stick): one radius every way, PILL_REACH,
+    // the knob free out to it (past the pill's edges)
+    const r = el.getBoundingClientRect();
+    const fx = e.clientX - (r.left + r.width / 2), fy = e.clientY - (r.top + r.height / 2), d = Math.hypot(fx, fy);
+    const cl = Math.min(d, PILL_REACH), nx = d ? fx / d : 0, ny = d ? fy / d : 0, mag = cl / PILL_REACH;
     /** @type {PillState} */
-    const st = { active: true, nx: d ? dx / Math.max(d, 1e-6) : 0, ny: d ? dy / Math.max(d, 1e-6) : 0, mag, dx, dy };
+    const st = { active: true, nx, ny, mag, dx: nx * mag, dy: ny * mag };
     onMove(st);
-    setKnob({ x: dx * hw, y: dy * Math.min(hh, 7), jet: dy < 0 && mag > DEAD });
+    setKnob({ x: nx * cl, y: ny * cl, jet: ny < 0 && mag > DEAD });
   };
   /** @param {any} e */
   const down = e => {

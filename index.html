@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v1.0.21</title>
-<!-- VERSION = 'v1000021' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v1.0.22</title>
+<!-- VERSION = 'v1000022' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -986,7 +986,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .abtn.aa{background:linear-gradient(#4ef08a,#0fb556);box-shadow:0 4px 0 #0a5a2a,0 0 14px rgba(40,220,110,0.45)}
 /* the pill stick (between B and A): the old arrow circles' height and roundness, filling their space; the knob follows the finger */
 .apill{position:relative;flex:1 1 auto;height:46px;box-sizing:border-box;border-radius:23px;background:#251c3a;border:2px solid #4a3a6e;box-shadow:0 3px 0 #0b0716,inset 0 2px 6px rgba(0,0,0,0.5);touch-action:none;user-select:none;-webkit-user-select:none;display:flex;align-items:center;justify-content:center}
-.apillknob{width:34px;height:34px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#6a58a0,#3a2d5e);border:2px solid #8a76c8;box-sizing:border-box;box-shadow:0 2px 0 #0b0716;pointer-events:none}
+.apillknob{position:relative;z-index:5;width:34px;height:34px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#6a58a0,#3a2d5e);border:2px solid #8a76c8;box-sizing:border-box;box-shadow:0 2px 0 #0b0716;pointer-events:none}
 .apillknob.jet{border-color:#ffb347;box-shadow:0 2px 0 #0b0716,0 0 10px rgba(255,160,60,0.7)}
 
 /* CaveRunner Auto's item cards (owner, stage 8b): the shared cards (ui/cards.js) in the auto screen's dark purple
@@ -1014,7 +1014,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v1.0.21';</script>
+<script>const VERSION = 'v1.0.22';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -1921,8 +1921,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "autoClearGap", g: "autoguns", label: "Digging: the tunnel is cut while the clearing gun fired within (s)", min: 0.05, max: 3, step: 0.05 }
   );
   DEV_GROUPS.push(["autoguns", "Auto: guns"]);
-  Object.assign(DEV_DEFAULTS, { autoFoeDmg: 0.5, autoFoeElites: 2, autoBossSize: 4, autoBossHp: 12, autoBossDmg: 3 });
+  Object.assign(DEV_DEFAULTS, { autoFoeGap0: 4, autoFoeGap1: 1.5, autoFoeCap0: 3, autoFoeCap1: 10, autoFoeDmg: 0.5, autoFoeElites: 2, autoBossSize: 4, autoBossHp: 12, autoBossDmg: 3 });
   DEV_META.push(
+    { k: "autoFoeGap0", g: "autofoes", label: "A new creature every … s, at the level’s start (a trickle)", min: 0.2, max: 20, step: 0.1 },
+    { k: "autoFoeGap1", g: "autofoes", label: "… easing to every … s by the boss", min: 0.2, max: 20, step: 0.1 },
+    { k: "autoFoeCap0", g: "autofoes", label: "At most … alive at the start", min: 0, max: 24, step: 1 },
+    { k: "autoFoeCap1", g: "autofoes", label: "… easing to at most … by the boss", min: 0, max: 24, step: 1 },
     { k: "autoFoeDmg", g: "autofoes", label: "Creatures hurt the players (× their damage)", min: 0, max: 5, step: 0.05 },
     { k: "autoFoeElites", g: "autofoes", label: "Elites a level", min: 0, max: 12, step: 1 },
     { k: "autoBossSize", g: "autofoes", label: "Boss size (× a normal one)", min: 1, max: 8, step: 0.25 },
@@ -11748,7 +11752,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const C = csolid(S2);
     return (x, y) => !!C(Math.floor(x / CELL), Math.floor(y / CELL));
   };
-  function addFoe(S2, x) {
+  function addFoe(S2, x, cap = TITLE_FOES) {
     const R = S2.rnd, wx = (x === void 0 ? TITLE_VW + 16 : x) + S2.scroll;
     const home = TITLE_HOME[titleZone(wx, S2)];
     let roll = R() * home.reduce((a, h3) => a + h3[1], 0), id = home[0][0];
@@ -11761,7 +11765,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     S2.kinds[id] = (S2.kinds[id] || 0) + 1;
     const n = id === "rotta" ? 3 + Math.floor(R() * 4) : id === "hamahakki" ? 1 + Math.floor(R() * 2) : 1;
-    for (let i = 0; i < n && S2.foes.length < TITLE_FOES; i++) {
+    for (let i = 0; i < n && S2.foes.length < Math.min(cap, TITLE_FOES); i++) {
       const ex = wx + i * (8 + R() * 8);
       if (i && titleZone(ex, S2) !== titleZone(wx, S2)) break;
       if (ex >= S2.gen * TCELL - 6) break;
@@ -12168,9 +12172,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     S2.shake = Math.max(0, S2.shake - dt * 18);
     S2.flash = Math.max(0, S2.flash - dt * 1.6);
     S2.spawn -= dt;
-    if (S2.spawn <= 0 && !S2.hub && S2.foes.length < TITLE_FOES - 10) {
-      addFoe(S2);
-      S2.spawn = 0.4 + R() * 0.6;
+    const sp = S2.lvl && S2.lvl.spawn ? S2.lvl.spawn(S2) : { gap: 0.4, cap: TITLE_FOES - 10 };
+    if (S2.spawn <= 0 && !S2.hub && S2.foes.length < sp.cap) {
+      addFoe(S2, void 0, sp.cap);
+      S2.spawn = sp.gap * (1 + R() * 1.5);
     }
     if (!S2.still) {
       for (const r of S2.runners) if (!r.out) stepRunner(S2, r, dt);
@@ -12378,7 +12383,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function jetOver(S2, r) {
     const sx = r.x + PW / 2 + 10;
     let run = 0;
-    for (let y = r.y + PH; y > S2.top - 30; y -= TCELL) {
+    for (let y = r.y + PH + 10; y > S2.top - 30; y -= TCELL) {
       if (titleSolid(S2, sx, y) || titleSolid(S2, sx + 8, y)) {
         run = 0;
         continue;
@@ -15174,6 +15179,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     Object.assign(Z.blk, { sev: 1, full: true });
     return Z.blk.x0;
   }
+  function levelSpawn(S2, L) {
+    const p = Math.max(0, Math.min(1, (levelTeamX(S2) - L.plan.z0) / Math.max(1, L.plan.len)));
+    return { gap: DEV.autoFoeGap0 + (DEV.autoFoeGap1 - DEV.autoFoeGap0) * p, cap: Math.round(DEV.autoFoeCap0 + (DEV.autoFoeCap1 - DEV.autoFoeCap0) * p) };
+  }
   function levelFree(S2, L, r) {
     if (L.phase === "arrive") return true;
     return levelTeamX(S2) < L.plan.wallX - WALL_FREE && (!r || r.x + PW + S2.scroll + 6 < L.plan.wallX);
@@ -15216,7 +15225,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       blockCell,
       blockCol,
       blockKind,
-      free: (S3, r) => levelFree(S3, L, r)
+      free: (S3, r) => levelFree(S3, L, r),
+      spawn: (S3) => levelSpawn(S3, L)
     }, team, tier });
     L.elites = elitePlan(plan, S2.rnd);
     L.chests = chestPlan(plan);
@@ -29139,6 +29149,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     );
   }
   var PILL_REST = { active: false, nx: 0, ny: 0, mag: 0, dx: 0, dy: 0 };
+  var PILL_REACH = 54;
   function PillStick({ onMove }) {
     const ref = useRef(null);
     const pid = useRef(null);
@@ -29146,18 +29157,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const update = (e) => {
       const el = ref.current;
       if (!el) return;
-      const r = el.getBoundingClientRect(), kr2 = r.height * 0.36;
-      const hw = Math.max(1, r.width / 2 - kr2), hh = Math.max(1, r.height / 2 - kr2 * 0.55);
-      let dx = (e.clientX - (r.left + r.width / 2)) / hw, dy = (e.clientY - (r.top + r.height / 2)) / hh;
-      const d = Math.hypot(dx, dy);
-      if (d > 1) {
-        dx /= d;
-        dy /= d;
-      }
-      const mag = Math.min(1, d);
-      const st = { active: true, nx: d ? dx / Math.max(d, 1e-6) : 0, ny: d ? dy / Math.max(d, 1e-6) : 0, mag, dx, dy };
+      const r = el.getBoundingClientRect();
+      const fx = e.clientX - (r.left + r.width / 2), fy = e.clientY - (r.top + r.height / 2), d = Math.hypot(fx, fy);
+      const cl = Math.min(d, PILL_REACH), nx = d ? fx / d : 0, ny = d ? fy / d : 0, mag = cl / PILL_REACH;
+      const st = { active: true, nx, ny, mag, dx: nx * mag, dy: ny * mag };
       onMove(st);
-      setKnob({ x: dx * hw, y: dy * Math.min(hh, 7), jet: dy < 0 && mag > DEAD });
+      setKnob({ x: nx * cl, y: ny * cl, jet: ny < 0 && mag > DEAD });
     };
     const down = (e) => {
       e.preventDefault();

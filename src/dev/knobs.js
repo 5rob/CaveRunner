@@ -651,8 +651,12 @@ DEV_META.push(
   { k: 'autoClearGap',  g: 'autoguns', label: 'Digging: the tunnel is cut while the clearing gun fired within (s)', min: 0.05, max: 3, step: 0.05 });
 DEV_GROUPS.push(['autoguns', 'Auto: guns']);
 // the level's enemies (auto/enemies.js, stage 6): how hard they hit, the elites, the boss
-Object.assign(DEV_DEFAULTS, { autoFoeDmg: 0.5, autoFoeElites: 2, autoBossSize: 4, autoBossHp: 12, autoBossDmg: 3 });
+Object.assign(DEV_DEFAULTS, { autoFoeGap0: 4, autoFoeGap1: 1.5, autoFoeCap0: 3, autoFoeCap1: 10, autoFoeDmg: 0.5, autoFoeElites: 2, autoBossSize: 4, autoBossHp: 12, autoBossDmg: 3 });
 DEV_META.push(
+  { k: 'autoFoeGap0',   g: 'autofoes', label: 'A new creature every … s, at the level’s start (a trickle)', min: 0.2, max: 20, step: 0.1 },
+  { k: 'autoFoeGap1',   g: 'autofoes', label: '… easing to every … s by the boss', min: 0.2, max: 20, step: 0.1 },
+  { k: 'autoFoeCap0',   g: 'autofoes', label: 'At most … alive at the start', min: 0, max: 24, step: 1 },
+  { k: 'autoFoeCap1',   g: 'autofoes', label: '… easing to at most … by the boss', min: 0, max: 24, step: 1 },
   { k: 'autoFoeDmg',    g: 'autofoes', label: 'Creatures hurt the players (× their damage)', min: 0, max: 5, step: 0.05 },
   { k: 'autoFoeElites', g: 'autofoes', label: 'Elites a level', min: 0, max: 12, step: 1 },
   { k: 'autoBossSize',  g: 'autofoes', label: 'Boss size (× a normal one)', min: 1, max: 8, step: 0.25 },
