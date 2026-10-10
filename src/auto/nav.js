@@ -6,6 +6,15 @@
 // what the row shows. Pure: the state is a plain object, every move returns a new one.
 
 import { EXO_CATS, EXO_GLYPH } from './run.js';
+import { HUB_MACHINES } from './hub.js';
+import { gunHue } from '../spells/guns.js';
+
+// the hub machine each part links to (owner): its circle and its rows' edge in that machine's colour (a gun's mod
+// slots: the mod machine's)
+const MACHINE_COL = { guns: HUB_MACHINES.gun.hue, gun: HUB_MACHINES.mod.hue, exo: HUB_MACHINES.exo.hue, cat: HUB_MACHINES.exo.hue,
+  perks: HUB_MACHINES.perk.hue };
+/** a gun's own colour (its hue, as its sprite) @param {Gun} g @param {number} [a] */
+const gunCol = (g, a = 1) => 'hsla(' + gunHue(g) + ',85%,62%,' + a + ')';
 
 /** @typedef {'players' | 'player' | 'guns' | 'gun' | 'exo' | 'cat' | 'perks' | 'stats'} NavLevel */
 /** @typedef {{ level: NavLevel, p: number, g: number, cat: ExoCat }} NavState */
@@ -14,7 +23,7 @@ import { EXO_CATS, EXO_GLYPH } from './run.js';
  * does nothing); `item` a slot's fitted thing (a BagItem, the bag's tile look); `gun` a gun circle's gun.
  * @typedef {{ key: string, glyph?: string, label?: string, col?: string, gun?: Gun | null, item?: BagItem | null,
  *   dim?: boolean, sel?: boolean, open?: string | number,
- *   icon?: string, helm?: boolean }} NavCell
+ *   icon?: string, helm?: boolean, glow?: string }} NavCell
  */
 /** @typedef {{ shape: 'circles' | 'slots' | 'stats', cells: NavCell[], col: string | null }} NavRow */
 
@@ -74,19 +83,19 @@ export function navRow(nav, run, max) {
     }) };
   }
   const col = pl.col;
-  if (nav.level === 'player') return { shape: 'circles', col, cells: NAV_MENU.map(m => ({ key: m.open, icon: m.open, glyph: m.glyph, label: m.label, col, open: m.open })) };
+  if (nav.level === 'player') return { shape: 'circles', col, cells: NAV_MENU.map(m => ({ key: m.open, icon: m.open, glyph: m.glyph, label: m.label, col: MACHINE_COL[m.open] || col, open: m.open })) };
   if (nav.level === 'guns') {
-    return { shape: 'circles', col, cells: pl.guns.map((g, i) => ({ key: 'g' + i, gun: g, col, dim: !g, sel: !!g && i === pl.active, open: g ? i : undefined })) };
+    return { shape: 'circles', col: MACHINE_COL.guns, cells: pl.guns.map((g, i) => ({ key: 'g' + i, gun: g, col: g ? gunCol(g) : col, glow: g ? gunCol(g, 0.4) : undefined, dim: !g, sel: !!g && i === pl.active, open: g ? i : undefined })) };
   }
   if (nav.level === 'gun') {
     const g = pl.guns[nav.g];
     const slots = g ? g.slots : [];
-    return { shape: 'slots', col, cells: slots.map((id, i) => ({ key: 's' + i, item: id ? { kind: 'mod', id, n: 1 } : null })) };
+    return { shape: 'slots', col: MACHINE_COL.gun, cells: slots.map((id, i) => ({ key: 's' + i, item: id ? { kind: 'mod', id, n: 1 } : null })) };
   }
   if (nav.level === 'exo') {
-    return { shape: 'circles', col, cells: EXO_CATS.map(c => ({ key: c, icon: c, glyph: EXO_GLYPH[c], label: EXO_NAMES[c], col, open: c })) };
+    return { shape: 'circles', col: MACHINE_COL.exo, cells: EXO_CATS.map(c => ({ key: c, icon: c, glyph: EXO_GLYPH[c], label: EXO_NAMES[c], col: MACHINE_COL.exo, open: c })) };
   }
-  if (nav.level === 'cat') return { shape: 'slots', col, cells: pl.exo[nav.cat].map((it, i) => ({ key: 'x' + i, item: it })) };
-  if (nav.level === 'perks') return { shape: 'slots', col, cells: pl.perks.map((it, i) => ({ key: 'k' + i, item: it })) };
+  if (nav.level === 'cat') return { shape: 'slots', col: MACHINE_COL.cat, cells: pl.exo[nav.cat].map((it, i) => ({ key: 'x' + i, item: it })) };
+  if (nav.level === 'perks') return { shape: 'slots', col: MACHINE_COL.perks, cells: pl.perks.map((it, i) => ({ key: 'k' + i, item: it })) };
   return { shape: 'stats', col, cells: [] };
 }

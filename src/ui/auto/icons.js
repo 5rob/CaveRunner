@@ -128,3 +128,28 @@ export function HelmetIcon({ col, size = 38 }) {
   }, [col, size]);
   return h('canvas', { ref, className: 'ahelm', style: { width: size + 'px', height: size + 'px' } });
 }
+
+// a text glyph (a mod's, a perk's) centred by its ink, not its font box (owner: the mods' symbols sat off-centre:
+// each font puts them at its own height), in its colour with a soft glow
+/** @param {{ glyph: string, col: string, size?: number }} props */
+export function GlyphIcon({ glyph, col, size = 30 }) {
+  /** @type {{ current: HTMLCanvasElement | null }} */
+  const ref = useRef(null);
+  useEffect(() => {
+    const c = ref.current;
+    if (!c) return;
+    const dpr = Math.min(3, window.devicePixelRatio || 1), W = Math.round(size * dpr);
+    c.width = W; c.height = W;
+    const ctx = c.getContext('2d');
+    if (!ctx) return;
+    ctx.clearRect(0, 0, W, W);
+    ctx.font = '900 ' + Math.round(W * 0.66) + 'px system-ui, sans-serif';
+    ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
+    const m = ctx.measureText(glyph), l = m.actualBoundingBoxLeft || 0, r = m.actualBoundingBoxRight || m.width;
+    const up = m.actualBoundingBoxAscent || W * 0.5, dn = m.actualBoundingBoxDescent || 0;
+    ctx.shadowColor = col; ctx.shadowBlur = 6 * dpr;
+    ctx.fillStyle = col;
+    ctx.fillText(glyph, W / 2 - (r - l) / 2 + l, W / 2 + (up - dn) / 2);
+  }, [glyph, col, size]);
+  return h('canvas', { ref, className: 'apix', style: { width: size + 'px', height: size + 'px' } });
+}

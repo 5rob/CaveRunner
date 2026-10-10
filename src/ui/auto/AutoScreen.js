@@ -26,7 +26,7 @@ import { BAG_SLOTS, EXO_GLYPH, EXO_STATS, MAX_PLAYERS, healRun, levelCleared, le
 import { loadAutoRun, saveAutoRun } from '../../auto/save.js';
 import { navBack, navOpen, navRow, navStart } from '../../auto/nav.js';
 import { GunIcon } from '../editor.js';
-import { HelmetIcon, PixIcon } from './icons.js';
+import { GlyphIcon, HelmetIcon, PixIcon } from './icons.js';
 import { PauseMenu } from '../pause.js';
 import { runScene } from '../scenecanvas.js';
 import { h, useEffect, useRef, useState } from '../h.js';
@@ -218,7 +218,7 @@ function NavRow({ row, level, open }) {
         it ? h(ItemIcon, { it }) : null);
     }
     const cls = 'anavc' + (c.dim ? ' locked' : ' on') + (c.sel ? ' sel' : '') + (c.gun ? ' gun' : '');
-    const style = c.col && !c.dim ? { borderColor: c.col, boxShadow: '0 0 10px ' + c.col + '66' } : undefined;
+    const style = c.col && !c.dim ? { borderColor: c.col, boxShadow: '0 0 10px ' + (c.glow || c.col + '66') } : undefined;
     let inner = null;
     if (c.gun) inner = h(GunIcon, { gun: c.gun });
     else if (c.helm && c.col) inner = h(HelmetIcon, { col: c.col });     // a player: his helmet (owner)
@@ -255,6 +255,6 @@ function ItemIcon({ it }) {
   else if (it.kind === 'red') g = { glyph: '◆', col: '#ff4f5e' };
   else if (it.kind === 'green') g = { glyph: '◆', col: '#5ee05a' };
   if (!g) return null;
-  return h('span', { className: 'aglyph', style: { color: g.col, textShadow: '0 0 8px ' + g.col + '99' } }, g.glyph,
+  return h('span', { className: 'aglyph' }, h(GlyphIcon, { glyph: g.glyph, col: g.col }),
     g.tier ? h('i', { className: 'atier' }, ROMAN[g.tier - 1]) : null);
 }
