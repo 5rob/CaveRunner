@@ -1,5 +1,28 @@
 # CaveRunner
 
+## CaveRunner Auto (this branch): how to play
+
+Your team of jetpack runners plays the caves by itself; you kit them out.
+
+- **The title:** ▶ carries on your run (there is one save), ⚙ sets the volumes.
+- **The hub** is home: the machines stand along it. Steer the leader with the **pill stick** (bottom middle);
+  the others follow. At the **exit pad**, press **A** to go into the next level.
+- **Levels:** the team runs right on its own, shooting what it meets: elites, then the boss at the end.
+  Reach the exit pad: home, healed, and the next tier (bigger prices, bigger loot). Everyone down: home, same tier.
+  Drops fly into the bag. Near a **chest**, press **A** to open it (gold, mods, exo mods, gems, now and then a perk).
+- **The nav row** (under the play area): tap a player's helmet for his guns, stats and perks; **B** goes back.
+  **Hold** a helmet and his guns fan out above it: slide onto one and let go, he fires that one.
+- **The bag** (70 slots): tap an item for its card. **Drag** it by its middle onto a gun's mod slots, a gun circle,
+  a stat slot (exo mods: health, speed, jet, carrot) or a perk slot; drag a fitted one back into the bag.
+  Drag an item onto your **gold** to scrap it for gold; onto the play area to leave it on the ground.
+- **Machines:** in the hub, flick **gold** (or red and green gems) from the bag at a machine to pay it: a swipe
+  throws one, a hold streams them, a long press on the stack lifts it all. What it gives flies into the bag.
+- **Extra players:** drag a **green gem** onto an empty player circle: a new runner teleports in (up to four).
+- **⏸** pauses: Resume, Save, the volumes, **New run** (tap twice), Exit. The game saves by itself in the hub,
+  as things go into the bag, and at a level's end; quit mid-level and you're back in the hub, bag kept.
+
+*The rest of this file describes the original game (branch `main`).*
+
 A jetpack cave platformer prototype that runs in the browser. You play a little
 white-suited astronaut, drawn in crisp chunky pixels, with arms and legs that bend at the
 elbow and knee. You start in a high-tech steel shop room with nothing above it (a new run is met by a
