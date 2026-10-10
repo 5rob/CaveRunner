@@ -11681,50 +11681,54 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     genTo(S2);
     for (let i = 0, n = Math.max(1, Math.min(TITLE_RUNNERS, opts.runners || TITLE_RUNNERS)); i < n; i++) {
       const x = 18 + i * 30, y = titleSurf(S2, x + PW / 2, (top + bot) / 2, 1) - PH;
-      S2.runners.push({
-        x,
-        y,
-        vx: 0,
-        vy: 0,
-        face: 1,
-        ang: 0,
-        cd: 0.5 + i * 0.2,
-        kit: titleKit(rnd2),
-        flame: 0,
-        id: i,
-        col: TITLE_COLS[i],
-        mode: "run",
-        modeT: runTime(rnd2),
-        tx: x,
-        ty: y,
-        retarget: 0,
-        gait: i * 1.7,
-        ground: true,
-        swapT: 2 + i * 1.2 + rnd2() * 2,
-        swap: 0,
-        wvx: 0,
-        wvy: 0,
-        dig: 0,
-        clearT: 0,
-        keep: null,
-        dx: 1,
-        dy: 0,
-        digY: 0,
-        sawT: 0,
-        switches: [],
-        bursty: [0.75, 0.15, 0.5, 0.3][i],
-        burst: false,
-        jet: false,
-        jetT: 0,
-        jetCd: 0,
-        pace: 0.75 + rnd2() * 0.5,
-        spd: 1,
-        nav: { F: null, fx: 0, fy: 0, t: -9 }
-      });
+      S2.runners.push(titleRunner(S2, i, x, y));
     }
     S2.runner = S2.runners[0];
     if (!hub) for (let i = 0; i < 6; i++) addFoe(S2, 130 + rnd2() * 90);
     return S2;
+  }
+  function titleRunner(S2, i, x, y) {
+    const rnd2 = S2.rnd;
+    return {
+      x,
+      y,
+      vx: 0,
+      vy: 0,
+      face: 1,
+      ang: 0,
+      cd: 0.5 + i * 0.2,
+      kit: titleKit(rnd2),
+      flame: 0,
+      id: i,
+      col: TITLE_COLS[i],
+      mode: "run",
+      modeT: runTime(rnd2),
+      tx: x,
+      ty: y,
+      retarget: 0,
+      gait: i * 1.7,
+      ground: true,
+      swapT: 2 + i * 1.2 + rnd2() * 2,
+      swap: 0,
+      wvx: 0,
+      wvy: 0,
+      dig: 0,
+      clearT: 0,
+      keep: null,
+      dx: 1,
+      dy: 0,
+      digY: 0,
+      sawT: 0,
+      switches: [],
+      bursty: [0.75, 0.15, 0.5, 0.3][i],
+      burst: false,
+      jet: false,
+      jetT: 0,
+      jetCd: 0,
+      pace: 0.75 + rnd2() * 0.5,
+      spd: 1,
+      nav: { F: null, fx: 0, fy: 0, t: -9 }
+    };
   }
   var AHEAD = 130;
   var snd = (S2, k, x, y, a) => {
@@ -38851,6 +38855,58 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     };
   }
 
+  // src/auto/addrunner.js
+  function sceneAddRunner(S2) {
+    const i = S2.runners.length, lead = S2.runners[0];
+    if (i >= 4 || !lead) return null;
+    const H = hubState(S2), L3 = levelState(S2);
+    let cx, fy;
+    if (H) {
+      cx = Math.max(10, Math.min(HUB_W - 10, H.lx - H.dir * DEV.autoHubSpace * i));
+      fy = H.fy;
+    } else {
+      cx = lead.x + PW / 2 - 10 - 4 * i;
+      fy = titleFloor(S2.scroll + cx, S2);
+    }
+    const r = titleRunner(S2, i, cx - PW / 2, fy - PH);
+    r.mode = "run";
+    r.ground = true;
+    r.face = lead.face;
+    r.ang = lead.ang;
+    if (H) {
+      r.stand = true;
+      H.arrived[i] = true;
+    }
+    if (L3) {
+      L3.arrived[i] = true;
+      L3.meters[i] = { dmg: meterNew(), hp: meterNew(), dealt: 0 };
+      r.retarget = 0;
+      r.modeT = 0.6 + i * 0.5;
+    }
+    S2.runners.push(r);
+    arrive(S2, cx, fy - PH / 2);
+    return r;
+  }
+  function arrive(S2, cx, cy) {
+    S2.flash = Math.max(S2.flash, 0.5);
+    for (let k = 0; k < 18; k++) {
+      const a = S2.rnd() * Math.PI * 2, sp = 20 + S2.rnd() * 60;
+      S2.parts.push({
+        x: cx,
+        y: cy,
+        vx: Math.cos(a) * sp,
+        vy: Math.sin(a) * sp - 20,
+        life: 0.5,
+        max: 0.5,
+        r: 1.2,
+        col: k % 3 ? "#7cc8ff" : "#e6f6ff",
+        kind: "spark"
+      });
+    }
+    for (let k = 0; k < 3; k++) zapArc(S2, cx + (S2.rnd() - 0.5) * 16, cy - 40, cx + (S2.rnd() - 0.5) * 6, cy + PH / 2, k ? "#7cc8ff" : "#e6f6ff");
+    S2.snd.push({ k: "arc", x: cx, y: cy });
+  }
+
   // src/ui/auto/AutoScreen.js
   var ROMAN2 = ["I", "II", "III", "IV", "V"];
   function openRun() {
@@ -38927,6 +38983,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           }
           const S2 = hubScene(vh, seed, run.players.length, run.tier, run.paid || (run.paid = {}));
           scene.current = S2;
+          if (window.__TEST_TITLE) window.__autoHub = S2;
           if (S2.hub) {
             S2.hub.fits = (_S, it) => bagFits(run, it);
             S2.hub.take = (_S, it) => {
@@ -39149,6 +39206,19 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           mode = "swipe";
           SFX.unlock();
         }
+        if (kind === "green" && !lump && (mode === "press" || mode === "swipe")) {
+          const at = dropAt2(src, fx, fy);
+          if (at && at.to === "player" && at.ok) {
+            mode = "drag";
+            p.drag = true;
+            clearTimeout(lift);
+            SFX.ui("tap");
+          }
+        }
+        if (mode === "drag") {
+          setDrag({ src, x: fx, y: fy, over: dropAt2(src, fx, fy), back: false });
+          return;
+        }
         if (lump) {
           const w = world(fx, fy);
           lump.x = w.x;
@@ -39158,6 +39228,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const up = (ev) => {
         if (ev.pointerId !== id) return;
         finish();
+        if (mode === "drag") {
+          drop(src, ev.clientX, ev.clientY, p);
+          return;
+        }
         if (lump) {
           const w = world(ev.clientX, ev.clientY);
           lump.x = w.x;
@@ -39180,7 +39254,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     };
     const dropAt2 = (src, x, y) => {
       const el = document.elementFromPoint(x, y);
-      const t = el && el.closest("[data-nslot],[data-gslot],.abag,.aplay");
+      const t = el && el.closest("[data-nslot],[data-gslot],[data-pslot],.abag,.aplay");
       const it = srcItem(src), n = navRef.current;
       if (!t || !it) return null;
       const gt = el && el.closest(".abag [data-slot]");
@@ -39194,6 +39268,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         const ok = src.from === "bag" && (n.level === "gun" && it.kind === "mod" || n.level === "cat" && it.kind === "exo" && it.cat === n.cat || n.level === "perks" && it.kind === "perk" && !!it.id && !!PERKS[it.id] && !PERKS[it.id].stat);
         return { key: "n" + s, to: "nav", s, ok };
       }
+      if (t.dataset.pslot !== void 0) return { key: "p" + t.dataset.pslot, to: "player", s: Number(t.dataset.pslot), ok: src.from === "bag" && it.kind === "green" && run.players.length < MAX_PLAYERS };
       if (t.dataset.gslot !== void 0) {
         const s = Number(t.dataset.gslot);
         return { key: "g" + s, to: "gun", s, ok: src.from === "bag" && n.level === "guns" && it.kind === "gun" };
@@ -39223,6 +39298,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             setTimeout(() => setBurst((b) => b && b.k === k ? null : b), 900);
             SFX.ui("coin");
           }
+        } else if (src.from === "bag" && at.to === "player") {
+          const pl = addPlayer(run);
+          done = !!pl;
+          if (pl && scene.current) sceneAddRunner(scene.current);
         } else if (src.from === "bag" && at.to === "gun") done = fitGun(run, src.i, n.p, at.s);
         else if (src.from === "nav" && at.to === "bag") {
           if (n.level === "gun") done = unfitMod(run, n.p, n.g, src.i);
@@ -39425,7 +39504,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           it ? h(Grab) : null
         );
       }
-      const cls = "anavc" + (c.dim ? " locked" : " on") + (c.sel ? " sel" : "") + (c.gun ? " gun" : "") + (over === "g" + i ? " drop" : "");
+      const cls = "anavc" + (c.dim ? " locked" : " on") + (c.sel ? " sel" : "") + (c.gun ? " gun" : "") + (over === "g" + i || over === "p" + i ? " drop" : "");
       const style = c.col && !c.dim ? { borderColor: c.col, boxShadow: "0 0 10px " + (c.glow || c.col + "66") } : void 0;
       let inner = null;
       if (c.gun) inner = h(GunIcon, { gun: c.gun });
@@ -39439,6 +39518,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         "data-player": level === "players" ? i : void 0,
         "data-open": c.open,
         "data-gslot": level === "guns" ? i : void 0,
+        "data-pslot": level === "players" && !c.helm ? i : void 0,
         title: c.glyph ? c.label : void 0,
         style,
         onPointerDown: c.helm && level === "players" ? hold : go

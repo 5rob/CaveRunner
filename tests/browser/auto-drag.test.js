@@ -1,7 +1,8 @@
 // CaveRunner Auto stage 8b: dragging between the bag and the nav's slots, with real pointer events (the mouse, and
 // touches through CDP). A Buzzsaw from the bag into the starter gun's empty slot 2 and back; a mod onto a gun circle
 // is refused; a touch outside the grab radius scrolls the bag instead (and opens no card); a touch inside it drags;
-// a tap opens the item's card (a mod's ModCard, an exo mod's own card).
+// a tap opens the item's card (a mod's ModCard, an exo mod's own card). Stage 12: a green gem onto an empty player
+// circle (in the hub: the throw turns into a drag over it) adds a player; anything else onto it is refused.
 const { launch } = require('../chromium');
 const path = require('path');
 let fails = 0;
@@ -19,6 +20,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     const run = newRun();
     bagAdd(run, { kind: 'gold', n: 50 });
     bagAdd(run, exoMod('jet', 2));
+    bagAdd(run, { kind: 'green', n: 2 });
     saveAutoRun(run);
   });
   await page.locator('.tstart').dispatchEvent('pointerdown');
@@ -105,6 +107,25 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   await page.waitForTimeout(200);
   const ex = await page.evaluate(() => (document.querySelector('.aexocard') || {}).textContent || '');
   check('a tap on an exo mod opens its card (category, tier, bonus)', /Jetpack II/.test(ex) && /%/.test(ex), ex);
+
+  // stage 12: a green gem onto an empty player circle
+  if (await page.$('.shade')) { await page.locator('.shade').first().dispatchEvent('pointerdown'); await page.waitForTimeout(150); }
+  for (let i = 0; i < 4 && !(await page.$('.anav.l-players')); i++) await nav('B');
+  const team = () => page.evaluate(() => { const r = loadAutoRun(); const g = r.bag.find(b => b && b.kind === 'green'); return { n: r.players.length, green: g ? g.n : 0, saws: r.bag.filter(b => b && b.id === 'saw').reduce((a, b) => a + b.n, 0) }; });
+  const t0 = await team();
+  const gi = (await saved()).bag.indexOf('green');
+  const mid3 = await mdrag(await centre('.abag [data-slot="' + gi + '"]'), await centre('.anav [data-pslot="1"]'),
+    () => ({ ghost: !!document.querySelector('.aghost'), lit: !!document.querySelector('.anav [data-pslot="1"].drop') }));
+  check('a green gem over the empty circle: a ghost, the circle lit', mid3.ghost && mid3.lit, mid3);
+  const t1 = await team();
+  check('dropped: 2 players, a green spent, a Buzzsaw added (saved)', t1.n === 2 && t1.green === t0.green - 1 && t1.saws === t0.saws + 1, { t0, t1 });
+  await page.waitForTimeout(150);
+  check('the nav shows 2 helmets', (await page.$$('.anav.l-players .anavc.on')).length === 2);
+  check('the hub has 2 runners', await page.evaluate(() => !!window.__autoHub && window.__autoHub.runners.length === 2));
+  const ei2 = (await saved()).bag.indexOf('exo');
+  const mid4 = await mdrag(await centre('.abag [data-slot="' + ei2 + '"]'), await centre('.anav [data-pslot="2"]'),
+    () => ({ ghost: !!document.querySelector('.aghost'), lit: !!document.querySelector('.anav .drop') }));
+  check('an exo mod onto an empty circle: not lit, refused', mid4.ghost && !mid4.lit && (await team()).n === 2, mid4);
 
   await browser.close();
   console.log(fails ? `\n${fails} FAILED` : '\nall ok');
