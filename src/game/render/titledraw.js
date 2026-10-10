@@ -17,6 +17,7 @@ import { FIRE_COLS } from '../../world/fire.js';
 import { vinePt } from '../../world/sway.js';
 import { crackleAt, crackleBody } from '../../art/crackle.js';
 import { drawProp, propGlow } from '../../art/props.js';
+import { gunArtId } from '../../art/gunart.js';
 import { CRYSTAL_PAL, CRYSTAL_R, GREEN_PAL, GUN_HELD, gunMuzzle, drawGun, drawNugget, glowAt, drawRunner, jetFlame, pixelHeld, pixelSprite } from '../../art/sprites.js';
 import { TCELL, TITLE_SOLID, TITLE_VW, TM, titleNoise, titleSolid, titleSolidCell, titleWebAt } from '../../art/titlescene.js';
 import { visPoly } from '../../world/vision.js';
@@ -379,6 +380,7 @@ function drawLoot(c, S) {
     gr.addColorStop(0, g.col); gr.addColorStop(1, 'rgba(0,0,0,0)');
     c.fillStyle = gr; c.fillRect(x - r * 4, y - r * 4, r * 8, r * 8);
     c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1;
+    if (g.it.kind === 'gun' && g.it.gun) { drawGun(c, x, y, 0, GUN_HELD * 1.6, gunArtId(g.it.gun)); continue; }   // a machine's gun: its sprite (PM)
     if (gem) { drawNugget(c, x, y - (CRYSTAL_R - 8.4), CRYSTAL_R, 3.7, 0, g.it.kind === 'green' ? GREEN_PAL : CRYSTAL_PAL); continue; }
     c.fillStyle = g.col;
     c.beginPath(); c.moveTo(x, y - r * 1.3); c.lineTo(x + r, y); c.lineTo(x, y + r * 1.3); c.lineTo(x - r, y); c.closePath(); c.fill();

@@ -311,7 +311,7 @@ const PRICE_COL = { gold: '#ffc93c', red: '#ff4f5e', green: '#5ee05a' };
 /** @param {CanvasRenderingContext2D} ctx @param {number} cx @param {number} fy @param {{ n: number, kind: 'gold' | 'red' | 'green' } | null} p @param {number} t */
 export function drawPrice(ctx, cx, fy, p, t) {
   if (!p) return;
-  const s = p.kind === 'gold' ? String(p.n).replace(/B(?=(d{3})+(?!d))/g, ',') + ' G.' : String(p.n);
+  const s = p.kind === 'gold' ? String(p.n).replace(/\B(?=(\d{3})+(?!\d))/g, ',') + ' G.' : String(p.n);
   const gem = p.kind === 'gold' ? 0 : 5, B = 0.5, room = MW - 26;
   const px = Math.min(0.9, (room - gem) / Math.max(1, pixWidth(s, 1, B))), ph = px * 1.3;
   const w = pixWidth(s, px, B) + gem, x0 = cx - w / 2, base = fy - 22 + 6 + 3.5 * ph;
