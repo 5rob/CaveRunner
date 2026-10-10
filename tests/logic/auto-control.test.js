@@ -40,6 +40,25 @@ let fired = false;
 for (let i = 0; i < 90 && !fired; i++) { G.titleStep(S, 1 / 30); fired = S.shots.some(s => !s.foe) || S.kills + S.shots.length > shots0; }
 check('his gun still aims and fires by itself', fired);
 
+// (bug round 1) stick down standing: he saws down, where the stick points, not toward an autopilot target
+G.levelControl(S, r.id, { active: true, nx: 0, ny: 0, mag: 0 });
+for (let i = 0; i < 150 && !r.ground; i++) G.titleStep(S, 1 / 30);
+const gy = r.y, gx = r.x + S.scroll;
+r.tx = gx + 150; r.ty = gy - 80;
+G.levelControl(S, r.id, push(0, 1));
+let dug = false;
+for (let i = 0; i < 60; i++) { G.titleStep(S, 1 / 30); dug = dug || r.dig > 0; }
+check('pushed down on the ground: he saws down into the floor', dug && r.y > gy + 6, [gy, r.y, r.dig]);
+check('… straight down, not pulled to the autopilot\'s target', Math.abs(r.x + S.scroll - gx) < 12, [gx, r.x + S.scroll]);
+G.levelControl(S, r.id, { active: true, nx: 0, ny: 0, mag: 0 });
+run(0.5);
+check('the stick let go: he stops sawing', !r.dig, r.dig);
+
+// (bug round 1) a teammate bumping him never snaps him back to the autopilot's 0.62 of the screen
+r.x = G.TITLE_VW * 0.8; o.x = r.x - 2; o.y = r.y; o.mode = 'fly';
+G.titleStep(S, 1 / 30);
+check('bumped by a teammate far right: no snap back', r.x > G.TITLE_VW * 0.7, r.x);
+
 G.levelControl(S, -1, null);
 check('let go: back on the autopilot', !r.ctl && !o.ctl);
 run(2);

@@ -5,6 +5,17 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.33 — CaveRunner Auto: manual control unhindered, the stick in the corner (branch `autobattler`)
+Released 2026-10-11 on the branch (bug round 1; owner OK'd the look, shots `tools/stickshots.js`).
+- Fix: a hand-steered player was taken over by the autopilot when he hit rock: his saw steered him to the autopilot's
+  target (and up to open air after 6 s), a wall he couldn't clear jetted him over it, and a teammate's bump snapped him back
+  to 0.62 of the screen (the "teleport"). Now his saw goes where the stick points and stops when it's let go (`ctlDig`),
+  a wall he can't clear just stops him, and the bump keeps the whole screen (`separate`).
+- New: the stick pushed down while standing saws down into the floor.
+- The stick moved to the bar's left end (B, A to its right): a circle centred level with the buttons' top, rising over the
+  bag's corner and cut off at the bar's bottom, one outline round it and the bar; the knob 56 px over a dark well.
+- Tests: `auto-control` (dig down, no pull to the target, no snap), `auto-screen` (the stick's place), `auto-loop` (push in px).
+
 ## v1.0.32 — CaveRunner Auto: machine items seen and walked over, one hand-steered speed, the Dev panel (branch `autobattler`)
 Released 2026-10-11 on the branch (owner OK'd; shots `tools/vendshots.js`, `tools/devshots.js`).
 - Fix: a machine's item was hidden behind the hub's back wall (since v1.0.26: `drawLoot` ran before `hubBack`); now drawn

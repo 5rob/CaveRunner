@@ -41,11 +41,11 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     gold: (document.querySelector('.aslot.k-gold') || {}).textContent, mod: Array.from(document.querySelectorAll('.aslot.k-mod')).map(e => e.textContent).join('|'),
     gun: !!document.querySelector('.aslot.k-gun canvas'),
   }));
-  check('four sections: play area, 4 nav circles (2 players), 70 bag slots; buttons B, pill stick, A',
-    n.play === 1 && n.nav === 4 && n.players === 2 && n.slots === 70 && n.btns === 'abtn ab|apill|abtn aa', n);
-  const pill = await page.evaluate(() => { const p = document.querySelector('.apill').getBoundingClientRect(), b = document.querySelector('.abtn.ab').getBoundingClientRect(), cs = getComputedStyle(document.querySelector('.apill'));
-    return { h: p.height, bh: b.height, w: p.width, r: cs.borderTopLeftRadius, ta: cs.touchAction }; });
-  check('the pill: the buttons height, round ends, wide, touch-action none', Math.abs(pill.h - 46) < 1 && pill.w > 100 && pill.r === '23px' && pill.ta === 'none', pill);
+  check('four sections: play area, 4 nav circles (2 players), 70 bag slots; the stick (a dome at the left end), B, A',
+    n.play === 1 && n.nav === 4 && n.players === 2 && n.slots === 70 && n.btns === 'astick|abtn ab|abtn aa', n);
+  const pill = await page.evaluate(() => { const p = document.querySelector('.astick').getBoundingClientRect(), b = document.querySelector('.abtns').getBoundingClientRect(), k = document.querySelector('.apill').getBoundingClientRect(), cs = getComputedStyle(document.querySelector('.astick'));
+    return { left: p.left - b.left, rise: b.top - p.top, w: p.width, kmid: k.top + k.height / 2 - document.querySelector('.abtn.ab').getBoundingClientRect().top, ta: cs.touchAction }; });
+  check('(bug round 1) the stick: the bar\'s left end rising over it, the knob level with the buttons\' top, touch-action none', pill.left <= 0 && pill.rise > 30 && pill.w > 120 && Math.abs(pill.kmid) < 3 && pill.ta === 'none', pill);
   // (stage 5a: each player's starter kit puts a Buzzsaw in the bag: 2 players, a stack of 2)
   check('the bag shows the run: gun icon, gold 120, mod ×3, the Buzzsaws', n.full === 4 && n.gun && /120/.test(n.gold) && /3/.test(n.mod), n);
   const order = await page.evaluate(() => ['.aplay', '.anav', '.abag', '.abtns'].map(s => document.querySelector(s).getBoundingClientRect().top));

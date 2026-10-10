@@ -8,7 +8,7 @@ release loop, testing), then the README of the `src/` folder you're working in.
 Planned with the owner (brief + quiz answers + 16 stages + the PM's kick-start prompt, all in `AUTOBATTLER.md`;
 mock-up `docs/autobattler-mockup.png`). Progress: AUTOBATTLER.md's Log. `main` keeps the old game.
 
-**Where it stands (2026-10-11, v1.0.32 live at /auto/; v1.0.32: machine items visible and walked over, one hand-steered speed `autoMoveK` 0.55, the Dev panel via ⏸ held 5 s + ⚙️): all stages 0–14 built; feedback rounds 1 and 2 released.**
+**Where it stands (2026-10-11, v1.0.33 live at /auto/; v1.0.33: manual control no longer taken over by the autopilot, stick down digs, the stick in the bar's left corner): all stages 0–14 built; feedback rounds 1 and 2 released.**
 
 **Next session (bug fixing, 2026-10-11):** the owner is playing v1.0.32 on the phone and sends notes; the PM fixes them
 in small rounds itself (no agents unless a note is a big new feature). Known rough edges, not yet reported by the owner:
@@ -18,7 +18,9 @@ up; after a wipe the camera doesn't move onto the last ragdoll by itself. The ow
 folders `../cr-hub`, `../cr-death`, `../cr-roam`, `../oldmain` can't be deleted (Permission denied): harmless, ignore.
 Screenshot tools for the owner live in `tools/*shots.js` (e.g. `devshots`, `roamshots`, `hubshots`, `vendshots`).
 
-Round 2h (v1.0.32): machine items drawn in front of the hub wall again (pop out, bounce, picked up by walking over after
+Bug round 1 (v1.0.33): a hand-steered player's saw follows the stick (`ctlDig`), no jet-over or snap back for him; stick
+down saws down; the stick is a circle at the bar's left end (B, A right of it; `.astick`, one outline with the bar; shots
+`tools/stickshots.js`). Round 2h (v1.0.32): machine items drawn in front of the hub wall again (pop out, bounce, picked up by walking over after
 `autoPickMin` 1 s within `autoPickReach`); one hand-steered speed `autoMoveK` 0.55 (walk, jet, pushes, sink; hub and
 steering); the Dev panel on the auto screen. Round 2g (v1.0.31): a gentler jetpack. Round 2f (v1.0.30):
 B hides the nav, one fixed camera, hold a helmet in a level for manual mode (scroll stops, damped follow, team behind), jet thrust

@@ -58,7 +58,7 @@ const T0 = Date.now();
     if (Math.abs(e.dx) < 4) { if (down) { await page.mouse.up(); down = false; } }
     else {
       if (!down) { await page.mouse.move(px, py); await page.mouse.down(); down = true; }
-      await page.mouse.move(px + Math.sign(e.dx) * (near ? 0.3 : 0.48) * pill.width, py);
+      await page.mouse.move(px + Math.sign(e.dx) * (near ? 46 : 74), py);
     }
     await page.waitForTimeout(40);
     e = await dxExit();
@@ -87,7 +87,7 @@ const T0 = Date.now();
       if (held) { await page.mouse.up(); held = false; }
       await page.locator('.abtn.aa').dispatchEvent('pointerdown');
     } else if ((v.phase === 'run' || v.phase === 'out') && !held) {
-      await page.mouse.move(px, py); await page.mouse.down(); await page.mouse.move(px + 0.48 * pill.width, py, { steps: 2 }); held = true;
+      await page.mouse.move(px, py); await page.mouse.down(); await page.mouse.move(px + 74, py, { steps: 2 }); held = true;
     }
     if (v.phase !== 'run' && v.phase !== 'out' && held) { await page.mouse.up(); held = false; }
     if (v.phase === 'arena' && v.boss && v.bossHp > 0 && v.t - v.arenaT > 3 && !cut) { cut = true; await page.evaluate(() => { levelState(window.__title.S).boss.hp = 0; }); }

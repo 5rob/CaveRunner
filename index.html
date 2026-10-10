@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v1.0.32</title>
-<!-- VERSION = 'v1000032' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v1.0.33</title>
+<!-- VERSION = 'v1000033' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -1012,15 +1012,24 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .atier{position:absolute;left:4px;top:3px;font:900 9px ui-monospace,SFMono-Regular,Menlo,monospace;font-style:normal;color:#ffd23a}
 .acount{position:absolute;right:3px;bottom:1px;font:800 11px ui-monospace,SFMono-Regular,Menlo,monospace;color:#fff;
   text-shadow:0 1px 2px #000,0 0 3px #000}
-.abtns{flex:none;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px}
+.abtns{position:relative;isolation:isolate;flex:none;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px 8px 156px;background:#0e091a;border-radius:0 14px 14px 14px}
+/* the bar's fill over the stick circle's ring (so the bar and the circle share one outline) */
+.abtns::after{content:'';position:absolute;inset:0;border-radius:0 12px 12px 12px;background:#0e091a;z-index:1;pointer-events:none}
+.abtns .abtn{position:relative;z-index:3}
 .abtn{height:46px;border:none;padding:0;font:900 20px ui-monospace,SFMono-Regular,Menlo,monospace;color:#fff;touch-action:none}
 .abtn:active{transform:translateY(2px)}
-.abtn.ab,.abtn.aa{flex:0 0 30%;border-radius:23px}
+.abtn.ab,.abtn.aa{flex:1 1 0;border-radius:23px}
 .abtn.ab{background:linear-gradient(#ff6a72,#e0283a);box-shadow:0 4px 0 #7a1020,0 0 14px rgba(255,60,80,0.45)}
 .abtn.aa{background:linear-gradient(#4ef08a,#0fb556);box-shadow:0 4px 0 #0a5a2a,0 0 14px rgba(40,220,110,0.45)}
-/* the pill stick (between B and A): the old arrow circles' height and roundness, filling their space; the knob follows the finger */
-.apill{position:relative;flex:1 1 auto;height:46px;box-sizing:border-box;border-radius:23px;background:#251c3a;border:2px solid #4a3a6e;box-shadow:0 3px 0 #0b0716,inset 0 2px 6px rgba(0,0,0,0.5);touch-action:none;user-select:none;-webkit-user-select:none;display:flex;align-items:center;justify-content:center}
-.apillknob{position:relative;z-index:5;width:34px;height:34px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#6a58a0,#3a2d5e);border:2px solid #8a76c8;box-sizing:border-box;box-shadow:0 2px 0 #0b0716;pointer-events:none}
+/* the stick (bug round 1): a circle (radius 74) centred on the buttons' top, touching the bar's left edge there (the bar's top-left corner under it, its bottom-left rounded), cut off at the bar's bottom; its ring
+   sits under the bar's fill and its own fill over the bar's top border: one outline round both. The knob rests at its centre */
+.astick{position:absolute;left:-2px;top:-68px;bottom:0;width:148px;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
+.adomering,.adomefill{position:absolute;border-radius:50%;background:#0e091a;box-sizing:border-box;pointer-events:none}
+.adomering{left:0;top:2px;width:148px;height:148px;border:2px solid #3d2f5c;z-index:0}
+.adomefill{left:2px;top:4px;width:144px;height:144px;z-index:2}
+.apill{position:absolute;left:46px;top:48px;width:56px;height:56px;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:3}
+.apill::before{content:'';position:absolute;left:-44px;top:-44px;width:144px;height:144px;border-radius:50%;background:radial-gradient(circle closest-side,rgba(0,0,0,0.8) 0,rgba(0,0,0,0.5) 45%,rgba(0,0,0,0) 100%)}
+.apillknob{position:relative;z-index:5;width:56px;height:56px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#6a58a0,#3a2d5e);border:2px solid #8a76c8;box-sizing:border-box;box-shadow:0 2px 0 #0b0716;pointer-events:none}
 .apillknob.jet{border-color:#ffb347;box-shadow:0 2px 0 #0b0716,0 0 10px rgba(255,160,60,0.7)}
 
 /* the gun panel (feedback round 2, AutoScreen GunPanel): the old Bag's stats and firing window in the cards' colours */
@@ -1060,7 +1069,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v1.0.32';</script>
+<script>const VERSION = 'v1.0.33';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -12465,6 +12474,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const kind = S2.lvl.blockKind ? S2.lvl.blockKind(S2, r.x + PW / 2 + S2.scroll + 8 * Math.sign(dx || 1)) : "rock";
       const c = teamClearer(S2.team, kind, r.id);
       if (!c) {
+        if (r.ctl) return;
         if (why === "aim" || why === "fly") {
           r.vx = 0;
           r.vy = Math.min(r.vy, 0);
@@ -12538,7 +12548,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const shove = (r, dx, dy) => {
       if (r.mode === "run" && !r.dig) dy = 0;
       if (!dx && !dy) return false;
-      const nx = Math.max(8, Math.min(TITLE_VW * 0.62, r.x + dx)), ny = r.y + dy;
+      const nx = Math.max(8, Math.min(r.ctl ? TITLE_VW - PW - 8 : TITLE_VW * 0.62, r.x + dx)), ny = r.y + dy;
       if (boxRock(S2, nx, ny, !(r.mode === "run" && !r.dig))) return false;
       if (r.mode === "run") r.tx += nx - r.x;
       r.x = nx;
@@ -12595,6 +12605,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const dir = Math.abs(r.cvx) > 5 ? Math.sign(r.cvx) : 1;
       r.cvx = 0;
       startDig(S2, r, dir, 0, dir > 0 ? "wall" : "aim");
+      if (r.dig) return;
+    }
+    if (r.ground && m > 0 && st.ny > 0.5 && boxRock(S2, r.x, r.y + 3)) {
+      r.cvx = 0;
+      startDig(S2, r, st.nx, st.ny, "down");
       if (r.dig) return;
     }
     const ny = r.y + r.vy * dt, cx = r.x + PW / 2;
@@ -12762,6 +12777,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     S2.digT += dt;
     r.dig += dt;
+    if (r.ctl) {
+      ctlDig(S2, r, r.ctl, dt);
+      return;
+    }
     if (r.mode === "fly" && (r.retarget <= 0 || Math.hypot(r.tx - r.x, r.ty - r.y) < 6)) pickTarget(S2, r);
     if (r.dig > 6 && r.mode === "fly") {
       const twx = r.x + PW / 2 + S2.scroll, c = titleCeil(twx, S2), f = titleFloor(twx, S2);
@@ -12796,6 +12815,36 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       r.clr = null;
       if (r.mode === "fly" && R() < 0.5) pickTarget(S2, r);
     }
+  }
+  function ctlDig(S2, r, st, dt) {
+    const m = st.active && st.mag > DEAD ? (st.mag - DEAD) / (1 - DEAD) : 0;
+    const end = () => {
+      r.dig = 0;
+      r.clearT = 0;
+      r.swap = 0.3;
+      if (r.keep) r.kit = r.keep;
+      r.keep = null;
+      r.clr = null;
+    };
+    if (!m) {
+      end();
+      return;
+    }
+    const tvx = st.nx * m * DIGV - sv(S2), tvy = st.ny * m * DIGV;
+    r.vx += (tvx - r.vx) * Math.min(1, 6 * dt);
+    r.vy += (tvy - r.vy) * Math.min(1, 6 * dt);
+    r.x += r.vx * dt;
+    r.y += r.vy * dt;
+    r.cvx = r.vx + sv(S2);
+    r.flame = st.ny < 0 ? 0.3 : 0;
+    r.ground = false;
+    r.dx = st.nx;
+    r.dy = st.ny;
+    if (Math.abs(st.nx) > 0.2) r.face = Math.sign(st.nx);
+    if (!r.clr || (r.clrT || 0) < DEV.autoClearGap) titleCarve(S2, r.x + PW / 2 + r.dx * 4, r.y + PH / 2 + r.dy * 4, TITLE_DIGR, false);
+    if (!boxRock(S2, r.x, r.y, false) && !boxRock(S2, r.x + r.dx * 7, r.y + r.dy * 7, false)) r.clearT += dt;
+    else r.clearT = 0;
+    if (r.clearT > 0.25) end();
   }
   function stepRunnerGun(S2, r, dt) {
     const R = S2.rnd, cx = () => r.x + PW / 2;
@@ -31471,8 +31520,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       h(
         "div",
         { className: "abtns" },
-        h("button", { className: "abtn ab", onPointerDown: tap(pressB) }, "B"),
         h(PillStick, { onMove: steer }),
+        h("button", { className: "abtn ab", onPointerDown: tap(pressB) }, "B"),
         h("button", { className: "abtn aa", onPointerDown: downA }, "A")
       ),
       arc ? h(GunArc, { arc, run }) : null,
@@ -31511,7 +31560,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       pid.current = e.pointerId;
       SFX.unlock();
       try {
-        ref.current.setPointerCapture(e.pointerId);
+        e.currentTarget.setPointerCapture(e.pointerId);
       } catch (_) {
       }
       update(e);
@@ -31527,8 +31576,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     };
     return h(
       "div",
-      { ref, className: "apill", onPointerDown: down, onPointerMove: move, onPointerUp: end, onPointerCancel: end },
-      h("div", { className: "apillknob" + (knob2.jet ? " jet" : ""), style: { transform: "translate(" + knob2.x + "px," + knob2.y + "px)" } })
+      { className: "astick", onPointerDown: down, onPointerMove: move, onPointerUp: end, onPointerCancel: end },
+      h("i", { className: "adomering" }),
+      h("i", { className: "adomefill" }),
+      h(
+        "div",
+        { ref, className: "apill" },
+        h("div", { className: "apillknob" + (knob2.jet ? " jet" : ""), style: { transform: "translate(" + knob2.x + "px," + knob2.y + "px)" } })
+      )
     );
   }
   var ROW_H = 66, STACK_GAP = 6, PANEL_H = 168, LEAVE_MS = 260;

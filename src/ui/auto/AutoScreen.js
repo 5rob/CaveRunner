@@ -505,8 +505,8 @@ export function AutoScreen() {
         lift: !!drag && drag.src.from === 'bag' && drag.src.i === i,
         drop: !!drag && !!drag.over && drag.over.ok && drag.over.key === 's' + i }))),
     h('div', { className: 'abtns' },
-      h('button', { className: 'abtn ab', onPointerDown: tap(pressB) }, 'B'),
       h(PillStick, { onMove: steer }),
+      h('button', { className: 'abtn ab', onPointerDown: tap(pressB) }, 'B'),
       h('button', { className: 'abtn aa', onPointerDown: downA }, 'A')),
     arc ? h(GunArc, { arc, run }) : null,
     burst ? h(CoinBurst, { key: burst.k, burst }) : null,
@@ -523,8 +523,10 @@ export function AutoScreen() {
 const PILL_REST = { active: false, nx: 0, ny: 0, mag: 0, dx: 0, dy: 0 };
 const PILL_REACH = 54;                 // the knob's reach (px): the old 150 px stick's 75 × 0.72 (ui/hud.js Stick maxD)
 
-// The pill stick: one pill between B and A; a knob in it follows the finger (clamped to the pill, a little up and down
-// too). Pointer capture, so the finger may wander off it; letting go puts the knob back and the push to rest
+// The stick (owner, bug round 1: was a pill between B and A): a circle at the bar's left end, centred on the bar's middle
+// and rising over the bag's corner (cut off at the bar's bottom), so there's room to push down as well as up; one outline
+// round it and the bar (style.css: the ring under the bar's fill, the circle's fill over it). The knob rests at its centre
+// (.apill, the maths' centre) in a shallow dark well, and follows the finger. Pointer capture, so the finger may wander off it; letting go puts the knob back and the push to rest
 /** @param {{ onMove: (st: PillState) => void }} props */
 function PillStick({ onMove }) {
   const ref = useRef(null);
@@ -550,7 +552,7 @@ function PillStick({ onMove }) {
     if (pid.current !== null) return;
     pid.current = e.pointerId;
     SFX.unlock();
-    try { ref.current.setPointerCapture(e.pointerId); } catch (_) { /* (a synthetic event: no capture) */ }
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch (_) { /* (a synthetic event: no capture) */ }
     update(e);
   };
   /** @param {any} e */
@@ -562,8 +564,10 @@ function PillStick({ onMove }) {
     onMove(PILL_REST);
     setKnob({ x: 0, y: 0, jet: false });
   };
-  return h('div', { ref, className: 'apill', onPointerDown: down, onPointerMove: move, onPointerUp: end, onPointerCancel: end },
-    h('div', { className: 'apillknob' + (knob.jet ? ' jet' : ''), style: { transform: 'translate(' + knob.x + 'px,' + knob.y + 'px)' } }));
+  return h('div', { className: 'astick', onPointerDown: down, onPointerMove: move, onPointerUp: end, onPointerCancel: end },
+    h('i', { className: 'adomering' }), h('i', { className: 'adomefill' }),
+    h('div', { ref, className: 'apill' },
+      h('div', { className: 'apillknob' + (knob.jet ? ' jet' : ''), style: { transform: 'translate(' + knob.x + 'px,' + knob.y + 'px)' } })));
 }
 
 // The context nav as a stack (owner, feedback round 2): the row for the nav's level sits in the nav's place (.anav); every

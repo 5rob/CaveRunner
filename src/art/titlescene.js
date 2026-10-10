@@ -1195,6 +1195,7 @@ function startDig(S, r, dx, dy, why) {
     const kind = S.lvl.blockKind ? S.lvl.blockKind(S, r.x + PW / 2 + S.scroll + 8 * Math.sign(dx || 1)) : 'rock';
     const c = teamClearer(S.team, kind, r.id);
     if (!c) {
+      if (r.ctl) return;   // (bug round 1) one steered by hand: just stopped by it (no jetting over, no target of his own)
       if (why === 'aim' || why === 'fly') { r.vx = 0; r.vy = Math.min(r.vy, 0); pickTarget(S, r); return; }
       if (jetOver(S, r)) return;   // stage 6b: a partial blockage he can't clear, he jets over it
       S.blocked = S.t; S.blockedKind = kind; S.digWhy.blocked = (S.digWhy.blocked || 0) + 1;
@@ -1254,7 +1255,7 @@ function separate(S, dt) {
   const shove = (r, dx, dy) => {
     if (r.mode === 'run' && !r.dig) dy = 0;
     if (!dx && !dy) return false;
-    const nx = Math.max(8, Math.min(TITLE_VW * 0.62, r.x + dx)), ny = r.y + dy;
+    const nx = Math.max(8, Math.min(r.ctl ? TITLE_VW - PW - 8 : TITLE_VW * 0.62, r.x + dx)), ny = r.y + dy;   // (bug round 1: the hand-steered one isn't snapped back to 0.62)
     if (boxRock(S, nx, ny, !(r.mode === 'run' && !r.dig))) return false;
     if (r.mode === 'run') r.tx += nx - r.x;
     r.x = nx; r.y = ny;
@@ -1314,6 +1315,8 @@ function ctlStep(S, r, st, dt) {
     startDig(S, r, dir, 0, dir > 0 ? 'wall' : 'aim');
     if (r.dig) return;
   }
+  // (owner, bug round 1) the stick pushed down while standing: he saws down into the floor
+  if (r.ground && m > 0 && st.ny > 0.5 && boxRock(S, r.x, r.y + 3)) { r.cvx = 0; startDig(S, r, st.nx, st.ny, 'down'); if (r.dig) return; }
   const ny = r.y + r.vy * dt, cx = r.x + PW / 2;
   if (!boxRock(S, r.x, ny)) { r.y = ny; r.ground = false; }
   else if (r.vy > 0) {
@@ -1418,6 +1421,7 @@ function digStep(S, r, dt) {
     if (!r.dig) return;
   }
   S.digT += dt; r.dig += dt;
+  if (r.ctl) { ctlDig(S, r, r.ctl, dt); return; }
   if (r.mode === 'fly' && (r.retarget <= 0 || Math.hypot(r.tx - r.x, r.ty - r.y) < 6)) pickTarget(S, r);
   if (r.dig > 6 && r.mode === 'fly') {                   // long enough underground: up to the open air
     const twx = r.x + PW / 2 + S.scroll, c = titleCeil(twx, S), f = titleFloor(twx, S);
@@ -1443,6 +1447,23 @@ function digStep(S, r, dt) {
     r.keep = null; r.clr = null;
     if (r.mode === 'fly' && R() < 0.5) pickTarget(S, r);
   }
+}
+// (owner, bug round 1) one steered by hand saws where the stick points, at the saw's pace (no autopilot target, no
+// "up to the open air"); the stick let go, or pointing out of the rock, and he stops sawing
+/** @param {TitleScene} S @param {TRunner} r @param {RunnerCtl} st @param {number} dt */
+function ctlDig(S, r, st, dt) {
+  const m = st.active && st.mag > DEAD ? (st.mag - DEAD) / (1 - DEAD) : 0;
+  const end = () => { r.dig = 0; r.clearT = 0; r.swap = 0.3; if (r.keep) r.kit = r.keep; r.keep = null; r.clr = null; };
+  if (!m) { end(); return; }
+  const tvx = st.nx * m * DIGV - sv(S), tvy = st.ny * m * DIGV;
+  r.vx += (tvx - r.vx) * Math.min(1, 6 * dt); r.vy += (tvy - r.vy) * Math.min(1, 6 * dt);
+  r.x += r.vx * dt; r.y += r.vy * dt; r.cvx = r.vx + sv(S);
+  r.flame = st.ny < 0 ? 0.3 : 0; r.ground = false;
+  r.dx = st.nx; r.dy = st.ny;
+  if (Math.abs(st.nx) > 0.2) r.face = Math.sign(st.nx);
+  if (!r.clr || (r.clrT || 0) < DEV.autoClearGap) titleCarve(S, r.x + PW / 2 + r.dx * 4, r.y + PH / 2 + r.dy * 4, TITLE_DIGR, false);
+  if (!boxRock(S, r.x, r.y, false) && !boxRock(S, r.x + r.dx * 7, r.y + r.dy * 7, false)) r.clearT += dt; else r.clearT = 0;
+  if (r.clearT > 0.25) end();
 }
 /** @param {TitleScene} S @param {TRunner} r @param {number} dt */
 function stepRunnerGun(S, r, dt) {
