@@ -25,7 +25,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   let on = false;
   for (let i = 0; i < 40 && !(on = !!(await page.$('.auto'))); i++) await page.waitForTimeout(50);
   check('the auto screen is up', on);
-  const nav = async (...sel) => { for (const s of sel) { await page.locator(s === 'B' ? '.abtn.ab' : '.anav ' + s).first().dispatchEvent('pointerdown'); await page.waitForTimeout(80); } };
+  const nav = async (...sel) => { for (const s of sel) { const L = page.locator(s === 'B' ? '.abtn.ab' : '.anav ' + s).first(); await L.dispatchEvent('pointerdown'); await page.evaluate(() => dispatchEvent(new PointerEvent('pointerup'))); await page.waitForTimeout(80); } };
   const saved = () => page.evaluate(() => { const r = loadAutoRun(); return { slots: r.players[0].guns[0].slots, guns: r.players[0].guns.map(g => !!g), bag: r.bag.map(b => b && (b.id || b.kind)) }; });
   const centre = async sel => { const b = await page.locator(sel).first().boundingBox(); return { x: b.x + b.width / 2, y: b.y + b.height / 2, w: b.width, b }; };
   const sawSlot = async () => { const s = await saved(); return '.abag [data-slot="' + s.bag.indexOf('saw') + '"]'; };

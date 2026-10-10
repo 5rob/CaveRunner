@@ -24,14 +24,17 @@ import { MODS, famCol } from '../../spells/mods.js';
 import { HUB_MACHINES } from '../../auto/hub.js';
 import { PERKS, STAT_PERKS } from '../../data/perks.js';
 import { BAG_SLOTS, EXO_STATS, MAX_PLAYERS, fitExo, fitGun, fitMod, fitPerk, healRun, levelCleared, levelFailed, levelSeed, newRun,
-  unfitExo, unfitMod, unfitPerk } from '../../auto/run.js';
+  scrapAt, setActive, unfitExo, unfitMod, unfitPerk } from '../../auto/run.js';
 import { loadAutoRun, saveAutoRun } from '../../auto/save.js';
-import { EXO_NAMES, navBack, navOpen, navRow, navStart } from '../../auto/nav.js';
+import { EXO_NAMES, arcPick, gunArc, navBack, navOpen, navRow, navStart } from '../../auto/nav.js';
+import { meterTail, nextSpan } from '../../auto/meters.js';
 import { CARD_ICON, GunCard, ModCard, PerkCard } from '../cards.js';
 import { GunIcon } from '../editor.js';
 import { GlyphIcon, HelmetIcon, PixIcon } from './icons.js';
 import { PauseMenu } from '../pause.js';
 import { runScene } from '../scenecanvas.js';
+import { leaveItem } from '../../art/titlescene.js';
+import { lootCol } from '../../auto/loot.js';
 import { h, useEffect, useRef, useState } from '../h.js';
 
 const ROMAN = ['I', 'II', 'III', 'IV', 'V'];
@@ -78,6 +81,14 @@ export function AutoScreen() {
   const [drag, setDrag] = useState(noDrag);
   /** @type {{ current: Press | null }} */
   const press = useRef(null);
+  // stage 9: the gun arc (a held helmet: player p's 4 gun circles at pts, hi the one under the finger) and a scrap's
+  // coin burst (at x, y on screen, k its key)
+  /** @type {{ p: number, pts: { x: number, y: number }[], hi: number } | null} */
+  const noArc = null;
+  const [arc, setArc] = useState(noArc);
+  /** @type {{ x: number, y: number, n: number, k: number } | null} */
+  const noBurst = null;
+  const [burst, setBurst] = useState(noBurst);
   useEffect(() => {
     const id = setInterval(() => {
       const L = scene.current && levelState(scene.current);
@@ -193,9 +204,18 @@ export function AutoScreen() {
   const dropAt = (src, x, y) => {
     const el = document.elementFromPoint(x, y);
     /** @type {HTMLElement | null} */
-    const t = el && el.closest('[data-nslot],[data-gslot],.abag');
+    const t = el && el.closest('[data-nslot],[data-gslot],.abag,.aplay');
     const it = srcItem(src), n = navRef.current;
     if (!t || !it) return null;
+    // stage 9: a bag item onto the gold stack scraps it
+    /** @type {HTMLElement | null} */
+    const gt = el && el.closest('.abag [data-slot]');
+    if (gt && src.from === 'bag' && it.kind !== 'gold') {
+      const j = Number(gt.dataset.slot), g = run.bag[j];
+      if (g && g.kind === 'gold') return { key: 's' + j, to: 'scrap', s: j, ok: true };
+    }
+    // stage 9: a bag item onto the play area: dropped on the ground in front of the team
+    if (t.classList.contains('aplay')) return { key: 'play', to: 'play', s: -1, ok: src.from === 'bag' && !!scene.current };
     if (t.dataset.nslot !== undefined) {
       const s = Number(t.dataset.nslot);
       const ok = src.from === 'bag' && ((n.level === 'gun' && it.kind === 'mod') || (n.level === 'cat' && it.kind === 'exo' && it.cat === n.cat) ||
@@ -210,13 +230,28 @@ export function AutoScreen() {
   };
   /** let go: the move on the run (saved), or the ghost springs back @param {DragSrc} src @param {number} x @param {number} y @param {Press} p */
   const drop = (src, x, y, p) => {
-    const at = dropAt(src, x, y), n = navRef.current;
+    const at = dropAt(src, x, y), n = navRef.current, it0 = srcItem(src);
     let done = false;
     if (at && at.ok) {
       if (src.from === 'bag' && at.to === 'nav') {
         if (n.level === 'gun') done = fitMod(run, src.i, n.p, n.g, at.s);
         else if (n.level === 'cat') done = fitExo(run, src.i, n.p, n.cat, at.s);
         else if (n.level === 'perks') done = fitPerk(run, src.i, n.p, at.s);
+      } else if (src.from === 'bag' && at.to === 'play' && scene.current && it0) {
+        leaveItem(scene.current, it0, lootCol(it0));
+        run.bag[src.i] = null;
+        done = true;
+      } else if (src.from === 'bag' && at.to === 'scrap') {
+        const tile = document.querySelector('.abag [data-slot="' + at.s + '"]');
+        const r = tile ? tile.getBoundingClientRect() : null;
+        const g = scrapAt(run, src.i);
+        done = g > 0;
+        if (done && r) {
+          const k = Date.now();
+          setBurst({ x: r.left + r.width / 2, y: r.top + r.height / 2, n: g, k });
+          setTimeout(() => setBurst(b => b && b.k === k ? null : b), 900);
+          SFX.ui('coin');
+        }
       } else if (src.from === 'bag' && at.to === 'gun') done = fitGun(run, src.i, n.p, at.s);
       else if (src.from === 'nav' && at.to === 'bag') {
         if (n.level === 'gun') done = unfitMod(run, n.p, n.g, src.i);
@@ -237,21 +272,65 @@ export function AutoScreen() {
   };
   /** a nav circle tapped: one level down @param {string | number} w */
   const openNav = w => { nothing(); setNav(n => navOpen(n, w, run)); };
+  // stage 9: a press on a player's helmet. Let go soon: his menu (a tap). Held DEV.autoHoldMs: his 4 guns fan out in an
+  // arc above it; slide onto one (it lights) and let go: that gun fires (setActive, saved); let go on none: nothing
+  /** @param {any} e @param {number} i */
+  const holdHelm = (e, i) => {
+    e.preventDefault();
+    if (press.current || !run.players[i]) return;
+    const r = e.currentTarget.getBoundingClientRect(), id = e.pointerId;
+    /** @type {{ x: number, y: number }[] | null} */
+    let pts = null;
+    let hi = -1;
+    const timer = setTimeout(() => {
+      pts = gunArc(r.left + r.width / 2, r.top + r.height / 2, innerWidth, DEV.autoArcR, 30);
+      SFX.unlock(); SFX.ui('tap');
+      setArc({ p: i, pts, hi: -1 });
+    }, DEV.autoHoldMs);
+    const finish = () => {
+      clearTimeout(timer);
+      removeEventListener('pointermove', move); removeEventListener('pointerup', up); removeEventListener('pointercancel', cancel);
+    };
+    /** @param {any} ev */
+    const move = ev => {
+      if (ev.pointerId !== id || !pts) return;
+      ev.preventDefault();
+      const k = arcPick(pts, ev.clientX, ev.clientY, 30), pl = run.players[i];
+      const h2 = pl && pl.guns[k] ? k : -1;
+      if (h2 !== hi) { hi = h2; setArc(a => a && { ...a, hi: h2 }); }
+    };
+    /** @param {any} ev */
+    const up = ev => {
+      if (ev.pointerId !== id) return;
+      finish();
+      if (!pts) { openNav(i); return; }
+      setArc(null);
+      if (hi >= 0 && setActive(run, i, hi)) { saveAutoRun(run); SFX.fx('open'); setV(v => v + 1); }
+    };
+    /** @param {any} ev */
+    const cancel = ev => { if (ev.pointerId === id) { finish(); setArc(null); } };
+    addEventListener('pointermove', move, { passive: false }); addEventListener('pointerup', up); addEventListener('pointercancel', cancel);
+  };
+  /** the nav's player's meters (in a level; the hub has none) @returns {PlayerMeters | null} */
+  const meters = () => { const L = scene.current && levelState(scene.current); return (L && L.meters[navRef.current.p]) || null; };
   return h('div', { className: 'auto' },
-    h('div', { className: 'aplay' },
+    h('div', { className: 'aplay' + (drag && drag.over && drag.over.key === 'play' && drag.over.ok ? ' drop' : '') },
       h('canvas', { ref: cvs, className: 'aplaycvs' }),
       blocked ? h('div', { className: 'ablocked' }, 'Path blocked') : null,
       boss ? h('div', { className: 'abossbar' }, h('b', null, boss.name),
         h('div', { className: 'abosstrack' }, h('i', { style: { width: (100 * boss.hp / Math.max(1, boss.max)).toFixed(1) + '%' } }))) : null,
       h('button', { className: 'pausebtn', title: 'Pause', onPointerDown: tap(() => { SFX.fx('open'); setPaused(true); }) }, '⏸')),
-    h(NavRow, { row: navRow(nav, run, MAX_PLAYERS), level: nav.level, open: openNav, down, drag }),
+    h(NavRow, { row: navRow(nav, run, MAX_PLAYERS), level: nav.level, open: openNav, down, drag, holdHelm, meters }),
     h('div', { className: 'abag' + (drag && drag.over && drag.over.key === 'bag' && drag.over.ok ? ' drop' : '') },
       ...Array.from({ length: BAG_SLOTS }, (_, i) => h(BagSlot, { key: i, i, it: run.bag[i], down,
-        lift: !!drag && drag.src.from === 'bag' && drag.src.i === i }))),
+        lift: !!drag && drag.src.from === 'bag' && drag.src.i === i,
+        drop: !!drag && !!drag.over && drag.over.ok && drag.over.key === 's' + i }))),
     h('div', { className: 'abtns' },
       h('button', { className: 'abtn ab', onPointerDown: tap(() => { nothing(); setNav(navBack); }) }, 'B'),
       h(PillStick, { onMove: steer }),
       h('button', { className: 'abtn aa', onPointerDown: tap(pressA) }, 'A')),
+    arc ? h(GunArc, { arc, run }) : null,
+    burst ? h(CoinBurst, { key: burst.k, burst }) : null,
     drag ? h(Ghost, { drag, it: srcItem(drag.src) }) : null,
     card ? h(CardPop, { it: card, close: () => setCard(null) }) : null,
     paused ? h(PauseMenu, { input, label: 'Tier ' + run.tier, close: () => { SFX.fx('close'); setPaused(false); } }) : null);
@@ -310,14 +389,17 @@ function PillStick({ onMove }) {
 // The context nav's row (auto/nav.js navRow): circles for choices (a player's ring and number, a menu glyph, a gun's
 // sprite), square tiles for slots (the bag's tile look; a gun's mod row scrolls sideways when it has more than fit).
 // Below the top the row's edge takes the tapped player's colour. Same height at every level (style.css .anav).
-/** @param {{ row: import('../../auto/nav.js').NavRow, level: string, open: (w: string | number) => void, down: (e: any, src: DragSrc) => void, drag: Drag | null }} props */
-function NavRow({ row, level, open, down, drag }) {
+/** @param {{ row: import('../../auto/nav.js').NavRow, level: string, open: (w: string | number) => void, down: (e: any, src: DragSrc) => void, drag: Drag | null,
+ *   holdHelm: (e: any, i: number) => void, meters: () => PlayerMeters | null }} props */
+function NavRow({ row, level, open, down, drag, holdHelm, meters }) {
   const over = drag && drag.over && drag.over.ok ? drag.over.key : '';
   /** @param {import('../../auto/nav.js').NavCell} c @param {number} i */
   const cell = (c, i) => {
     const to = c.open;
     /** @param {any} e */
     const go = e => { e.preventDefault(); if (to !== undefined) open(to); };
+    /** a helmet: a tap or a hold (the gun arc) @param {any} e */
+    const hold = e => holdHelm(e, i);
     if (row.shape === 'slots') {
       const it = c.item || null;
       const lift = !!drag && drag.src.from === 'nav' && drag.src.i === i;
@@ -336,19 +418,19 @@ function NavRow({ row, level, open, down, drag }) {
     else if (c.glyph) inner = h('span', { className: 'anavg' }, c.glyph);
     else if (c.label) inner = h('span', { className: 'anavp', style: { background: c.col } }, c.label);
     return h('div', { key: c.key, className: cls, 'data-player': level === 'players' ? i : undefined, 'data-open': c.open, 'data-gslot': level === 'guns' ? i : undefined,
-      title: c.glyph ? c.label : undefined, style, onPointerDown: go }, inner);
+      title: c.glyph ? c.label : undefined, style, onPointerDown: c.helm && level === 'players' ? hold : go }, inner);
   };
   return h('div', { className: 'anav l-' + level + (row.shape === 'slots' ? ' slots' : ''), 'data-level': level,
     style: row.col ? { borderColor: row.col, boxShadow: '0 0 12px ' + row.col + '55' } : undefined },
-    row.shape === 'stats' ? h('span', { className: 'anavsoon' }, 'Stats — soon') : row.cells.map(cell));
+    row.shape === 'stats' ? h(StatsRow, { meters }) : row.cells.map(cell));
 }
 
 // one bag slot: empty, or the item's icon and its count
-/** @param {{ i: number, it: BagItem | null, down: (e: any, src: DragSrc) => void, lift: boolean }} props */
-function BagSlot({ i, it, down, lift }) {
+/** @param {{ i: number, it: BagItem | null, down: (e: any, src: DragSrc) => void, lift: boolean, drop: boolean }} props */
+function BagSlot({ i, it, down, lift, drop }) {
   /** @param {any} e */
   const grab = e => down(e, { from: 'bag', i });
-  return h('div', { className: 'aslot' + (it ? ' full k-' + it.kind : '') + (lift ? ' lift' : ''), 'data-slot': i, style: itemEdge(it),
+  return h('div', { className: 'aslot' + (it ? ' full k-' + it.kind : '') + (lift ? ' lift' : '') + (drop ? ' drop' : ''), 'data-slot': i, style: itemEdge(it),
     onPointerDown: it ? grab : undefined },
     it ? h(ItemIcon, { it }) : null, it ? h(Grab) : null,
     it && (it.n > 1 || it.kind === 'gold' || it.kind === 'red' || it.kind === 'green') ? h('b', { className: 'acount' }, it.n) : null);
@@ -374,7 +456,7 @@ function ItemIcon({ it }) {
 
 // ---- stage 8b: drag and drop, the cards ----
 /** @typedef {{ from: 'bag' | 'nav', i: number }} DragSrc */
-/** @typedef {{ key: string, to: 'nav' | 'gun' | 'bag', s: number, ok: boolean }} DropAt */
+/** @typedef {{ key: string, to: 'nav' | 'gun' | 'bag' | 'scrap' | 'play', s: number, ok: boolean }} DropAt */
 /** @typedef {{ src: DragSrc, x: number, y: number, over: DropAt | null, back: boolean }} Drag */
 /** @typedef {{ id: number, x0: number, y0: number, src: DragSrc, grab: boolean, drag: boolean }} Press */
 // a press moving this far (px) is a drag (on the handle) or not a tap
@@ -441,4 +523,76 @@ function ExoCard({ cat, tier, onClose }) {
         h('span', null, 'Exo mod · tier ' + ROMAN[tier - 1] + ' of V · fits the suit’s ' + EXO_NAMES[cat] + ' slots')),
       h('button', { className: 'pclose', onPointerDown: shut }, '×')),
     ...EXO_STATS[cat].map(st => { const S = STAT_PERKS[st]; return h('p', { key: st, className: 'pinfo' }, S.say(S.vals[tier - 1])); }));
+}
+
+// ---- stage 9: the gun arc, the stats row, a scrap's coin burst ----
+// a held helmet's 4 guns, fanned out above it: the nav's gun circles (each in its gun's colour, empty ones dim, the
+// active one ringed white), the one under the finger lit green
+/** @param {{ arc: { p: number, pts: { x: number, y: number }[], hi: number }, run: AutoRun }} props */
+function GunArc({ arc, run }) {
+  const row = navRow({ level: 'guns', p: arc.p, g: 0, cat: 'hp' }, run, MAX_PLAYERS);
+  return h('div', { className: 'aarc' }, ...row.cells.map((c, i) => {
+    const pt = arc.pts[i];
+    if (!pt) return null;
+    const style = { left: pt.x + 'px', top: pt.y + 'px', ...(c.col && !c.dim ? { borderColor: c.col, boxShadow: '0 0 10px ' + (c.glow || c.col) } : {}) };
+    return h('div', { key: c.key, className: 'anavc gun aarcc' + (c.dim ? ' locked' : ' on') + (c.sel ? ' sel' : '') + (arc.hi === i ? ' drop' : ''),
+      'data-arc': i, style }, c.gun ? h(GunIcon, { gun: c.gun }) : null);
+  }));
+}
+
+// one running graph (the old Bag's DPS graph, ui/editor.js GunFire): a thin line, oldest at the left, scaled to its
+// peak; all zero (the hub): a flat line along the bottom
+/** @param {HTMLCanvasElement | null} c @param {number[]} vals @param {string} col */
+function paintGraph(c, vals, col) {
+  if (!c) return;
+  const dpr = window.devicePixelRatio || 1, W = Math.max(1, Math.round(c.clientWidth * dpr)), H = Math.max(1, Math.round(c.clientHeight * dpr));
+  if (c.width !== W || c.height !== H) { c.width = W; c.height = H; }
+  const ctx = c.getContext('2d');
+  if (!ctx) return;
+  ctx.clearRect(0, 0, W, H);
+  const peak = Math.max(...vals, 0), top = 4 * dpr, bot = H - 4 * dpr, step = W / Math.max(1, vals.length - 1);
+  ctx.strokeStyle = col; ctx.lineWidth = 1.5 * dpr; ctx.lineJoin = 'round'; ctx.globalAlpha = 0.9;
+  ctx.beginPath();
+  vals.forEach((v, i) => { const x = i * step, y = peak > 0 ? bot - (v / peak) * (bot - top) : bot; if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); });
+  ctx.stroke(); ctx.globalAlpha = 1;
+  c.dataset.n = String(vals.length);
+  c.dataset.peak = String(peak);
+}
+
+// the nav's Stats level: red = damage dealt, green = health (the player's meters, auto/meters.js; a 0.25 s bucket
+// each), over the last 5 / 15 / 30 s (a tap cycles; the span small in the corner). Redrawn 4 times a second.
+/** @param {{ meters: () => PlayerMeters | null }} props */
+function StatsRow({ meters }) {
+  const [span, setSpan] = useState(5);
+  /** @type {{ current: HTMLCanvasElement | null }} */
+  const dmg = useRef(null);
+  /** @type {{ current: HTMLCanvasElement | null }} */
+  const hp = useRef(null);
+  useEffect(() => {
+    const draw = () => {
+      const M = meters();
+      paintGraph(dmg.current, meterTail(M && M.dmg, span), '#ff4a4a');
+      paintGraph(hp.current, meterTail(M && M.hp, span), '#5ee05a');
+    };
+    draw();
+    const id = setInterval(draw, 250);
+    return () => clearInterval(id);
+  }, [span]);
+  /** @param {any} e */
+  const cycle = e => { e.preventDefault(); SFX.unlock(); SFX.ui('tap'); setSpan(nextSpan); };
+  return h('div', { className: 'astats', 'data-span': span, onPointerDown: cycle },
+    h('canvas', { ref: dmg, className: 'astatg dmg' }),
+    h('canvas', { ref: hp, className: 'astatg hp' }),
+    h('i', { className: 'astatspan' }, span + 's'));
+}
+
+// a scrap: coins burst out of the gold tile, and the gold it made floats up
+/** @param {{ burst: { x: number, y: number, n: number } }} props */
+function CoinBurst({ burst }) {
+  return h('div', { className: 'acoins', style: { left: burst.x + 'px', top: burst.y + 'px' } },
+    ...Array.from({ length: 9 }, (_, i) => {
+      const a = (i / 9) * Math.PI * 2 - Math.PI / 2, d = 26 + (i % 3) * 9;
+      return h('i', { key: i, style: { '--dx': (Math.cos(a) * d).toFixed(1) + 'px', '--dy': (Math.sin(a) * d - 14).toFixed(1) + 'px', animationDelay: (i % 3) * 30 + 'ms' } });
+    }),
+    h('b', null, '+' + burst.n));
 }

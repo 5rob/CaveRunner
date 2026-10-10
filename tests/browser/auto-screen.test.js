@@ -89,7 +89,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   const nav = () => page.evaluate(() => { const a = document.querySelector('.anav');
     return { level: a.dataset.level, circles: a.querySelectorAll('.anavc').length, slots: a.querySelectorAll('.anavs').length,
       full: a.querySelectorAll('.anavs.full').length, dim: a.querySelectorAll('.anavc.locked').length, txt: a.textContent }; });
-  const tapNav = async sel => { await page.locator('.anav ' + sel).first().dispatchEvent('pointerdown'); await page.waitForTimeout(60); hs.push(await navH()); };
+  const tapNav = async sel => { await page.locator('.anav ' + sel).first().dispatchEvent('pointerdown'); await page.evaluate(() => dispatchEvent(new PointerEvent('pointerup'))); await page.waitForTimeout(60); hs.push(await navH()); };
   const B = async () => { await page.locator('.abtn.ab').dispatchEvent('pointerdown'); await page.waitForTimeout(60); hs.push(await navH()); };
   await tapNav('[data-player="0"]');
   let v = await nav();
@@ -127,7 +127,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   let lvl = false;
   for (let i = 0; i < 60 && !lvl; i++) { await page.waitForTimeout(50); lvl = await page.evaluate(() => !!levelState(window.__title.S)); }
   check('A on the exit pad: the level loads', lvl);
-  await page.locator('.anav [data-player="1"]').dispatchEvent('pointerdown');
+  await page.locator('.anav [data-player="1"]').dispatchEvent('pointerdown'); await page.evaluate(() => dispatchEvent(new PointerEvent('pointerup')));
   await page.waitForTimeout(60);
   check('in a level the nav works too (player 2 → his menu); B back', (await nav()).level === 'player' && (await B(), (await nav()).level === 'players'));
   await page.evaluate(() => { const L = levelState(window.__title.S); L.phase = 'exit'; L.doneT = 0; });

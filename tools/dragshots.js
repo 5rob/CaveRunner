@@ -40,6 +40,7 @@ require('../tests/build')();
     await page.waitForTimeout(7000);
     for (const t of taps) {
       await page.locator('.anav ' + t).first().dispatchEvent('pointerdown');
+      await page.evaluate(() => dispatchEvent(new PointerEvent('pointerup')));
       await page.waitForTimeout(150);
     }
     await act(page);

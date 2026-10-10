@@ -46,6 +46,7 @@ require('../tests/build')();
     await page.waitForTimeout(7000);
     for (const t of taps) {
       await page.locator(t === 'B' ? '.abtn.ab' : '.anav ' + t).first().dispatchEvent('pointerdown');
+      await page.evaluate(() => dispatchEvent(new PointerEvent('pointerup')));
       await page.waitForTimeout(150);
     }
     await page.screenshot({ path: path.join(OUT, 'nav-' + n + '.png') });

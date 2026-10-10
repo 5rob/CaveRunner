@@ -201,7 +201,7 @@ export function levelStep(S, dt) {
 /** @param {import('../art/titlescene.js').TitleScene} S @param {LevelState} L @param {number} dt */
 function cleared(S, L, dt) {
   if ((L.clearT ?? -1) < 0) {
-    const left = (S.loot ? S.loot.length : 0) + S.coins.length;
+    const left = (S.loot ? S.loot.filter(g => !g.left).length : 0) + S.coins.length;
     if (left === 0 || S.t - (L.lootT ?? S.t) >= DEV.autoClearWait) L.clearT = S.t;
     return;
   }
