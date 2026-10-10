@@ -29653,7 +29653,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 
   // src/ui/cards.js
   var CARD_ICON = { fn: null };
-  var cardGlyph = (glyph, col) => CARD_ICON.fn ? CARD_ICON.fn(glyph, col) : glyph;
+  var cardGlyph = (glyph, col, kind = "mod") => CARD_ICON.fn ? CARD_ICON.fn(glyph, col, kind) : glyph;
   var GUN_STATS = [
     { k: "cap", label: "slots", better: 1, get: (g) => g.cap, fmt: (v) => String(v) },
     { k: "delay", label: "cast delay", better: -1, get: (g) => g.castDelay, fmt: (v) => v.toFixed(2) + "s" },
@@ -30054,7 +30054,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       h(
         "div",
         { className: "phead" },
-        h("div", { className: "pglyph", style: { borderColor: pk.tint, color: pk.tint } }, cardGlyph(pk.glyph, pk.tint)),
+        h("div", { className: "pglyph", style: { borderColor: pk.tint, color: pk.tint } }, cardGlyph(pk.glyph, pk.tint, "perk")),
         h(
           "div",
           { className: "ptitle" },
@@ -36656,14 +36656,20 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       "a........"
     ], pal: { a: "#ff8c2a", b: "#5ee05a", c: "#c25a10" } }
   };
-  function PixIcon({ id, size = 26 }) {
+  function tintShade(tint, own) {
+    const ch = (x, i) => parseInt(x.slice(1 + i * 2, 3 + i * 2), 16) || 0;
+    const lum = (0.3 * ch(own, 0) + 0.59 * ch(own, 1) + 0.11 * ch(own, 2)) / 255, k = 0.35 + 0.9 * lum;
+    const v = [0, 1, 2].map((i) => Math.max(0, Math.min(255, Math.round(ch(tint, i) * k))));
+    return "rgb(" + v.join(",") + ")";
+  }
+  function PixIcon({ id, size = 26, tint }) {
     const ic = NAV_ICONS[id];
     if (!ic) return null;
     const w = Math.max(...ic.px.map((r) => r.length)), ht = ic.px.length, rects = [];
     for (let y = 0; y < ht; y++) {
       for (let x = 0; x < ic.px[y].length; x++) {
         const c = ic.px[y][x];
-        if (c !== "." && ic.pal[c]) rects.push(h("rect", { key: x + "," + y, x, y, width: 1.02, height: 1.02, fill: ic.pal[c] }));
+        if (c !== "." && ic.pal[c]) rects.push(h("rect", { key: x + "," + y, x, y, width: 1.02, height: 1.02, fill: tint ? tintShade(tint, ic.pal[c]) : ic.pal[c] }));
       }
     }
     return h("svg", { className: "apix", viewBox: "0 0 " + w + " " + ht, width: size, height: size, shapeRendering: "crispEdges" }, rects);
@@ -38733,7 +38739,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       let inner = null;
       if (c.gun) inner = h(GunIcon, { gun: c.gun });
       else if (c.helm && c.col) inner = h(HelmetIcon, { col: c.col, size: 35 });
-      else if (c.icon) inner = h(PixIcon, { id: c.icon, size: 20 });
+      else if (c.icon) inner = h(PixIcon, { id: c.icon, size: 20, tint: level === "exo" ? HUB_MACHINES.exo.hue : void 0 });
       else if (c.glyph) inner = h("span", { className: "anavg" }, c.glyph);
       else if (c.label) inner = h("span", { className: "anavp", style: { background: c.col } }, c.label);
       return h("div", {
@@ -38777,12 +38783,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     let g = null;
     if (it.kind === "mod") {
       const m = MODS[it.id || ""];
-      g = m ? { glyph: m.glyph, col: m.col } : { glyph: "?", col: "#888" };
+      g = m ? { glyph: m.glyph, col: famCol(it.id || "") } : { glyph: "?", col: "#888" };
     } else if (it.kind === "exo") {
-      return h("span", { className: "aglyph" }, h(PixIcon, { id: it.cat || "hp", size: "64%" }), it.tier ? h("i", { className: "atier" }, ROMAN2[it.tier - 1]) : null);
+      return h("span", { className: "aglyph" }, h(PixIcon, { id: it.cat || "hp", size: "64%", tint: HUB_MACHINES.exo.hue }), it.tier ? h("i", { className: "atier" }, ROMAN2[it.tier - 1]) : null);
     } else if (it.kind === "perk") {
       const pk = PERKS[it.id || ""];
-      g = pk ? { glyph: pk.glyph, col: pk.tint } : { glyph: "?", col: "#888" };
+      g = pk ? { glyph: pk.glyph, col: HUB_MACHINES.perk.hue } : { glyph: "?", col: "#888" };
     } else if (it.kind === "gold") g = { glyph: "●", col: "#ffc93c" };
     else if (it.kind === "red") g = { glyph: "◆", col: "#ff4f5e" };
     else if (it.kind === "green") g = { glyph: "◆", col: "#5ee05a" };
@@ -38815,7 +38821,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   var hasCard = (it) => it.kind === "mod" && !!it.id && !!MODS[it.id] || it.kind === "gun" && !!it.gun || it.kind === "perk" && !!it.id && !!PERKS[it.id] || it.kind === "exo" && !!it.cat && !!it.tier;
   function CardPop({ it, close }) {
-    CARD_ICON.fn = (glyph, col) => h(GlyphIcon, { glyph, col });
+    CARD_ICON.fn = (glyph, col, kind) => h(GlyphIcon, { glyph, col: kind === "perk" ? HUB_MACHINES.perk.hue : col });
     useEffect(() => () => {
       CARD_ICON.fn = null;
     }, []);
@@ -38842,7 +38848,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       h(
         "div",
         { className: "phead" },
-        h("div", { className: "pglyph", style: { borderColor: S0.tint } }, h(PixIcon, { id: cat, size: "64%" })),
+        h("div", { className: "pglyph", style: { borderColor: S0.tint } }, h(PixIcon, { id: cat, size: "64%", tint: HUB_MACHINES.exo.hue })),
         h(
           "div",
           { className: "ptitle" },

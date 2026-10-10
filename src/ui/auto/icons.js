@@ -98,16 +98,27 @@ export const NAV_ICONS = {
   ], pal: { a: '#ff8c2a', b: '#5ee05a', c: '#c25a10' } },
 };
 
+// a pixel in its group colour, as light or dark as its own colour was (so the art keeps its shading)
+/** @param {string} tint #rrggbb @param {string} own #rrggbb */
+export function tintShade(tint, own) {
+  /** @param {string} x @param {number} i */
+  const ch = (x, i) => parseInt(x.slice(1 + i * 2, 3 + i * 2), 16) || 0;
+  const lum = (0.3 * ch(own, 0) + 0.59 * ch(own, 1) + 0.11 * ch(own, 2)) / 255, k = 0.35 + 0.9 * lum;
+  const v = [0, 1, 2].map(i => Math.max(0, Math.min(255, Math.round(ch(tint, i) * k))));
+  return 'rgb(' + v.join(',') + ')';
+}
+
 // one icon as SVG squares, centred in its box (it keeps its shape: width over height)
-/** @param {{ id: string, size?: number | string }} props a size in px, or a share of its box ('64%') */
-export function PixIcon({ id, size = 26 }) {
+/** @param {{ id: string, size?: number | string, tint?: string }} props a size in px, or a share of its box ('64%');
+ * tint: every pixel in that one colour (its group's: the exo machine's teal, owner) */
+export function PixIcon({ id, size = 26, tint }) {
   const ic = NAV_ICONS[id];
   if (!ic) return null;
   const w = Math.max(...ic.px.map(r => r.length)), ht = ic.px.length, rects = [];
   for (let y = 0; y < ht; y++) {
     for (let x = 0; x < ic.px[y].length; x++) {
       const c = ic.px[y][x];
-      if (c !== '.' && ic.pal[c]) rects.push(h('rect', { key: x + ',' + y, x, y, width: 1.02, height: 1.02, fill: ic.pal[c] }));
+      if (c !== '.' && ic.pal[c]) rects.push(h('rect', { key: x + ',' + y, x, y, width: 1.02, height: 1.02, fill: tint ? tintShade(tint, ic.pal[c]) : ic.pal[c] }));
     }
   }
   return h('svg', { className: 'apix', viewBox: '0 0 ' + w + ' ' + ht, width: size, height: size, shapeRendering: 'crispEdges' }, rects);

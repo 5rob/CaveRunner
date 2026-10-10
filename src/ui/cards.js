@@ -19,10 +19,10 @@ import { h, useState } from './h.js';
 // a smaller cast delay, recharge or spread is better, so those read green.
 // how a card draws a mod's or perk's glyph: the text, unless a screen swaps in its own icons while its card is open
 // (CaveRunner Auto, ui/auto: the pixel GlyphIcon; owner: the info cards use the new icons)
-/** @type {{ fn: ((glyph: string, col: string) => any) | null }} */
+/** @type {{ fn: ((glyph: string, col: string, kind: 'mod' | 'perk') => any) | null }} */
 export const CARD_ICON = { fn: null };
-/** @param {string} glyph @param {string} col */
-const cardGlyph = (glyph, col) => (CARD_ICON.fn ? CARD_ICON.fn(glyph, col) : glyph);
+/** @param {string} glyph @param {string} col @param {'mod' | 'perk'} [kind] */
+const cardGlyph = (glyph, col, kind = 'mod') => (CARD_ICON.fn ? CARD_ICON.fn(glyph, col, kind) : glyph);
 
 export const GUN_STATS = [
   { k: 'cap', label: 'slots', better: 1, get: g => g.cap, fmt: v => String(v) },
@@ -275,7 +275,7 @@ export function PerkCard({ id, ingame, flow, top, onClose }) {
   if (au.fb && !ingame) return h(AuditText, { au, name: pk.name, glyph: pk.glyph, col: pk.tint, cls });
   return h('div', { className: 'pop scroll' + cls },
     h('div', { className: 'phead' },
-      h('div', { className: 'pglyph', style: { borderColor: pk.tint, color: pk.tint } }, cardGlyph(pk.glyph, pk.tint)),
+      h('div', { className: 'pglyph', style: { borderColor: pk.tint, color: pk.tint } }, cardGlyph(pk.glyph, pk.tint, 'perk')),
       h('div', { className: 'ptitle' },
         h('b', { style: { color: pk.tint } }, pk.name),
         h('span', null, 'Perk · counts while fitted to your Exo Suit')),
