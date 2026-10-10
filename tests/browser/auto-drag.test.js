@@ -56,6 +56,15 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   await mdrag(await centre('.anav [data-nslot="1"]'), await centre('.abag [data-slot="20"]'));
   let s2 = await saved();
   check('dragged back: slot 2 empty, the Buzzsaw in the bag', s2.slots[1] === null && s2.bag.includes('saw'), s2);
+  // things go where they're put (owner, feedback round 1)
+  check('… in the very bag slot it was dropped on (20)', s2.bag[20] === 'saw', s2.bag.indexOf('saw'));
+  await mdrag(await centre('.abag [data-slot="20"]'), await centre('.abag [data-slot="5"]'));
+  check('bag → bag: the Buzzsaw moves to slot 5', (await saved()).bag[5] === 'saw' && (await saved()).bag[20] === null);
+  await mdrag(await centre('.abag [data-slot="5"]'), await centre('.anav [data-nslot="1"]'));
+  await mdrag(await centre('.anav [data-nslot="1"]'), await centre('.anav [data-nslot="2"]'));
+  const s2b = await saved();
+  check('gun slot → gun slot: the Buzzsaw moves from slot 2 to slot 3', s2b.slots[1] === null && s2b.slots[2] === 'saw', s2b.slots);
+  await mdrag(await centre('.anav [data-nslot="2"]'), await centre('.abag [data-slot="20"]'));
 
   // a mod onto a gun circle: refused (no highlight, nothing moves)
   await nav('B');

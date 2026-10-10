@@ -1,5 +1,5 @@
 // CaveRunner Auto stage 10a, with real pointer events in the hub: gold from the bag into the gun machine by a flick (one
-// nugget), by a stream (moved away and held: several) and by a lump (held still on the stack: the whole stack), each
+// nugget), by a stream (moved away and held: several; no whole-stack lump since feedback round 1), each
 // counted in H.paid.gun and out of the bag (saved); a red gem flicked at the gun machine bounces off and comes back to the bag.
 const { launch } = require('../chromium');
 const path = require('path');
@@ -75,42 +75,38 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     check('stream: the gun machine took them all (paid = what left the bag)', s.paid === 30 - s.gold && s.paid >= 4, s);
     await ctx.close();
   }
-  // a lump: held still on the stack → the whole stack, dropped at the machine
+  // no lump any more (owner, feedback round 1): held still on the stack, nothing leaves the bag
   {
     const { ctx, page } = await open(30, 0);
-    const a = await stack(page, 'gold'), m = await mouth(page);
+    const a = await stack(page, 'gold');
     await page.mouse.move(a.x, a.y); await page.mouse.down();
-    await page.waitForTimeout(700);
+    await page.waitForTimeout(900);
     const s0 = await state(page);
-    check('lump: held still, the whole stack lifts (out of the bag)', s0.gold === 0 && s0.out === 1, s0);
-    await page.mouse.move(m.x, m.y, { steps: 8 });
     await page.mouse.up();
-    const s = await until(page, s => s.paid === 30, 3000);
-    check('lump: dropped at the gun machine, all 30 taken', s.paid === 30 && s.out === 0, s);
+    check('held still on the stack: nothing lifts (no whole-stack lump)', s0.gold === 30 && s0.out === 0, s0);
     await ctx.close();
   }
+  // pour a whole stack in: a stream at the machine (the stream knobs turned up so the test doesn't wait), held till the bag is out
+  const pour = async (page, a, m, kind = 'gold') => {
+    await page.evaluate(() => Object.assign(DEV, { autoStreamWait: 120, autoStreamRate0: 40, autoStreamRate1: 90, autoStreamRamp: 0.2 }));
+    await page.mouse.move(a.x, a.y); await page.mouse.down();
+    await page.mouse.move(m.x, m.y + 20, { steps: 6 });
+    for (let i = 0; i < 80; i++) { await page.waitForTimeout(100); if (await page.evaluate(k => bagCount(loadAutoRun(), k) === 0, kind)) break; }
+    await page.mouse.up();
+  };
   // the wrong currency: a red gem at the gun machine comes back
   {
     const { ctx, page } = await open(5, 2);
     const a = await stack(page, 'red'), m = await mouth(page);
-    await page.mouse.move(a.x, a.y); await page.mouse.down();
-    await page.waitForTimeout(700);
-    await page.mouse.move(m.x, m.y, { steps: 8 });
-    await page.mouse.up();
+    await pour(page, a, m, 'red');
     const s1 = await state(page);
-    check('red lump: out of the bag', s1.red === 0, s1);
+    check('red poured: out of the bag', s1.red === 0, s1);
     const back = await page.evaluate(() => DEV.autoThrowBack);
     const s = await until(page, s => s.red === 2, (back + 5) * 1000);
     check('the gun machine doesn\'t take red: both back in the bag, nothing paid', s.red === 2 && s.paid === 0 && s.out === 0, s);
     await ctx.close();
   }
-  // stage 10b: a lump paying the gun machine in full: it shakes, a gun flies into the bag, the change stays in run.paid.gun
-  const lump = async (page, a, m) => {
-    await page.mouse.move(a.x, a.y); await page.mouse.down();
-    await page.waitForTimeout(700);
-    await page.mouse.move(m.x, m.y, { steps: 8 });
-    await page.mouse.up();
-  };
+  // stage 10b: a stack poured in paying the gun machine in full: it shakes, a gun flies into the bag, the change stays in run.paid.gun
   const saved = page => page.evaluate(() => { const r = loadAutoRun(); return { paid: (r.paid && r.paid.gun) || 0, guns: r.bag.filter(b => b && b.kind === 'gun').length, gold: bagCount(r, 'gold') }; });
   {
     const { ctx, page } = await open(1, 0);
@@ -121,10 +117,10 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     await page.waitForTimeout(2500);
     const g0 = await saved(page);
     check('pay in full: the run holds the price + 7 in gold, no gun yet', g0.gold === price + 7 && g0.guns === 0, { g0, price });
-    await lump(page, await stack(page, 'gold'), await mouth(page));
+    await pour(page, await stack(page, 'gold'), await mouth(page));
     let s = g0;
     for (let i = 0; i < 60 && !(s.guns === 1); i++) { await page.waitForTimeout(100); s = await saved(page); }
-    check('paid in full by a lump: a gun lands in the bag (saved)', s.guns === 1 && s.gold === 0, s);
+    check('paid in full by a stream: a gun lands in the bag (saved)', s.guns === 1 && s.gold === 0, s);
     check('the change (7) stays in run.paid.gun', s.paid === 7, s);
     const ring = await page.evaluate(() => hubState(window.__title.S).paid.gun);
     check('the hub counts the same change', ring === 7, ring);
@@ -133,7 +129,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   // a partial payment survives a reload
   {
     const { ctx, page } = await open(20, 0);
-    await lump(page, await stack(page, 'gold'), await mouth(page));
+    await pour(page, await stack(page, 'gold'), await mouth(page));
     let s = await saved(page);
     for (let i = 0; i < 30 && s.paid !== 20; i++) { await page.waitForTimeout(100); s = await saved(page); }
     check('partial: 20 into the gun machine, saved in run.paid.gun', s.paid === 20 && s.guns === 0, s);

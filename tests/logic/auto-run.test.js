@@ -221,5 +221,21 @@ check('the Auto tab holds the auto group', G.DEV_TABS.some(t => t[0] === 'auto' 
   check('a kitted run is left alone', ok.players[0].guns[0] === g0 && JSON.stringify(ok.bag) === bag0);
 }
 
+// things go where they're put (feedback round 1): bag to bag, slot to slot, a slot to a chosen bag slot
+{
+  const run = G.newRun(8), pl = run.players[0], g = pl.guns[0];
+  run.bag = run.bag.map(() => null);
+  run.bag[0] = { kind: 'mod', id: 'bolt', n: 1 }; run.bag[1] = { kind: 'gold', n: 5 }; run.bag[2] = { kind: 'gold', n: 3 };
+  check('bag → empty bag slot: it moves there', G.bagMove(run, 0, 9) && !run.bag[0] && run.bag[9].id === 'bolt');
+  check('bag → a different item: they swap', G.bagMove(run, 9, 1) && run.bag[9].kind === 'gold' && run.bag[1].id === 'bolt');
+  check('bag → the same stack: it merges', G.bagMove(run, 2, 9) && !run.bag[2] && run.bag[9].n === 8);
+  g.slots = ['spark', null, 'arrow'];
+  check('gun slot → another slot: they swap (the mod order)', G.rowMove(run, 0, { gun: 0 }, 0, 1) && g.slots.join() === ',spark,arrow');
+  check('gun slot → a chosen empty bag slot', G.rowToBag(run, 0, { gun: 0 }, 1, 20) && run.bag[20].id === 'spark' && !g.slots[1]);
+  check('gun slot → a bag mod (single): they swap', G.rowToBag(run, 0, { gun: 0 }, 2, 1) && g.slots[2] === 'bolt' && run.bag[1].id === 'arrow');
+  check('gun slot → gold: refused (the screen falls back)', !G.rowToBag(run, 0, { gun: 0 }, 2, 9) && g.slots[2] === 'bolt');
+  check('an empty slot moves nothing', !G.rowMove(run, 0, { gun: 0 }, 0, 1));
+}
+
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
 process.exit(fails ? 1 : 0);

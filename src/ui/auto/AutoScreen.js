@@ -12,7 +12,7 @@
 // (auto/enemies.js, stage 6) shows its health bar over the top of the play area; every player fallen takes the team home.
 // The boss's loot vacuumed, LEVEL CLEARED drops in over the play area (stage 7, art/cleared.js, runScene's over).
 // Stage 10a (throwPress): in the hub, gold and gems from the bag thrown up into the play area at the machines (auto/throw.js):
-// a flick throws one, moved away and held streams them, held still on the stack lifts it all as one lump.
+// a flick throws one, moved away and held streams them (the whole-stack lump was removed, feedback round 1).
 
 import { SFX } from '../../audio/sfx.js';
 import { TITLE_VW, camAt, titleCam } from '../../art/titlescene.js';
@@ -27,7 +27,7 @@ import { levelBoss } from '../../auto/enemies.js';
 import { MODS, famCol } from '../../spells/mods.js';
 import { HUB_MACHINES } from '../../auto/hub.js';
 import { PERKS, STAT_PERKS } from '../../data/perks.js';
-import { BAG_SLOTS, EXO_STATS, MAX_PLAYERS, addPlayer, bagAdd, fitExo, fitGun, fitMod, fitPerk, healRun, levelCleared, levelFailed, levelSeed, kitMissing, newRun,
+import { BAG_SLOTS, EXO_STATS, MAX_PLAYERS, addPlayer, bagAdd, fitExo, fitGun, fitMod, fitPerk, healRun, levelCleared, levelFailed, levelSeed, kitMissing, newRun, bagMove, rowMove, rowToBag,
   scrapAt, setActive, spend, unfitExo, unfitMod, unfitPerk } from '../../auto/run.js';
 import { loadAutoRun, saveAutoRun } from '../../auto/save.js';
 import { EXO_NAMES, arcPick, gunArc, navBack, navOpen, navRow, navStart } from '../../auto/nav.js';
@@ -239,8 +239,7 @@ export function AutoScreen() {
   // stage 10a: a press on a gold or gem stack in the hub (auto/throw.js). Moved past MOVE it's a swipe: let go fast (DEV.autoFlickMin
   // px / s) it flicks one out on the finger's velocity; held still (DEV.autoStreamWait) away from the stack it streams them in
   // the direction moved, speed × the distance (autoStreamK), the rate ramping up (autoStreamRate0 → 1 over autoStreamRamp).
-  // Held still on the stack (DEV.autoLumpMs) the whole stack lifts as one lump to the finger, dropped where let go. Each one
-  // thrown leaves the bag (spend) and is saved
+  // Each one thrown leaves the bag (spend) and is saved
   /** @param {any} e @param {DragSrc} src */
   const throwPress = (e, src) => {
     e.preventDefault();
@@ -253,8 +252,6 @@ export function AutoScreen() {
     const p = { id, x0, y0, src, grab: true, drag: false };
     press.current = p;
     let mode = 'press', fx = x0, fy = y0, stillAt = performance.now(), sx = x0, sy = y0, t0 = 0, acc = 0, last = performance.now();
-    /** @type {import('../../auto/throw.js').HubThrow | null} */
-    let lump = null;
     /** @type {{ x: number, y: number, t: number }[]} */
     const trail = [{ x: x0, y: y0, t: performance.now() }];
     // a finger point (css px) → the world, clamped into the play area (from below it: its bottom edge)
@@ -273,17 +270,7 @@ export function AutoScreen() {
       saveAutoRun(run); setV(n => n + 1);
       return true;
     };
-    const lift = setTimeout(() => {
-      if (mode !== 'press') return;
-      const n = it.n;
-      if (!spend(run, kind, n)) return;
-      mode = 'lump';
-      const w = world(fx, fy);
-      lump = hubThrow(S, kind, n, w.x, w.y, 0, 0, { held: true });
-      if (lump) lump.lump = true;
-      SFX.unlock(); SFX.fx('open');
-      saveAutoRun(run); setV(v => v + 1);
-    }, DEV.autoLumpMs);
+    // (owner, feedback round 1: the whole-stack lift, held still on it, is gone: it got in the way of spraying)
     const tick = setInterval(() => {
       const now = performance.now(), dt = (now - last) / 1000;
       last = now;
@@ -297,7 +284,7 @@ export function AutoScreen() {
       while (acc >= 1) { acc -= 1; if (!one(dx / d * sp, dy / d * sp)) { acc = 0; break; } }
     }, 33);
     const finish = () => {
-      press.current = null; clearTimeout(lift); clearInterval(tick);
+      press.current = null; clearInterval(tick);
       removeEventListener('pointermove', move); removeEventListener('pointerup', up); removeEventListener('pointercancel', up);
     };
     /** @param {any} ev */
@@ -311,19 +298,17 @@ export function AutoScreen() {
       if (Math.hypot(fx - sx, fy - sy) > 6) { sx = fx; sy = fy; stillAt = now; }
       if (mode === 'press' && Math.hypot(fx - x0, fy - y0) > MOVE) { mode = 'swipe'; SFX.unlock(); }
       // stage 12: a green gem over an empty player circle stops being a throw: it's a drag (the ghost, the circle lit, drop)
-      if (kind === 'green' && !lump && (mode === 'press' || mode === 'swipe')) {
+      if (kind === 'green' && (mode === 'press' || mode === 'swipe')) {
         const at = dropAt(src, fx, fy);
-        if (at && at.to === 'player' && at.ok) { mode = 'drag'; p.drag = true; clearTimeout(lift); SFX.ui('tap'); }
+        if (at && at.to === 'player' && at.ok) { mode = 'drag'; p.drag = true; SFX.ui('tap'); }
       }
       if (mode === 'drag') { setDrag({ src, x: fx, y: fy, over: dropAt(src, fx, fy), back: false }); return; }
-      if (lump) { const w = world(fx, fy); lump.x = w.x; lump.y = w.y; }
     };
     /** @param {any} ev */
     const up = ev => {
       if (ev.pointerId !== id) return;
       finish();
       if (mode === 'drag') { drop(src, ev.clientX, ev.clientY, p); return; }
-      if (lump) { const w = world(ev.clientX, ev.clientY); lump.x = w.x; lump.y = w.y; lump.held = false; lump.vx = 0; lump.vy = 0; return; }
       if (mode === 'swipe') {
         fx = ev.clientX; fy = ev.clientY;
         const a = trail[0], dt = Math.max(0.016, (performance.now() - a.t) / 1000), vx = (fx - a.x) / dt, vy = (fy - a.y) / dt;
@@ -350,8 +335,9 @@ export function AutoScreen() {
     if (t.classList.contains('aplay')) return { key: 'play', to: 'play', s: -1, ok: src.from === 'bag' && !!scene.current };
     if (t.dataset.nslot !== undefined) {
       const s = Number(t.dataset.nslot);
-      const ok = src.from === 'bag' && ((n.level === 'gun' && it.kind === 'mod') || (n.level === 'cat' && it.kind === 'exo' && it.cat === n.cat) ||
-        (n.level === 'perks' && it.kind === 'perk' && !!it.id && !!PERKS[it.id] && !PERKS[it.id].stat));
+      const rowLevel = n.level === 'gun' || n.level === 'cat' || n.level === 'perks';
+      const ok = (src.from === 'nav' && rowLevel && src.i !== s) || (src.from === 'bag' && ((n.level === 'gun' && it.kind === 'mod') || (n.level === 'cat' && it.kind === 'exo' && it.cat === n.cat) ||
+        (n.level === 'perks' && it.kind === 'perk' && !!it.id && !!PERKS[it.id] && !PERKS[it.id].stat)));
       return { key: 'n' + s, to: 'nav', s, ok };
     }
     // stage 12: a green gem onto an empty player circle: a new player
@@ -360,11 +346,16 @@ export function AutoScreen() {
       const s = Number(t.dataset.gslot);
       return { key: 'g' + s, to: 'gun', s, ok: src.from === 'bag' && n.level === 'guns' && it.kind === 'gun' };
     }
-    return { key: 'bag', to: 'bag', s: -1, ok: src.from === 'nav' };
+    // (feedback round 1) the bag slot under the finger: things go where they're put
+    const bs = gt ? Number(gt.dataset.slot) : -1;
+    if (src.from === 'bag') return { key: 's' + bs, to: 'bag', s: bs, ok: bs >= 0 && bs !== src.i };
+    return { key: bs >= 0 ? 's' + bs : 'bag', to: 'bag', s: bs, ok: true };
   };
   /** let go: the move on the run (saved), or the ghost springs back @param {DragSrc} src @param {number} x @param {number} y @param {Press} p */
   const drop = (src, x, y, p) => {
     const at = dropAt(src, x, y), n = navRef.current, it0 = srcItem(src);
+    /** @type {import('../../auto/run.js').SlotRow | null} */
+    const row = n.level === 'gun' ? { gun: n.g } : n.level === 'cat' ? { cat: n.cat } : n.level === 'perks' ? { perks: true } : null;
     let done = false;
     if (at && at.ok) {
       if (src.from === 'bag' && at.to === 'nav') {
@@ -391,6 +382,9 @@ export function AutoScreen() {
         done = !!pl;
         if (pl && scene.current) sceneAddRunner(scene.current);
       } else if (src.from === 'bag' && at.to === 'gun') done = fitGun(run, src.i, n.p, at.s);
+      else if (src.from === 'bag' && at.to === 'bag') done = bagMove(run, src.i, at.s);
+      else if (src.from === 'nav' && at.to === 'nav') done = !!row && rowMove(run, n.p, row, src.i, at.s);
+      else if (src.from === 'nav' && at.to === 'bag' && row && at.s >= 0 && rowToBag(run, n.p, row, src.i, at.s)) done = true;
       else if (src.from === 'nav' && at.to === 'bag') {
         if (n.level === 'gun') done = unfitMod(run, n.p, n.g, src.i);
         else if (n.level === 'cat') done = unfitExo(run, n.p, n.cat, src.i);

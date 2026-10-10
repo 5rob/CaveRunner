@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v1.0.22</title>
-<!-- VERSION = 'v1000022' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v1.0.23</title>
+<!-- VERSION = 'v1000023' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -1014,7 +1014,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v1.0.22';</script>
+<script>const VERSION = 'v1.0.23';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -1976,8 +1976,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     autoStreamK: 0.4,
     autoStreamRate0: 2,
     autoStreamRate1: 14,
-    autoStreamRamp: 1.5,
-    autoLumpMs: 450
+    autoStreamRamp: 1.5
   });
   DEV_META.push(
     { k: "autoThrowPull", g: "autothrow", label: "A machine pulls in what it takes within (world units of its coin slot)", min: 5, max: 200, step: 1 },
@@ -1989,8 +1988,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "autoStreamK", g: "autothrow", label: "Stream: throw speed (world units / s) per px moved away", min: 0.05, max: 3, step: 0.05 },
     { k: "autoStreamRate0", g: "autothrow", label: "Stream: nuggets a second at first", min: 0.5, max: 20, step: 0.5 },
     { k: "autoStreamRate1", g: "autothrow", label: "Stream: nuggets a second, ramped up", min: 1, max: 60, step: 1 },
-    { k: "autoStreamRamp", g: "autothrow", label: "Stream: ramps up over (s)", min: 0.1, max: 6, step: 0.1 },
-    { k: "autoLumpMs", g: "autothrow", label: "Lump: hold still on the stack this long (ms) to lift it all", min: 150, max: 1500, step: 10 }
+    { k: "autoStreamRamp", g: "autothrow", label: "Stream: ramps up over (s)", min: 0.1, max: 6, step: 0.1 }
   );
   DEV_GROUPS.push(["autothrow", "Auto: throw"]);
   DEV_TABS.splice(DEV_TABS.length - 1, 0, ["auto", "Auto", ["auto", "autohub", "autolevel", "autoblocks", "autoguns", "autofoes", "autoloot", "autochests", "autobag", "autothrow"]]);
@@ -14052,6 +14050,62 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (!it || bagAdd(run, it)) return false;
     pl.perks[s] = null;
     return true;
+  }
+  function bagMove(run, i, j) {
+    const a = run.bag[i], b = run.bag[j];
+    if (i === j || !a || j < 0 || j >= run.bag.length) return false;
+    const k = itemKey(a);
+    if (b && k && k === itemKey(b)) {
+      b.n += a.n;
+      run.bag[i] = null;
+      return true;
+    }
+    run.bag[j] = a;
+    run.bag[i] = b || null;
+    return true;
+  }
+  function rowOf(pl, row) {
+    if (row.gun != null) {
+      const g = pl.guns[row.gun];
+      return g ? g.slots : null;
+    }
+    if (row.cat) return pl.exo[row.cat] || null;
+    return row.perks ? pl.perks : null;
+  }
+  function rowFits(row, it) {
+    if (!it) return false;
+    if (row.gun != null) return it.kind === "mod" && !!it.id;
+    if (row.cat) return it.kind === "exo" && it.cat === row.cat;
+    return it.kind === "perk" && !!it.id && !!PERKS[it.id] && !PERKS[it.id].stat;
+  }
+  function rowMove(run, p, row, a, b) {
+    const pl = run.players[p], arr = pl && rowOf(pl, row);
+    if (!arr || a === b || a < 0 || b < 0 || a >= arr.length || b >= arr.length || !arr[a]) return false;
+    const t = arr[a];
+    arr[a] = arr[b];
+    arr[b] = t;
+    return true;
+  }
+  function rowToBag(run, p, row, s, j) {
+    const pl = run.players[p], arr = pl && rowOf(pl, row);
+    if (!arr || !arr[s] || j < 0 || j >= run.bag.length) return false;
+    const mod = row.gun != null, out = mod ? { kind: "mod", id: arr[s], n: 1 } : arr[s], b = run.bag[j];
+    if (!b) {
+      run.bag[j] = out;
+      arr[s] = null;
+      return true;
+    }
+    if (itemKey(b) && itemKey(b) === itemKey(out)) {
+      b.n += 1;
+      arr[s] = null;
+      return true;
+    }
+    if (b.n === 1 && rowFits(row, b)) {
+      arr[s] = mod ? b.id : b;
+      run.bag[j] = out;
+      return true;
+    }
+    return false;
   }
   function setActive(run, p, gs) {
     const pl = run.players[p];
@@ -28848,7 +28902,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const p = { id, x0, y0, src, grab: true, drag: false };
       press.current = p;
       let mode = "press", fx = x0, fy = y0, stillAt = performance.now(), sx = x0, sy = y0, t0 = 0, acc = 0, last = performance.now();
-      let lump = null;
       const trail = [{ x: x0, y: y0, t: performance.now() }];
       const world = (x, y) => {
         const r = c.getBoundingClientRect(), k = r.width / TITLE_VW, C = cam.current;
@@ -28864,19 +28917,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         setV((n) => n + 1);
         return true;
       };
-      const lift = setTimeout(() => {
-        if (mode !== "press") return;
-        const n = it.n;
-        if (!spend(run, kind, n)) return;
-        mode = "lump";
-        const w = world(fx, fy);
-        lump = hubThrow(S2, kind, n, w.x, w.y, 0, 0, { held: true });
-        if (lump) lump.lump = true;
-        SFX.unlock();
-        SFX.fx("open");
-        saveAutoRun(run);
-        setV((v) => v + 1);
-      }, DEV.autoLumpMs);
       const tick = setInterval(() => {
         const now = performance.now(), dt = (now - last) / 1e3;
         last = now;
@@ -28900,7 +28940,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }, 33);
       const finish = () => {
         press.current = null;
-        clearTimeout(lift);
         clearInterval(tick);
         removeEventListener("pointermove", move);
         removeEventListener("pointerup", up);
@@ -28923,12 +28962,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           mode = "swipe";
           SFX.unlock();
         }
-        if (kind === "green" && !lump && (mode === "press" || mode === "swipe")) {
+        if (kind === "green" && (mode === "press" || mode === "swipe")) {
           const at = dropAt2(src, fx, fy);
           if (at && at.to === "player" && at.ok) {
             mode = "drag";
             p.drag = true;
-            clearTimeout(lift);
             SFX.ui("tap");
           }
         }
@@ -28936,26 +28974,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           setDrag({ src, x: fx, y: fy, over: dropAt2(src, fx, fy), back: false });
           return;
         }
-        if (lump) {
-          const w = world(fx, fy);
-          lump.x = w.x;
-          lump.y = w.y;
-        }
       };
       const up = (ev) => {
         if (ev.pointerId !== id) return;
         finish();
         if (mode === "drag") {
           drop(src, ev.clientX, ev.clientY, p);
-          return;
-        }
-        if (lump) {
-          const w = world(ev.clientX, ev.clientY);
-          lump.x = w.x;
-          lump.y = w.y;
-          lump.held = false;
-          lump.vx = 0;
-          lump.vy = 0;
           return;
         }
         if (mode === "swipe") {
@@ -28982,7 +29006,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (t.classList.contains("aplay")) return { key: "play", to: "play", s: -1, ok: src.from === "bag" && !!scene.current };
       if (t.dataset.nslot !== void 0) {
         const s = Number(t.dataset.nslot);
-        const ok = src.from === "bag" && (n.level === "gun" && it.kind === "mod" || n.level === "cat" && it.kind === "exo" && it.cat === n.cat || n.level === "perks" && it.kind === "perk" && !!it.id && !!PERKS[it.id] && !PERKS[it.id].stat);
+        const rowLevel = n.level === "gun" || n.level === "cat" || n.level === "perks";
+        const ok = src.from === "nav" && rowLevel && src.i !== s || src.from === "bag" && (n.level === "gun" && it.kind === "mod" || n.level === "cat" && it.kind === "exo" && it.cat === n.cat || n.level === "perks" && it.kind === "perk" && !!it.id && !!PERKS[it.id] && !PERKS[it.id].stat);
         return { key: "n" + s, to: "nav", s, ok };
       }
       if (t.dataset.pslot !== void 0) return { key: "p" + t.dataset.pslot, to: "player", s: Number(t.dataset.pslot), ok: src.from === "bag" && it.kind === "green" && run.players.length < MAX_PLAYERS };
@@ -28990,10 +29015,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         const s = Number(t.dataset.gslot);
         return { key: "g" + s, to: "gun", s, ok: src.from === "bag" && n.level === "guns" && it.kind === "gun" };
       }
-      return { key: "bag", to: "bag", s: -1, ok: src.from === "nav" };
+      const bs = gt ? Number(gt.dataset.slot) : -1;
+      if (src.from === "bag") return { key: "s" + bs, to: "bag", s: bs, ok: bs >= 0 && bs !== src.i };
+      return { key: bs >= 0 ? "s" + bs : "bag", to: "bag", s: bs, ok: true };
     };
     const drop = (src, x, y, p) => {
       const at = dropAt2(src, x, y), n = navRef.current, it0 = srcItem(src);
+      const row = n.level === "gun" ? { gun: n.g } : n.level === "cat" ? { cat: n.cat } : n.level === "perks" ? { perks: true } : null;
       let done = false;
       if (at && at.ok) {
         if (src.from === "bag" && at.to === "nav") {
@@ -29020,6 +29048,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           done = !!pl;
           if (pl && scene.current) sceneAddRunner(scene.current);
         } else if (src.from === "bag" && at.to === "gun") done = fitGun(run, src.i, n.p, at.s);
+        else if (src.from === "bag" && at.to === "bag") done = bagMove(run, src.i, at.s);
+        else if (src.from === "nav" && at.to === "nav") done = !!row && rowMove(run, n.p, row, src.i, at.s);
+        else if (src.from === "nav" && at.to === "bag" && row && at.s >= 0 && rowToBag(run, n.p, row, src.i, at.s)) done = true;
         else if (src.from === "nav" && at.to === "bag") {
           if (n.level === "gun") done = unfitMod(run, n.p, n.g, src.i);
           else if (n.level === "cat") done = unfitExo(run, n.p, n.cat, src.i);

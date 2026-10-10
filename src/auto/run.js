@@ -280,6 +280,54 @@ export function unfitPerk(run, p, s) {
   return true;
 }
 
+// ---- things go where the player puts them (owner, feedback round 1: no auto-arranging) ----
+// bag slot i onto bag slot j: the same stack merges into j, anything else swaps
+/** @param {AutoRun} run @param {number} i @param {number} j @returns {boolean} */
+export function bagMove(run, i, j) {
+  const a = run.bag[i], b = run.bag[j];
+  if (i === j || !a || j < 0 || j >= run.bag.length) return false;
+  const k = itemKey(a);
+  if (b && k && k === itemKey(b)) { b.n += a.n; run.bag[i] = null; return true; }
+  run.bag[j] = a; run.bag[i] = b || null;
+  return true;
+}
+// a player's row of slots: a gun's mods (mod ids), an exo category's or the perks' (items)
+/** @typedef {{ gun?: number, cat?: ExoCat, perks?: boolean }} SlotRow */
+/** @param {RunPlayer} pl @param {SlotRow} row @returns {any[] | null} */
+function rowOf(pl, row) {
+  if (row.gun != null) { const g = pl.guns[row.gun]; return g ? g.slots : null; }
+  if (row.cat) return pl.exo[row.cat] || null;
+  return row.perks ? pl.perks : null;
+}
+// can bag item it go in this row?
+/** @param {SlotRow} row @param {BagItem | null} it */
+function rowFits(row, it) {
+  if (!it) return false;
+  if (row.gun != null) return it.kind === 'mod' && !!it.id;
+  if (row.cat) return it.kind === 'exo' && it.cat === row.cat;
+  return it.kind === 'perk' && !!it.id && !!PERKS[it.id] && !PERKS[it.id].stat;
+}
+// slot a onto slot b of the same row: they swap (a gun's mod order, an exo or perk slot)
+/** @param {AutoRun} run @param {number} p @param {SlotRow} row @param {number} a @param {number} b @returns {boolean} */
+export function rowMove(run, p, row, a, b) {
+  const pl = run.players[p], arr = pl && rowOf(pl, row);
+  if (!arr || a === b || a < 0 || b < 0 || a >= arr.length || b >= arr.length || !arr[a]) return false;
+  const t = arr[a]; arr[a] = arr[b]; arr[b] = t;
+  return true;
+}
+// slot s of a row into bag slot j: an empty slot or the same stack takes it; a single item there that fits the row swaps
+// with it; anything else: false (the screen falls back to the first free bag slot)
+/** @param {AutoRun} run @param {number} p @param {SlotRow} row @param {number} s @param {number} j @returns {boolean} */
+export function rowToBag(run, p, row, s, j) {
+  const pl = run.players[p], arr = pl && rowOf(pl, row);
+  if (!arr || !arr[s] || j < 0 || j >= run.bag.length) return false;
+  const mod = row.gun != null, out = mod ? { kind: 'mod', id: arr[s], n: 1 } : arr[s], b = run.bag[j];
+  if (!b) { run.bag[j] = out; arr[s] = null; return true; }
+  if (itemKey(b) && itemKey(b) === itemKey(out)) { b.n += 1; arr[s] = null; return true; }
+  if (b.n === 1 && rowFits(row, b)) { arr[s] = mod ? b.id : b; run.bag[j] = out; return true; }
+  return false;
+}
+
 // Which of player p's 4 guns fires. False if that slot holds no gun.
 /** @param {AutoRun} run @param {number} p @param {number} gs @returns {boolean} */
 export function setActive(run, p, gs) {

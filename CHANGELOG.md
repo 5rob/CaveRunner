@@ -5,6 +5,16 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.23 — CaveRunner Auto: feedback round 1, third batch (branch `autobattler`)
+Released 2026-10-10 on the branch.
+- Things go where you put them (owner: "auto arranging … makes setting up a gun impossible"): drag bag → bag (moves, swaps,
+  or merges the same stack), slot → slot in a row (a gun's mod order, exo and perk slots swap), and a slot → the bag
+  slot you drop it on (empty: there; the same stack: onto it; a single item that fits the slot: they swap). Before,
+  only bag → slot and slot → "the bag" (first free slot) worked. `run.js` `bagMove`, `rowMove`, `rowToBag`
+  (`SlotRow`).
+- Gold and gems: the whole-stack lump (held still on the stack) is gone; it caught the start of a spray. Knob
+  `autoLumpMs` removed. Suites `auto-throw` and `auto-loop` pay machines by a stream now.
+
 ## v1.0.22 — CaveRunner Auto: feedback round 1, second batch (branch `autobattler`)
 Released 2026-10-10 on the branch (owner OK'd the stick shot, `tools/pillshots.js`).
 - The pill stick reads exactly as the old left thumbstick: one reach every way (`PILL_REACH` 54 px, the old 150 px
