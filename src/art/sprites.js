@@ -187,14 +187,14 @@ function paintHelmet(ctx, C, tint) {
   ctx.fillStyle = C.glint; ctx.fillRect(2.4, 2.8, 1.2, 1.2);
   ctx.fillStyle = C.shade; ctx.fillRect(-3.4, 8.6, 6.4, 1);  // the neck ring
 }
-// a player's helmet filling a square canvas of side s (CaveRunner Auto's player buttons), the stripe in its colour
+// a player's helmet filling a square canvas of side s, pixelated as in the scene (CaveRunner Auto's player buttons), the stripe in its colour
 /** @param {CanvasRenderingContext2D} ctx @param {number} s @param {string} tint */
 export function helmetIcon(ctx, s, tint) {
   ctx.save();
   ctx.clearRect(0, 0, s, s);
-  const k = s / 11.6;
-  ctx.translate(s / 2, s / 2 - 0.3 * k); ctx.scale(k, k); ctx.translate(0, -4.6);
-  paintHelmet(ctx, SUIT, tint);
+  ctx.scale(s / 12, s / 12);
+  // the players' pixel look (owner): one world unit a pixel, solid or clear (pixelSprite), as the scene draws them
+  pixelSprite(ctx, 0, 0, 12, 12, 1, false, c => { c.translate(6, 6 - 0.3 - 4.6); paintHelmet(c, SUIT, tint); });
   ctx.restore();
 }
 

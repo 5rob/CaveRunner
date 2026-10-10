@@ -10150,11 +10150,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function helmetIcon(ctx, s, tint) {
     ctx.save();
     ctx.clearRect(0, 0, s, s);
-    const k = s / 11.6;
-    ctx.translate(s / 2, s / 2 - 0.3 * k);
-    ctx.scale(k, k);
-    ctx.translate(0, -4.6);
-    paintHelmet(ctx, SUIT, tint);
+    ctx.scale(s / 12, s / 12);
+    pixelSprite(ctx, 0, 0, 12, 12, 1, false, (c) => {
+      c.translate(6, 6 - 0.3 - 4.6);
+      paintHelmet(c, SUIT, tint);
+    });
     ctx.restore();
   }
   function drawRunner(ctx, x, y, w, hh, face, gait, air, jet, flash, hands, held, tint) {
