@@ -5,12 +5,50 @@
 
 import { hubCharge } from '../../auto/hub.js';
 import { levelPads, levelState } from '../../auto/level.js';
-import { drawHubPad, padGlow } from './hubdraw.js';
+import { drawHint, drawHubPad, padGlow } from './hubdraw.js';
+import { chestInRange } from '../../auto/chests.js';
+import { TITLE_VW } from '../../art/titlescene.js';
 
-// Before the dark: the pads
+// Before the dark: the pads, the chests (stage 11)
 /** @param {CanvasRenderingContext2D} ctx @param {import('../../art/titlescene.js').TitleScene} S */
 export function levelBack(ctx, S) {
   for (const p of levelPads(S)) drawHubPad(ctx, p.x, p.fy, S.t + (p.id === 'enter' ? 0 : 5));
+  const L = levelState(S);
+  if (L) for (const c of L.chests) {
+    const x = c.x - S.scroll;
+    if (x > -20 && x < TITLE_VW + 20 && c.y != null) drawChest(ctx, x, c.y, c.open ? S.t - (c.openT || 0) : -1);
+  }
+}
+
+// stage 11: a chest, pixel art, its bottom middle at (x, y): a wooden box with iron bands and a gold lock. age: since it
+// opened (-1: shut): the lid pops up and flips back on its hinge, settles open, the inside glows for a while
+/** @param {CanvasRenderingContext2D} ctx @param {number} x @param {number} y @param {number} age */
+export function drawChest(ctx, x, y, age) {
+  const l = Math.round(x - 7), b = Math.round(y);
+  /** @param {string} c @param {number} px @param {number} py @param {number} w @param {number} h */
+  const R = (c, px, py, w, h) => { ctx.fillStyle = c; ctx.fillRect(l + px, b + py, w, h); };
+  R('rgba(0,0,0,0.35)', -1, -1, 16, 1);                                                  // its shadow
+  R('#3a2210', 0, -8, 14, 8);                                                            // the box: outline
+  R('#8a5328', 1, -7, 12, 6); R('#6e3f1c', 1, -4, 12, 1); R('#a8682f', 1, -7, 12, 1);    // planks
+  R('#4b4f5c', 2, -8, 1, 8); R('#4b4f5c', 11, -8, 1, 8);                                 // iron bands
+  if (age < 0) {
+    R('#3a2210', 0, -12, 14, 4); R('#9a5f2c', 1, -11, 12, 2); R('#b97a3a', 1, -11, 12, 1);   // the lid, shut
+    R('#4b4f5c', 2, -12, 1, 4); R('#4b4f5c', 11, -12, 1, 4);
+    R('#3a2210', 5, -10, 4, 4); R('#ffc93c', 6, -9, 2, 2); R('#7a5a10', 6, -8, 2, 1);        // the lock
+    return;
+  }
+  // open: the dark inside, glowing a while; the lid popped up (0.25 s) and flipped back onto its hinge (the back edge)
+  const glow = Math.max(0, 1 - age / 2.5);
+  R('#1c120a', 1, -8, 12, 2);
+  if (glow > 0) R('rgba(255,214,110,' + (0.8 * glow).toFixed(3) + ')', 2, -8, 10, 1);
+  const pop = age < 0.25 ? Math.sin(age / 0.25 * Math.PI) * 5 : 0, ang = Math.min(1, age / 0.3) * 1.9;
+  ctx.save();
+  ctx.translate(l + 14, b - 8 - pop);
+  ctx.rotate(ang);
+  ctx.fillStyle = '#3a2210'; ctx.fillRect(-14, -4, 14, 4);
+  ctx.fillStyle = '#9a5f2c'; ctx.fillRect(-13, -3, 12, 2);
+  ctx.fillStyle = '#4b4f5c'; ctx.fillRect(-12, -4, 1, 4); ctx.fillRect(-3, -4, 1, 4);
+  ctx.restore();
 }
 
 // What lights the pads (cut out of the dark: titledraw.js titleDark): the start pad swelling as it charges
@@ -20,6 +58,10 @@ export function levelLight(S, pool) {
   if (!L) return;
   const { ch, fl } = L.phase === 'arrive' || S.t < 3 ? hubCharge(S) : { ch: 0, fl: 0 };
   for (const p of levelPads(S)) pool(p.x, p.fy - 16, 34 + 30 * (p.id === 'enter' ? fl : 0), Math.min(1, p.id === 'enter' ? 0.35 + 0.6 * ch * ch + 0.6 * fl : 0.45), 0.2);
+  for (const c of L.chests) {
+    const x = c.x - S.scroll;
+    if (x > -30 && x < TITLE_VW + 30 && c.y != null) pool(x, c.y - 6, c.open ? 16 : 22, c.open ? 0.25 : 0.4, 0.2);
+  }
 }
 
 // Added light, after the dark: the pads' beams, the charge, the flash, the lightning
@@ -34,4 +76,7 @@ export function levelGlow(ctx, S) {
     else padGlow(ctx, S, p.x, p.fy, 5, { ch: 0, fl: 0 }, -99);
   }
   ctx.restore();
+  // stage 11: a player in range of a shut chest: "Tap A to open" over it (the hub exit's hint)
+  const c = chestInRange(S);
+  if (c && c.y != null) drawHint(ctx, c.x - S.scroll, c.y - 28, 'Tap A to open', S.t);
 }

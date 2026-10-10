@@ -310,6 +310,7 @@ Each stage is one agent run (~20 min box). The PM may split a stage that overrun
 - While a player is in range (a knob), a "Tap A" prompt shows over it and the team slows (stage 4's pilot). A opens
   it: the lid pops, the contents spill out, bounce, and get vacuumed.
 - Looks: a closed chest with its prompt, and one spilling.
+- **Built (branch stage11, not merged, waiting on the owner's look at tools/chestshots.js c1/c2):** auto/chests.js; no browser suite of its own yet (chestshots taps the real A button and checks it opens).
 
 ### Stage 12 — Extra players (looks)
 - Drag a **green gem** from the bag onto an **empty player circle** → `addPlayer`: the new player teleports in

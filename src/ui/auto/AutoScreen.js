@@ -17,6 +17,7 @@
 import { SFX } from '../../audio/sfx.js';
 import { TITLE_VW, camAt, titleCam } from '../../art/titlescene.js';
 import { DEAD } from '../../core/consts.js';
+import { chestOpen } from '../../auto/chests.js';
 import { HUB_W, hubExit, hubLeft, hubScene, hubState, hubStick, hubStopX } from '../../auto/hub.js';
 import { hubThrow, screenToWorldVel, throwable } from '../../auto/throw.js';
 import { levelClearedAge, levelDone, levelHold, levelLost, levelScene, levelState } from '../../auto/level.js';
@@ -181,7 +182,7 @@ export function AutoScreen() {
     if (S.lvl) levelHold(S, st.active && st.mag > DEAD ? st.nx * (st.mag - DEAD) / (1 - DEAD) : 0);
     else hubStick(S, st);
   };
-  const pressA = () => { SFX.unlock(); SFX.ui('tap'); if (scene.current && hubExit(scene.current)) SFX.fx('open'); };
+  const pressA = () => { SFX.unlock(); SFX.ui('tap'); if (scene.current && (hubExit(scene.current) || (!!scene.current.lvl && chestOpen(scene.current)))) SFX.fx('open'); };
   /** what the source item is: a bag slot's, or a nav slot's at the nav's level @param {DragSrc} src @returns {BagItem | null} */
   const srcItem = src => {
     if (src.from === 'bag') return run.bag[src.i] || null;

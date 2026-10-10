@@ -667,6 +667,19 @@ DEV_META.push(
   { k: 'autoLootEliteGold', g: 'autoloot', label: 'An elite’s gold (× a normal kill’s)', min: 1, max: 20, step: 0.5 },
   { k: 'autoLootBossGold',  g: 'autoloot', label: 'The boss’s gold (× a normal kill’s)', min: 1, max: 100, step: 1 });
 DEV_GROUPS.push(['autoloot', 'Auto: loot']);
+// the level's chests (auto/chests.js, stage 11): how many, what's in them (weights), how near A opens one
+Object.assign(DEV_DEFAULTS, { autoChestN: 3, autoChestR: 40, autoChestGoldN: 25, autoChestGold: 45, autoChestMod: 25, autoChestExo: 15, autoChestRed: 10, autoChestPerk: 3, autoChestGreen: 2 });
+DEV_META.push(
+  { k: 'autoChestN',     g: 'autochests', label: 'Chests a level', min: 0, max: 12, step: 1 },
+  { k: 'autoChestR',     g: 'autochests', label: 'Tap A opens a chest within (world units of a player)', min: 5, max: 150, step: 1 },
+  { k: 'autoChestGoldN', g: 'autochests', label: 'A chest’s gold (about; × the tier’s gold scale)', min: 1, max: 200, step: 1 },
+  { k: 'autoChestGold',  g: 'autochests', label: 'Holds gold (weight)', min: 0, max: 100, step: 1 },
+  { k: 'autoChestMod',   g: 'autochests', label: 'Holds a gun mod (weight)', min: 0, max: 100, step: 1 },
+  { k: 'autoChestExo',   g: 'autochests', label: 'Holds an exo mod (weight)', min: 0, max: 100, step: 1 },
+  { k: 'autoChestRed',   g: 'autochests', label: 'Holds a red gem (weight)', min: 0, max: 100, step: 1 },
+  { k: 'autoChestPerk',  g: 'autochests', label: 'Holds a perk (weight)', min: 0, max: 100, step: 1 },
+  { k: 'autoChestGreen', g: 'autochests', label: 'Holds a green gem (weight)', min: 0, max: 100, step: 1 });
+DEV_GROUPS.push(['autochests', 'Auto: chests']);
 // CaveRunner Auto's bag (ui/auto/AutoScreen.js, stage 8b): a touch grabs an item only this near its icon's centre
 Object.assign(DEV_DEFAULTS, { autoGrab: 0.35 });
 DEV_META.push(
@@ -694,7 +707,7 @@ DEV_META.push(
   { k: 'autoLumpMs',      g: 'autothrow', label: 'Lump: hold still on the stack this long (ms) to lift it all', min: 150, max: 1500, step: 10 });
 DEV_GROUPS.push(['autothrow', 'Auto: throw']);
 // before the last tab: that one also takes any group in no tab
-DEV_TABS.splice(DEV_TABS.length - 1, 0, ['auto', 'Auto', ['auto', 'autohub', 'autolevel', 'autoblocks', 'autoguns', 'autofoes', 'autoloot', 'autobag', 'autothrow']]);
+DEV_TABS.splice(DEV_TABS.length - 1, 0, ['auto', 'Auto', ['auto', 'autohub', 'autolevel', 'autoblocks', 'autoguns', 'autofoes', 'autoloot', 'autochests', 'autobag', 'autothrow']]);
 export const DEV_KEY = 'caverunner-dev';
 /** @type {DevKnobs} */
 export const DEV = Object.assign({}, DEV_DEFAULTS);

@@ -71,6 +71,7 @@ export * from './auto/meters.js';
 export * from './auto/clear.js';
 export * from './auto/enemies.js';
 export * from './auto/loot.js';
+export * from './auto/chests.js';
 export * from './auto/blocked.js';
 export * from './auto/nav.js';
 export * from './art/scenegun.js';
