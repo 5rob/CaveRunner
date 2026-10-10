@@ -169,17 +169,32 @@ export function paintBody(ctx, P, jet, flash, held, tint) {
     ctx.fillStyle = C.dark; ctx.fillRect(-3.3, 14.2, 6.6, 1.2);
   });
   leg(1, C.white);                                          // the near leg
-  along(P.head, P.chest, 0, 5, () => {                      // the helmet
-    ctx.fillStyle = C.white; ctx.beginPath(); ctx.arc(0, 4.6, 4.9, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = C.shade; ctx.beginPath(); ctx.arc(0, 4.6, 4.9, Math.PI * 0.55, Math.PI * 1.15); ctx.lineTo(0, 4.6); ctx.fill();
-    if (tint && !flash) { ctx.strokeStyle = tint; ctx.lineWidth = 1.8; ctx.beginPath(); ctx.arc(0, 4.6, 4, Math.PI * 1.05, Math.PI * 1.7); ctx.stroke(); }
-    ctx.fillStyle = C.rim; rr(ctx, -0.4, 1.6, 5, 5.6, 2.2); ctx.fill();
-    ctx.fillStyle = C.visor; rr(ctx, 0.2, 2.2, 4.2, 4.4, 1.8); ctx.fill();
-    ctx.fillStyle = C.glint; ctx.fillRect(2.4, 2.8, 1.2, 1.2);
-    ctx.fillStyle = C.shade; ctx.fillRect(-3.4, 8.6, 6.4, 1);  // the neck ring
-  });
+  along(P.head, P.chest, 0, 5, () => paintHelmet(ctx, C, flash ? undefined : tint));   // the helmet
   if (held) held(ctx);
   arm(1, C.white, C.shade);                                 // the near arm, over the gun
+  ctx.restore();
+}
+
+// The helmet, in the body's own numbers (its middle at (0, 4.6), facing right): the body's head, and CaveRunner Auto's
+// player buttons (helmetIcon). tint: the player's stripe
+/** @param {CanvasRenderingContext2D} ctx @param {typeof SUIT} C @param {string} [tint] */
+function paintHelmet(ctx, C, tint) {
+  ctx.fillStyle = C.white; ctx.beginPath(); ctx.arc(0, 4.6, 4.9, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = C.shade; ctx.beginPath(); ctx.arc(0, 4.6, 4.9, Math.PI * 0.55, Math.PI * 1.15); ctx.lineTo(0, 4.6); ctx.fill();
+  if (tint) { ctx.strokeStyle = tint; ctx.lineWidth = 1.8; ctx.beginPath(); ctx.arc(0, 4.6, 4, Math.PI * 1.05, Math.PI * 1.7); ctx.stroke(); }
+  ctx.fillStyle = C.rim; rr(ctx, -0.4, 1.6, 5, 5.6, 2.2); ctx.fill();
+  ctx.fillStyle = C.visor; rr(ctx, 0.2, 2.2, 4.2, 4.4, 1.8); ctx.fill();
+  ctx.fillStyle = C.glint; ctx.fillRect(2.4, 2.8, 1.2, 1.2);
+  ctx.fillStyle = C.shade; ctx.fillRect(-3.4, 8.6, 6.4, 1);  // the neck ring
+}
+// a player's helmet filling a square canvas of side s (CaveRunner Auto's player buttons), the stripe in its colour
+/** @param {CanvasRenderingContext2D} ctx @param {number} s @param {string} tint */
+export function helmetIcon(ctx, s, tint) {
+  ctx.save();
+  ctx.clearRect(0, 0, s, s);
+  const k = s / 11.6;
+  ctx.translate(s / 2, s / 2 - 0.3 * k); ctx.scale(k, k); ctx.translate(0, -4.6);
+  paintHelmet(ctx, SUIT, tint);
   ctx.restore();
 }
 

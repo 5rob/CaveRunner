@@ -13,7 +13,8 @@ import { EXO_CATS, EXO_GLYPH } from './run.js';
  * One cell of the row: a circle (a choice) or a square slot. `open` is what navOpen takes when it's tapped (none: a tap
  * does nothing); `item` a slot's fitted thing (a BagItem, the bag's tile look); `gun` a gun circle's gun.
  * @typedef {{ key: string, glyph?: string, label?: string, col?: string, gun?: Gun | null, item?: BagItem | null,
- *   dim?: boolean, sel?: boolean, open?: string | number }} NavCell
+ *   dim?: boolean, sel?: boolean, open?: string | number,
+ *   icon?: string, helm?: boolean }} NavCell
  */
 /** @typedef {{ shape: 'circles' | 'slots' | 'stats', cells: NavCell[], col: string | null }} NavRow */
 
@@ -69,11 +70,11 @@ export function navRow(nav, run, max) {
   if (nav.level === 'players' || !pl) {
     return { shape: 'circles', col: null, cells: Array.from({ length: max }, (_, i) => {
       const q = run.players[i];
-      return q ? { key: 'p' + i, label: String(i + 1), col: q.col, sel: i === nav.p, open: i } : { key: 'p' + i, dim: true };
+      return q ? { key: 'p' + i, label: String(i + 1), helm: true, col: q.col, sel: i === nav.p, open: i } : { key: 'p' + i, dim: true };
     }) };
   }
   const col = pl.col;
-  if (nav.level === 'player') return { shape: 'circles', col, cells: NAV_MENU.map(m => ({ key: m.open, glyph: m.glyph, label: m.label, col, open: m.open })) };
+  if (nav.level === 'player') return { shape: 'circles', col, cells: NAV_MENU.map(m => ({ key: m.open, icon: m.open, glyph: m.glyph, label: m.label, col, open: m.open })) };
   if (nav.level === 'guns') {
     return { shape: 'circles', col, cells: pl.guns.map((g, i) => ({ key: 'g' + i, gun: g, col, dim: !g, sel: !!g && i === pl.active, open: g ? i : undefined })) };
   }
@@ -83,7 +84,7 @@ export function navRow(nav, run, max) {
     return { shape: 'slots', col, cells: slots.map((id, i) => ({ key: 's' + i, item: id ? { kind: 'mod', id, n: 1 } : null })) };
   }
   if (nav.level === 'exo') {
-    return { shape: 'circles', col, cells: EXO_CATS.map(c => ({ key: c, glyph: EXO_GLYPH[c], label: EXO_NAMES[c], col, open: c })) };
+    return { shape: 'circles', col, cells: EXO_CATS.map(c => ({ key: c, icon: c, glyph: EXO_GLYPH[c], label: EXO_NAMES[c], col, open: c })) };
   }
   if (nav.level === 'cat') return { shape: 'slots', col, cells: pl.exo[nav.cat].map((it, i) => ({ key: 'x' + i, item: it })) };
   if (nav.level === 'perks') return { shape: 'slots', col, cells: pl.perks.map((it, i) => ({ key: 'k' + i, item: it })) };

@@ -932,7 +932,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .anavc.sel{box-shadow:0 0 0 3px #fff,0 0 12px rgba(255,255,255,0.5)!important}
 .anavc.locked.gun{opacity:.35}
 .anavc.gun .gicon{width:80%;height:auto}
-.anavg{font:900 24px system-ui,sans-serif;line-height:1}
+.anavg{font:900 24px system-ui,sans-serif;line-height:1;display:flex;align-items:center;justify-content:center}
+.apix,.ahelm{display:block;flex:none;pointer-events:none}
 .anav.slots{justify-content:flex-start;gap:6px;overflow-x:auto;overflow-y:hidden;touch-action:pan-x;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
 .anavs{flex:0 0 48px;width:48px;height:48px}
 .anavs:not(.full){opacity:.55}
@@ -945,8 +946,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   box-sizing:border-box;display:flex;align-items:center;justify-content:center;overflow:hidden}
 .aslot.full{border-color:rgba(255,179,90,0.45);background:#2c1f45}
 .aslot .gicon{width:92%;height:auto}
-.aglyph{position:relative;font:900 24px system-ui,sans-serif;line-height:1}
-.atier{position:absolute;left:-10px;top:-8px;font:900 9px ui-monospace,SFMono-Regular,Menlo,monospace;font-style:normal;color:#ffd23a}
+.aglyph{position:relative;font:900 24px system-ui,sans-serif;line-height:1;display:flex;align-items:center;justify-content:center;width:100%;height:100%;text-align:center}
+.atier{position:absolute;left:4px;top:3px;font:900 9px ui-monospace,SFMono-Regular,Menlo,monospace;font-style:normal;color:#ffd23a}
 .acount{position:absolute;right:3px;bottom:1px;font:800 11px ui-monospace,SFMono-Regular,Menlo,monospace;color:#fff;
   text-shadow:0 1px 2px #000,0 0 3px #000}
 .abtns{flex:none;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px}
@@ -10113,36 +10114,47 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       ctx.fillRect(-3.3, 14.2, 6.6, 1.2);
     });
     leg(1, C.white);
-    along(P2.head, P2.chest, 0, 5, () => {
-      ctx.fillStyle = C.white;
-      ctx.beginPath();
-      ctx.arc(0, 4.6, 4.9, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = C.shade;
-      ctx.beginPath();
-      ctx.arc(0, 4.6, 4.9, Math.PI * 0.55, Math.PI * 1.15);
-      ctx.lineTo(0, 4.6);
-      ctx.fill();
-      if (tint && !flash) {
-        ctx.strokeStyle = tint;
-        ctx.lineWidth = 1.8;
-        ctx.beginPath();
-        ctx.arc(0, 4.6, 4, Math.PI * 1.05, Math.PI * 1.7);
-        ctx.stroke();
-      }
-      ctx.fillStyle = C.rim;
-      rr(ctx, -0.4, 1.6, 5, 5.6, 2.2);
-      ctx.fill();
-      ctx.fillStyle = C.visor;
-      rr(ctx, 0.2, 2.2, 4.2, 4.4, 1.8);
-      ctx.fill();
-      ctx.fillStyle = C.glint;
-      ctx.fillRect(2.4, 2.8, 1.2, 1.2);
-      ctx.fillStyle = C.shade;
-      ctx.fillRect(-3.4, 8.6, 6.4, 1);
-    });
+    along(P2.head, P2.chest, 0, 5, () => paintHelmet(ctx, C, flash ? void 0 : tint));
     if (held) held(ctx);
     arm(1, C.white, C.shade);
+    ctx.restore();
+  }
+  function paintHelmet(ctx, C, tint) {
+    ctx.fillStyle = C.white;
+    ctx.beginPath();
+    ctx.arc(0, 4.6, 4.9, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = C.shade;
+    ctx.beginPath();
+    ctx.arc(0, 4.6, 4.9, Math.PI * 0.55, Math.PI * 1.15);
+    ctx.lineTo(0, 4.6);
+    ctx.fill();
+    if (tint) {
+      ctx.strokeStyle = tint;
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.arc(0, 4.6, 4, Math.PI * 1.05, Math.PI * 1.7);
+      ctx.stroke();
+    }
+    ctx.fillStyle = C.rim;
+    rr(ctx, -0.4, 1.6, 5, 5.6, 2.2);
+    ctx.fill();
+    ctx.fillStyle = C.visor;
+    rr(ctx, 0.2, 2.2, 4.2, 4.4, 1.8);
+    ctx.fill();
+    ctx.fillStyle = C.glint;
+    ctx.fillRect(2.4, 2.8, 1.2, 1.2);
+    ctx.fillStyle = C.shade;
+    ctx.fillRect(-3.4, 8.6, 6.4, 1);
+  }
+  function helmetIcon(ctx, s, tint) {
+    ctx.save();
+    ctx.clearRect(0, 0, s, s);
+    const k = s / 11.6;
+    ctx.translate(s / 2, s / 2 - 0.3 * k);
+    ctx.scale(k, k);
+    ctx.translate(0, -4.6);
+    paintHelmet(ctx, SUIT, tint);
     ctx.restore();
   }
   function drawRunner(ctx, x, y, w, hh, face, gait, air, jet, flash, hands, held, tint) {
@@ -36485,11 +36497,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (nav.level === "players" || !pl) {
       return { shape: "circles", col: null, cells: Array.from({ length: max }, (_, i) => {
         const q = run.players[i];
-        return q ? { key: "p" + i, label: String(i + 1), col: q.col, sel: i === nav.p, open: i } : { key: "p" + i, dim: true };
+        return q ? { key: "p" + i, label: String(i + 1), helm: true, col: q.col, sel: i === nav.p, open: i } : { key: "p" + i, dim: true };
       }) };
     }
     const col = pl.col;
-    if (nav.level === "player") return { shape: "circles", col, cells: NAV_MENU.map((m) => ({ key: m.open, glyph: m.glyph, label: m.label, col, open: m.open })) };
+    if (nav.level === "player") return { shape: "circles", col, cells: NAV_MENU.map((m) => ({ key: m.open, icon: m.open, glyph: m.glyph, label: m.label, col, open: m.open })) };
     if (nav.level === "guns") {
       return { shape: "circles", col, cells: pl.guns.map((g, i) => ({ key: "g" + i, gun: g, col, dim: !g, sel: !!g && i === pl.active, open: g ? i : void 0 })) };
     }
@@ -36499,11 +36511,128 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       return { shape: "slots", col, cells: slots.map((id, i) => ({ key: "s" + i, item: id ? { kind: "mod", id, n: 1 } : null })) };
     }
     if (nav.level === "exo") {
-      return { shape: "circles", col, cells: EXO_CATS.map((c) => ({ key: c, glyph: EXO_GLYPH[c], label: EXO_NAMES[c], col, open: c })) };
+      return { shape: "circles", col, cells: EXO_CATS.map((c) => ({ key: c, icon: c, glyph: EXO_GLYPH[c], label: EXO_NAMES[c], col, open: c })) };
     }
     if (nav.level === "cat") return { shape: "slots", col, cells: pl.exo[nav.cat].map((it, i) => ({ key: "x" + i, item: it })) };
     if (nav.level === "perks") return { shape: "slots", col, cells: pl.perks.map((it, i) => ({ key: "k" + i, item: it })) };
     return { shape: "stats", col, cells: [] };
+  }
+
+  // src/ui/auto/icons.js
+  var NAV_ICONS = {
+    guns: { px: [
+      "............",
+      "............",
+      "..aaaaaaaaab",
+      ".aacccaaaaab",
+      ".aaaaaaaaa..",
+      ".aaddaa.....",
+      ".aad.e......",
+      ".aad........",
+      ".aa.........",
+      "............"
+    ], pal: { a: "#c8cfdb", b: "#ff8a1f", c: "#4fd2ff", d: "#7a8393", e: "#7a8393" } },
+    exo: { px: [
+      "....aaaa....",
+      "...abbbba...",
+      "..aabccbaa..",
+      "..aabccbaa..",
+      "..aaabbaaa..",
+      ".daaaaaaaad.",
+      ".daeeaafaad.",
+      ".daaaaaaaad.",
+      "..aaaggaaa..",
+      "..aa....aa..",
+      "..dd....dd.."
+    ], pal: { a: "#eef1f6", b: "#d9a441", c: "#121a28", d: "#aab2c0", e: "#4fd2ff", f: "#ff5a4a", g: "#7a8393" } },
+    perks: { px: [
+      ".....a.....",
+      "....aba....",
+      "....aba....",
+      "aaaaabaaaaa",
+      ".abbbbbbba.",
+      "..abbbbba..",
+      "..abbabba..",
+      ".abba.abba.",
+      ".aba...aba.",
+      ".a.......a."
+    ], pal: { a: "#ffb02e", b: "#ffe27a" } },
+    stats: { px: [
+      "a...........",
+      "a.........b.",
+      "a........bb.",
+      "a...b...b...",
+      "a..bcb.b....",
+      "a.b...b.....",
+      "ab..........",
+      "a.c.c.c.c.c.",
+      "aaaaaaaaaaaa"
+    ], pal: { a: "#9a8ab8", b: "#5ee05a", c: "#ff4f5e" } },
+    hp: { px: [
+      ".aa...aa.",
+      "abba.abba",
+      "abbbabbbb",
+      "abbbbbbba",
+      ".abbbbba.",
+      "..abbba..",
+      "...aba...",
+      "....a...."
+    ], pal: { a: "#b8122e", b: "#ff4f5e" } },
+    speed: { px: [
+      "..aaa.......",
+      "..aaa.......",
+      "..aaa..b.b..",
+      "..aaab..b.b.",
+      "..aaaa.b.b..",
+      ".aaaaaa.....",
+      "cccccccc...."
+    ], pal: { a: "#eef1f6", b: "#4fd2ff", c: "#7a8393" } },
+    jet: { px: [
+      ".aaaaaa.",
+      "abbbbbba",
+      "abccbbba",
+      "abbbbbba",
+      "abbbbbba",
+      ".dd..dd.",
+      ".ee..ee.",
+      ".f....f."
+    ], pal: { a: "#7a8393", b: "#dde2ea", c: "#ff8a1f", d: "#5d6676", e: "#ff8a1f", f: "#ffd23a" } },
+    carrot: { px: [
+      "......bb.",
+      ".....b.b.",
+      "....aab..",
+      "...aaa...",
+      "..aaca...",
+      "..aaa....",
+      ".aca.....",
+      ".aa......",
+      "a........"
+    ], pal: { a: "#ff8c2a", b: "#5ee05a", c: "#c25a10" } }
+  };
+  function PixIcon({ id, size = 26 }) {
+    const ic = NAV_ICONS[id];
+    if (!ic) return null;
+    const w = Math.max(...ic.px.map((r) => r.length)), ht = ic.px.length, rects = [];
+    for (let y = 0; y < ht; y++) {
+      for (let x = 0; x < ic.px[y].length; x++) {
+        const c = ic.px[y][x];
+        if (c !== "." && ic.pal[c]) rects.push(h("rect", { key: x + "," + y, x, y, width: 1.02, height: 1.02, fill: ic.pal[c] }));
+      }
+    }
+    return h("svg", { className: "apix", viewBox: "0 0 " + w + " " + ht, width: size, height: size, shapeRendering: "crispEdges" }, rects);
+  }
+  function HelmetIcon({ col, size = 38 }) {
+    const ref = useRef(null);
+    useEffect(() => {
+      const c = ref.current;
+      if (!c) return;
+      const dpr = Math.min(3, window.devicePixelRatio || 1);
+      c.width = Math.round(size * dpr);
+      c.height = Math.round(size * dpr);
+      const ctx = c.getContext("2d");
+      if (ctx) helmetIcon(ctx, c.width, col);
+    }, [col, size]);
+    return h("canvas", { ref, className: "ahelm", style: { width: size + "px", height: size + "px" } });
   }
 
   // src/game/render/hubdraw.js
@@ -38383,6 +38512,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const style = c.col && !c.dim ? { borderColor: c.col, boxShadow: "0 0 10px " + c.col + "66" } : void 0;
       let inner = null;
       if (c.gun) inner = h(GunIcon, { gun: c.gun });
+      else if (c.helm && c.col) inner = h(HelmetIcon, { col: c.col });
+      else if (c.icon) inner = h(PixIcon, { id: c.icon, size: 28 });
       else if (c.glyph) inner = h("span", { className: "anavg" }, c.glyph);
       else if (c.label) inner = h("span", { className: "anavp", style: { background: c.col } }, c.label);
       return h("div", {
@@ -38400,7 +38531,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       {
         className: "anav l-" + level + (row.shape === "slots" ? " slots" : ""),
         "data-level": level,
-        style: row.col ? { borderColor: row.col + "aa" } : void 0
+        style: row.col ? { borderColor: row.col, boxShadow: "0 0 12px " + row.col + "55" } : void 0
       },
       row.shape === "stats" ? h("span", { className: "anavsoon" }, "Stats — soon") : row.cells.map(cell)
     );
@@ -38420,8 +38551,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const m = MODS[it.id || ""];
       g = m ? { glyph: m.glyph, col: m.col } : { glyph: "?", col: "#888" };
     } else if (it.kind === "exo") {
-      const sp = STAT_PERKS[EXO_STATS[it.cat || "hp"][0]];
-      g = { glyph: EXO_GLYPH[it.cat || "hp"], col: sp.tint, tier: it.tier };
+      return h("span", { className: "aglyph" }, h(PixIcon, { id: it.cat || "hp", size: 26 }), it.tier ? h("i", { className: "atier" }, ROMAN2[it.tier - 1]) : null);
     } else if (it.kind === "perk") {
       const pk = PERKS[it.id || ""];
       g = pk ? { glyph: pk.glyph, col: pk.tint } : { glyph: "?", col: "#888" };

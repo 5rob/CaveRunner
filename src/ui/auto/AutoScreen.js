@@ -26,6 +26,7 @@ import { BAG_SLOTS, EXO_GLYPH, EXO_STATS, MAX_PLAYERS, healRun, levelCleared, le
 import { loadAutoRun, saveAutoRun } from '../../auto/save.js';
 import { navBack, navOpen, navRow, navStart } from '../../auto/nav.js';
 import { GunIcon } from '../editor.js';
+import { HelmetIcon, PixIcon } from './icons.js';
 import { PauseMenu } from '../pause.js';
 import { runScene } from '../scenecanvas.js';
 import { h, useEffect, useRef, useState } from '../h.js';
@@ -220,13 +221,15 @@ function NavRow({ row, level, open }) {
     const style = c.col && !c.dim ? { borderColor: c.col, boxShadow: '0 0 10px ' + c.col + '66' } : undefined;
     let inner = null;
     if (c.gun) inner = h(GunIcon, { gun: c.gun });
+    else if (c.helm && c.col) inner = h(HelmetIcon, { col: c.col });     // a player: his helmet (owner)
+    else if (c.icon) inner = h(PixIcon, { id: c.icon, size: 28 });      // themed pixel icons, not emoji (owner)
     else if (c.glyph) inner = h('span', { className: 'anavg' }, c.glyph);
     else if (c.label) inner = h('span', { className: 'anavp', style: { background: c.col } }, c.label);
     return h('div', { key: c.key, className: cls, 'data-player': level === 'players' ? i : undefined, 'data-open': c.open,
       title: c.glyph ? c.label : undefined, style, onPointerDown: go }, inner);
   };
   return h('div', { className: 'anav l-' + level + (row.shape === 'slots' ? ' slots' : ''), 'data-level': level,
-    style: row.col ? { borderColor: row.col + 'aa' } : undefined },
+    style: row.col ? { borderColor: row.col, boxShadow: '0 0 12px ' + row.col + '55' } : undefined },
     row.shape === 'stats' ? h('span', { className: 'anavsoon' }, 'Stats — soon') : row.cells.map(cell));
 }
 
@@ -244,7 +247,9 @@ function ItemIcon({ it }) {
   /** @type {{ glyph: string, col: string, tier?: number } | null} */
   let g = null;
   if (it.kind === 'mod') { const m = MODS[it.id || '']; g = m ? { glyph: m.glyph, col: m.col } : { glyph: '?', col: '#888' }; }
-  else if (it.kind === 'exo') { const sp = STAT_PERKS[EXO_STATS[it.cat || 'hp'][0]]; g = { glyph: EXO_GLYPH[it.cat || 'hp'], col: sp.tint, tier: it.tier }; }
+  else if (it.kind === 'exo') {
+    return h('span', { className: 'aglyph' }, h(PixIcon, { id: it.cat || 'hp', size: 26 }), it.tier ? h('i', { className: 'atier' }, ROMAN[it.tier - 1]) : null);
+  }
   else if (it.kind === 'perk') { const pk = PERKS[it.id || '']; g = pk ? { glyph: pk.glyph, col: pk.tint } : { glyph: '?', col: '#888' }; }
   else if (it.kind === 'gold') g = { glyph: '●', col: '#ffc93c' };
   else if (it.kind === 'red') g = { glyph: '◆', col: '#ff4f5e' };
