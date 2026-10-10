@@ -5,6 +5,14 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.17 — CaveRunner Auto: chests (branch `autobattler`, stage 11)
+Released 2026-10-10 on the branch (owner OK'd the shots, `tools/chestshots.js`).
+- `auto/chests.js`: `autoChestN` (3) chests a level, one per stretch of the random zones (never on the pads, in the
+  arena or by a blockage), settled on the ground. In range (`autoChestR`) "Tap A to open" shows and the team slows; A
+  opens it (`chestOpen`): the lid flips back, the contents (`chestRoll`: gold 45, mod 25, exo 15, red 10, perk 3,
+  green 2) spill (`titleSpill`, shared with kills) and are vacuumed into the bag. Pixel chest `drawChest` (leveldraw.js).
+  Dev → Auto → "Auto: chests". Suite `auto-chests`.
+
 ## v1.0.16 — CaveRunner Auto: throwing currency, the machines pay out (branch `autobattler`, stage 10)
 Released 2026-10-10 on the branch (owner: "I'll test it and work on it later. Keep going").
 - In the hub, from a gold, red or green stack in the bag: a flick throws one, move-and-hold streams them, holding still
