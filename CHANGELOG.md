@@ -5,6 +5,18 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.28 — CaveRunner Auto: feedback round 2, fourth batch (branch `autobattler`)
+Released 2026-10-10 on the branch (owner OK'd; shots `tools/deathshots.js`).
+- Steering recheck: a player picked by his helmet in a level is the one the stick steers (the camera follows him);
+  backing out to the player row (B) lets him go and clears the ring; a steered player roams the whole screen. Suite `auto-steer`.
+- The old jetpack (agent): the flame from the backpack's nozzle (`titleNozzle`), pointing away from the thrust
+  (`titleFlameDir`: the stick for a steered player, else up tilted by his speed, `autoJetTilt`), the old length; its smoke
+  puffs (`jetStep`, `autoJetSmoke`; their own random, so the title's seeded run is unchanged).
+- The old ragdoll on a death (agent, `auto/death.js`): a fallen player is a ragdoll (`world/ragdoll.js`) left behind; the
+  whole team down: the scroll eases to a stop (`autoDeathStop`), "Tap A to Teleport back to Hub"; A (`levelTeleportHome`)
+  blinks a red light on the helmet (`autoTpBlink`), a big blast, then home (`autoTpBoomWait`; `levelLost` only then).
+  Knobs Dev → Auto → "Auto: jetpack and death". Suite `auto-death`; `auto-enemies` updated.
+
 ## v1.0.27 — CaveRunner Auto: feedback round 2, third batch (branch `autobattler`)
 Released 2026-10-10 on the branch (owner OK'd; shots `tools/pinshots.js`).
 - Fix: the mod slots now light in each pull's colour with the gun panel's preview (v1.0.25 built it but the panel never

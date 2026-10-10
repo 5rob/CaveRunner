@@ -8,7 +8,9 @@ release loop, testing), then the README of the `src/` folder you're working in.
 Planned with the owner (brief + quiz answers + 16 stages + the PM's kick-start prompt, all in `AUTOBATTLER.md`;
 mock-up `docs/autobattler-mockup.png`). Progress: AUTOBATTLER.md's Log. `main` keeps the old game.
 
-**Where it stands (2026-10-10, v1.0.27 live at /auto/): all stages 0–14 built; feedback rounds 1 and 2 released.** Round 2c (v1.0.27):
+**Where it stands (2026-10-10, v1.0.28 live at /auto/): all stages 0–14 built; feedback rounds 1 and 2 released.** Round 2d (v1.0.28):
+steering rechecked (helmet pick, B lets go), the old jetpack flame and smoke, the old ragdoll and the teleport home after a wipe
+(open: the camera doesn't move onto the last ragdoll by itself). Round 2c (v1.0.27):
 the pull lighting on the mod slots (fixed), a wider grab, stats span "all", graphs pinned above the player row. Round 2b (v1.0.26):
 the hub is the old shop's room (spacing 120, the old wall/roof/floor/sign/dust, the gem demo; exit sign INCINERATOR "(for real)");
 in a level a tapped player is steered by the stick, B lets go. Round 2a (v1.0.25): the nav as a rising stack, hold a gun to

@@ -372,6 +372,7 @@ chest slow ×0.5. Grab radius 35% of a tile.
 | feedback round 2 (a) | done | v1.0.25 | PM alone. Owner: the nav as a rising stack (B reverses), white ring = menu pick, the equipped gun's X ticks; hold a gun to equip; the gun panel (old Bag stats + firing window) over the mod slots; pay with A (tap one, hold a stream, drag to aim; real-size colliding nuggets; into the machine paid at). Next: the hub as the old shop room (agent). |
 | feedback round 2 (b) | done | v1.0.26 | Agent (~14 min, worktree `cr-hub`): the hub as the old shop's room (spacing 120, height 96, steel wall, roof lights, deck floor, sign, cone dust, the gem demo). PM: no FLOOR n; exit sign INCINERATOR + "(for real)"; in a level a tapped player is steered by the stick (`levelControl`, `ctlStep`), B lets go. |
 | feedback round 2 (c) | done | v1.0.27 | PM alone. Owner: the pull lighting missing (a wiring bug, fixed; never-fired mods dimmed), grab radius wider (0.45), stats span "all" (whole level), hold a graph to pin it above the player row (stacked per side, nav slide). |
+| feedback round 2 (d) | done | v1.0.28 | PM: steering recheck (helmet pick steers + followed, B at the player row lets go, whole screen). Agent (~21 min, worktree `cr-death`): the old jetpack flame + smoke; the old ragdoll, slow stop, "Tap A to Teleport back to Hub", helmet light, blast, home. Not done: the camera doesn't move onto the last ragdoll by itself. |
 
 ## 8. The PM's kick-start prompt
 
