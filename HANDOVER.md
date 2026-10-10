@@ -34,7 +34,10 @@ mock-up `docs/autobattler-mockup.png`). Progress: AUTOBATTLER.md's Log. `main` k
   dragging between the bag and the slots (grab radius, cards).
 - **Stage 8b done (v1.0.14, owner OK'd):** dragging, cards, colour groups. Not yet: dragging a gun out of its circle,
   slot-to-slot moves, bag reordering. `auto-loot` failed once in a full logic run and never in 16 runs alone (watch it).
-  Next: stage 9, the gun swap arc, stats meters, scrap.
+  
+- **Stage 9 done (v1.0.15, owner OK'd):** the gun arc, stats graphs, scrap, dropping items on the play area. Notes:
+  the arc crowds the left corner for player 1, empty arc circles faint; only bag items scrap or drop. Next: stage 10,
+  throwing gold and gems, the machines pay out.
 
 ## NEXT (as of v0.0.176, 2026-10-09)
 

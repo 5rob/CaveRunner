@@ -5,6 +5,15 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.15 — CaveRunner Auto: gun swap arc, stats, scrap, dropping items (branch `autobattler`, stage 9)
+Released 2026-10-10 on the branch (owner OK'd the shots, `tools/arcshots.js`).
+- Hold a player's helmet (`autoHoldMs` 350) and his 4 guns fan out in an arc (`gunArc`, `arcPick`, `autoArcR`); slide
+  to one and release to make it active (`setActive`); elsewhere cancels. A helmet tap now opens his menu on release.
+- Stats: two running graphs in the nav row, red damage dealt and green health (`meterTail`), a tap cycles 5 / 15 / 30 s.
+- Scrap: drop a bag item on the gold tile → gold (`scrapAt`), a coin burst and "+n". Owner: drop a bag item on the play
+  area → it leaves the bag and lies there (`leaveItem`, `left`: never vacuumed back; lost when left behind).
+  Suites `auto-stage9` (logic and browser).
+
 ## v1.0.14 — CaveRunner Auto: dragging, cards, colour groups (branch `autobattler`, stage 8b)
 Released 2026-10-10 on the branch (owner OK'd after three rounds, `tools/dragshots.js`).
 - Drag from the bag onto the nav's slots (mods into a gun, guns onto the gun circles, exo mods into their kind, perks)
