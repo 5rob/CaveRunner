@@ -1,0 +1,257 @@
+<title>CaveRunner Auto Item Audit</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&display=swap">
+<style>
+/* Layout: one column of item cards under a sticky filter bar; a copy bar pinned to the bottom. The game's own look:
+   the auto screen's night-purple panels, its outline, the play frame's orange, the crystal colours for the verdicts. */
+:root {
+  --bg: #0e091a; --panel: #170f2a; --panel2: #1f1636; --line: #3d2f5c; --ink: #ece6f8; --mute: #a094c4;
+  --accent: #ff9a3c; --violet: #8a76c8; --works: #4ee08a; --could: #ffd23a; --wont: #ff5a6a;
+  --display: 'Silkscreen', ui-monospace, Menlo, monospace; --body: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.45 var(--body); padding: 0 16px 120px; }
+.wrap { max-width: 760px; margin: 0 auto; }
+header { padding-block: 22px 8px; }
+h1 { font: 700 26px/1.1 var(--display); letter-spacing: .5px; margin: 0; color: var(--accent); text-shadow: 0 0 14px rgba(255, 154, 60, .35); text-wrap: balance; }
+.lede { color: var(--mute); margin: 8px 0 0; max-width: 62ch; }
+.general { margin-top: 14px; }
+label.lab { display: block; font: 700 11px var(--display); letter-spacing: 1px; color: var(--mute); margin-bottom: 4px; }
+textarea { width: 100%; resize: vertical; min-height: 44px; background: var(--bg); color: var(--ink); border: 2px solid var(--line); border-radius: 10px; padding: 8px 10px; font: 14px/1.4 var(--body); }
+textarea:focus, input:focus, button:focus-visible { outline: none; border-color: var(--violet); box-shadow: 0 0 0 3px rgba(138, 118, 200, .35); }
+.bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); padding-block: 10px; border-bottom: 2px solid var(--line); display: flex; flex-direction: column; gap: 8px; }
+.row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.row.scroll { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+.row.scroll > * { flex: none; }
+.tab, .chip { font: 700 11px var(--display); white-space: nowrap; letter-spacing: .5px; color: var(--mute); background: var(--panel); border: 2px solid var(--line); border-radius: 999px; padding: 6px 12px; cursor: pointer; }
+.tab[aria-pressed="true"] { color: var(--bg); background: var(--accent); border-color: var(--accent); }
+.chip[aria-pressed="true"] { color: var(--ink); border-color: var(--violet); background: var(--panel2); }
+.chip .n { color: var(--mute); font-family: var(--mono); font-weight: 400; margin-left: 4px; }
+input[type="search"] { flex: 1 1 160px; min-width: 0; background: var(--panel); color: var(--ink); border: 2px solid var(--line); border-radius: 999px; padding: 7px 14px; font: 14px var(--body); }
+h2 { font: 700 15px var(--display); letter-spacing: .5px; margin: 26px 0 4px; color: var(--ink); text-wrap: balance; }
+h3 { font: 700 11px var(--display); letter-spacing: 1px; margin: 14px 0 8px; display: flex; align-items: center; gap: 8px; }
+h3::before { content: ''; width: 10px; height: 10px; border-radius: 50%; background: currentColor; box-shadow: 0 0 8px currentColor; }
+.v-works { color: var(--works); } .v-could { color: var(--could); } .v-wont { color: var(--wont); }
+.list { display: flex; flex-direction: column; gap: 10px; }
+.card { background: var(--panel); border: 2px solid var(--line); border-radius: 14px; padding: 12px; display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 4px 12px; }
+.card.edited { border-color: var(--accent); box-shadow: 0 0 12px rgba(255, 154, 60, .25); }
+.card.binned { border-color: var(--wont); background: #1a0d1c; }
+.card.binned .name { text-decoration: line-through; color: var(--mute); }
+/* the bag's slot: its item's colour on the edge, the icon in the game's pixel look */
+.glyph { grid-row: span 2; width: 48px; height: 48px; border-radius: 10px; border: 2px solid var(--c, var(--violet)); display: grid; place-items: center; background: #2c1f45; }
+.glyph canvas { width: 64%; height: 64%; image-rendering: pixelated; }
+.head { min-width: 0; }
+.name { font-weight: 700; font-size: 16px; }
+.id { font: 12px var(--mono); color: var(--mute); margin-left: 6px; }
+.pill { display: inline-block; font: 700 10px var(--display); letter-spacing: .5px; border: 1.5px solid currentColor; border-radius: 999px; padding: 1px 7px; margin-left: 6px; vertical-align: 2px; }
+.bin { width: 40px; height: 40px; border-radius: 10px; border: 2px solid var(--line); background: var(--bg); color: var(--mute); display: grid; place-items: center; cursor: pointer; }
+.bin svg { width: 20px; height: 20px; }
+.bin[aria-pressed="true"] { color: var(--bg); background: var(--wont); border-color: var(--wont); }
+.body { grid-column: 2 / 4; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.info { margin: 0; }
+.stats { font: 12px/1.5 var(--mono); color: var(--mute); overflow-wrap: anywhere; }
+.pm { font-size: 13px; color: var(--could); }
+.pm b { font: 700 10px var(--display); letter-spacing: .5px; margin-right: 4px; }
+.empty { color: var(--mute); padding: 30px 0; text-align: center; }
+.copybar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; background: var(--bg); border-top: 2px solid var(--line); padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px)); }
+.copybar .in { max-width: 760px; margin: 0 auto; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.count { flex: 1 1 140px; color: var(--mute); font-size: 13px; font-variant-numeric: tabular-nums; }
+.count b { color: var(--ink); }
+.go { font: 700 13px var(--display); letter-spacing: .5px; color: #062a14; background: linear-gradient(#4ef08a, #0fb556); border: none; border-radius: 23px; padding: 12px 18px; box-shadow: 0 4px 0 #0a5a2a, 0 0 14px rgba(40, 220, 110, .4); cursor: pointer; }
+.go:active { transform: translateY(2px); }
+.go:disabled { filter: grayscale(1) brightness(.6); cursor: default; }
+.out { max-width: 760px; margin: 10px auto 0; }
+.out textarea { min-height: 140px; font: 12px var(--mono); }
+.toast { color: var(--works); font-size: 13px; }
+@media (prefers-reduced-motion: reduce) { .go:active { transform: none; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>CaveRunner Auto · Item Audit</h1>
+    <p class="lede">Every gun mod, perk and exo suit mod, sorted by whether it works in Auto now, could be made to work, or wouldn't fit. Write a note on any item, tap the bin to mark it for deletion, then copy your edits to send back. Your notes are kept in this browser while you work.</p>
+    <div class="general">
+      <label class="lab" for="general">General notes</label>
+      <textarea id="general" rows="2" placeholder="Anything about the whole list…"></textarea>
+    </div>
+  </header>
+  <div class="bar">
+    <div class="row scroll" id="tabs"></div>
+    <div class="row">
+      <input type="search" id="q" placeholder="Search names, text, stats" aria-label="Search">
+    </div>
+    <div class="row scroll" id="chips"></div>
+  </div>
+  <main id="main"></main>
+</div>
+<div class="copybar">
+  <div class="in">
+    <div class="count" id="count"></div>
+    <span class="toast" id="toast" hidden></span>
+    <button class="go" id="copy" type="button">Copy all edited module notes</button>
+  </div>
+  <div class="out" id="out" hidden>
+    <label class="lab" for="outtext">Copy didn't work here: select all of this and copy it</label>
+    <textarea id="outtext" readonly></textarea>
+  </div>
+</div>
+
+<script>
+const ROWS = /*ROWS*/[];
+const KEY = 'caverunner-audit-notes';
+let S = { notes: {}, bin: {}, general: '' };
+try { const s = JSON.parse(localStorage.getItem(KEY) || 'null'); if (s && s.notes) S = { notes: s.notes, bin: s.bin || {}, general: s.general || '' }; } catch (_) {}
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (_) {} };
+const SECS = ['Gun mods', 'Perks', 'Exo suit'];
+const VERD = [['Works now', 'works'], ['Could work', 'could'], ["Wouldn't work", 'wont']];
+const vcls = v => (VERD.find(x => x[0] === v) || ['', 'could'])[1];
+let tab = 'Gun mods', filt = 'all', q = '';
+try { tab = localStorage.getItem(KEY + '-tab') || tab; } catch (_) {}
+if (!SECS.includes(tab)) tab = 'Gun mods';
+const edited = id => !!(S.notes[id] && S.notes[id].trim()) || !!S.bin[id];
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const BIN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg>';
+
+function matches(r) {
+  if (filt === 'edited' && !edited(r.id)) return false;
+  if (filt === 'binned' && !S.bin[r.id]) return false;
+  if (filt !== 'all' && filt !== 'edited' && filt !== 'binned' && r.verdict !== filt) return false;
+  if (q) { const t = (r.name + ' ' + r.id + ' ' + r.info + ' ' + r.stats + ' ' + r.note + ' ' + (S.notes[r.id] || '')).toLowerCase(); if (!t.includes(q)) return false; }
+  return true;
+}
+function renderTabs() {
+  document.getElementById('tabs').innerHTML = SECS.map(s => {
+    const n = ROWS.filter(r => r.sec === s).length;
+    return '<button class="tab" type="button" data-tab="' + esc(s) + '" aria-pressed="' + (s === tab) + '">' + esc(s) + ' <span class="n">' + n + '</span></button>';
+  }).join('');
+  const inTab = ROWS.filter(r => r.sec === tab);
+  const chips = [['all', 'All', inTab.length]].concat(VERD.map(([v]) => [v, v, inTab.filter(r => r.verdict === v).length]))
+    .concat([['edited', 'Edited', inTab.filter(r => edited(r.id)).length], ['binned', 'Binned', inTab.filter(r => S.bin[r.id]).length]]);
+  document.getElementById('chips').innerHTML = chips.map(([k, l, n]) => '<button class="chip" type="button" data-f="' + esc(k) + '" aria-pressed="' + (k === filt) + '">' + esc(l) + '<span class="n">' + n + '</span></button>').join('');
+}
+function card(r) {
+  const c = 'card' + (edited(r.id) ? ' edited' : '') + (S.bin[r.id] ? ' binned' : '');
+  return '<article class="' + c + '" data-id="' + esc(r.id) + '">' +
+    '<div class="glyph" style="--c:' + esc(r.col || '#8a76c8') + '"><canvas data-icon="' + esc(r.id) + '" aria-hidden="true"></canvas></div>' +
+    '<div class="head"><span class="name">' + esc(r.name) + '</span><span class="id">' + esc(r.id) + '</span>' +
+    '<span class="pill v-' + vcls(r.verdict) + '">' + esc(r.verdict) + '</span></div>' +
+    '<button class="bin" type="button" aria-label="Mark ' + esc(r.name) + ' for deletion" aria-pressed="' + !!S.bin[r.id] + '" title="Mark for deletion">' + BIN + '</button>' +
+    '<div class="body">' +
+    (r.info ? '<p class="info">' + esc(r.info) + '</p>' : '') +
+    (r.stats ? '<div class="stats">' + esc(r.stats) + '</div>' : '') +
+    (r.note ? '<div class="pm"><b>PM</b>' + esc(r.note) + '</div>' : '') +
+    '<textarea id="n-' + esc(r.id) + '" rows="1" placeholder="Your notes on ' + esc(r.name) + '…">' + esc(S.notes[r.id] || '') + '</textarea>' +
+    '</div></article>';
+}
+function render() {
+  renderTabs();
+  const rows = ROWS.filter(r => r.sec === tab && matches(r));
+  if (!rows.length) { document.getElementById('main').innerHTML = '<p class="empty">Nothing here with this filter.</p>'; renderCount(); return; }
+  let html = '', sub = null, ver = null;
+  for (const r of rows) {
+    if (r.sub !== sub || r.verdict !== ver) html += ver === null ? '' : '</div>';
+    if (r.sub !== sub) { sub = r.sub; ver = null; html += '<h2>' + esc(sub) + '</h2>'; }
+    if (r.verdict !== ver) { ver = r.verdict; html += '<h3 class="v-' + vcls(ver) + '">' + esc(ver) + '</h3><div class="list">'; }
+    html += card(r);
+  }
+  document.getElementById('main').innerHTML = html + '</div>';
+  document.querySelectorAll('#main textarea').forEach(grow);
+  document.querySelectorAll('#main canvas[data-icon]').forEach(drawIcon);
+  renderCount();
+}
+function renderCount() {
+  const n = ROWS.filter(r => S.notes[r.id] && S.notes[r.id].trim()).length, b = ROWS.filter(r => S.bin[r.id]).length;
+  document.getElementById('count').innerHTML = '<b>' + n + '</b> noted · <b>' + b + '</b> binned' + (S.general.trim() ? ' · general note' : '');
+  document.getElementById('copy').disabled = !n && !b && !S.general.trim();
+}
+function digest() {
+  const L = ['CAVERUNNER AUTO ITEM AUDIT — owner\'s notes (list of v1.0.34, ' + ROWS.length + ' items)'];
+  if (S.general.trim()) L.push('', 'GENERAL:', S.general.trim());
+  const bins = ROWS.filter(r => S.bin[r.id]);
+  if (bins.length) { L.push('', 'DELETE (' + bins.length + '):'); for (const r of bins) L.push('- ' + r.id + ' "' + r.name + '" [' + r.sec + ' / ' + r.verdict + ']' + (S.notes[r.id] && S.notes[r.id].trim() ? ' — ' + S.notes[r.id].trim().replace(/\s*\n\s*/g, ' / ') : '')); }
+  const notes = ROWS.filter(r => !S.bin[r.id] && S.notes[r.id] && S.notes[r.id].trim());
+  if (notes.length) { L.push('', 'NOTES (' + notes.length + '):'); for (const r of notes) L.push('- ' + r.id + ' "' + r.name + '" [' + r.sec + ' / ' + r.verdict + ']: ' + S.notes[r.id].trim().replace(/\s*\n\s*/g, ' / ')); }
+  return L.join('\n');
+}
+// the icons as the game draws them (src/ui/auto/icons.js): a glyph found by its ink, scaled onto an 18-pixel grid, each
+// pixel solid or clear; an exo category's pixel map in the exo machine's colour, its shading kept (tintShade)
+const BYID = Object.fromEntries(ROWS.map(r => [r.id, r]));
+const GPX = 18, GBIG = 160;
+let BIG = null;
+const tintShade = (tint, own) => {
+  const ch = (x, i) => parseInt(x.slice(1 + i * 2, 3 + i * 2), 16) || 0;
+  const lum = (0.3 * ch(own, 0) + 0.59 * ch(own, 1) + 0.11 * ch(own, 2)) / 255, k = 0.35 + 0.9 * lum;
+  return 'rgb(' + [0, 1, 2].map(i => Math.max(0, Math.min(255, Math.round(ch(tint, i) * k)))).join(',') + ')';
+};
+function drawIcon(c) {
+  const r = BYID[c.dataset.icon];
+  if (!r) return;
+  const ctx = c.getContext('2d', { willReadFrequently: true });
+  if (!ctx) return;
+  if (r.pix) {
+    const w = Math.max(...r.pix.px.map(l => l.length)), ht = r.pix.px.length, n = Math.max(w, ht);
+    c.width = n; c.height = n;
+    for (let y = 0; y < ht; y++) for (let x = 0; x < r.pix.px[y].length; x++) {
+      const k = r.pix.px[y][x];
+      if (k === '.' || !r.pix.pal[k]) continue;
+      ctx.fillStyle = tintShade(r.col, r.pix.pal[k]); ctx.fillRect(x + Math.floor((n - w) / 2), y + Math.floor((n - ht) / 2), 1, 1);
+    }
+    return;
+  }
+  c.width = GPX; c.height = GPX;
+  if (!BIG) { const b = document.createElement('canvas'); b.width = GBIG; b.height = GBIG; BIG = b.getContext('2d', { willReadFrequently: true }); }
+  const B = GBIG, big = BIG;
+  big.clearRect(0, 0, B, B);
+  big.font = '900 ' + Math.round(B * 0.6) + 'px system-ui, sans-serif';
+  big.textAlign = 'center'; big.textBaseline = 'middle'; big.fillStyle = r.col || '#ece6f8';
+  big.fillText(r.glyph || '?', B / 2, B / 2);
+  const px = big.getImageData(0, 0, B, B).data;
+  let x0 = B, y0 = B, x1 = -1, y1 = -1;
+  for (let y = 0; y < B; y++) for (let x = 0; x < B; x++) if (px[(y * B + x) * 4 + 3] > 40) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  if (x1 < 0) return;
+  const w = x1 - x0 + 1, ht = y1 - y0 + 1, k = GPX / Math.max(w, ht);
+  ctx.imageSmoothingEnabled = true;
+  ctx.drawImage(big.canvas, x0, y0, w, ht, (GPX - w * k) / 2, (GPX - ht * k) / 2, w * k, ht * k);
+  const im = ctx.getImageData(0, 0, GPX, GPX), d = im.data;
+  for (let i = 3; i < d.length; i += 4) d[i] = d[i] >= 100 ? 255 : 0;
+  ctx.putImageData(im, 0, 0);
+}
+const grow = t => { t.style.height = 'auto'; t.style.height = (t.scrollHeight + 4) + 'px'; };
+document.addEventListener('click', e => {
+  const t = e.target.closest('button');
+  if (!t) return;
+  if (t.dataset.tab) { tab = t.dataset.tab; filt = 'all'; try { localStorage.setItem(KEY + '-tab', tab); } catch (_) {} render(); window.scrollTo({ top: 0 }); return; }
+  if (t.dataset.f) { filt = t.dataset.f; render(); return; }
+  if (t.classList.contains('bin')) {
+    const id = t.closest('.card').dataset.id;
+    if (S.bin[id]) delete S.bin[id]; else S.bin[id] = true;
+    save();
+    t.setAttribute('aria-pressed', String(!!S.bin[id]));
+    const c = t.closest('.card'); c.classList.toggle('binned', !!S.bin[id]); c.classList.toggle('edited', edited(id));
+    renderTabs(); renderCount();
+    return;
+  }
+  if (t.id === 'copy') {
+    const text = digest(), toast = document.getElementById('toast'), out = document.getElementById('out');
+    const fallback = () => { out.hidden = false; const a = document.getElementById('outtext'); a.value = text; a.focus(); a.select(); toast.hidden = true; };
+    try {
+      navigator.clipboard.writeText(text).then(() => { out.hidden = true; toast.textContent = 'Copied'; toast.hidden = false; setTimeout(() => { toast.hidden = true; }, 2200); }, fallback);
+    } catch (_) { fallback(); }
+  }
+});
+document.addEventListener('input', e => {
+  const t = e.target;
+  if (t.id === 'q') { q = t.value.trim().toLowerCase(); render(); return; }
+  if (t.id === 'general') { S.general = t.value; save(); renderCount(); return; }
+  if (t.id && t.id.startsWith('n-')) {
+    const id = t.id.slice(2);
+    if (t.value.trim()) S.notes[id] = t.value; else delete S.notes[id];
+    save(); grow(t);
+    const c = t.closest('.card'); c.classList.toggle('edited', edited(id));
+    renderCount();
+  }
+});
+document.getElementById('general').value = S.general;
+render();
+</script>

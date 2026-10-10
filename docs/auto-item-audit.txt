@@ -4,230 +4,230 @@ Numbers in [ ] are the item's stats as they are now. Add your notes after each l
 
 ================ GUN MODS (142) ================
 
---- SHOTS (what a gun fires) ---
+--- SHOTS (WHAT A GUN FIRES) ---
 
 WORKS NOW:
-- Bolt — Cheap all-rounder. A pink sparkle on a slight arc that nicks the rock where it lands [mana 5, dmg 1, speed 560, spread 2, delay 0.1, size 2, life 1.2, recoil 6, grav 110, drag 0.35, pit 2.5]
-- Spark — Fast, weak and nearly free. Crackles along in a zig-zag, shedding hot sparks [mana 3, rech -0.05, dmg 0.5, speed 720, spread 5, delay 0.05, size 1.5, life 0.8, recoil 2, wig 16]
-- Slug — Slow and very heavy. A green-gold ball on a gentle arc that shoves what it hits and blows a small hole in rock [mana 20, dmg 4, speed 320, spread 1, delay 0.26, size 4, life 1.6, recoil 45, grav 120, drag 0.3, pit 5, knock 160]
-- Buckshot — Five lobbed green pellets in a cone. Each skips once off rock and pops a small hole [mana 12, dmg 0.7, speed 460, spread 15, delay 0.32, size 2, life 0.7, count 5, recoil 32, grav 160, bounce 1, bounceE 0.55, pit 3.5]
-- Lance — A blue spear that speeds up as it flies. Punches through two [mana 20, dmg 2, speed 700, spread 0.6, delay 0.28, size 2, life 1.2, pierce 2, recoil 22, accel 0.5, vmax 1100]
-- Bounce Orb — A rubber ball that falls, and ricochets off rock ten times hardly slowing [mana 8, dmg 2, speed 420, spread 0.6, delay 0.14, size 3, life 4, bounce 10, bounceE 0.9, grav 250, drag 0.2, recoil 8]
-- Buzzsaw — Cuts a circle right in front of you, and chews rock [mana 2, dmg 3, speed 0, spread 0, delay 0, size 15, life 0.16, bore 12, eat 14, reach 5, hidden 1, recoil 0, setDelay 0, rech -0.17]
-- Blast — A lobbed bomb with a lit fuse. Bounces and rolls, then blows a big hole. Goes off at once on a creature [mana 28, dmg 2, speed 340, spread 2, delay 0.5, size 3.5, life 1.8, grav 600, explode 34, bounce 30, bounceE 0.4, lifeBoom 1, recoil 25]
-- Magic Arrow — A green arrow on a long shallow arc. Accurate, dependable, and it knocks creatures back [mana 12, dmg 1.8, speed 640, spread 0.8, delay 0.13, size 2, life 1.4, recoil 14, grav 90, knock 120, pit 2]
-- Magic Missile — A little rocket: leaves slowly in a trail of smoke, then roars off. Explodes and sets things alight [mana 30, dmg 3, speed 140, spread 2, delay 0.3, size 3, life 2, explode 18, recoil 30, fire 1, accel 2.6, vmax 780, grav 40, knock 200]
-- Fireball — A slow, big ball of flame that droops as it flies, shedding fire and smoke. Explodes and sets things alight [mana 26, dmg 2.5, speed 260, spread 2.5, delay 0.34, size 4, life 2.6, explode 24, grav 110, recoil 26, fire 1]
-- Firebolt — A lobbed flame that bounces off rock four times, then explodes on whatever it hits. Sets things alight [mana 16, dmg 1.6, speed 300, spread 3, delay 0.2, size 2.5, life 1.8, grav 380, explode 12, bounce 4, bounceE 0.7, recoil 14, fire 1]
-- Flamethrower — A short spray of fire the way you aim. Slows and rises as it goes, passes through creatures and sets alight whatever it licks [mana 3, dmg 0.45, speed 330, spread 8, delay 0.05, size 2.5, life 0.45, count 2, drag 2.5, grav -90, pierce 3, recoil 2, fire 1]
-- Bubble Spark — A slow glowing bubble that lights the cave, bobs upward and bounces about twenty times. Hopeless at aiming [mana 5, dmg 1.2, speed 260, spread 23, delay 0.1, size 2.5, life 1.7, bounce 20, bounceE 0.8, grav -30, pit 3.5, recoil 3]
-- Spitter Bolt — A quick pink glob. Slows fast, droops, and skitters off rock [mana 5, dmg 1.5, speed 660, spread 3, delay 0.07, size 1.8, life 0.55, recoil 4, grav 200, drag 2.2, bounce 10, bounceE 0.5]
-- Energy Orb — A slow, fat blue orb. Hits hard, shoves hard, and blasts a round hole in rock [mana 22, dmg 3.5, speed 220, spread 1, delay 0.32, size 5, life 2.4, recoil 30, pit 9, knock 220, drag 0.15]
-- Energy Sphere — A fast blue ball that arcs, and bounces off rock five times [mana 12, dmg 1.4, speed 480, spread 2, delay 0.1, size 2.2, life 1.8, grav 250, drag 0.4, bounce 5, bounceE 0.75, knock 120, recoil 8]
-- Lightning Bolt — The primordial force of nature. Punches through a crowd, and throws off arcs at nearby creatures and rock [mana 34, dmg 2.2, speed 1400, spread 0.5, delay 0.3, size 2, life 0.5, pierce 4, recoil 8, arc 1]
-- Chain Bolt — A slow crackling violet orb that jumps from enemy to enemy, three times [mana 28, dmg 2, speed 330, spread 1.5, delay 0.26, size 2.5, life 1.8, chain 3, recoil 10]
-- Black Hole — Rolls forward eating rock, hauls creatures in and swallows their shots [mana 60, dmg 1, speed 140, spread 0, delay 0.5, size 24, life 3.5, eat 19, pull 70, recoil 0]
-- Digging Bolt — Free, short-range, and very good at mining. Grinds rock to chips in a puff of blue smoke; only scratches creatures [mana 0, dmg 0.2, speed 460, spread 2, delay 0.1, size 2, life 0.55, bore 6, recoil 2]
-- Glowing Lance — A shining golden spear that lights the cave and cuts straight through a line of enemies [mana 26, dmg 3.2, speed 640, spread 0.4, delay 0.3, size 2.5, life 1.3, pierce 3, recoil 20, accel 0.5, vmax 1100]
-- Plasma Beam — Hits instantly along a line, no travel time at all, and scorches a hole where it ends [mana 30, dmg 3, beam 320, delay 0.3, spread 0.5, size 2, life 0.12, recoil 6, pit 3.5]
-- Luminous Drill — A short, instant green beam that chews through rock in a spray of green sparks [mana 8, dmg 1.2, beam 95, bore 3, delay 0.06, spread 1, size 1.6, life 0.08, recoil 2]
-- Death Cross — A glowing cyan cross that tumbles to a stop, then blows up in a cross [mana 34, drag 2.5, dmg 2, speed 260, spread 1.5, delay 0.36, size 3, life 2, fuse 0.55, explode 22, recoil 12]
-- Pollen — Puffs out, slows and floats up, then homes on a creature that comes close. Pops on contact [mana 6, dmg 0.8, speed 150, spread 20, delay 0.06, size 2, life 6, homing 6, drift 1, homeR 80, pop 6, count 2, recoil 1]
-- Disc Projectile — A spinning sawblade that skips along the floor throwing sparks [mana 20, dmg 2.6, speed 380, spread 1, delay 0.22, size 4, life 3, bounce 6, bounceE 0.85, grav 250, drag 0.3, knock 90, recoil 14]
-- Nuke — Take cover. It droops as it flies, dripping green, and the blast sets the cave alight [mana 120, dmg 8, speed 300, spread 1, delay 0.9, size 5, life 2.5, explode 90, recoil 90, grav 120, fire 1]
-- Meteor — Falls hard, digs deep and explodes. Sets things alight [mana 70, dmg 5, speed 420, spread 2, delay 0.55, size 5, life 3, explode 40, grav 700, bore 4, recoil 50, fire 1]
-- Teleport Bolt — Harmless. Wherever it lands or runs out, you appear there [mana 40, dmg 0, speed 700, spread 0, delay 0.05, size 2, life 0.5, grav 200, tele 1, recoil 0]
-- Small Teleport Bolt — A short hop. Harmless; nothing but a streak of blue sparks, and you appear wherever it stops [mana 20, dmg 0, speed 1100, spread 0, delay 0.05, size 1.6, life 0.13, grav 200, tele 1, recoil 0]
-- Bolt With Trigger — Cheap all-rounder. A pink sparkle on a slight arc that nicks the rock where it lands. Casts the next spell where it hits [mana 12, dmg 1, speed 560, spread 2, delay 0.1, size 2, life 1.2, recoil 6, grav 110, drag 0.35, pit 2.5, draw 1]
-- Bolt With Double Trigger — Cheap all-rounder. A pink sparkle on a slight arc that nicks the rock where it lands. Casts the next spell where it hits [mana 17, dmg 1, speed 560, spread 2, delay 0.1, size 2, life 1.2, recoil 6, grav 110, drag 0.35, pit 2.5, draw 2]
-- Magic Arrow With Trigger — A green arrow on a long shallow arc. Accurate, dependable, and it knocks creatures back. Casts the next spell where it hits [mana 21, dmg 1.8, speed 640, spread 0.8, delay 0.13, size 2, life 1.4, recoil 14, grav 90, knock 120, pit 2, draw 1]
-- Firebolt With Trigger — A lobbed flame that bounces off rock four times, then explodes on whatever it hits. Sets things alight. Casts the next spell where it hits [mana 26, dmg 1.6, speed 300, spread 3, delay 0.2, size 2.5, life 1.8, grav 380, explode 12, bounce 4, bounceE 0.7, recoil 14, fire 1, draw 1]
-- Bubble Spark With Trigger — A slow glowing bubble that lights the cave, bobs upward and bounces about twenty times. Hopeless at aiming. Casts the next spell where it hits [mana 12, dmg 1.2, speed 260, spread 23, delay 0.1, size 2.5, life 1.7, bounce 20, bounceE 0.8, grav -30, pit 3.5, recoil 3, draw 1]
-- Energy Orb With Trigger — A slow, fat blue orb. Hits hard, shoves hard, and blasts a round hole in rock. Casts the next spell where it hits [mana 34, dmg 3.5, speed 220, spread 1, delay 0.32, size 5, life 2.4, recoil 30, pit 9, knock 220, drag 0.15, draw 1]
-- Bolt With Timer — Cheap all-rounder. A pink sparkle on a slight arc that nicks the rock where it lands. Casts the next spell a moment after firing [mana 12, dmg 1, speed 560, spread 2, delay 0.1, size 2, life 1.2, recoil 6, grav 110, drag 0.35, pit 2.5, draw 1, timer 0.25]
-- Magic Arrow With Timer — A green arrow on a long shallow arc. Accurate, dependable, and it knocks creatures back. Casts the next spell a moment after firing [mana 21, dmg 1.8, speed 640, spread 0.8, delay 0.13, size 2, life 1.4, recoil 14, grav 90, knock 120, pit 2, draw 1, timer 0.3]
-- Spitter Bolt With Timer — A quick pink glob. Slows fast, droops, and skitters off rock. Casts the next spell a moment after firing [mana 12, dmg 1.5, speed 660, spread 3, delay 0.07, size 1.8, life 0.55, recoil 4, grav 200, drag 2.2, bounce 10, bounceE 0.5, draw 1, timer 0.17]
-- Energy Sphere With Timer — A fast blue ball that arcs, and bounces off rock five times. Casts the next spell a moment after firing [mana 21, dmg 1.4, speed 480, spread 2, delay 0.1, size 2.2, life 1.8, grav 250, drag 0.4, bounce 5, bounceE 0.75, knock 120, recoil 8, draw 1, timer 0.5]
-- Energy Orb With Timer — A slow, fat blue orb. Hits hard, shoves hard, and blasts a round hole in rock. Casts the next spell a moment after firing [mana 34, dmg 3.5, speed 220, spread 1, delay 0.32, size 5, life 2.4, recoil 30, pit 9, knock 220, drag 0.15, draw 1, timer 0.8]
-- Luminous Drill With Timer — A short, instant green beam that chews through rock in a spray of green sparks. Casts the next spell a moment after firing [mana 15, dmg 1.2, beam 95, bore 3, delay 0.06, spread 1, size 1.6, life 0.08, recoil 2, draw 1, timer 0]
-- Black Hole With Death Trigger — Rolls forward eating rock, hauls creatures in and swallows their shots. Casts the next spell where it dies [mana 83, dmg 1, speed 140, spread 0, delay 0.5, size 24, life 3.5, eat 19, pull 70, recoil 0, draw 1]
+- Bolt — Cheap all-rounder. A pink sparkle on a slight arc that nicks the rock where it lands [Mana cost 5, Damage 1, Speed 560, Spread 2°, Cast delay 0.1s, Size 2, Lifetime 1.2s, Kick 6, Gravity 110, Air drag 0.35, Hole it digs 2.5]
+- Spark — Fast, weak and nearly free. Crackles along in a zig-zag, shedding hot sparks [Mana cost 3, Recharge time -0.05s, Damage 0.5, Speed 720, Spread 5°, Cast delay 0.05s, Size 1.5, Lifetime 0.8s, Kick 2, Wiggle 16]
+- Slug — Slow and very heavy. A green-gold ball on a gentle arc that shoves what it hits and blows a small hole in rock [Mana cost 20, Damage 4, Speed 320, Spread 1°, Cast delay 0.26s, Size 4, Lifetime 1.6s, Kick 45, Gravity 120, Air drag 0.3, Hole it digs 5, Knockback 160]
+- Buckshot — Five lobbed green pellets in a cone. Each skips once off rock and pops a small hole [Mana cost 12, Damage 0.7, Speed 460, Spread 15°, Cast delay 0.32s, Size 2, Lifetime 0.7s, Projectiles 5, Kick 32, Gravity 160, Bounces 1, Speed kept per bounce ×0.55, Hole it digs 3.5]
+- Lance — A blue spear that speeds up as it flies. Punches through two [Mana cost 20, Damage 2, Speed 700, Spread 0.6°, Cast delay 0.28s, Size 2, Lifetime 1.2s, Pierces 2, Kick 22, Acceleration 0.5, Top speed 1100]
+- Bounce Orb — A rubber ball that falls, and ricochets off rock ten times hardly slowing [Mana cost 8, Damage 2, Speed 420, Spread 0.6°, Cast delay 0.14s, Size 3, Lifetime 4s, Bounces 10, Speed kept per bounce ×0.9, Gravity 250, Air drag 0.2, Kick 8]
+- Buzzsaw — Cuts a circle right in front of you, and chews rock [Mana cost 2, Damage 3, Speed 0, Spread 0°, Cast delay 0s, Size 15, Lifetime 0.16s, Bores through rock 12, Eats rock (radius) 14, Muzzle reach 5, No visible shot, Kick 0, Sets cast delay to 0s, Recharge time -0.17s]
+- Blast — A lobbed bomb with a lit fuse. Bounces and rolls, then blows a big hole. Goes off at once on a creature [Mana cost 28, Damage 2, Speed 340, Spread 2°, Cast delay 0.5s, Size 3.5, Lifetime 1.8s, Gravity 600, Blast radius 34, Bounces 30, Speed kept per bounce ×0.4, Explodes when it runs out, Kick 25]
+- Magic Arrow — A green arrow on a long shallow arc. Accurate, dependable, and it knocks creatures back [Mana cost 12, Damage 1.8, Speed 640, Spread 0.8°, Cast delay 0.13s, Size 2, Lifetime 1.4s, Kick 14, Gravity 90, Knockback 120, Hole it digs 2]
+- Magic Missile — A little rocket: leaves slowly in a trail of smoke, then roars off. Explodes and sets things alight [Mana cost 30, Damage 3, Speed 140, Spread 2°, Cast delay 0.3s, Size 3, Lifetime 2s, Blast radius 18, Kick 30, Sets things alight, Acceleration 2.6, Top speed 780, Gravity 40, Knockback 200]
+- Fireball — A slow, big ball of flame that droops as it flies, shedding fire and smoke. Explodes and sets things alight [Mana cost 26, Damage 2.5, Speed 260, Spread 2.5°, Cast delay 0.34s, Size 4, Lifetime 2.6s, Blast radius 24, Gravity 110, Kick 26, Sets things alight]
+- Firebolt — A lobbed flame that bounces off rock four times, then explodes on whatever it hits. Sets things alight [Mana cost 16, Damage 1.6, Speed 300, Spread 3°, Cast delay 0.2s, Size 2.5, Lifetime 1.8s, Gravity 380, Blast radius 12, Bounces 4, Speed kept per bounce ×0.7, Kick 14, Sets things alight]
+- Flamethrower — A short spray of fire the way you aim. Slows and rises as it goes, passes through creatures and sets alight whatever it licks [Mana cost 3, Damage 0.45, Speed 330, Spread 8°, Cast delay 0.05s, Size 2.5, Lifetime 0.45s, Projectiles 2, Air drag 2.5, Gravity -90, Pierces 3, Kick 2, Sets things alight]
+- Bubble Spark — A slow glowing bubble that lights the cave, bobs upward and bounces about twenty times. Hopeless at aiming [Mana cost 5, Damage 1.2, Speed 260, Spread 23°, Cast delay 0.1s, Size 2.5, Lifetime 1.7s, Bounces 20, Speed kept per bounce ×0.8, Gravity -30, Hole it digs 3.5, Kick 3]
+- Spitter Bolt — A quick pink glob. Slows fast, droops, and skitters off rock [Mana cost 5, Damage 1.5, Speed 660, Spread 3°, Cast delay 0.07s, Size 1.8, Lifetime 0.55s, Kick 4, Gravity 200, Air drag 2.2, Bounces 10, Speed kept per bounce ×0.5]
+- Energy Orb — A slow, fat blue orb. Hits hard, shoves hard, and blasts a round hole in rock [Mana cost 22, Damage 3.5, Speed 220, Spread 1°, Cast delay 0.32s, Size 5, Lifetime 2.4s, Kick 30, Hole it digs 9, Knockback 220, Air drag 0.15]
+- Energy Sphere — A fast blue ball that arcs, and bounces off rock five times [Mana cost 12, Damage 1.4, Speed 480, Spread 2°, Cast delay 0.1s, Size 2.2, Lifetime 1.8s, Gravity 250, Air drag 0.4, Bounces 5, Speed kept per bounce ×0.75, Knockback 120, Kick 8]
+- Lightning Bolt — The primordial force of nature. Punches through a crowd, and throws off arcs at nearby creatures and rock [Mana cost 34, Damage 2.2, Speed 1400, Spread 0.5°, Cast delay 0.3s, Size 2, Lifetime 0.5s, Pierces 4, Kick 8, Throws lightning arcs]
+- Chain Bolt — A slow crackling violet orb that jumps from enemy to enemy, three times [Mana cost 28, Damage 2, Speed 330, Spread 1.5°, Cast delay 0.26s, Size 2.5, Lifetime 1.8s, Chain jumps 3, Kick 10]
+- Black Hole — Rolls forward eating rock, hauls creatures in and swallows their shots [Mana cost 60, Damage 1, Speed 140, Spread 0°, Cast delay 0.5s, Size 24, Lifetime 3.5s, Eats rock (radius) 19, Pull strength 70, Kick 0]
+- Digging Bolt — Free, short-range, and very good at mining. Grinds rock to chips in a puff of blue smoke; only scratches creatures [Mana cost 0, Damage 0.2, Speed 460, Spread 2°, Cast delay 0.1s, Size 2, Lifetime 0.55s, Bores through rock 6, Kick 2]
+- Glowing Lance — A shining golden spear that lights the cave and cuts straight through a line of enemies [Mana cost 26, Damage 3.2, Speed 640, Spread 0.4°, Cast delay 0.3s, Size 2.5, Lifetime 1.3s, Pierces 3, Kick 20, Acceleration 0.5, Top speed 1100]
+- Plasma Beam — Hits instantly along a line, no travel time at all, and scorches a hole where it ends [Mana cost 30, Damage 3, Beam 320, Cast delay 0.3s, Spread 0.5°, Size 2, Lifetime 0.12s, Kick 6, Hole it digs 3.5]
+- Luminous Drill — A short, instant green beam that chews through rock in a spray of green sparks [Mana cost 8, Damage 1.2, Beam 95, Bores through rock 3, Cast delay 0.06s, Spread 1°, Size 1.6, Lifetime 0.08s, Kick 2]
+- Death Cross — A glowing cyan cross that tumbles to a stop, then blows up in a cross [Mana cost 34, Air drag 2.5, Damage 2, Speed 260, Spread 1.5°, Cast delay 0.36s, Size 3, Lifetime 2s, Fuse 0.55s, Blast radius 22, Kick 12]
+- Pollen — Puffs out, slows and floats up, then homes on a creature that comes close. Pops on contact [Mana cost 6, Damage 0.8, Speed 150, Spread 20°, Cast delay 0.06s, Size 2, Lifetime 6s, Homing strength 6, Drifts about, Homing range 80, Bursts into 6, Projectiles 2, Kick 1]
+- Disc Projectile — A spinning sawblade that skips along the floor throwing sparks [Mana cost 20, Damage 2.6, Speed 380, Spread 1°, Cast delay 0.22s, Size 4, Lifetime 3s, Bounces 6, Speed kept per bounce ×0.85, Gravity 250, Air drag 0.3, Knockback 90, Kick 14]
+- Nuke — Take cover. It droops as it flies, dripping green, and the blast sets the cave alight [Mana cost 120, Damage 8, Speed 300, Spread 1°, Cast delay 0.9s, Size 5, Lifetime 2.5s, Blast radius 90, Kick 90, Gravity 120, Sets things alight]
+- Meteor — Falls hard, digs deep and explodes. Sets things alight [Mana cost 70, Damage 5, Speed 420, Spread 2°, Cast delay 0.55s, Size 5, Lifetime 3s, Blast radius 40, Gravity 700, Bores through rock 4, Kick 50, Sets things alight]
+- Teleport Bolt — Harmless. Wherever it lands or runs out, you appear there [Mana cost 40, Damage 0, Speed 700, Spread 0°, Cast delay 0.05s, Size 2, Lifetime 0.5s, Gravity 200, Teleports you, Kick 0]
+- Small Teleport Bolt — A short hop. Harmless; nothing but a streak of blue sparks, and you appear wherever it stops [Mana cost 20, Damage 0, Speed 1100, Spread 0°, Cast delay 0.05s, Size 1.6, Lifetime 0.13s, Gravity 200, Teleports you, Kick 0]
+- Bolt With Trigger — Cheap all-rounder. A pink sparkle on a slight arc that nicks the rock where it lands. Casts the next spell where it hits [Mana cost 12, Damage 1, Speed 560, Spread 2°, Cast delay 0.1s, Size 2, Lifetime 1.2s, Kick 6, Gravity 110, Air drag 0.35, Hole it digs 2.5, Draws extra spells 1]
+- Bolt With Double Trigger — Cheap all-rounder. A pink sparkle on a slight arc that nicks the rock where it lands. Casts the next spell where it hits [Mana cost 17, Damage 1, Speed 560, Spread 2°, Cast delay 0.1s, Size 2, Lifetime 1.2s, Kick 6, Gravity 110, Air drag 0.35, Hole it digs 2.5, Draws extra spells 2]
+- Magic Arrow With Trigger — A green arrow on a long shallow arc. Accurate, dependable, and it knocks creatures back. Casts the next spell where it hits [Mana cost 21, Damage 1.8, Speed 640, Spread 0.8°, Cast delay 0.13s, Size 2, Lifetime 1.4s, Kick 14, Gravity 90, Knockback 120, Hole it digs 2, Draws extra spells 1]
+- Firebolt With Trigger — A lobbed flame that bounces off rock four times, then explodes on whatever it hits. Sets things alight. Casts the next spell where it hits [Mana cost 26, Damage 1.6, Speed 300, Spread 3°, Cast delay 0.2s, Size 2.5, Lifetime 1.8s, Gravity 380, Blast radius 12, Bounces 4, Speed kept per bounce ×0.7, Kick 14, Sets things alight, Draws extra spells 1]
+- Bubble Spark With Trigger — A slow glowing bubble that lights the cave, bobs upward and bounces about twenty times. Hopeless at aiming. Casts the next spell where it hits [Mana cost 12, Damage 1.2, Speed 260, Spread 23°, Cast delay 0.1s, Size 2.5, Lifetime 1.7s, Bounces 20, Speed kept per bounce ×0.8, Gravity -30, Hole it digs 3.5, Kick 3, Draws extra spells 1]
+- Energy Orb With Trigger — A slow, fat blue orb. Hits hard, shoves hard, and blasts a round hole in rock. Casts the next spell where it hits [Mana cost 34, Damage 3.5, Speed 220, Spread 1°, Cast delay 0.32s, Size 5, Lifetime 2.4s, Kick 30, Hole it digs 9, Knockback 220, Air drag 0.15, Draws extra spells 1]
+- Bolt With Timer — Cheap all-rounder. A pink sparkle on a slight arc that nicks the rock where it lands. Casts the next spell a moment after firing [Mana cost 12, Damage 1, Speed 560, Spread 2°, Cast delay 0.1s, Size 2, Lifetime 1.2s, Kick 6, Gravity 110, Air drag 0.35, Hole it digs 2.5, Draws extra spells 1, Timer 0.25s]
+- Magic Arrow With Timer — A green arrow on a long shallow arc. Accurate, dependable, and it knocks creatures back. Casts the next spell a moment after firing [Mana cost 21, Damage 1.8, Speed 640, Spread 0.8°, Cast delay 0.13s, Size 2, Lifetime 1.4s, Kick 14, Gravity 90, Knockback 120, Hole it digs 2, Draws extra spells 1, Timer 0.3s]
+- Spitter Bolt With Timer — A quick pink glob. Slows fast, droops, and skitters off rock. Casts the next spell a moment after firing [Mana cost 12, Damage 1.5, Speed 660, Spread 3°, Cast delay 0.07s, Size 1.8, Lifetime 0.55s, Kick 4, Gravity 200, Air drag 2.2, Bounces 10, Speed kept per bounce ×0.5, Draws extra spells 1, Timer 0.17s]
+- Energy Sphere With Timer — A fast blue ball that arcs, and bounces off rock five times. Casts the next spell a moment after firing [Mana cost 21, Damage 1.4, Speed 480, Spread 2°, Cast delay 0.1s, Size 2.2, Lifetime 1.8s, Gravity 250, Air drag 0.4, Bounces 5, Speed kept per bounce ×0.75, Knockback 120, Kick 8, Draws extra spells 1, Timer 0.5s]
+- Energy Orb With Timer — A slow, fat blue orb. Hits hard, shoves hard, and blasts a round hole in rock. Casts the next spell a moment after firing [Mana cost 34, Damage 3.5, Speed 220, Spread 1°, Cast delay 0.32s, Size 5, Lifetime 2.4s, Kick 30, Hole it digs 9, Knockback 220, Air drag 0.15, Draws extra spells 1, Timer 0.8s]
+- Luminous Drill With Timer — A short, instant green beam that chews through rock in a spray of green sparks. Casts the next spell a moment after firing [Mana cost 15, Damage 1.2, Beam 95, Bores through rock 3, Cast delay 0.06s, Spread 1°, Size 1.6, Lifetime 0.08s, Kick 2, Draws extra spells 1, Timer 0s]
+- Black Hole With Death Trigger — Rolls forward eating rock, hauls creatures in and swallows their shots. Casts the next spell where it dies [Mana cost 83, Damage 1, Speed 140, Spread 0°, Cast delay 0.5s, Size 24, Lifetime 3.5s, Eats rock (radius) 19, Pull strength 70, Kick 0, Draws extra spells 1]
 
---- MODIFIERS (change the next shot) ---
+--- MODIFIERS (CHANGE THE NEXT SHOT) ---
 
 WORKS NOW:
-- Buff ×1.5 — Everything about the next mod ×1.5: a shot’s damage, speed, size, flight (and its mana and delay); a modifier’s effect [mana 6, d 0, boost 1.5]
-- Buff ×2 — Everything about the next mod ×2: a shot’s damage, speed, size, flight (and its mana and delay); a modifier’s effect [mana 12, d 0, boost 2]
-- Buff ×5 — Everything about the next mod ×5: a shot’s damage, speed, size, flight (and its mana and delay); a modifier’s effect [mana 30, d 0, boost 5]
-- Nerf ×0.75 — Everything about the next mod ×0.75: weaker, but cheaper and quicker too [mana 1, d 0, boost 0.75]
-- Nerf ×0.5 — Everything about the next mod ×0.5: weaker, but cheaper and quicker too [mana 0, d 0, boost 0.5]
-- Nerf ×0.2 — Everything about the next mod ×0.2: much weaker, but cheaper and quicker too [mana 0, d 0, boost 0.2]
-- Damage Plus — +1.5 damage [mana 5, d 0.08]
-- Heavy Shot — x2.5 damage, x0.35 speed, big kick [mana 7, d 0.17]
-- Light Shot — x4 speed, x0.6 damage, tighter [mana 5, d -0.05]
-- Speed Up — x2.5 speed [mana 3]
-- Accelerating — starts slow, speeds up hard [mana 18, d 0.13]
-- Homing — curves onto enemies [mana 40]
-- Seeker — hard homing, x0.8 speed [mana 60]
-- Bouncing — +5 bounces [mana 6]
-- Piercing — +3 pierce, x0.75 damage [mana 70]
-- Reduce Spread — -20° spread [mana 1]
-- Scatter — x3 shots, wide, weaker [mana 4, d -0.1]
-- Big Shot — x2 size, x1.3 damage [mana 6, d 0.06]
-- Long Range — x2.5 flight time [mana 30, d 0.2]
-- Longer Flight — x1.5 flight time (a field lasts longer too) [mana 10, d 0.05]
-- Shorter Flight — ÷1.5 flight time (a field goes sooner too) [mana 3, d -0.05]
-- Enlarge — x1.5 size: the shot, and every radius it works over (blasts, fields, pulls, digging) [mana 8, d 0.05]
-- Shrink — ÷1.5 size: the shot, and every radius it works over (blasts, fields, pulls, digging) [mana 4, d -0.03]
-- Short Fuse — x0.45 flight time, fast cast [mana 8, d -0.22]
-- Explosive Tip — blows a hole on impact [mana 28, d 0.3]
-- Borer — drills through rock [mana 4, d 0.02]
-- Fast Cast — -0.08s cast delay [mana 3, d -0.08]
-- Overcharge — x1.8 damage, slow cast [mana 12, d 0.2]
-- Double Cast — fires the next 2 shots at once [mana 0, multi 1]
-- Triple Cast — fires the next 3 shots at once [mana 2, multi 2]
-- Quad Cast — fires the next 4 shots at once [mana 5, multi 3]
-- Efficient — halves the mana cost [mana 0, d 0.1, manaMul 0.5]
-- Hair Trigger — -0.15s recharge, +0.05s cast delay [mana 4, d 0.05, rech -0.15]
-- Overheat — x2 damage, but x1.8 recharge [mana 8, rechMul 1.8]
-- Recoil — More kick. Handy if you like being launched [mana 2, d -0.02]
-- Gravity — Drags the shot down as it flies [mana 2, d 0.02]
-- Anti-Gravity — Lifts the shot as it flies [mana 3, d 0.02]
-- Boomerang — Flies out, and halfway through its flight turns and comes back to you [mana 8, d 0.05]
-- Ping-Pong Path — Flies out, snaps back a little, and on again [mana 6, d 0.05]
-- Orbiting Arc — Circles whatever cast it: your gun, or a trigger spell's carrier as it flies [mana 9, d 0.06]
-- Short-range Homing — Only steers once it is already close to something [mana 5, d 0.02]
-- Horizontal Path — Forces the shot dead level, and it hits harder for it [mana 4, d 0.03]
-- Bloodlust — A hefty damage boost, but the shot can hurt you too [mana 10, d 0.05]
-- Mana To Damage — Burns every point of mana over 50 and turns it into damage [mana 0, d 0.08]
-- Quantum Split — Splits into three weaker copies partway through its flight [mana 8, d 0.05]
-- Explosive Bounce — Every ricochet sets off a blast [mana 9, d 0.05]
-- Heavy Spread — Much faster casting, and no respect at all for where you aimed [mana 3, d -0.14]
-- Octuple Spell — fires the next 8 shots at once [mana 20, multi 7]
-- Myriad Spell — fires everything left on the gun at once [mana 40, myriad 1]
-- Formation - Bifurcated — fires the next 2 shots in a narrow V [mana 2, multi 1]
-- Formation - Trifurcated — fires the next 3 shots in a fan [mana 3, multi 2]
-- Formation - Behind Your Back — fires one ahead and one straight behind you [mana 1, multi 1]
-- Alpha — also casts a copy of the first spell on the gun [off 1, mana 5, d 0.02]
-- Gamma — also casts a copy of the last spell on the gun [off 1, mana 5, d 0.02]
-- Tau — casts the next two spells a second time [off 1, mana 8, d 0.03]
-- Omega — casts a copy of every single spell on the gun [off 1, mana 40, d 0.1]
-- Phi — casts a copy of every shot on the gun [off 1, mana 20, d 0.06]
-- Sigma — casts a copy of every static field on the gun [off 1, mana 20, d 0.06]
-- Mu — applies every modifier on the gun to this shot, wherever they sit [off 1, mana 15, d 0.05]
-- Zeta — casts a random spell borrowed off one of your other guns [off 1, mana 12, d 0.04]
-- Add Trigger — The next projectile casts the spell after it where it hits something [mana 10, d 0.03]
-- Add Timer — The next projectile casts the spell after it a moment after firing, or on a hit [mana 13, d 0.03]
-- Add Expiration Trigger — The next projectile casts the spell after it when it dies, however it dies [mana 12, d 0.03]
+- Buff ×1.5 — Everything about the next mod ×1.5: a shot’s damage, speed, size, flight (and its mana and delay); a modifier’s effect [Mana cost 6, Cast delay 0s, Damage ×1.5]
+- Buff ×2 — Everything about the next mod ×2: a shot’s damage, speed, size, flight (and its mana and delay); a modifier’s effect [Mana cost 12, Cast delay 0s, Damage ×2]
+- Buff ×5 — Everything about the next mod ×5: a shot’s damage, speed, size, flight (and its mana and delay); a modifier’s effect [Mana cost 30, Cast delay 0s, Damage ×5]
+- Nerf ×0.75 — Everything about the next mod ×0.75: weaker, but cheaper and quicker too [Mana cost 1, Cast delay 0s, Damage ×0.75]
+- Nerf ×0.5 — Everything about the next mod ×0.5: weaker, but cheaper and quicker too [Mana cost 0, Cast delay 0s, Damage ×0.5]
+- Nerf ×0.2 — Everything about the next mod ×0.2: much weaker, but cheaper and quicker too [Mana cost 0, Cast delay 0s, Damage ×0.2]
+- Damage Plus — +1.5 damage [Mana cost 5, Cast delay +0.08s]
+- Heavy Shot — x2.5 damage, x0.35 speed, big kick [Mana cost 7, Cast delay +0.17s]
+- Light Shot — x4 speed, x0.6 damage, tighter [Mana cost 5, Cast delay -0.05s]
+- Speed Up — x2.5 speed [Mana cost 3]
+- Accelerating — starts slow, speeds up hard [Mana cost 18, Cast delay +0.13s]
+- Homing — curves onto enemies [Mana cost 40]
+- Seeker — hard homing, x0.8 speed [Mana cost 60]
+- Bouncing — +5 bounces [Mana cost 6]
+- Piercing — +3 pierce, x0.75 damage [Mana cost 70]
+- Reduce Spread — -20° spread [Mana cost 1]
+- Scatter — x3 shots, wide, weaker [Mana cost 4, Cast delay -0.1s]
+- Big Shot — x2 size, x1.3 damage [Mana cost 6, Cast delay +0.06s]
+- Long Range — x2.5 flight time [Mana cost 30, Cast delay +0.2s]
+- Longer Flight — x1.5 flight time (a field lasts longer too) [Mana cost 10, Cast delay +0.05s]
+- Shorter Flight — ÷1.5 flight time (a field goes sooner too) [Mana cost 3, Cast delay -0.05s]
+- Enlarge — x1.5 size: the shot, and every radius it works over (blasts, fields, pulls, digging) [Mana cost 8, Cast delay +0.05s]
+- Shrink — ÷1.5 size: the shot, and every radius it works over (blasts, fields, pulls, digging) [Mana cost 4, Cast delay -0.03s]
+- Short Fuse — x0.45 flight time, fast cast [Mana cost 8, Cast delay -0.22s]
+- Explosive Tip — blows a hole on impact [Mana cost 28, Cast delay +0.3s]
+- Borer — drills through rock [Mana cost 4, Cast delay +0.02s]
+- Fast Cast — -0.08s cast delay [Mana cost 3, Cast delay -0.08s]
+- Overcharge — x1.8 damage, slow cast [Mana cost 12, Cast delay +0.2s]
+- Double Cast — fires the next 2 shots at once [Mana cost 0, Extra spells cast 1]
+- Triple Cast — fires the next 3 shots at once [Mana cost 2, Extra spells cast 2]
+- Quad Cast — fires the next 4 shots at once [Mana cost 5, Extra spells cast 3]
+- Efficient — halves the mana cost [Mana cost 0, Cast delay +0.1s, Mana cost ×0.5]
+- Hair Trigger — -0.15s recharge, +0.05s cast delay [Mana cost 4, Cast delay +0.05s, Recharge time -0.15s]
+- Overheat — x2 damage, but x1.8 recharge [Mana cost 8, rechMul 1.8]
+- Recoil — More kick. Handy if you like being launched [Mana cost 2, Cast delay -0.02s]
+- Gravity — Drags the shot down as it flies [Mana cost 2, Cast delay +0.02s]
+- Anti-Gravity — Lifts the shot as it flies [Mana cost 3, Cast delay +0.02s]
+- Boomerang — Flies out, and halfway through its flight turns and comes back to you [Mana cost 8, Cast delay +0.05s]
+- Ping-Pong Path — Flies out, snaps back a little, and on again [Mana cost 6, Cast delay +0.05s]
+- Orbiting Arc — Circles whatever cast it: your gun, or a trigger spell's carrier as it flies [Mana cost 9, Cast delay +0.06s]
+- Short-range Homing — Only steers once it is already close to something [Mana cost 5, Cast delay +0.02s]
+- Horizontal Path — Forces the shot dead level, and it hits harder for it [Mana cost 4, Cast delay +0.03s]
+- Bloodlust — A hefty damage boost, but the shot can hurt you too [Mana cost 10, Cast delay +0.05s]
+- Mana To Damage — Burns every point of mana over 50 and turns it into damage [Mana cost 0, Cast delay +0.08s]
+- Quantum Split — Splits into three weaker copies partway through its flight [Mana cost 8, Cast delay +0.05s]
+- Explosive Bounce — Every ricochet sets off a blast [Mana cost 9, Cast delay +0.05s]
+- Heavy Spread — Much faster casting, and no respect at all for where you aimed [Mana cost 3, Cast delay -0.14s]
+- Octuple Spell — fires the next 8 shots at once [Mana cost 20, Extra spells cast 7]
+- Myriad Spell — fires everything left on the gun at once [Mana cost 40, Copies of the next spell 1]
+- Formation - Bifurcated — fires the next 2 shots in a narrow V [Mana cost 2, Extra spells cast 1]
+- Formation - Trifurcated — fires the next 3 shots in a fan [Mana cost 3, Extra spells cast 2]
+- Formation - Behind Your Back — fires one ahead and one straight behind you [Mana cost 1, Extra spells cast 1]
+- Alpha — also casts a copy of the first spell on the gun [Copies another spell 1, Mana cost 5, Cast delay +0.02s]
+- Gamma — also casts a copy of the last spell on the gun [Copies another spell 1, Mana cost 5, Cast delay +0.02s]
+- Tau — casts the next two spells a second time [Copies another spell 1, Mana cost 8, Cast delay +0.03s]
+- Omega — casts a copy of every single spell on the gun [Copies another spell 1, Mana cost 40, Cast delay +0.1s]
+- Phi — casts a copy of every shot on the gun [Copies another spell 1, Mana cost 20, Cast delay +0.06s]
+- Sigma — casts a copy of every static field on the gun [Copies another spell 1, Mana cost 20, Cast delay +0.06s]
+- Mu — applies every modifier on the gun to this shot, wherever they sit [Copies another spell 1, Mana cost 15, Cast delay +0.05s]
+- Zeta — casts a random spell borrowed off one of your other guns [Copies another spell 1, Mana cost 12, Cast delay +0.04s]
+- Add Trigger — The next projectile casts the spell after it where it hits something [Mana cost 10, Cast delay +0.03s]
+- Add Timer — The next projectile casts the spell after it a moment after firing, or on a hit [Mana cost 13, Cast delay +0.03s]
+- Add Expiration Trigger — The next projectile casts the spell after it when it dies, however it dies [Mana cost 12, Cast delay +0.03s]
 
 COULD WORK:
-- Knockback — Shoves whatever it hits [mana 4, d 0.03]  >> shove creatures
-- Recoil Damper — Takes the shove out of a heavy gun [mana 3, d 0.02]  >> only if guns get a kick
-- Critical Plus — +25% chance of a hit doing triple damage [mana 6, d 0.04]  >> triple-damage chance
-- Spiral Arc — Swings side to side in a widening wave as it flies on [mana 5, d 0.04]  >> a wavy path
-- Follow Me — Pulls it back to you: a shot slows, stops and comes straight back; a field comes to you and stays with you [mana 10, d 0.04]  >> shots come back to the player
-- Discriminate — Set its target once in the Bag (a creature, you, or an object): the next spell then only touches that, and passes through everything else [mana 4, d 0.02]  >> needs a target picker; maybe "only creatures"
-- Matter Eater — Eats a tunnel through rock the whole way [mana 14, d 0.06]  >> tunnels through rock (a rock clearer!)
-- Clusterbolt — Bursts into a spray of small explosives where it lands [mana 12, d 0.06]  >> bursts into bomblets
+- Knockback — Shoves whatever it hits [Mana cost 4, Cast delay +0.03s]  >> shove creatures
+- Recoil Damper — Takes the shove out of a heavy gun [Mana cost 3, Cast delay +0.02s]  >> only if guns get a kick
+- Critical Plus — +25% chance of a hit doing triple damage [Mana cost 6, Cast delay +0.04s]  >> triple-damage chance
+- Spiral Arc — Swings side to side in a widening wave as it flies on [Mana cost 5, Cast delay +0.04s]  >> a wavy path
+- Follow Me — Pulls it back to you: a shot slows, stops and comes straight back; a field comes to you and stays with you [Mana cost 10, Cast delay +0.04s]  >> shots come back to the player
+- Discriminate — Set its target once in the Bag (a creature, you, or an object): the next spell then only touches that, and passes through everything else [Mana cost 4, Cast delay +0.02s]  >> needs a target picker; maybe "only creatures"
+- Matter Eater — Eats a tunnel through rock the whole way [Mana cost 14, Cast delay +0.06s]  >> tunnels through rock (a rock clearer!)
+- Clusterbolt — Bursts into a spray of small explosives where it lands [Mana cost 12, Cast delay +0.06s]  >> bursts into bomblets
 
 WOULDN'T WORK:
-- Follow This — A field hovers just ahead of your gun and goes wherever you aim (the Gravity Gun’s trick); a shot is pulled to that spot [mana 10, d 0.04]  >> aiming is automatic: nothing to follow
-- Auto-Aim — Snaps onto the nearest enemy the moment it leaves the barrel [mana 7, d 0.03]  >> aiming is already automatic
-- Aim Assist — The aim stick becomes a pointer that snaps onto enemies and fires when it's on one (no trigger ring) [mana 3, d 0.02]  >> no aim stick in Auto
+- Follow This — A field hovers just ahead of your gun and goes wherever you aim (the Gravity Gun’s trick); a shot is pulled to that spot [Mana cost 10, Cast delay +0.04s]  >> aiming is automatic: nothing to follow
+- Auto-Aim — Snaps onto the nearest enemy the moment it leaves the barrel [Mana cost 7, Cast delay +0.03s]  >> aiming is already automatic
+- Aim Assist — The aim stick becomes a pointer that snaps onto enemies and fires when it's on one (no trigger ring) [Mana cost 3, Cast delay +0.02s]  >> no aim stick in Auto
 
---- PASSIVES (always on while fitted) ---
+--- PASSIVES (ALWAYS ON WHILE FITTED) ---
 
 WORKS NOW:
-- Cold Start — x0.55 recharge [mana 0, rechMul 0.55]
-- Quick Recharge — -0.33s recharge [mana 0, rech -0.33]
-- Mana Battery — +60 mana, +30 regen [mana 0, manaMax 60, manaRegen 30]
+- Cold Start — x0.55 recharge [Mana cost 0, rechMul 0.55]
+- Quick Recharge — -0.33s recharge [Mana cost 0, Recharge time -0.33s]
+- Mana Battery — +60 mana, +30 regen [Mana cost 0, Max mana +60, Mana regen +30]
 
 WOULDN'T WORK:
-- Questions Later — Auto fire: the gun shoots on its own, as if you were holding the trigger down. Aim to steer it [mana 0, auto 1]  >> guns already fire by themselves
+- Questions Later — Auto fire: the gun shoots on its own, as if you were holding the trigger down. Aim to steer it [Mana cost 0, Fires by itself]  >> guns already fire by themselves
 
---- STATICS AND FIELDS (placed, they stay a while) ---
+--- STATICS AND FIELDS (PLACED, THEY STAY A WHILE) ---
 
 COULD WORK:
-- Explosion — A powerful blast, right where you aimed. It leaves fire behind [mana 40, r 34, life 0.1, delay 0.4, recoil 20, fire 1, embers 6]  >> a blast placed where the gun aims
-- Explosion of Brimstone — A small, cheap blast that sets things alight and throws burning sparks. Mind your own feet [mana 10, r 22, life 0.1, delay 0.25, recoil 10, fire 1, embers 14]  >> as boom
-- Unstable Crystal — A mine. It waits, then goes off when something walks near [mana 14, r 26, life 12, delay 0.2]  >> mines on the cave floor
-- Dormant Crystal — Sits harmless until another explosion sets it off [mana 12, r 30, life 20, delay 0.2]  >> set off by blasts
-- Circle of Stillness — Enemies caught inside crawl, and it frosts out any fire inside it [mana 24, r 44, life 6, delay 0.3]  >> a slowing circle
-- Circle of Shielding — Eats enemy fire that crosses it [mana 22, r 40, life 6, delay 0.3]  >> eats enemy shots
-- Circle of Vigour — Stand in it and you heal [mana 30, r 36, life 5, delay 0.35]  >> heals the team standing in it
-- Thundercloud — A dark cloud that rains lightning over everything under it, and its rain puts out fires [mana 34, r 50, life 6, delay 0.4]  >> lightning cloud
-- White Hole — A tiny white hole that pulls everything close by (creatures, their shots, gold, loot) hard into its middle and holds it there. Harms nothing; walls don't stop it [mana 40, r 64, life 1.2, delay 0.17]  >> pulls creatures and gold
-- Glittering Field — Small blasts going off all over a wide patch [mana 36, r 64, life 4, delay 0.4]  >> a patch of blasts
-- Unstable Crystal With Trigger — A mine. It waits, then goes off when something walks near. Casts the next spell where it hits [mana 23, r 26, life 12, delay 0.2, draw 1]  >> as crystal
-- Dormant Crystal With Trigger — Sits harmless until another explosion sets it off. Casts the next spell where it hits [mana 21, r 30, life 20, delay 0.2, draw 1]  >> as dormant
+- Explosion — A powerful blast, right where you aimed. It leaves fire behind [Mana cost 40, Radius 34, Lifetime 0.1s, Cast delay 0.4s, Kick 20, Sets things alight, Embers 6]  >> a blast placed where the gun aims
+- Explosion of Brimstone — A small, cheap blast that sets things alight and throws burning sparks. Mind your own feet [Mana cost 10, Radius 22, Lifetime 0.1s, Cast delay 0.25s, Kick 10, Sets things alight, Embers 14]  >> as boom
+- Unstable Crystal — A mine. It waits, then goes off when something walks near [Mana cost 14, Radius 26, Lifetime 12s, Cast delay 0.2s]  >> mines on the cave floor
+- Dormant Crystal — Sits harmless until another explosion sets it off [Mana cost 12, Radius 30, Lifetime 20s, Cast delay 0.2s]  >> set off by blasts
+- Circle of Stillness — Enemies caught inside crawl, and it frosts out any fire inside it [Mana cost 24, Radius 44, Lifetime 6s, Cast delay 0.3s]  >> a slowing circle
+- Circle of Shielding — Eats enemy fire that crosses it [Mana cost 22, Radius 40, Lifetime 6s, Cast delay 0.3s]  >> eats enemy shots
+- Circle of Vigour — Stand in it and you heal [Mana cost 30, Radius 36, Lifetime 5s, Cast delay 0.35s]  >> heals the team standing in it
+- Thundercloud — A dark cloud that rains lightning over everything under it, and its rain puts out fires [Mana cost 34, Radius 50, Lifetime 6s, Cast delay 0.4s]  >> lightning cloud
+- White Hole — A tiny white hole that pulls everything close by (creatures, their shots, gold, loot) hard into its middle and holds it there. Harms nothing; walls don't stop it [Mana cost 40, Radius 64, Lifetime 1.2s, Cast delay 0.17s]  >> pulls creatures and gold
+- Glittering Field — Small blasts going off all over a wide patch [Mana cost 36, Radius 64, Lifetime 4s, Cast delay 0.4s]  >> a patch of blasts
+- Unstable Crystal With Trigger — A mine. It waits, then goes off when something walks near. Casts the next spell where it hits [Mana cost 23, Radius 26, Lifetime 12s, Cast delay 0.2s, Draws extra spells 1]  >> as crystal
+- Dormant Crystal With Trigger — Sits harmless until another explosion sets it off. Casts the next spell where it hits [Mana cost 21, Radius 30, Lifetime 20s, Cast delay 0.2s, Draws extra spells 1]  >> as dormant
 
 --- UTILITIES ---
 
 WORKS NOW:
-- Wand Refresh — Recharges the gun on the spot [mana 20, d 0.05]
-- Blood Magic — Mana is nearly free and recharge is fast, but casting costs blood [mana 0, manaMul 0.15, rech -0.4, hp 4]
-- Blood To Power — Pays health for a big damage boost [mana 10, hp 8]
-- Long-Distance Cast — The shot starts well ahead of you [mana 4, d 0.02]
-- Teleporting Cast — The shot starts at the nearest enemy instead of at you [mana 26, d 0.04]
-- Warp Cast — The shot jumps forward the instant it is cast, stopped by walls [mana 12, d 0.02]
-- Spells To Giga Sawblades — Every shot of yours still in the air turns into a sawblade [mana 40, d 0.1]
+- Wand Refresh — Recharges the gun on the spot [Mana cost 20, Cast delay +0.05s]
+- Blood Magic — Mana is nearly free and recharge is fast, but casting costs blood [Mana cost 0, Mana cost ×0.15, Recharge time -0.4s, Costs health 4]
+- Blood To Power — Pays health for a big damage boost [Mana cost 10, Costs health 8]
+- Long-Distance Cast — The shot starts well ahead of you [Mana cost 4, Cast delay +0.02s]
+- Teleporting Cast — The shot starts at the nearest enemy instead of at you [Mana cost 26, Cast delay +0.04s]
+- Warp Cast — The shot jumps forward the instant it is cast, stopped by walls [Mana cost 12, Cast delay +0.02s]
+- Spells To Giga Sawblades — Every shot of yours still in the air turns into a sawblade [Mana cost 40, Cast delay +0.1s]
 
 COULD WORK:
-- Gold To Power — Spends some of your gold to make the shot hit harder [mana 10]  >> spends gold for damage
+- Gold To Power — Spends some of your gold to make the shot hit harder [Mana cost 10]  >> spends gold for damage
 
 ================ PERKS (32, 6 slots per player) ================
 Right now only the max-health part of a perk does anything in Auto.
 
 WORKS NOW:
-- Extra Health — 50 more maximum health, and it comes full. [hpAdd 50]
-- Glass Cannon — Two and a half times the damage, and half the health to spend. [dmg 2.5, hpMul 0.5]  >> only the half health; the damage boost does nothing yet
+- Extra Health — 50 more maximum health, and it comes full. [Max health +50]
+- Glass Cannon — Two and a half times the damage, and half the health to spend. [Damage ×2.5, Max health ×0.5]  >> only the half health; the damage boost does nothing yet
 
 COULD WORK:
-- Angry Ghost — A spirit trails you and fires at whatever is nearest. [ghost 1]  >> a spirit beside the player
-- Attract Gold — Coin flies to you from three times as far away. [goldPull 3]  >> gold already flies to the team
-- Bouncing Spells — Every shot bounces once more than it otherwise would. [bounce 1]  >> shots can bounce
-- Close Call — +40% critical chance while something is within 56 units of you. [close 1]
-- Concentrated Spells — A quarter more damage and half the spread, but a slower gun and a harder kick. [dmg 1.25, spread 0.5, delay 1.15, recoil 1.25]
-- Contact Damage — Anything that touches you is hurt by it. [contact 1]
-- Critical Hit + — +15% chance of a hit doing triple damage. [crit 0.15]  >> needs crits in the shot model
-- Extra Life — You get back up once, at full health, the first time you are killed. [lives 1]  >> one get-up per level
-- Extra Knockback on Spells — Half again the kick out of every shot — which the jetpack can work with. [recoil 1.5]  >> no gun kick in Auto: would shove creatures instead
-- Faster Levitation — A quarter more thrust out of the jetpack. [jet 1.25]  >> jet speed
-- Fire Immunity — Fire never catches on you: walk through flames, burning grass and your own fire spells unhurt. Blasts still hurt. [fireImm 1]  >> fire exists in levels
-- Faster Movement — Walk and fly a third faster. [walk 1.3]
-- Faster Projectiles — Everything you fire travels a quarter faster. [speed 1.25]
-- Faster Wands — Cast delay and recharge are three quarters of what they were. [delay 0.75, rech 0.75]
-- Greed — Every coin is worth double. [gold 2]
-- Homing Shots — Your shots bend towards whatever is nearest. [homing 3]  >> homing exists in the shot model
-- Invisibility — Creatures do not notice you until you are almost on top of them. [invis 1]  >> creatures notice later
+- Angry Ghost — A spirit trails you and fires at whatever is nearest. [Ghost helper]  >> a spirit beside the player
+- Attract Gold — Coin flies to you from three times as far away. [Gold pull range ×3]  >> gold already flies to the team
+- Bouncing Spells — Every shot bounces once more than it otherwise would. [Bounces +1]  >> shots can bounce
+- Close Call — +40% critical chance while something is within 56 units of you. [Close-call crits]
+- Concentrated Spells — A quarter more damage and half the spread, but a slower gun and a harder kick. [Damage ×1.25, Spread ×0.5, Cast delay ×1.15, Kick ×1.25]
+- Contact Damage — Anything that touches you is hurt by it. [Contact damage]
+- Critical Hit + — +15% chance of a hit doing triple damage. [Critical chance +15%]  >> needs crits in the shot model
+- Extra Life — You get back up once, at full health, the first time you are killed. [Extra lives 1]  >> one get-up per level
+- Extra Knockback on Spells — Half again the kick out of every shot — which the jetpack can work with. [Kick ×1.5]  >> no gun kick in Auto: would shove creatures instead
+- Faster Levitation — A quarter more thrust out of the jetpack. [Jet thrust ×1.25]  >> jet speed
+- Fire Immunity — Fire never catches on you: walk through flames, burning grass and your own fire spells unhurt. Blasts still hurt. [Fire immune]  >> fire exists in levels
+- Faster Movement — Walk and fly a third faster. [Walk and fly speed ×1.3]
+- Faster Projectiles — Everything you fire travels a quarter faster. [Speed ×1.25]
+- Faster Wands — Cast delay and recharge are three quarters of what they were. [Cast delay ×0.75, Recharge time ×0.75]
+- Greed — Every coin is worth double. [Gold value ×2]
+- Homing Shots — Your shots bend towards whatever is nearest. [Homing strength 3]  >> homing exists in the shot model
+- Invisibility — Creatures do not notice you until you are almost on top of them. [Invisible to creatures]  >> creatures notice later
 - Levitation Trail — Flying leaves a trail of fire behind you that burns what it touches.
-- Permanent Shield — A shield soaks the first hit and comes back a couple of seconds later. [shield 1]  >> your look: light-blue glow, flashes off on a hit, back when ready
-- Pinpointer — You aim at the nearest creature instead of by hand, with a sightline to it. [pinpointer 1, speed 1.2, spread 0.6]  >> aim is automatic already: could keep only the speed/spread part
-- Projectile Repulsion Field — Shots aimed at you are shoved aside before they arrive. [repel 1]
-- Unlimited Spells — Spells cost no mana at all. [mana 0]  >> guns have mana in Auto
-- Stronger Hearts — Anything that heals you heals half again as much. [heal 1.5]  >> only if Auto gets healing (vigour circles, hearts)
+- Permanent Shield — A shield soaks the first hit and comes back a couple of seconds later. [Shield]  >> your look: light-blue glow, flashes off on a hit, back when ready
+- Pinpointer — You aim at the nearest creature instead of by hand, with a sightline to it. [Aims for you, Speed ×1.2, Spread ×0.6]  >> aim is automatic already: could keep only the speed/spread part
+- Projectile Repulsion Field — Shots aimed at you are shoved aside before they arrive. [Pushes shots away]
+- Unlimited Spells — Spells cost no mana at all. [Mana cost ×0]  >> guns have mana in Auto
+- Stronger Hearts — Anything that heals you heals half again as much. [Healing ×1.5]  >> only if Auto gets healing (vigour circles, hearts)
 
 WOULDN'T WORK:
-- All-Seeing Eye — The whole floor is lit. No fog anywhere, on this floor or any other. [seeAll 1]  >> no fog in Auto
-- Enemy Radar — The nearest creatures are marked at the edge of the screen. [radarEnemy 1]  >> the screen shows everything near
-- Mini-map — A small map of what you have seen, over the gun buttons: you, creatures nearby, crystals and your pins. Tap it to zoom out. [minimap 1]  >> the level only scrolls one way
-- Item Radar — The nearest mod lying in the cave is marked at the edge of the screen. [radarItem 1]  >> items are vacuumed up
-- Tinker with Wands Everywhere — The mod screen works out in the cave, not only in the shop. [tinker 1]  >> the bag works everywhere already
-- Wand Radar — The nearest gun lying in the cave is marked at the edge of the screen. [radarWand 1]  >> no guns lying in the cave
-- Trajectory Sight — Shows where your next shot flies — the dotted aim line, mods and all. [trajectory 1]  >> no aim line: aim is automatic
+- All-Seeing Eye — The whole floor is lit. No fog anywhere, on this floor or any other. [No fog]  >> no fog in Auto
+- Enemy Radar — The nearest creatures are marked at the edge of the screen. [Enemy radar]  >> the screen shows everything near
+- Mini-map — A small map of what you have seen, over the gun buttons: you, creatures nearby, crystals and your pins. Tap it to zoom out. [Mini-map]  >> the level only scrolls one way
+- Item Radar — The nearest mod lying in the cave is marked at the edge of the screen. [Mod radar]  >> items are vacuumed up
+- Tinker with Wands Everywhere — The mod screen works out in the cave, not only in the shop. [Edit guns anywhere]  >> the bag works everywhere already
+- Wand Radar — The nearest gun lying in the cave is marked at the edge of the screen. [Gun radar]  >> no guns lying in the cave
+- Trajectory Sight — Shows where your next shot flies — the dotted aim line, mods and all. [Aim line]  >> no aim line: aim is automatic
 
 ================ EXO SUIT MODS (4 categories x tiers I–V, 5 slots each; they add up) ================
 
 Max Health: WORKS NOW
-  Max Health (hpAdd): I–V = 20 / 40 / 65 / 95 / 130
+  Max health by tier I–V: +20 / +40 / +65 / +95 / +130
 
 Movement Speed: COULD WORK  >> walk and jet speed
-  Movement Speed (walk): I–V = 1.08 / 1.16 / 1.25 / 1.35 / 1.5
+  Walk and fly speed by tier I–V: ×1.08 / ×1.16 / ×1.25 / ×1.35 / ×1.5
 
-Jetpack: WOULDN'T WORK (as is)  >> Auto's jetpack has no fuel: needs fuel added, or turn it into jet power
-  Jetpack Fuel (fuel): I–V = 1.15 / 1.3 / 1.5 / 1.75 / 2
-  Jetpack Recharge (refuel): I–V = 1.15 / 1.3 / 1.5 / 1.75 / 2
+Jetpack: WOULDN'T WORK  >> as is: Auto's jetpack has no fuel. Needs fuel added, or turn it into jet power
+  Jet fuel by tier I–V: ×1.15 / ×1.3 / ×1.5 / ×1.75 / ×2
+  Jet refill speed by tier I–V: ×1.15 / ×1.3 / ×1.5 / ×1.75 / ×2
 
-Carrot: COULD WORK (partly)  >> the camera is fixed and there's no torch or aim line; only "creatures notice you from further" fits
-  Carrot (carrot): I–V = 1 / 2 / 3 / 4 / 5
+Carrot: COULD WORK  >> partly: the camera is fixed and there's no torch or aim line; only "creatures notice you from further" fits
+  Carrot level by tier I–V: +1 / +2 / +3 / +4 / +5
 
-Not in Auto's exo suit (from the old game): Gold Vacuum (goldPull: 1.3 / 1.6 / 2 / 2.5 / 3).
+Not in Auto's exo suit (from the old game): Gold Vacuum (Gold pull range by tier I–V: ×1.3 / ×1.6 / ×2 / ×2.5 / ×3).
