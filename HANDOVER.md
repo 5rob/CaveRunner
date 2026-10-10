@@ -29,7 +29,9 @@ mock-up `docs/autobattler-mockup.png`). Progress: AUTOBATTLER.md's Log. `main` k
   
 - **Stage 6b part 1 done (v1.0.11, owner OK'd):** 11 blocked-zone kinds with varied shapes. Part 2 dropped by the owner
   (happy with the 11). 
-- **Stage 7 done (v1.0.12, owner OK'd):** LEVEL CLEARED. Next: stage 8, the context nav and the bag.
+- **Stage 7 done (v1.0.12, owner OK'd):** LEVEL CLEARED. 
+- **Stage 8a done (v1.0.13, owner OK'd):** the context nav, helmets, pixel icons, machine colours. Next: stage 8b,
+  dragging between the bag and the slots (grab radius, cards).
 
 ## NEXT (as of v0.0.176, 2026-10-09)
 

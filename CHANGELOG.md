@@ -5,6 +5,17 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.13 — CaveRunner Auto: the context nav (branch `autobattler`, stage 8a)
+Released 2026-10-10 on the branch (owner OK'd after four rounds, `tools/navshots.js`).
+- The row above the bag (`auto/nav.js`, `NavRow`): players → a player's Guns / Exo suit / Perks / Stats → his 4
+  guns → a gun's mod slots (scrolls sideways); Exo suit → its 4 kinds → 5 slots; Perks → 6 slots; Stats a placeholder
+  (stage 9). B goes back one level. Works in the hub and in levels without pausing.
+- Owner rounds: players are their own helmets (`helmetIcon`, the scene's pixel filter); themed pixel icons, not emoji
+  (`ui/auto/icons.js` `PixIcon`: menu, exo kinds, the bag's exo mods); Guns/Exo/Perks and their rows in their
+  machines' colours (a gun's mods: the mod machine's red), the player's menu in his colour; gun circles in the gun's
+  colour; item glyphs (`GlyphIcon`) centred by their painted pixels, filling the tile inside a padding, pixelated, no
+  glow. Suites `auto-nav`, `auto-screen`.
+
 ## v1.0.12 — CaveRunner Auto: LEVEL CLEARED (branch `autobattler`, stage 7)
 Released 2026-10-10 on the branch (owner OK'd the frames, `tools/clearedshots.js`).
 - A level phase `cleared` between the arena and the walk out: once the boss's loot is in (or `autoClearWait` s),
