@@ -586,15 +586,21 @@ export function titleScene(vh, seed = 7, top = vh * 0.3, bot = vh * 0.62, opts =
   // four players, spread along the left side, each on its own clock (S.runner: player 1)
   for (let i = 0, n = Math.max(1, Math.min(TITLE_RUNNERS, opts.runners || TITLE_RUNNERS)); i < n; i++) {
     const x = 18 + i * 30, y = titleSurf(S, x + PW / 2, (top + bot) / 2, 1) - PH;
-    S.runners.push({ x, y, vx: 0, vy: 0, face: 1, ang: 0, cd: 0.5 + i * 0.2, kit: titleKit(rnd), flame: 0, id: i, col: TITLE_COLS[i],
-      mode: 'run', modeT: runTime(rnd), tx: x, ty: y, retarget: 0, gait: i * 1.7, ground: true, swapT: 2 + i * 1.2 + rnd() * 2, swap: 0, wvx: 0, wvy: 0,
-      dig: 0, clearT: 0, keep: null, dx: 1, dy: 0, digY: 0, sawT: 0, switches: [],
-      bursty: [0.75, 0.15, 0.5, 0.3][i], burst: false, jet: false, jetT: 0, jetCd: 0, pace: 0.75 + rnd() * 0.5, spd: 1,
-      nav: { F: null, fx: 0, fy: 0, t: -9 } });
+    S.runners.push(titleRunner(S, i, x, y));
   }
   S.runner = S.runners[0];
   if (!hub) for (let i = 0; i < 6; i++) addFoe(S, 130 + rnd() * 90);
   return S;
+}
+// one runner (player i, 0-3) at x, y: titleScene's, and CaveRunner Auto's player added mid-scene (auto/addrunner.js)
+/** @param {TitleScene} S @param {number} i @param {number} x @param {number} y @returns {TRunner} */
+export function titleRunner(S, i, x, y) {
+  const rnd = S.rnd;
+  return { x, y, vx: 0, vy: 0, face: 1, ang: 0, cd: 0.5 + i * 0.2, kit: titleKit(rnd), flame: 0, id: i, col: TITLE_COLS[i],
+    mode: 'run', modeT: runTime(rnd), tx: x, ty: y, retarget: 0, gait: i * 1.7, ground: true, swapT: 2 + i * 1.2 + rnd() * 2, swap: 0, wvx: 0, wvy: 0,
+    dig: 0, clearT: 0, keep: null, dx: 1, dy: 0, digY: 0, sawT: 0, switches: [],
+    bursty: [0.75, 0.15, 0.5, 0.3][i], burst: false, jet: false, jetT: 0, jetCd: 0, pace: 0.75 + rnd() * 0.5, spd: 1,
+    nav: { F: null, fx: 0, fy: 0, t: -9 } };
 }
 // the terrain is made this far past the screen's right edge (v0.0.170: was 40, and a rat swarm coming in
 // at the edge spread past it, into what wasn't made yet, and sank into the rock)
@@ -1422,7 +1428,7 @@ function stepRunnerGun(S, r, dt) {
 
 // a lightning arc from one point to another (drawn with the game's drawBolt)
 /** @param {TitleScene} S @param {number} x0 @param {number} y0 @param {number} x1 @param {number} y1 @param {string} col */
-function zapArc(S, x0, y0, x1, y1, col) {
+export function zapArc(S, x0, y0, x1, y1, col) {
   const R = S.rnd, pts = [{ x: x0, y: y0 }];
   for (let i = 1; i < 7; i++) { const k = i / 7; pts.push({ x: x0 + (x1 - x0) * k + (R() - 0.5) * 9, y: y0 + (y1 - y0) * k + (R() - 0.5) * 9 }); }
   pts.push({ x: x1, y: y1 });

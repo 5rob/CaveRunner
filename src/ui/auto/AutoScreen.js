@@ -27,7 +27,7 @@ import { levelBoss } from '../../auto/enemies.js';
 import { MODS, famCol } from '../../spells/mods.js';
 import { HUB_MACHINES } from '../../auto/hub.js';
 import { PERKS, STAT_PERKS } from '../../data/perks.js';
-import { BAG_SLOTS, EXO_STATS, MAX_PLAYERS, bagAdd, fitExo, fitGun, fitMod, fitPerk, healRun, levelCleared, levelFailed, levelSeed, newRun,
+import { BAG_SLOTS, EXO_STATS, MAX_PLAYERS, addPlayer, bagAdd, fitExo, fitGun, fitMod, fitPerk, healRun, levelCleared, levelFailed, levelSeed, newRun,
   scrapAt, setActive, spend, unfitExo, unfitMod, unfitPerk } from '../../auto/run.js';
 import { loadAutoRun, saveAutoRun } from '../../auto/save.js';
 import { EXO_NAMES, arcPick, gunArc, navBack, navOpen, navRow, navStart } from '../../auto/nav.js';
@@ -38,6 +38,7 @@ import { GlyphIcon, HelmetIcon, PixIcon } from './icons.js';
 import { PauseMenu } from '../pause.js';
 import { runScene } from '../scenecanvas.js';
 import { leaveItem } from '../../art/titlescene.js';
+import { sceneAddRunner } from '../../auto/addrunner.js';
 import { bagFits, lootCol } from '../../auto/loot.js';
 import { h, useEffect, useRef, useState } from '../h.js';
 
@@ -133,6 +134,7 @@ export function AutoScreen() {
         // the hub: the strip, the players teleporting in, the camera on player 1
         const S = hubScene(vh, seed, run.players.length, run.tier, run.paid || (run.paid = {}));
         scene.current = S;
+        if (window.__TEST_TITLE) window.__autoHub = S;   // tests and shot scripts reach the hub (stage 12)
         // stage 10b: the machines' payouts fly into the bag (titlescene.js stepLoot); the bag full, they wait on the floor
         if (S.hub) { S.hub.fits = (_S, it) => bagFits(run, it); S.hub.take = (_S, it) => { if (bagAdd(run, it)) return false; saveAutoRun(run); setV(v => v + 1); return true; }; }
         const C = titleCam(vh / 2, vh);
@@ -300,12 +302,19 @@ export function AutoScreen() {
       while (trail.length > 2 && now - trail[0].t > 100) trail.shift();
       if (Math.hypot(fx - sx, fy - sy) > 6) { sx = fx; sy = fy; stillAt = now; }
       if (mode === 'press' && Math.hypot(fx - x0, fy - y0) > MOVE) { mode = 'swipe'; SFX.unlock(); }
+      // stage 12: a green gem over an empty player circle stops being a throw: it's a drag (the ghost, the circle lit, drop)
+      if (kind === 'green' && !lump && (mode === 'press' || mode === 'swipe')) {
+        const at = dropAt(src, fx, fy);
+        if (at && at.to === 'player' && at.ok) { mode = 'drag'; p.drag = true; clearTimeout(lift); SFX.ui('tap'); }
+      }
+      if (mode === 'drag') { setDrag({ src, x: fx, y: fy, over: dropAt(src, fx, fy), back: false }); return; }
       if (lump) { const w = world(fx, fy); lump.x = w.x; lump.y = w.y; }
     };
     /** @param {any} ev */
     const up = ev => {
       if (ev.pointerId !== id) return;
       finish();
+      if (mode === 'drag') { drop(src, ev.clientX, ev.clientY, p); return; }
       if (lump) { const w = world(ev.clientX, ev.clientY); lump.x = w.x; lump.y = w.y; lump.held = false; lump.vx = 0; lump.vy = 0; return; }
       if (mode === 'swipe') {
         fx = ev.clientX; fy = ev.clientY;
@@ -319,7 +328,7 @@ export function AutoScreen() {
   const dropAt = (src, x, y) => {
     const el = document.elementFromPoint(x, y);
     /** @type {HTMLElement | null} */
-    const t = el && el.closest('[data-nslot],[data-gslot],.abag,.aplay');
+    const t = el && el.closest('[data-nslot],[data-gslot],[data-pslot],.abag,.aplay');
     const it = srcItem(src), n = navRef.current;
     if (!t || !it) return null;
     // stage 9: a bag item onto the gold stack scraps it
@@ -337,6 +346,8 @@ export function AutoScreen() {
         (n.level === 'perks' && it.kind === 'perk' && !!it.id && !!PERKS[it.id] && !PERKS[it.id].stat));
       return { key: 'n' + s, to: 'nav', s, ok };
     }
+    // stage 12: a green gem onto an empty player circle: a new player
+    if (t.dataset.pslot !== undefined) return { key: 'p' + t.dataset.pslot, to: 'player', s: Number(t.dataset.pslot), ok: src.from === 'bag' && it.kind === 'green' && run.players.length < MAX_PLAYERS };
     if (t.dataset.gslot !== undefined) {
       const s = Number(t.dataset.gslot);
       return { key: 'g' + s, to: 'gun', s, ok: src.from === 'bag' && n.level === 'guns' && it.kind === 'gun' };
@@ -367,6 +378,10 @@ export function AutoScreen() {
           setTimeout(() => setBurst(b => b && b.k === k ? null : b), 900);
           SFX.ui('coin');
         }
+      } else if (src.from === 'bag' && at.to === 'player') {
+        const pl = addPlayer(run);
+        done = !!pl;
+        if (pl && scene.current) sceneAddRunner(scene.current);
       } else if (src.from === 'bag' && at.to === 'gun') done = fitGun(run, src.i, n.p, at.s);
       else if (src.from === 'nav' && at.to === 'bag') {
         if (n.level === 'gun') done = unfitMod(run, n.p, n.g, src.i);
@@ -524,7 +539,7 @@ function NavRow({ row, level, open, down, drag, holdHelm, meters }) {
         style: itemEdge(it), 'data-nslot': i, onPointerDown: it ? grab : undefined },
         it ? h(ItemIcon, { it }) : null, it ? h(Grab) : null);
     }
-    const cls = 'anavc' + (c.dim ? ' locked' : ' on') + (c.sel ? ' sel' : '') + (c.gun ? ' gun' : '') + (over === 'g' + i ? ' drop' : '');
+    const cls = 'anavc' + (c.dim ? ' locked' : ' on') + (c.sel ? ' sel' : '') + (c.gun ? ' gun' : '') + (over === 'g' + i || over === 'p' + i ? ' drop' : '');
     const style = c.col && !c.dim ? { borderColor: c.col, boxShadow: '0 0 10px ' + (c.glow || c.col + '66') } : undefined;
     let inner = null;
     if (c.gun) inner = h(GunIcon, { gun: c.gun });
@@ -532,7 +547,7 @@ function NavRow({ row, level, open, down, drag, holdHelm, meters }) {
     else if (c.icon) inner = h(PixIcon, { id: c.icon, size: 20, tint: level === 'exo' ? HUB_MACHINES.exo.hue : undefined });      // themed pixel icons, not emoji (owner)
     else if (c.glyph) inner = h('span', { className: 'anavg' }, c.glyph);
     else if (c.label) inner = h('span', { className: 'anavp', style: { background: c.col } }, c.label);
-    return h('div', { key: c.key, className: cls, 'data-player': level === 'players' ? i : undefined, 'data-open': c.open, 'data-gslot': level === 'guns' ? i : undefined,
+    return h('div', { key: c.key, className: cls, 'data-player': level === 'players' ? i : undefined, 'data-open': c.open, 'data-gslot': level === 'guns' ? i : undefined, 'data-pslot': level === 'players' && !c.helm ? i : undefined,
       title: c.glyph ? c.label : undefined, style, onPointerDown: c.helm && level === 'players' ? hold : go }, inner);
   };
   return h('div', { className: 'anav l-' + level + (row.shape === 'slots' ? ' slots' : ''), 'data-level': level,
@@ -571,7 +586,7 @@ function ItemIcon({ it }) {
 
 // ---- stage 8b: drag and drop, the cards ----
 /** @typedef {{ from: 'bag' | 'nav', i: number }} DragSrc */
-/** @typedef {{ key: string, to: 'nav' | 'gun' | 'bag' | 'scrap' | 'play', s: number, ok: boolean }} DropAt */
+/** @typedef {{ key: string, to: 'nav' | 'gun' | 'bag' | 'scrap' | 'play' | 'player', s: number, ok: boolean }} DropAt */
 /** @typedef {{ src: DragSrc, x: number, y: number, over: DropAt | null, back: boolean }} Drag */
 /** @typedef {{ id: number, x0: number, y0: number, src: DragSrc, grab: boolean, drag: boolean }} Press */
 // a press moving this far (px) is a drag (on the handle) or not a tap
