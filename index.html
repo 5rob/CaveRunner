@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v1.0.30</title>
-<!-- VERSION = 'v1000030' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v1.0.31</title>
+<!-- VERSION = 'v1000031' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -1057,7 +1057,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v1.0.30';</script>
+<script>const VERSION = 'v1.0.31';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -1983,8 +1983,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "autoBossDmg", g: "autofoes", label: "Boss damage (× a normal one)", min: 0.5, max: 10, step: 0.25 }
   );
   DEV_GROUPS.push(["autofoes", "Auto: enemies"]);
-  Object.assign(DEV_DEFAULTS, { autoJetTilt: 1, autoJetSmoke: 1, autoDeathStop: 1.5, autoTpBlink: 1, autoTpBoomWait: 0.6, autoTpBoomR: 60 });
+  Object.assign(DEV_DEFAULTS, { autoJetK: 0.55, autoJetTilt: 1, autoJetSmoke: 1, autoDeathStop: 1.5, autoTpBlink: 1, autoTpBoomWait: 0.6, autoTpBoomR: 60 });
   DEV_META.push(
+    { k: "autoJetK", g: "autodeath", label: "Jetpack strength (× the old game’s climb, sideways jet speed and push; hub and steering)", min: 0.2, max: 1.5, step: 0.05 },
     { k: "autoJetTilt", g: "autodeath", label: "Jet flame: the autopilot’s tilt with its speed across (at most)", min: 0, max: 1.5, step: 0.05 },
     { k: "autoJetSmoke", g: "autodeath", label: "Jet smoke (× the old game’s rate)", min: 0, max: 3, step: 0.05 },
     { k: "autoDeathStop", g: "autodeath", label: "All fallen: the scroll eases to a stop over (s)", min: 0.1, max: 6, step: 0.1 },
@@ -12562,7 +12563,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   var jetLift = (ny, m) => {
     const up = Math.max(0, -ny) * m;
-    return -up * JET + (1 - up) * JET_SINK;
+    return -up * JET * DEV.autoJetK + (1 - up) * JET_SINK;
   };
   var jetThrottle = (ny, m) => Math.max(0.15, Math.max(0, -ny) * m);
   var JET_SINK = 110;
@@ -12570,9 +12571,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const m = st.active && st.mag > DEAD ? (st.mag - DEAD) / (1 - DEAD) : 0, jet = m > 0 && st.ny < 0, mv = DEV.move;
     r.cvx = r.cvx || 0;
     if (jet) {
-      r.cvx = approach(r.cvx, st.nx * m * JET * mv, JET_ACC * dt);
+      r.cvx = approach(r.cvx, st.nx * m * JET * DEV.autoJetK * mv, JET_ACC * DEV.autoJetK * dt);
       const ty = jetLift(st.ny, m) * mv;
-      r.vy = ty < r.vy ? ty : approach(r.vy, ty, JET_ACC * dt);
+      r.vy = ty < r.vy ? approach(r.vy, ty, JET_ACC * DEV.autoJetK * 2 * dt) : approach(r.vy, ty, JET_ACC * DEV.autoJetK * dt);
     } else {
       r.cvx = approach(r.cvx, m > 0 ? st.nx * m * WALK * mv : 0, (r.ground ? GROUND_ACC : AIR_ACC) * dt);
       r.vy = Math.min(r.vy + GRAVITY * dt, 900);
@@ -14683,9 +14684,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (!L || !H.arrived[0]) return;
     const st = H.stick, m = push(st), jet = m > 0 && st.dy < 0, mv = DEV.move;
     if (jet) {
-      L.vx = approach(L.vx, st.nx * m * JET * mv, JET_ACC * dt);
+      L.vx = approach(L.vx, st.nx * m * JET * DEV.autoJetK * mv, JET_ACC * DEV.autoJetK * dt);
       const ty = jetLift(st.ny, m) * mv;
-      L.vy = ty < L.vy ? ty : approach(L.vy, ty, JET_ACC * dt);
+      L.vy = ty < L.vy ? approach(L.vy, ty, JET_ACC * DEV.autoJetK * 2 * dt) : approach(L.vy, ty, JET_ACC * DEV.autoJetK * dt);
     } else {
       L.vx = approach(L.vx, m > 0 ? st.nx * m * WALK * mv : 0, (L.ground ? GROUND_ACC : AIR_ACC) * dt);
       L.vy = Math.min(L.vy + GRAVITY * dt, 900);

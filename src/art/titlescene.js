@@ -1282,7 +1282,7 @@ function separate(S, dt) {
 // (owner, feedback round 2) the jet's lift by how far up the stick is: full up, the old game's climb (P_JET); lowered
 // toward level it eases off until he sinks (JET_SINK at level), so lowering the stick lowers the thrust; and the flame
 /** the vertical speed aimed for (down +) @param {number} ny the stick's way, up − @param {number} m its push 0..1 */
-export const jetLift = (ny, m) => { const up = Math.max(0, -ny) * m; return -up * P_JET + (1 - up) * JET_SINK; };
+export const jetLift = (ny, m) => { const up = Math.max(0, -ny) * m; return -up * P_JET * DEV.autoJetK + (1 - up) * JET_SINK; };   // (× autoJetK: owner, "way too fast and strong")
 /** the flame, 0..1 @param {number} ny @param {number} m */
 export const jetThrottle = (ny, m) => Math.max(0.15, Math.max(0, -ny) * m);
 export const JET_SINK = 110;
@@ -1295,9 +1295,9 @@ function ctlStep(S, r, st, dt) {
   const m = st.active && st.mag > DEAD ? (st.mag - DEAD) / (1 - DEAD) : 0, jet = m > 0 && st.ny < 0, mv = DEV.move;
   r.cvx = r.cvx || 0;
   if (jet) {
-    r.cvx = approach(r.cvx, st.nx * m * P_JET * mv, JET_ACC * dt);
+    r.cvx = approach(r.cvx, st.nx * m * P_JET * DEV.autoJetK * mv, JET_ACC * DEV.autoJetK * dt);
     const ty = jetLift(st.ny, m) * mv;   // (feedback round 2: lowering the stick lowers the thrust)
-    r.vy = ty < r.vy ? ty : approach(r.vy, ty, JET_ACC * dt);
+    r.vy = ty < r.vy ? approach(r.vy, ty, JET_ACC * DEV.autoJetK * 2 * dt) : approach(r.vy, ty, JET_ACC * DEV.autoJetK * dt);
   } else {
     r.cvx = approach(r.cvx, m > 0 ? st.nx * m * WALK * mv : 0, (r.ground ? GROUND_ACC : AIR_ACC) * dt);
     r.vy = Math.min(r.vy + GRAVITY * dt, 900);

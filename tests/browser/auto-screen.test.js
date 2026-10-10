@@ -71,7 +71,8 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   const x1 = await page.evaluate(() => window.__title.S.runners[0].x);
   const kn = await page.$eval('.apillknob', k => k.style.transform);
   check('dragging the pill right runs the leader right, the knob follows', x1 > x0 + 20 && parseFloat(kn.replace('translate(', '')) > 10, [x0, x1, kn]);
-  await page.mouse.move(box.x + box.width - 4, box.y + 2, { steps: 3 });
+  // (feedback round 2: the lift goes with how far up the stick is; a mostly sideways push sinks) up and a little right
+  await page.mouse.move(box.x + box.width / 2 + 25, box.y - 45, { steps: 3 });
   let air = false;
   for (let i = 0; i < 20 && !air; i++) { await page.waitForTimeout(50); air = await page.evaluate(() => { const S = window.__title.S, r = S.runners[0]; return !r.ground && r.y + 18 < hubState(S).fy - 4; }); }
   check('pushed up: he jets off the floor', air);

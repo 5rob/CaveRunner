@@ -200,9 +200,9 @@ function hubMove(S, H, dt) {
   if (!L || !H.arrived[0]) return;
   const st = H.stick, m = push(st), jet = m > 0 && st.dy < 0, mv = DEV.move;
   if (jet) {
-    L.vx = approach(L.vx, st.nx * m * JET * mv, JET_ACC * dt);
+    L.vx = approach(L.vx, st.nx * m * JET * DEV.autoJetK * mv, JET_ACC * DEV.autoJetK * dt);
     const ty = jetLift(st.ny, m) * mv;
-    L.vy = ty < L.vy ? ty : approach(L.vy, ty, JET_ACC * dt);
+    L.vy = ty < L.vy ? approach(L.vy, ty, JET_ACC * DEV.autoJetK * 2 * dt) : approach(L.vy, ty, JET_ACC * DEV.autoJetK * dt);
   } else {
     L.vx = approach(L.vx, m > 0 ? st.nx * m * WALK * mv : 0, (L.ground ? GROUND_ACC : AIR_ACC) * dt);
     L.vy = Math.min(L.vy + GRAVITY * dt, 900);

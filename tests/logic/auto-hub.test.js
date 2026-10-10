@@ -162,7 +162,7 @@ check('the old shop\'s spacing, room height and way-in margin', G.HUB_GAP === G.
   check('level: an autopilot player going right through the world (keeping pace on screen): the flame leans back', G.titleFlameDir(R0).fx < -0.2, G.titleFlameDir(R0));
 }
 
-check('jet: lowering the stick lowers the thrust (full up climbs at JET, level sinks, the flame drops)', G.jetLift(-1, 1) === -G.JET && G.jetLift(-0.5, 1) > G.jetLift(-1, 1) && G.jetLift(-0.05, 1) > 0 && G.jetThrottle(-0.3, 1) < G.jetThrottle(-1, 1), [G.jetLift(-1, 1), G.jetLift(-0.5, 1), G.jetLift(-0.05, 1)]);
+check('jet: lowering the stick lowers the thrust (full up climbs at JET, level sinks, the flame drops)', Math.abs(G.jetLift(-1, 1) + G.JET * G.DEV.autoJetK) < 1e-9 && G.jetLift(-0.5, 1) > G.jetLift(-1, 1) && G.jetLift(-0.05, 1) > 0 && G.jetThrottle(-0.3, 1) < G.jetThrottle(-1, 1), [G.jetLift(-1, 1), G.jetLift(-0.5, 1), G.jetLift(-0.05, 1)]);
 
 console.log(fails ? fails + ' FAILED' : 'all passed');
 process.exit(fails ? 1 : 0);

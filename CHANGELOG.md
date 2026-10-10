@@ -5,6 +5,11 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.31 — CaveRunner Auto: a gentler jetpack (branch `autobattler`)
+Released 2026-10-11 on the branch (owner: "the jetpack feels way too fast and strong").
+- New knob `autoJetK` (0.55, Dev → Auto → "Auto: jetpack and death"): × the old game's climb (`jetLift`), sideways jet speed and
+  push (`JET_ACC`), in the hub and for a steered player; a climb no longer snaps up instantly (twice the push instead).
+
 ## v1.0.30 — CaveRunner Auto: feedback round 2, sixth batch (branch `autobattler`)
 Released 2026-10-11 on the branch (owner OK'd; shots `tools/roamshots.js`).
 - B at the player row hides the nav (the rows slide out, the slot closes); a tap on the play area brings it back
