@@ -9,12 +9,15 @@
 // the level from there). The nav and B do nothing yet (later stages). In a level, rock in the way that no gun in play
 // can clear (auto/clear.js, stage 5b) stops the team and pulses a "Path blocked" hint over the play area. The arena's boss
 // (auto/enemies.js, stage 6) shows its health bar over the top of the play area; every player fallen takes the team home.
+// The boss's loot vacuumed, LEVEL CLEARED drops in over the play area (stage 7, art/cleared.js, runScene's over).
 
 import { SFX } from '../../audio/sfx.js';
 import { TITLE_VW, titleCam } from '../../art/titlescene.js';
 import { DEAD } from '../../core/consts.js';
 import { HUB_W, hubExit, hubLeft, hubScene, hubStick, hubStopX } from '../../auto/hub.js';
-import { levelDone, levelHold, levelLost, levelScene, levelState } from '../../auto/level.js';
+import { levelClearedAge, levelDone, levelHold, levelLost, levelScene, levelState } from '../../auto/level.js';
+import { clearedText } from '../../art/cleared.js';
+import { DEV } from '../../dev/knobs.js';
 import { levelBoss } from '../../auto/enemies.js';
 import { MODS } from '../../spells/mods.js';
 import { PERKS, STAT_PERKS } from '../../data/perks.js';
@@ -90,6 +93,8 @@ export function AutoScreen() {
         return { S, C, warm: 0 };
       },
       paused: () => pausedRef.current,
+      // LEVEL CLEARED (stage 7), in the upper part of the play area
+      over: (ctx, S, w, hh) => { const a = levelClearedAge(S); if (a >= 0) clearedText(ctx, a, DEV.autoClearT, w, hh * 0.14); },
       // through the exit pad: to the level; the level's exit pad: home, tier + 1, healed (saved); everyone fallen: home, same tier
       next: S => {
         if (where.current === 'hub' && hubLeft(S)) { where.current = 'level'; return true; }

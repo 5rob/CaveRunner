@@ -5,7 +5,7 @@
 // solid rock. The team teleports in on the start pad (the hub's charge, flash and lightning: auto/hub.js hubArriveT),
 // then runs, flies and saws as on the menu while the cave scrolls under it at the pilot's pace (auto/pilot.js:
 // S.pace). It stops in the arena until the boss is dead (stage 6; for now DEV.autoLvlBossT or L.bossDead), then
-// heads to the exit pad, where the team gathers on the pad and stops (levelDone: stage 4b teleports it to the hub).
+// shows LEVEL CLEARED once the boss's loot is vacuumed (stage 7, phase 'cleared'), heads to the exit pad, where the team gathers on the pad and stops (levelDone: stage 4b teleports it to the hub).
 // The painter is game/render/leveldraw.js.
 
 import { PH, PW } from '../core/consts.js';
@@ -19,6 +19,7 @@ import { blockCell, blockCol, blockKind, planBlocks, webSlow } from './blocked.j
 import { elitePlan, levelFoes, levelHurt } from './enemies.js';
 import { bagFits, killLoot, lootCol } from './loot.js';
 import { bagAdd } from './run.js';
+import { CLEARED_N, clearedLand } from '../art/cleared.js';
 
 export const LVL_SCROLL = 34;         // the menu's scroll (world units / s at pace 1: titlescene.js SCROLL)
 export const LVL_PADX = 60;           // the start pad's middle (world x; on screen at the start)
@@ -62,14 +63,14 @@ export function levelPlan(seed, minutes = DEV.autoLvlMin, blocks = DEV.autoBlock
 }
 
 // LevelState: the plan; phase: 'arrive' (teleporting in), 'run' (to the arena), 'arena' (stopped till the boss is dead),
-// 'out' (to the exit pad), 'exit' (gathered on it); arrived per player, zap (when someone last came through), arenaT
+// 'cleared' (stage 7: still stopped; lootT when the boss died, clearT when LEVEL CLEARED began (-1: waiting for its loot), 'out' (to the exit pad), 'exit' (gathered on it); arrived per player, zap (when someone last came through), arenaT
 // (when it got there), bossDead; hold (the stick's sideways push, -1 to 1), elites and chests (stage 6, 11: world x), pace (S.pace);
 // blocked (stage 5b): rock in the way and no gun in play can clear it (the pilot stops the team; the screen's "Path blocked");
 // boss (stage 6: the arena's boss once it's in), failed (every player fallen: the screen takes the team home);
 // run (stage 6 part 2: the drops go into its bag; none: they're just taken), bagV (+1 each time something goes in: the screen redraws the bag)
 /** @typedef {{ plan: LevelPlan, phase: string, arrived: boolean[], zap: number, goT: number, arenaT: number, bossDead: boolean, hold: number,
  *   elites: import('./enemies.js').LevelFoe[], chests: { x: number, open?: boolean }[], doneT: number, meters: PlayerMeters[], blocked: boolean,
- *   boss: Enemy | null, failed: boolean, run?: AutoRun | null, bagV: number, blockKind?: string, webK?: number, webT?: number }} LevelState */
+ *   boss: Enemy | null, failed: boolean, run?: AutoRun | null, bagV: number, blockKind?: string, webK?: number, webT?: number, lootT?: number, clearT?: number }} LevelState */
 // (blockKind: what the block is, rock / web / timber (stage 6b); webK: the team's pace through webs (1 free, auto/blocked.js webSlow); webT: the next cut)
 /** @param {import('../art/titlescene.js').TitleScene} S @returns {LevelState | null} */
 export const levelState = S => (S.lvl && S.lvl.data) || null;
@@ -171,7 +172,8 @@ export function levelStep(S, dt) {
   const stop = stopAt(L);
   if (L.phase !== 'exit' && levelTeamX(S) > stop) S.scroll = stop - LVL_TEAM;
   if (L.phase === 'run' && levelTeamX(S) >= stop - 0.5) { L.phase = 'arena'; L.arenaT = S.t; }
-  if (L.phase === 'arena' && (L.bossDead || S.t - L.arenaT >= DEV.autoLvlBossT)) { L.bossDead = true; L.phase = 'out'; }   // (the timeout: a fallback, a boss out of reach)
+  if (L.phase === 'arena' && (L.bossDead || S.t - L.arenaT >= DEV.autoLvlBossT)) { L.bossDead = true; L.phase = 'cleared'; L.lootT = S.t; L.clearT = -1; }   // (the timeout: a fallback, a boss out of reach)
+  if (L.phase === 'cleared') { S.pace = 0; cleared(S, L, dt); return; }
   if (L.phase === 'out' && levelTeamX(S) >= stop - 0.5) { L.phase = 'exit'; S.still = true; }
   if (L.phase === 'exit') { S.pace = 0; gather(S, L, dt); return; }
   if (L.phase === 'arena') { S.pace = 0; return; }
@@ -192,6 +194,26 @@ export function levelStep(S, dt) {
   if (L.blocked && S.team && teamClearer(S.team, L.blockKind || 'rock', 0)) L.blocked = false;
   const want = L.webK * pilotPace({ x: levelTeamX(S), stopX: stop, elites: L.elites, chests: L.chests, hold: L.hold, blocked: L.blocked });
   S.pace = pilotEase(S.pace || 0, want, dt);
+}
+
+// LEVEL CLEARED (stage 7): the boss's loot vacuumed (S.loot and S.coins empty; at most DEV.autoClearWait s, as a full bag
+// leaves loot lying), then the words (art/cleared.js) for DEV.autoClearT s, a thud at each letter's landing; then on to the exit
+/** @param {import('../art/titlescene.js').TitleScene} S @param {LevelState} L @param {number} dt */
+function cleared(S, L, dt) {
+  if ((L.clearT ?? -1) < 0) {
+    const left = (S.loot ? S.loot.length : 0) + S.coins.length;
+    if (left === 0 || S.t - (L.lootT ?? S.t) >= DEV.autoClearWait) L.clearT = S.t;
+    return;
+  }
+  const a = S.t - (L.clearT ?? S.t), a0 = a - dt, cx = levelTeamX(S), cy = S.top + 30;
+  for (let i = 0; i < CLEARED_N; i++) { const lt = clearedLand(i); if (a0 < lt && a >= lt) S.snd.push({ k: 'land', x: cx, y: cy, a: 160 }); }
+  if (a >= DEV.autoClearT) L.phase = 'out';
+}
+// LEVEL CLEARED's age (s) while it shows, else -1 (the painter: ui/auto/AutoScreen.js)
+/** @param {import('../art/titlescene.js').TitleScene} S */
+export function levelClearedAge(S) {
+  const L = levelState(S);
+  return L && L.phase === 'cleared' && (L.clearT ?? -1) >= 0 ? S.t - (L.clearT ?? 0) : -1;
 }
 
 // At the exit: the saws put away, everyone down on the floor and walking onto the pad, side by side

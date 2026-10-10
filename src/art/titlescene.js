@@ -1866,22 +1866,9 @@ export function titleText(ctx, t, cw, top) {
     [...s].forEach((c, i) => {
       const n = li * 4 + i;
       const bob = Math.sin(t * 3.2 + n * 0.7) * px * 0.45, cx = x, cy = y + bob;
-      // extrusion: dark layers down-right
-      for (let d = Math.ceil(px * 0.9); d > 0; d--) {
-        ctx.fillStyle = d > px * 0.45 ? '#2a0610' : '#6a1220';
-        pixText(ctx, c, cx + d * 0.5, cy + d, px, ph, 1, 8);
-      }
-      // the face: yellow to orange to red down the letter, with a glow
-      const g = ctx.createLinearGradient(0, cy - 7 * ph, 0, cy);
-      g.addColorStop(0, '#fff6b0'); g.addColorStop(0.35, '#ffd23a'); g.addColorStop(0.7, '#ff8a1f'); g.addColorStop(1, '#e8361a');
-      ctx.shadowColor = 'rgba(255,140,40,0.9)'; ctx.shadowBlur = px * 2.2;
-      ctx.fillStyle = g;
-      pixText(ctx, c, cx, cy, px, ph, 1, 8);
-      ctx.shadowBlur = 0;
       // the shine: a white band sweeping across the whole title
       const lx = (cx + pixWidth(c, px, 1) / 2) / cw;
-      const sh = 1 - Math.abs(lx - shine) * 5;
-      if (sh > 0) { ctx.globalAlpha = sh * 0.8; ctx.fillStyle = '#ffffff'; pixText(ctx, c, cx, cy, px, ph, 1, 8); ctx.globalAlpha = 1; }
+      titleLetter(ctx, c, cx, cy, px, 1 - Math.abs(lx - shine) * 5);
       x += pixWidth(c, px, 1) + (1) * px;
     });
     y += 7 * ph + Math.ceil(px * 2.2);
@@ -1897,6 +1884,24 @@ export function titleText(ctx, t, cw, top) {
   ctx.shadowBlur = 0;
   if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
   ctx.textAlign = 'start';
+}
+// One letter in the title's look (titleText; the auto level's LEVEL CLEARED, art/cleared.js): a deep extrusion
+// down-right, the face yellow to orange to red down the letter with a glow, and sh (0-1; none at or below 0) of the
+// white shine over it. (cx, cy) its baseline's left, px its pixel size
+/** @param {CanvasRenderingContext2D} ctx @param {string} c @param {number} cx @param {number} cy @param {number} px @param {number} sh */
+export function titleLetter(ctx, c, cx, cy, px, sh) {
+  const ph = px;
+  for (let d = Math.ceil(px * 0.9); d > 0; d--) {
+    ctx.fillStyle = d > px * 0.45 ? '#2a0610' : '#6a1220';
+    pixText(ctx, c, cx + d * 0.5, cy + d, px, ph, 1, 8);
+  }
+  const g = ctx.createLinearGradient(0, cy - 7 * ph, 0, cy);
+  g.addColorStop(0, '#fff6b0'); g.addColorStop(0.35, '#ffd23a'); g.addColorStop(0.7, '#ff8a1f'); g.addColorStop(1, '#e8361a');
+  ctx.shadowColor = 'rgba(255,140,40,0.9)'; ctx.shadowBlur = px * 2.2;
+  ctx.fillStyle = g;
+  pixText(ctx, c, cx, cy, px, ph, 1, 8);
+  ctx.shadowBlur = 0;
+  if (sh > 0) { const a = ctx.globalAlpha; ctx.globalAlpha = a * sh * 0.8; ctx.fillStyle = '#ffffff'; pixText(ctx, c, cx, cy, px, ph, 1, 8); ctx.globalAlpha = a; }
 }
 // the title's pixel size, and where it and its tagline end (css px), for a screen cw wide
 /** @param {number} cw */

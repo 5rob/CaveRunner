@@ -31,4 +31,6 @@ Tests: `tests/browser/auto-screen.test.js`. Pictures: `node tools/autoshots.js` 
 
 **Path blocked (stage 5b):** in a level, when no gun in play can clear the rock ahead (`auto/clear.js`), the pilot stops the team and `AutoScreen` shows `.ablocked` ("Path blocked", pulsing, `style.css`) over the play area; it reads `levelState(S).blocked` every 200 ms. Under `__TEST_TITLE` the level scene is on `window.__autoScene` (for `tools/clearshots.js`).
 
+**LEVEL CLEARED (stage 7):** `runScene`'s `over` paints `art/cleared.js` `clearedText` while `levelClearedAge(S)` ≥ 0 (top at 14% of the play area): the title's letters (`titleLetter`) drop in one by one with bounces, a spark burst and a ring at each landing, a shine sweep, the title's bob, a fade over the last 0.5 s. Knobs Dev → Auto → "Auto: level" (`autoClearT`, `autoClearWait`). Pictures: `tools/clearedshots.js`.
+
 **Enemies (stage 6 part 1):** the level gets `run.tier` (`levelScene`'s 6th argument). While the arena's boss lives, `AutoScreen` shows `.abossbar` (its name and a red bar, `style.css`) across the top of the play area, from `auto/enemies.js` `levelBoss(S)`, polled with the blocked hint (200 ms). Every player fallen (`levelLost(S)`): `next` takes the team home with `levelFailed(run)` (healed, tier unchanged) and saves.
