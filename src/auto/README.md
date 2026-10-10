@@ -23,6 +23,7 @@ art, …), never `game/`, `ui/` or `main.js`. Everything here is pure: the logic
     carrot adds levels, capped at V. `playerStats(player)`: `perkBag` of the fitted perks with the exo bonus folded in.
   - Prices (Dev tab **Auto**, `dev/README.md`): `autoGunPrice(tier)`, `autoExoPrice(tier)`. Named `auto…`
     because `gunPrice` is already `spells/guns.js`'s.
+- `nav.js` — the context nav (stage 8a), pure: `NavState` `{ level, p, g, cat }`, levels `players` → `player` (`NAV_MENU`: guns / exo / perks / stats) → `guns` → `gun` (its mod slots); `exo` → `cat` (`EXO_NAMES`) → its 5 slots; `perks` (6); `stats` (stage 9). `navStart()`, `navOpen(nav, what, run)` (a cell's `open`; a locked player, an empty gun slot or a junk choice is refused: the same object back), `navBack(nav)` (one up, nothing at the top), `navRow(nav, run, max)` → `NavRow` `{ shape: circles | slots | stats, cells: NavCell[], col }` (col: the tapped player's colour, null at the top; a gun's slots as mod `BagItem`s). Tests: `tests/logic/auto-nav.test.js`.
 - `save.js` — the one save: `loadAutoRun(storage?)` / `saveAutoRun(run, storage?)`, key `AUTO_SAVE_KEY`
   (`caverunner-auto-run`), `{ v: AUTO_SAVE_V (1), run }`. `storage` defaults to localStorage (in try/catch); a
   missing, junk or other-version save loads as null. Named `…AutoRun` because `saveRun` is the old game's.

@@ -6,7 +6,8 @@
 // (B, the pill stick, A). The pill stick (PillStick, owner after stage 4a) works as the old game's left thumbstick: in the
 // hub it runs and jets player 1 anywhere in the room (auto/hub.js hubStick), in a level its sideways push hurries or
 // slows the team (auto/level.js levelHold; it never stops them). A at the exit pad flashes it (hubExit; stage 4 starts
-// the level from there). The nav and B do nothing yet (later stages). In a level, rock in the way that no gun in play
+// the level from there). The context nav (stage 8a, auto/nav.js, NavRow below): players → a player's Guns / Exo suit /
+// Perks / Stats → the slots; B goes back up a level. In a level, rock in the way that no gun in play
 // can clear (auto/clear.js, stage 5b) stops the team and pulses a "Path blocked" hint over the play area. The arena's boss
 // (auto/enemies.js, stage 6) shows its health bar over the top of the play area; every player fallen takes the team home.
 // The boss's loot vacuumed, LEVEL CLEARED drops in over the play area (stage 7, art/cleared.js, runScene's over).
@@ -23,7 +24,9 @@ import { MODS } from '../../spells/mods.js';
 import { PERKS, STAT_PERKS } from '../../data/perks.js';
 import { BAG_SLOTS, EXO_GLYPH, EXO_STATS, MAX_PLAYERS, healRun, levelCleared, levelFailed, levelSeed, newRun } from '../../auto/run.js';
 import { loadAutoRun, saveAutoRun } from '../../auto/save.js';
+import { navBack, navOpen, navRow, navStart } from '../../auto/nav.js';
 import { GunIcon } from '../editor.js';
+import { GlyphIcon, HelmetIcon, PixIcon } from './icons.js';
 import { PauseMenu } from '../pause.js';
 import { runScene } from '../scenecanvas.js';
 import { h, useEffect, useRef, useState } from '../h.js';
@@ -58,6 +61,8 @@ export function AutoScreen() {
   const noBoss = null;
   const [boss, setBoss] = useState(noBoss);
   const [, setBagV] = useState(0);
+  // the context nav (stage 8a, auto/nav.js): a tap on a circle goes down a level, B back up one
+  const [nav, setNav] = useState(navStart);
   useEffect(() => {
     const id = setInterval(() => {
       const L = scene.current && levelState(scene.current);
@@ -128,6 +133,8 @@ export function AutoScreen() {
     else hubStick(S, st);
   };
   const press = () => { SFX.unlock(); SFX.ui('tap'); if (scene.current && hubExit(scene.current)) SFX.fx('open'); };
+  /** a nav circle tapped: one level down @param {string | number} w */
+  const openNav = w => { nothing(); setNav(n => navOpen(n, w, run)); };
   return h('div', { className: 'auto' },
     h('div', { className: 'aplay' },
       h('canvas', { ref: cvs, className: 'aplaycvs' }),
@@ -135,17 +142,11 @@ export function AutoScreen() {
       boss ? h('div', { className: 'abossbar' }, h('b', null, boss.name),
         h('div', { className: 'abosstrack' }, h('i', { style: { width: (100 * boss.hp / Math.max(1, boss.max)).toFixed(1) + '%' } }))) : null,
       h('button', { className: 'pausebtn', title: 'Pause', onPointerDown: tap(() => { SFX.fx('open'); setPaused(true); }) }, '⏸')),
-    h('div', { className: 'anav' },
-      ...Array.from({ length: MAX_PLAYERS }, (_, i) => {
-        const p = run.players[i];
-        return h('div', { key: i, className: 'anavc' + (p ? ' on' : ' locked'), 'data-player': i,
-          style: p ? { borderColor: p.col, boxShadow: '0 0 10px ' + p.col + '66' } : undefined, onPointerDown: tap(nothing) },
-          p ? h('span', { className: 'anavp', style: { background: p.col } }, i + 1) : null);
-      })),
+    h(NavRow, { row: navRow(nav, run, MAX_PLAYERS), level: nav.level, open: openNav }),
     h('div', { className: 'abag' },
       ...Array.from({ length: BAG_SLOTS }, (_, i) => h(BagSlot, { key: i, i, it: run.bag[i] }))),
     h('div', { className: 'abtns' },
-      h('button', { className: 'abtn ab', onPointerDown: tap(nothing) }, 'B'),
+      h('button', { className: 'abtn ab', onPointerDown: tap(() => { nothing(); setNav(navBack); }) }, 'B'),
       h(PillStick, { onMove: steer }),
       h('button', { className: 'abtn aa', onPointerDown: tap(press) }, 'A')),
     paused ? h(PauseMenu, { input, label: 'Tier ' + run.tier, close: () => { SFX.fx('close'); setPaused(false); } }) : null);
@@ -201,6 +202,37 @@ function PillStick({ onMove }) {
     h('div', { className: 'apillknob' + (knob.jet ? ' jet' : ''), style: { transform: 'translate(' + knob.x + 'px,' + knob.y + 'px)' } }));
 }
 
+// The context nav's row (auto/nav.js navRow): circles for choices (a player's ring and number, a menu glyph, a gun's
+// sprite), square tiles for slots (the bag's tile look; a gun's mod row scrolls sideways when it has more than fit).
+// Below the top the row's edge takes the tapped player's colour. Same height at every level (style.css .anav).
+/** @param {{ row: import('../../auto/nav.js').NavRow, level: string, open: (w: string | number) => void }} props */
+function NavRow({ row, level, open }) {
+  /** @param {import('../../auto/nav.js').NavCell} c @param {number} i */
+  const cell = (c, i) => {
+    const to = c.open;
+    /** @param {any} e */
+    const go = e => { e.preventDefault(); if (to !== undefined) open(to); };
+    if (row.shape === 'slots') {
+      const it = c.item || null;
+      return h('div', { key: c.key, className: 'aslot anavs' + (it ? ' full k-' + it.kind : ''), 'data-nslot': i },
+        it ? h(ItemIcon, { it }) : null);
+    }
+    const cls = 'anavc' + (c.dim ? ' locked' : ' on') + (c.sel ? ' sel' : '') + (c.gun ? ' gun' : '');
+    const style = c.col && !c.dim ? { borderColor: c.col, boxShadow: '0 0 10px ' + (c.glow || c.col + '66') } : undefined;
+    let inner = null;
+    if (c.gun) inner = h(GunIcon, { gun: c.gun });
+    else if (c.helm && c.col) inner = h(HelmetIcon, { col: c.col });     // a player: his helmet (owner)
+    else if (c.icon) inner = h(PixIcon, { id: c.icon, size: 28 });      // themed pixel icons, not emoji (owner)
+    else if (c.glyph) inner = h('span', { className: 'anavg' }, c.glyph);
+    else if (c.label) inner = h('span', { className: 'anavp', style: { background: c.col } }, c.label);
+    return h('div', { key: c.key, className: cls, 'data-player': level === 'players' ? i : undefined, 'data-open': c.open,
+      title: c.glyph ? c.label : undefined, style, onPointerDown: go }, inner);
+  };
+  return h('div', { className: 'anav l-' + level + (row.shape === 'slots' ? ' slots' : ''), 'data-level': level,
+    style: row.col ? { borderColor: row.col, boxShadow: '0 0 12px ' + row.col + '55' } : undefined },
+    row.shape === 'stats' ? h('span', { className: 'anavsoon' }, 'Stats — soon') : row.cells.map(cell));
+}
+
 // one bag slot: empty, or the item's icon and its count
 /** @param {{ i: number, it: BagItem | null }} props */
 function BagSlot({ i, it }) {
@@ -215,12 +247,14 @@ function ItemIcon({ it }) {
   /** @type {{ glyph: string, col: string, tier?: number } | null} */
   let g = null;
   if (it.kind === 'mod') { const m = MODS[it.id || '']; g = m ? { glyph: m.glyph, col: m.col } : { glyph: '?', col: '#888' }; }
-  else if (it.kind === 'exo') { const sp = STAT_PERKS[EXO_STATS[it.cat || 'hp'][0]]; g = { glyph: EXO_GLYPH[it.cat || 'hp'], col: sp.tint, tier: it.tier }; }
+  else if (it.kind === 'exo') {
+    return h('span', { className: 'aglyph' }, h(PixIcon, { id: it.cat || 'hp', size: 26 }), it.tier ? h('i', { className: 'atier' }, ROMAN[it.tier - 1]) : null);
+  }
   else if (it.kind === 'perk') { const pk = PERKS[it.id || '']; g = pk ? { glyph: pk.glyph, col: pk.tint } : { glyph: '?', col: '#888' }; }
   else if (it.kind === 'gold') g = { glyph: '●', col: '#ffc93c' };
   else if (it.kind === 'red') g = { glyph: '◆', col: '#ff4f5e' };
   else if (it.kind === 'green') g = { glyph: '◆', col: '#5ee05a' };
   if (!g) return null;
-  return h('span', { className: 'aglyph', style: { color: g.col, textShadow: '0 0 8px ' + g.col + '99' } }, g.glyph,
+  return h('span', { className: 'aglyph' }, h(GlyphIcon, { glyph: g.glyph, col: g.col }),
     g.tier ? h('i', { className: 'atier' }, ROMAN[g.tier - 1]) : null);
 }

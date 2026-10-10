@@ -916,10 +916,19 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   box-shadow:0 0 10px rgba(255,40,60,0.35)}
 .abosstrack i{display:block;height:100%;background:linear-gradient(#ff7a6a,#d01c34);transition:width .2s linear}
 .anav,.abag,.abtns{border-radius:14px;background:rgba(14,9,26,0.92);border:2px solid #3d2f5c;box-sizing:border-box}
-.anav{flex:none;display:flex;justify-content:space-around;align-items:center;padding:6px 8px}
+.anav{flex:none;display:flex;justify-content:space-around;align-items:center;padding:6px 8px;height:66px;transition:border-color .15s}
 .anavc{width:50px;height:50px;border-radius:50%;box-sizing:border-box;border:3px solid #2a2140;background:#140e22;
   display:flex;align-items:center;justify-content:center}
 .anavc.on{background:#1d1531}
+.anavc.sel{box-shadow:0 0 0 3px #fff,0 0 12px rgba(255,255,255,0.5)!important}
+.anavc.locked.gun{opacity:.35}
+.anavc.gun .gicon{width:80%;height:auto}
+.anavg{font:900 24px system-ui,sans-serif;line-height:1;display:flex;align-items:center;justify-content:center}
+.apix,.ahelm{display:block;flex:none;pointer-events:none}
+.anav.slots{justify-content:flex-start;gap:6px;overflow-x:auto;overflow-y:hidden;touch-action:pan-x;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.anavs{flex:0 0 48px;width:48px;height:48px}
+.anavs:not(.full){opacity:.55}
+.anavsoon{font:800 14px ui-monospace,SFMono-Regular,Menlo,monospace;color:#9a8ab8}
 .anavp{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;
   font:900 15px ui-monospace,SFMono-Regular,Menlo,monospace;color:#0b0716;box-shadow:inset 0 -3px 0 rgba(0,0,0,0.3)}
 .abag{flex:1 1 0;min-height:0;overflow-y:auto;overflow-x:hidden;touch-action:pan-y;-webkit-overflow-scrolling:touch;
@@ -928,8 +937,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   box-sizing:border-box;display:flex;align-items:center;justify-content:center;overflow:hidden}
 .aslot.full{border-color:rgba(255,179,90,0.45);background:#2c1f45}
 .aslot .gicon{width:92%;height:auto}
-.aglyph{position:relative;font:900 24px system-ui,sans-serif;line-height:1}
-.atier{position:absolute;left:-10px;top:-8px;font:900 9px ui-monospace,SFMono-Regular,Menlo,monospace;font-style:normal;color:#ffd23a}
+.aglyph{position:relative;font:900 24px system-ui,sans-serif;line-height:1;display:flex;align-items:center;justify-content:center;width:100%;height:100%;text-align:center}
+.atier{position:absolute;left:4px;top:3px;font:900 9px ui-monospace,SFMono-Regular,Menlo,monospace;font-style:normal;color:#ffd23a}
 .acount{position:absolute;right:3px;bottom:1px;font:800 11px ui-monospace,SFMono-Regular,Menlo,monospace;color:#fff;
   text-shadow:0 1px 2px #000,0 0 3px #000}
 .abtns{flex:none;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px}
