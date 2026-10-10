@@ -8,17 +8,19 @@ release loop, testing), then the README of the `src/` folder you're working in.
 Planned with the owner (brief + quiz answers + 16 stages + the PM's kick-start prompt, all in `AUTOBATTLER.md`;
 mock-up `docs/autobattler-mockup.png`). Progress: AUTOBATTLER.md's Log. `main` keeps the old game.
 
-**Where it stands (2026-10-11, v1.0.33 live at /auto/; v1.0.33: manual control no longer taken over by the autopilot, stick down digs, the stick in the bar's left corner): all stages 0–14 built; feedback rounds 1 and 2 released.**
+**Where it stands (2026-10-11, v1.0.34 live at /auto/; v1.0.34: semi-automatic manual mode with the crosshair, slow frames stepped in pieces): all stages 0–14 built; feedback rounds 1 and 2 released.**
 
 **Next session (bug fixing, 2026-10-11):** the owner is playing v1.0.32 on the phone and sends notes; the PM fixes them
 in small rounds itself (no agents unless a note is a big new feature). Known rough edges, not yet reported by the owner:
-the view doesn't follow a hand-steered player inside the boss arena; followers may trail on the wrong side when he backs
-up; after a wipe the camera doesn't move onto the last ragdoll by itself. The owner may paste a Dev-panel report
+the view doesn't follow a hand-steered player inside the boss arena; ~~followers may trail on the wrong side when he backs
+up~~ (fixed v1.0.34); after a wipe the camera doesn't move onto the last ragdoll by itself. The owner may paste a Dev-panel report
 ("Copy Dev settings", panel via ⏸ held 5 s then ⚙️): it becomes the new defaults (`src/dev/knobs.js`). Leftover worktree
 folders `../cr-hub`, `../cr-death`, `../cr-roam`, `../oldmain` can't be deleted (Permission denied): harmless, ignore.
 Screenshot tools for the owner live in `tools/*shots.js` (e.g. `devshots`, `roamshots`, `hubshots`, `vendshots`).
 
-Bug round 1 (v1.0.33): a hand-steered player's saw follows the stick (`ctlDig`), no jet-over or snap back for him; stick
+Bug round 2 (v1.0.34): manual mode semi-automatic (steered only while the stick is pushed; `ctlOn`), the crosshair on
+the picked helmet, slow frames stepped in pieces (`scenecanvas.js`: the owner felt manual slower than the hub; waiting
+on the owner to say if it's fixed), followers trail by travel direction (the known rough edge, fixed). Bug round 1 (v1.0.33): a hand-steered player's saw follows the stick (`ctlDig`), no jet-over or snap back for him; stick
 down saws down; the stick is a circle at the bar's left end (B, A right of it; `.astick`, one outline with the bar; shots
 `tools/stickshots.js`). Round 2h (v1.0.32): machine items drawn in front of the hub wall again (pop out, bounce, picked up by walking over after
 `autoPickMin` 1 s within `autoPickReach`); one hand-steered speed `autoMoveK` 0.55 (walk, jet, pushes, sink; hub and

@@ -59,7 +59,9 @@ export function runScene(c, o) {
     const now = performance.now(), dt = (now - last) / 1000;
     last = now;
     if (!(o.paused && o.paused())) {
-      titleStep(S, dt);
+      // (bug round 2) a slow frame (the phone in a busy level) is stepped in pieces, not capped: titleStep takes at most
+      // 0.05 s, so below 20 fps the whole scene (the steered player too) used to run slow; up to 0.2 s caught up a frame
+      for (let left = Math.min(dt, 0.2); left > 1e-4; left -= 0.05) titleStep(S, Math.min(left, 0.05));
       camStep(C, S, Math.min(dt, 0.1));
       titleSound(S, C, loops, Math.min(dt, 0.1));
     }

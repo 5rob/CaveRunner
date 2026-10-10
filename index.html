@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v1.0.33</title>
-<!-- VERSION = 'v1000033' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v1.0.34</title>
+<!-- VERSION = 'v1000034' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -964,7 +964,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 /* the equipped gun (feedback round 2): an X with its middle cut out, 4 white diagonal ticks round the circle (the white ring is the menu's pick) */
 .anavc.gun{position:relative}
 .anavc.gun.sel{box-shadow:0 0 10px rgba(255,255,255,0.3)!important}
-.anavc.gun.sel::before{content:"";position:absolute;inset:-11px;pointer-events:none;background:linear-gradient(45deg,transparent calc(50% - 1.5px),#fff calc(50% - 1.5px),#fff calc(50% + 1.5px),transparent calc(50% + 1.5px)),linear-gradient(-45deg,transparent calc(50% - 1.5px),#fff calc(50% - 1.5px),#fff calc(50% + 1.5px),transparent calc(50% + 1.5px));-webkit-mask:radial-gradient(circle,transparent 31px,#000 32px);mask:radial-gradient(circle,transparent 31px,#000 32px)}
+.anavc.manual{position:relative}
+/* (bug round 2) the player in manual mode: the selected gun's crosshair round his helmet */
+.anavc.gun.sel::before,.anavc.manual::before{content:"";position:absolute;inset:-11px;pointer-events:none;background:linear-gradient(45deg,transparent calc(50% - 1.5px),#fff calc(50% - 1.5px),#fff calc(50% + 1.5px),transparent calc(50% + 1.5px)),linear-gradient(-45deg,transparent calc(50% - 1.5px),#fff calc(50% - 1.5px),#fff calc(50% + 1.5px),transparent calc(50% + 1.5px));-webkit-mask:radial-gradient(circle,transparent 31px,#000 32px);mask:radial-gradient(circle,transparent 31px,#000 32px)}
 .anavup .anavc.gun.sel.pick{box-shadow:0 0 0 3px #fff,0 0 12px rgba(255,255,255,0.5)!important}
 .anavc.gun .gicon{width:70%;height:auto}
 .anavg{font:900 24px system-ui,sans-serif;line-height:1;display:flex;align-items:center;justify-content:center}
@@ -1069,7 +1071,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v1.0.33';</script>
+<script>const VERSION = 'v1.0.34';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -12415,7 +12417,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   function jetStep(S2, r, dt) {
     let jx, jy;
-    const st = r.ctl && r.ctl.active && r.ctl.mag > DEAD ? r.ctl : r.jetIn;
+    const st = ctlOn(r) ? r.ctl : r.jetIn;
     if (st) {
       jx = st.nx;
       jy = st.ny;
@@ -12474,7 +12476,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const kind = S2.lvl.blockKind ? S2.lvl.blockKind(S2, r.x + PW / 2 + S2.scroll + 8 * Math.sign(dx || 1)) : "rock";
       const c = teamClearer(S2.team, kind, r.id);
       if (!c) {
-        if (r.ctl) return;
+        if (ctlOn(r)) return;
         if (why === "aim" || why === "fly") {
           r.vx = 0;
           r.vy = Math.min(r.vy, 0);
@@ -12536,8 +12538,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function stepRunnerMove(S2, r, dt) {
     r.modeT -= dt;
     r.retarget -= dt;
+    const on = ctlOn(r);
+    if (r.ctlWas && !on) {
+      r.cvx = 0;
+      r.retarget = 0;
+      if (!r.ground) {
+        r.mode = "fly";
+        r.modeT = 0;
+      }
+    }
+    r.ctlWas = on;
     if (r.dig) digStep(S2, r, dt);
-    else if (r.ctl) ctlStep(S2, r, r.ctl, dt);
+    else if (on) ctlStep(S2, r, r.ctl, dt);
     else if (r.mode === "run") runStep(S2, r, dt);
     else flyStep(S2, r, dt);
     r.x = Math.max(8, Math.min(r.ctl ? TITLE_VW - PW - 8 : TITLE_VW * 0.62, r.x));
@@ -12584,6 +12596,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   };
   var jetThrottle = (ny, m) => Math.max(0.15, Math.max(0, -ny) * m);
   var JET_SINK = 110;
+  var ctlOn = (r) => !!r.ctl && r.ctl.active && r.ctl.mag > DEAD;
   function ctlStep(S2, r, st, dt) {
     const m = st.active && st.mag > DEAD ? (st.mag - DEAD) / (1 - DEAD) : 0, jet = m > 0 && st.ny < 0, mv = DEV.move;
     r.cvx = r.cvx || 0;
@@ -12777,7 +12790,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     S2.digT += dt;
     r.dig += dt;
-    if (r.ctl) {
+    if (ctlOn(r)) {
       ctlDig(S2, r, r.ctl, dt);
       return;
     }
@@ -15985,7 +15998,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const want = L.webK * pilotPace({ x: levelTeamX(S2), stopX: stop, elites: L.elites, chests: L.chests, hold: L.hold, blocked: L.blocked });
     S2.pace = pilotEase(S2.pace || 0, want, dt);
   }
-  var levelLead = (S2) => S2.runners.find((r) => !!r.ctl && !r.out) || null;
+  var levelLead = (S2) => S2.runners.find((r) => ctlOn(r) && !r.out) || null;
+  var levelPicked = (S2) => S2.runners.find((r) => !!r.ctl && !r.out) || null;
   var roamPace = (off) => DEV.autoRoamCam * off / LVL_SCROLL;
   var roamMin = (L) => (L.far ?? 0) - Math.min(DEV.autoRoamBack * TITLE_VW, TITLE_BACK - 50);
   function roamStep2(S2, L, lead) {
@@ -15995,9 +16009,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   function roamFollow(S2, lead) {
     let k = 0;
+    const dir = Math.abs(lead.cvx || 0) > 5 ? Math.sign(lead.cvx || 0) : lead.face || 1;
     for (const r of S2.runners) {
       if (r === lead || r.out || r.dig) continue;
-      r.tx = Math.max(8, Math.min(TITLE_VW * 0.62, lead.x - (lead.face || 1) * (14 + 12 * k++)));
+      r.tx = Math.max(8, Math.min(TITLE_VW * 0.62, lead.x - dir * (14 + 12 * k++)));
       if (r.mode === "run") r.spd = 1;
       r.retarget = Math.max(r.retarget, 0.3);
     }
@@ -30812,7 +30827,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const now = performance.now(), dt = (now - last) / 1e3;
       last = now;
       if (!(o.paused && o.paused())) {
-        titleStep(S2, dt);
+        for (let left = Math.min(dt, 0.2); left > 1e-4; left -= 0.05) titleStep(S2, Math.min(left, 0.05));
         camStep(C, S2, Math.min(dt, 0.1));
         titleSound(S2, C, loops, Math.min(dt, 0.1));
       }
@@ -30966,6 +30981,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const pausedRef = useRef(false);
     const [devOn, setDevOn] = useState(devShown);
     const [devOpen, setDevOpen] = useState(false);
+    const [manual, setManual] = useState(-1);
     pausedRef.current = paused || devOpen;
     const cvs = useRef(null);
     const scene = useRef(null);
@@ -30998,6 +31014,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const id = setInterval(() => {
         const L = scene.current && levelState(scene.current);
         if (L && scene.current && cam.current) levelControl(scene.current, cam.current.lock, null);
+        const pk = L && scene.current ? levelPicked(scene.current) : null;
+        setManual(pk ? pk.id : -1);
         setBlocked(!!(L && L.blocked));
         if (L) setBagV(L.bagV);
         if (L && L.bagV !== bagV.current) {
@@ -31504,7 +31522,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }) }, "⚙️") : null,
         h("button", { className: "pausebtn", title: "Pause (hold 5 s: dev mode)", onPointerDown: pauseDown }, "⏸")
       ),
-      h(NavStack, { nav, run, openAt, down, drag, holdHelm, holdGun, meters, pins, metersOf, pinNav, hidden: navHidden }),
+      h(NavStack, { nav, run, openAt, down, drag, holdHelm, holdGun, meters, pins, metersOf, pinNav, hidden: navHidden, manual }),
       h(
         "div",
         { className: "abag" + (drag && drag.over && drag.over.key === "bag" && drag.over.ok ? " drop" : "") },
@@ -31587,7 +31605,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     );
   }
   var ROW_H = 66, STACK_GAP = 6, PANEL_H = 168, LEAVE_MS = 260;
-  function NavStack({ nav, run, openAt, down, drag, holdHelm, holdGun, meters, pins, metersOf, pinNav, hidden }) {
+  function NavStack({ nav, run, openAt, down, drag, holdHelm, holdGun, meters, pins, metersOf, pinNav, hidden, manual }) {
     const path = navPath(nav);
     const pl = run.players[nav.p];
     const gun = nav.level === "gun" && pl ? pl.guns[nav.g] : null;
@@ -31645,6 +31663,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         holdGun: hg,
         meters,
         pinNav,
+        manual,
         slide: ready.current,
         cold: cls === "anav" ? cold : null,
         lit: cls === "anav" && nav.level === "gun" ? lit : null
@@ -31694,7 +31713,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       h(GunFire, { gun, sim })
     );
   }
-  function NavRow({ row, level, cls, pick, open, down, drag, holdHelm, holdGun, meters, lit, slide, cold, pinNav }) {
+  function NavRow({ row, level, cls, pick, open, down, drag, holdHelm, holdGun, meters, lit, slide, cold, pinNav, manual }) {
     const [slideIn] = useState(!!slide);
     const over = drag && drag.over && drag.over.ok ? drag.over.key : "";
     const on = new Set(lit ? lit.slots : []), pc = lit ? PULL_COL[lit.pull % PULL_COL.length] : "";
@@ -31724,7 +31743,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           on.has(i) ? h("i", { className: "pulse on", style: { background: pc, borderColor: pc, color: pc } }) : null
         );
       }
-      const cls2 = "anavc" + (c.dim ? " locked" : " on") + (c.sel ? " sel" : "") + (c.gun ? " gun" : "") + (over === "g" + i || over === "p" + i ? " drop" : "") + (pick !== void 0 && to === pick ? " pick" : "");
+      const cls2 = "anavc" + (c.dim ? " locked" : " on") + (c.sel ? " sel" : "") + (c.gun ? " gun" : "") + (c.helm && level === "players" && i === manual ? " manual" : "") + (over === "g" + i || over === "p" + i ? " drop" : "") + (pick !== void 0 && to === pick ? " pick" : "");
       const style = c.col && !c.dim ? { borderColor: c.col, boxShadow: "0 0 10px " + (c.glow || c.col + "66") } : void 0;
       let inner = null;
       if (c.gun) inner = h(GunIcon, { gun: c.gun });

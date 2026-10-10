@@ -5,6 +5,18 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.34 — CaveRunner Auto: semi-automatic manual mode, its crosshair, full speed on a slow phone (branch `autobattler`)
+Released 2026-10-11 on the branch (bug round 2; owner OK'd the crosshair, shot `tools/stickshots.js` stick-c-cross).
+- Manual mode is semi-automatic: the picked player (helmet held) plays by himself and the level keeps the pilot's pace
+  till the stick is pushed; then he's steered (and the view follows him); let go, the autopilot again (`ctlOn`,
+  `r.ctlWas`; `levelLead` only while steered, `levelPicked` the picked one). B still lets him go.
+- The picked player's helmet in the nav wears the selected gun's crosshair (`.anavc.manual`).
+- Fix: a slow frame (below 20 fps, a busy level on the phone) ran the whole scene slow (titleStep caps a step at 0.05 s);
+  `ui/scenecanvas.js` now steps it in pieces (up to 0.2 s a frame). Likely the "manual speed differs from the hub".
+- Fix: followers trail behind the steered player by the way he's going, not where his gun faces (`roamFollow`).
+- Tests: new `auto-speed` (hub vs level walk speed); `auto-control`, `auto-roam`, `auto-steer` for semi-auto
+  (auto-steer keeps rock free: `autoWallMin/Max` 120).
+
 ## v1.0.33 — CaveRunner Auto: manual control unhindered, the stick in the corner (branch `autobattler`)
 Released 2026-10-11 on the branch (bug round 1; owner OK'd the look, shots `tools/stickshots.js`).
 - Fix: a hand-steered player was taken over by the autopilot when he hit rock: his saw steered him to the autopilot's

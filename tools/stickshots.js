@@ -1,5 +1,5 @@
 // Screenshots for the owner (CaveRunner Auto bug round 1): the stick in the bar's left end, a dome over the bag's corner;
-// a: at rest in a level, b: manual mode, player 1 steered down: sawing into the floor.
+// a: at rest in a level, b: manual mode, player 1 steered down: sawing into the floor; c: the crosshair on his helmet.
 //   node tools/stickshots.js [outdir]      (default tests/build/autoshots)
 const { launch } = require('../tests/chromium');
 const path = require('path');
@@ -37,6 +37,8 @@ require('../tests/build')();
   await page.mouse.move(px, py); await page.mouse.down(); await page.mouse.move(px + 5, py + 60, { steps: 3 });
   await page.waitForTimeout(2500);
   await save('b-down', 'manual mode, the stick pulled down: player 1 saws down into the floor');
+  const nav = await page.locator('.anav').boundingBox();
+  await page.screenshot({ path: path.join(OUT, 'stick-c-cross.png'), clip: { x: 0, y: nav.y - 20, width: 412, height: nav.height + 40 } }); said.push('stick-c-cross.png  (bug round 2) the crosshair round the manual player\'s helmet');
   await page.mouse.up();
   await browser.close();
   console.log(said.join('\n'));

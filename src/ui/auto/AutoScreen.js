@@ -21,7 +21,7 @@ import { DEAD } from '../../core/consts.js';
 import { chestOpen } from '../../auto/chests.js';
 import { HUB_W, hubExit, hubLeft, hubScene, hubState, hubStick, hubStopX } from '../../auto/hub.js';
 import { THROW_TAKES, hubPayAt, hubPayOne, payVel } from '../../auto/throw.js';
-import { levelClearedAge, levelControl, levelDeathPrompt, levelDone, levelHold, levelLost, levelScene, levelState, levelTeleportHome } from '../../auto/level.js';
+import { levelClearedAge, levelControl, levelDeathPrompt, levelDone, levelHold, levelLost, levelPicked, levelScene, levelState, levelTeleportHome } from '../../auto/level.js';
 import { clearedText } from '../../art/cleared.js';
 import { drawHint } from '../../game/render/hubdraw.js';
 import { DEV } from '../../dev/knobs.js';
@@ -72,6 +72,8 @@ export function AutoScreen() {
   // (feedback round 2) the Dev panel: ⏸ held DEV_HOLD_MS toggles dev mode (as the old game); on, a ⚙️ beside ⏸ opens it
   const [devOn, setDevOn] = useState(devShown);
   const [devOpen, setDevOpen] = useState(false);
+  // (bug round 2) the player in manual mode (the camera's lock in a level; -1 none): his helmet in the nav wears the crosshair
+  const [manual, setManual] = useState(-1);
   pausedRef.current = paused || devOpen;
   const cvs = useRef(null);
   /** @type {{ current: import('../../art/titlescene.js').TitleScene | null }} */
@@ -124,6 +126,8 @@ export function AutoScreen() {
       const L = scene.current && levelState(scene.current);
       // (feedback round 2) the player picked in the play area (the camera's lock) is steered by hand
       if (L && scene.current && cam.current) levelControl(scene.current, cam.current.lock, null);
+      const pk = L && scene.current ? levelPicked(scene.current) : null;
+      setManual(pk ? pk.id : -1);
       setBlocked(!!(L && L.blocked));
       if (L) setBagV(L.bagV);   // drops went into the bag: redraw it
       // stage 13: and save it, so a quit mid-level resumes in the hub with the bag kept
@@ -499,7 +503,7 @@ export function AutoScreen() {
         h('div', { className: 'abosstrack' }, h('i', { style: { width: (100 * boss.hp / Math.max(1, boss.max)).toFixed(1) + '%' } }))) : null,
       devOn ? h('button', { className: 'adevbtn', title: 'Dev', onPointerDown: tap(() => { SFX.fx('open'); setDevOpen(true); }) }, '⚙️') : null,
       h('button', { className: 'pausebtn', title: 'Pause (hold 5 s: dev mode)', onPointerDown: pauseDown }, '⏸')),
-    h(NavStack, { nav, run, openAt, down, drag, holdHelm, holdGun, meters, pins, metersOf, pinNav, hidden: navHidden }),
+    h(NavStack, { nav, run, openAt, down, drag, holdHelm, holdGun, meters, pins, metersOf, pinNav, hidden: navHidden, manual }),
     h('div', { className: 'abag' + (drag && drag.over && drag.over.key === 'bag' && drag.over.ok ? ' drop' : '') },
       ...Array.from({ length: BAG_SLOTS }, (_, i) => h(BagSlot, { key: i, i, it: run.bag[i], down,
         lift: !!drag && drag.src.from === 'bag' && drag.src.i === i,
@@ -582,9 +586,9 @@ const ROW_H = 66, STACK_GAP = 6, PANEL_H = 168, LEAVE_MS = 260;
  * @param {{ nav: NavState, run: AutoRun, openAt: (s: NavState, w: string | number) => void, down: (e: any, src: DragSrc) => void,
  *   drag: Drag | null, holdHelm: (e: any, i: number) => void, holdGun: (e: any, s: NavState, i: number) => void,
  *   meters: () => PlayerMeters | null, pins: Pin[], metersOf: (p: number) => PlayerMeters | null, pinNav: (kind: 'dmg' | 'hp', span: number) => void,
- *   hidden?: boolean }} props
+ *   hidden?: boolean, manual?: number }} props
  */
-function NavStack({ nav, run, openAt, down, drag, holdHelm, holdGun, meters, pins, metersOf, pinNav, hidden }) {
+function NavStack({ nav, run, openAt, down, drag, holdHelm, holdGun, meters, pins, metersOf, pinNav, hidden, manual }) {
   const path = navPath(nav);
   const pl = run.players[nav.p];
   const gun = nav.level === 'gun' && pl ? pl.guns[nav.g] : null;
@@ -631,7 +635,7 @@ function NavStack({ nav, run, openAt, down, drag, holdHelm, holdGun, meters, pin
     /** @param {any} e @param {number} i */
     const hg = (e, i) => holdGun(e, s, i);
     return h(NavRow, { row: navRow(s, run, MAX_PLAYERS), level: s.level, cls, pick: cur ? undefined : navPick(nav, s.level),
-      open, down, drag: cls === 'anav' ? drag : null, holdHelm, holdGun: hg, meters, pinNav, slide: ready.current, cold: cls === 'anav' ? cold : null, lit: cls === 'anav' && nav.level === 'gun' ? lit : null });
+      open, down, drag: cls === 'anav' ? drag : null, holdHelm, holdGun: hg, meters, pinNav, manual, slide: ready.current, cold: cls === 'anav' ? cold : null, lit: cls === 'anav' && nav.level === 'gun' ? lit : null });
   };
   return h('div', { className: 'anavwrap' + (hidden ? ' hid' : '') },
     h(PinStack, { pins, run, metersOf, lift: off[0] || 0 }),
@@ -679,8 +683,8 @@ function GunPanel({ gun, sig, col, onLit, cls }) {
 /** @param {{ row: import('../../auto/nav.js').NavRow, level: string, cls: string, pick?: string | number, open: (w: string | number) => void,
  *   down: (e: any, src: DragSrc) => void, drag: Drag | null, holdHelm: (e: any, i: number) => void, holdGun: (e: any, i: number) => void,
  *   meters: () => PlayerMeters | null, lit: { slots: number[], pull: number } | null, slide?: boolean, cold?: Set<number> | null,
- *   pinNav: (kind: 'dmg' | 'hp', span: number) => void }} props */
-function NavRow({ row, level, cls, pick, open, down, drag, holdHelm, holdGun, meters, lit, slide, cold, pinNav }) {
+ *   pinNav: (kind: 'dmg' | 'hp', span: number) => void, manual?: number }} props */
+function NavRow({ row, level, cls, pick, open, down, drag, holdHelm, holdGun, meters, lit, slide, cold, pinNav, manual }) {
   const [slideIn] = useState(!!slide);
   const over = drag && drag.over && drag.over.ok ? drag.over.key : '';
   const on = new Set(lit ? lit.slots : []), pc = lit ? PULL_COL[lit.pull % PULL_COL.length] : '';
@@ -703,7 +707,7 @@ function NavRow({ row, level, cls, pick, open, down, drag, holdHelm, holdGun, me
         it ? h(ItemIcon, { it }) : null, it ? h(Grab) : null,
         on.has(i) ? h('i', { className: 'pulse on', style: { background: pc, borderColor: pc, color: pc } }) : null);
     }
-    const cls2 = 'anavc' + (c.dim ? ' locked' : ' on') + (c.sel ? ' sel' : '') + (c.gun ? ' gun' : '') + (over === 'g' + i || over === 'p' + i ? ' drop' : '') +
+    const cls2 = 'anavc' + (c.dim ? ' locked' : ' on') + (c.sel ? ' sel' : '') + (c.gun ? ' gun' : '') + (c.helm && level === 'players' && i === manual ? ' manual' : '') + (over === 'g' + i || over === 'p' + i ? ' drop' : '') +
       (pick !== undefined && to === pick ? ' pick' : '');
     const style = c.col && !c.dim ? { borderColor: c.col, boxShadow: '0 0 10px ' + (c.glow || c.col + '66') } : undefined;
     let inner = null;

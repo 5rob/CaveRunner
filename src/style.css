@@ -955,7 +955,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 /* the equipped gun (feedback round 2): an X with its middle cut out, 4 white diagonal ticks round the circle (the white ring is the menu's pick) */
 .anavc.gun{position:relative}
 .anavc.gun.sel{box-shadow:0 0 10px rgba(255,255,255,0.3)!important}
-.anavc.gun.sel::before{content:"";position:absolute;inset:-11px;pointer-events:none;background:linear-gradient(45deg,transparent calc(50% - 1.5px),#fff calc(50% - 1.5px),#fff calc(50% + 1.5px),transparent calc(50% + 1.5px)),linear-gradient(-45deg,transparent calc(50% - 1.5px),#fff calc(50% - 1.5px),#fff calc(50% + 1.5px),transparent calc(50% + 1.5px));-webkit-mask:radial-gradient(circle,transparent 31px,#000 32px);mask:radial-gradient(circle,transparent 31px,#000 32px)}
+.anavc.manual{position:relative}
+/* (bug round 2) the player in manual mode: the selected gun's crosshair round his helmet */
+.anavc.gun.sel::before,.anavc.manual::before{content:"";position:absolute;inset:-11px;pointer-events:none;background:linear-gradient(45deg,transparent calc(50% - 1.5px),#fff calc(50% - 1.5px),#fff calc(50% + 1.5px),transparent calc(50% + 1.5px)),linear-gradient(-45deg,transparent calc(50% - 1.5px),#fff calc(50% - 1.5px),#fff calc(50% + 1.5px),transparent calc(50% + 1.5px));-webkit-mask:radial-gradient(circle,transparent 31px,#000 32px);mask:radial-gradient(circle,transparent 31px,#000 32px)}
 .anavup .anavc.gun.sel.pick{box-shadow:0 0 0 3px #fff,0 0 12px rgba(255,255,255,0.5)!important}
 .anavc.gun .gicon{width:70%;height:auto}
 .anavg{font:900 24px system-ui,sans-serif;line-height:1;display:flex;align-items:center;justify-content:center}

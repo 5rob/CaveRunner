@@ -105,7 +105,7 @@ export const TITLE_HOME = {
  *   bursty: number, burst: boolean, jet: boolean, jetT: number, jetCd: number, pace: number, spd: number,
  *   nav: { F: any, fx: number, fy: number, t: number }, stepT?: number, sawS?: number, rst?: { t?: number }, rub?: string, rubWas?: boolean,
  *   hide?: boolean, out?: boolean, outT?: number, stand?: boolean, dealt?: number, clr?: { p: number, g: number } | null, clrT?: number,
- *   ctl?: RunnerCtl | null, cvx?: number, jetIn?: { nx: number, ny: number } | null, jx?: number, jy?: number, smokeAcc?: number, smokeN?: number, rag?: import('../world/ragdoll.js').Ragdoll | null, lamp?: boolean }} TRunner */
+ *   ctl?: RunnerCtl | null, ctlWas?: boolean, cvx?: number, jetIn?: { nx: number, ny: number } | null, jx?: number, jy?: number, smokeAcc?: number, smokeN?: number, rag?: import('../world/ragdoll.js').Ragdoll | null, lamp?: boolean }} TRunner */
 /** a player steered by hand (CaveRunner Auto, feedback round 2: the selected player in a level): the pill stick's push
  * @typedef {{ active: boolean, nx: number, ny: number, mag: number }} RunnerCtl */
 // a fixed strip in place of the scrolling ring (CaveRunner Auto's hub, auto/hub.js): w columns, each cell's material from
@@ -1142,7 +1142,7 @@ export function titleFlameDir(r) {
 /** @param {TitleScene} S @param {TRunner} r @param {number} dt */
 export function jetStep(S, r, dt) {
   let jx, jy;
-  const st = r.ctl && r.ctl.active && r.ctl.mag > DEAD ? r.ctl : r.jetIn;
+  const st = ctlOn(r) ? r.ctl : r.jetIn;
   if (st) { jx = st.nx; jy = st.ny; }
   else { const wv = S.hub ? r.vx : r.wvx, tl = Math.max(-DEV.autoJetTilt, Math.min(DEV.autoJetTilt, wv / 70)), d = Math.hypot(tl, 1); jx = tl / d; jy = -1 / d; }
   const k = Math.min(1, 10 * dt);
@@ -1195,7 +1195,7 @@ function startDig(S, r, dx, dy, why) {
     const kind = S.lvl.blockKind ? S.lvl.blockKind(S, r.x + PW / 2 + S.scroll + 8 * Math.sign(dx || 1)) : 'rock';
     const c = teamClearer(S.team, kind, r.id);
     if (!c) {
-      if (r.ctl) return;   // (bug round 1) one steered by hand: just stopped by it (no jetting over, no target of his own)
+      if (ctlOn(r)) return;   // (bug round 1) one steered by hand: just stopped by it (no jetting over, no target of his own)
       if (why === 'aim' || why === 'fly') { r.vx = 0; r.vy = Math.min(r.vy, 0); pickTarget(S, r); return; }
       if (jetOver(S, r)) return;   // stage 6b: a partial blockage he can't clear, he jets over it
       S.blocked = S.t; S.blockedKind = kind; S.digWhy.blocked = (S.digWhy.blocked || 0) + 1;
@@ -1237,9 +1237,15 @@ function setMode(S, r, mode, t) {
 // a low roof, the ground he's aiming into, or the rock the scroll brings to him) and he saws through it
 /** @param {TitleScene} S @param {TRunner} r @param {number} dt */
 function stepRunnerMove(S, r, dt) {
+  // (the picked one keeps the whole screen, steered or not: never snapped back inside 0.62; on the autopilot he walks back)
   r.modeT -= dt; r.retarget -= dt;
+  // (bug round 2) semi-automatic: the picked player (r.ctl) plays by himself till the stick is pushed; let go, he's back on
+  // the autopilot from where he is (a fresh target; in the air, flying)
+  const on = ctlOn(r);
+  if (r.ctlWas && !on) { r.cvx = 0; r.retarget = 0; if (!r.ground) { r.mode = 'fly'; r.modeT = 0; } }
+  r.ctlWas = on;
   if (r.dig) digStep(S, r, dt);
-  else if (r.ctl) ctlStep(S, r, r.ctl, dt);
+  else if (on) ctlStep(S, r, r.ctl, dt);
   else if (r.mode === 'run') runStep(S, r, dt);
   else flyStep(S, r, dt);
   r.x = Math.max(8, Math.min(r.ctl ? TITLE_VW - PW - 8 : TITLE_VW * 0.62, r.x));   // (one steered by hand: the whole screen)
@@ -1289,6 +1295,9 @@ export const jetLift = (ny, m) => { const up = Math.max(0, -ny) * m; return (-up
 /** the flame, 0..1 @param {number} ny @param {number} m */
 export const jetThrottle = (ny, m) => Math.max(0.15, Math.max(0, -ny) * m);
 export const JET_SINK = 110;
+// (bug round 2) is the picked player being steered right now (the stick pushed past the dead zone)? else he's on the autopilot
+/** @param {TRunner} r */
+export const ctlOn = r => !!r.ctl && r.ctl.active && r.ctl.mag > DEAD;
 // (CaveRunner Auto, feedback round 2) the selected player, steered by the pill stick as the old game's left stick (the
 // hub's steering, auto/hub.js hubMove: walk, jet up, gravity; r.cvx his speed through the world, the screen's is that
 // less the scroll). A step up to 8 he takes; rock in the way he's pushing toward (or the scroll pushes him into) he saws
@@ -1421,7 +1430,7 @@ function digStep(S, r, dt) {
     if (!r.dig) return;
   }
   S.digT += dt; r.dig += dt;
-  if (r.ctl) { ctlDig(S, r, r.ctl, dt); return; }
+  if (ctlOn(r)) { ctlDig(S, r, r.ctl, dt); return; }
   if (r.mode === 'fly' && (r.retarget <= 0 || Math.hypot(r.tx - r.x, r.ty - r.y) < 6)) pickTarget(S, r);
   if (r.dig > 6 && r.mode === 'fly') {                   // long enough underground: up to the open air
     const twx = r.x + PW / 2 + S.scroll, c = titleCeil(twx, S), f = titleFloor(twx, S);

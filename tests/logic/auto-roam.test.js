@@ -22,7 +22,7 @@ const r = S.runners[0], push = (nx, ny) => ({ active: true, nx, ny, mag: 1 });
 r.x = G.TITLE_VW / 2 - G.PW / 2;
 G.levelControl(S, r.id, null);
 step(0.5);
-check('manual mode, the stick at rest in the middle: the scroll stops', G.levelLead(S) === r && Math.abs(S.pace) < 0.05, S.pace);
+check('(bug round 2, semi-automatic) picked, the stick at rest: he plays by himself, the level keeps its pace', G.levelPicked(S) === r && !G.levelLead(S) && S.pace > 0.2, S.pace);
 
 const s0 = S.scroll;
 G.levelControl(S, r.id, push(1, 0));

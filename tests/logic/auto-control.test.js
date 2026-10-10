@@ -1,7 +1,8 @@
 // CaveRunner Auto feedback round 2 (src/auto/level.js levelControl, art/titlescene.js ctlStep): in a level the selected
 // player is steered by the pill stick: pushed right he walks through the world faster than the scroll (gains on screen),
-// left he drops back, up he jets; the stick at rest he stands (manual mode: the view eases to him); his gun still fires by itself;
-// let go (B) he's back on the autopilot. A fallen player isn't steered.
+// left he drops back, up he jets; his gun still fires by itself;
+// let go (B) he's back on the autopilot. A fallen player isn't steered. (bug round 2) semi-automatic: picked, he plays by
+// himself till the stick is pushed.
 const G = require('../load');
 let fails = 0;
 const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FAIL'} ${n}${x !== undefined ? ' -> ' + JSON.stringify(x) : ''}`); };
@@ -16,9 +17,10 @@ const push = (nx, ny) => ({ active: true, nx, ny, mag: 1 });
 
 G.levelControl(S, r.id, null);
 check('picked: he is steered (the stick at rest), the other is not', !!r.ctl && !r.ctl.active && !o.ctl);
-const x0 = r.x;
+// (bug round 2, semi-automatic) picked but the stick at rest: he plays by himself, the level keeps its own pace
+const wx0 = r.x + S.scroll;
 run(1.5);
-check('the stick at rest: he stands; (manual mode, auto-roam) the view eases to him, so he drifts toward the middle', Math.abs(r.x + G.PW / 2 - G.TITLE_VW / 2) < Math.abs(x0 + G.PW / 2 - G.TITLE_VW / 2) && Math.abs(r.cvx || 0) < 1, [x0, r.x]);
+check('the stick at rest: on the autopilot (not steered), the level moving on, he with it', !G.ctlOn(r) && !G.levelLead(S) && G.levelPicked(S) === r && S.pace > 0.2 && r.x + S.scroll > wx0 + 10, [S.pace, wx0, r.x + S.scroll]);
 
 r.x = 40;
 G.levelControl(S, r.id, push(1, 0));
@@ -51,8 +53,8 @@ for (let i = 0; i < 60; i++) { G.titleStep(S, 1 / 30); dug = dug || r.dig > 0; }
 check('pushed down on the ground: he saws down into the floor', dug && r.y > gy + 6, [gy, r.y, r.dig]);
 check('… straight down, not pulled to the autopilot\'s target', Math.abs(r.x + S.scroll - gx) < 12, [gx, r.x + S.scroll]);
 G.levelControl(S, r.id, { active: true, nx: 0, ny: 0, mag: 0 });
-run(0.5);
-check('the stick let go: he stops sawing', !r.dig, r.dig);
+G.titleStep(S, 1 / 30);
+check('the stick let go: back on the autopilot (his saw no longer the stick\'s)', !G.ctlOn(r) && !r.ctlWas, r.dig);
 
 // (bug round 1) a teammate bumping him never snaps him back to the autopilot's 0.62 of the screen
 r.x = G.TITLE_VW * 0.8; o.x = r.x - 2; o.y = r.y; o.mode = 'fly';

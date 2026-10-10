@@ -10,7 +10,7 @@
 
 import { PH, PW } from '../core/consts.js';
 import { DEV } from '../dev/knobs.js';
-import { TITLE_BACK, TITLE_VW, TITLE_ZLEN, titleClearWebs, titleRng, titleFloor, titlePlan, titleScene, titleSurf, titleZoneAdd } from '../art/titlescene.js';
+import { TITLE_BACK, TITLE_VW, TITLE_ZLEN, ctlOn, titleClearWebs, titleRng, titleFloor, titlePlan, titleScene, titleSurf, titleZoneAdd } from '../art/titlescene.js';
 import { hubArriveT } from './hub.js';
 import { meterAdd, meterNew, meterSet, meterStep } from './meters.js';
 import { pilotEase, pilotPace } from './pilot.js';
@@ -279,7 +279,11 @@ export function levelStep(S, dt) {
 // back than roamMin. The others follow him (roamFollow). B lets him go: the pilot's pace again (it eases back up)
 // the steered player (none: null)
 /** @param {import('../art/titlescene.js').TitleScene} S */
-export const levelLead = S => S.runners.find(r => !!r.ctl && !r.out) || null;
+// (bug round 2, semi-automatic) only while the stick is pushed: let go, the level's own pace again (eased) and he plays by himself
+export const levelLead = S => S.runners.find(r => ctlOn(r) && !r.out) || null;
+// the picked player (manual mode; the nav's crosshair), steered or not (none: null)
+/** @param {import('../art/titlescene.js').TitleScene} S */
+export const levelPicked = S => S.runners.find(r => !!r.ctl && !r.out) || null;
 // the scroll's pace (× LVL_SCROLL; negative: back) for a steered player off the middle by off (screen units, + right)
 /** @param {number} off */
 export const roamPace = off => DEV.autoRoamCam * off / LVL_SCROLL;
@@ -296,10 +300,12 @@ function roamStep(S, L, lead) {
 // the others line up behind him (on the autopilot still: they run, fly and saw as ever; only where they head is his)
 /** @param {import('../art/titlescene.js').TitleScene} S @param {import('../art/titlescene.js').TRunner} lead */
 export function roamFollow(S, lead) {
+  // (bug round 2) behind him by the way he's going (not where his gun has him facing), else by his facing
   let k = 0;
+  const dir = Math.abs(lead.cvx || 0) > 5 ? Math.sign(lead.cvx || 0) : (lead.face || 1);
   for (const r of S.runners) {
     if (r === lead || r.out || r.dig) continue;
-    r.tx = Math.max(8, Math.min(TITLE_VW * 0.62, lead.x - (lead.face || 1) * (14 + 12 * k++)));
+    r.tx = Math.max(8, Math.min(TITLE_VW * 0.62, lead.x - dir * (14 + 12 * k++)));
     if (r.mode === 'run') r.spd = 1;
     r.retarget = Math.max(r.retarget, 0.3);
   }
