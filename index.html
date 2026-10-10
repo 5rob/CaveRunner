@@ -1818,7 +1818,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     autoLvlEliteR: 120,
     autoLvlChestR: 50,
     autoLvlBossT: 120,
-    autoLvlEase: 1.5
+    autoLvlEase: 1.5,
+    autoClearT: 3,
+    autoClearWait: 4
   });
   DEV_META.push(
     { k: "autoLvlMin", g: "autolevel", label: "Level length (minutes at normal pace)", min: 0.2, max: 20, step: 0.1 },
@@ -1830,7 +1832,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "autoLvlEliteR", g: "autolevel", label: "An elite counts as near within (world units)", min: 10, max: 400, step: 5 },
     { k: "autoLvlChestR", g: "autolevel", label: "A chest counts as near within (world units)", min: 5, max: 300, step: 5 },
     { k: "autoLvlBossT", g: "autolevel", label: "Boss arena: given up after (s; a fallback if the boss can’t be reached)", min: 5, max: 600, step: 5 },
-    { k: "autoLvlEase", g: "autolevel", label: "Pace changes by at most (× pace / s)", min: 0.2, max: 10, step: 0.1 }
+    { k: "autoLvlEase", g: "autolevel", label: "Pace changes by at most (× pace / s)", min: 0.2, max: 10, step: 0.1 },
+    { k: "autoClearT", g: "autolevel", label: "LEVEL CLEARED shows for (s; then the team walks to the exit)", min: 1, max: 10, step: 0.1 },
+    { k: "autoClearWait", g: "autolevel", label: "LEVEL CLEARED waits for the boss’s loot at most (s; a full bag leaves it lying)", min: 0, max: 20, step: 0.5 }
   );
   DEV_GROUPS.push(["autolevel", "Auto: level"]);
   Object.assign(DEV_DEFAULTS, { autoBlockN: 2, autoBlockMin: 0.2, autoBlockMax: 1, autoBlockFull: 0.85, autoBlockThin: 16, autoBlockWide: 0.75, autoWebSlow: 0.2, autoWebHalt: 0.25 });
@@ -13175,28 +13179,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       [...s].forEach((c, i) => {
         const n = li * 4 + i;
         const bob = Math.sin(t * 3.2 + n * 0.7) * px * 0.45, cx = x, cy = y + bob;
-        for (let d = Math.ceil(px * 0.9); d > 0; d--) {
-          ctx.fillStyle = d > px * 0.45 ? "#2a0610" : "#6a1220";
-          pixText(ctx, c, cx + d * 0.5, cy + d, px, ph, 1, 8);
-        }
-        const g = ctx.createLinearGradient(0, cy - 7 * ph, 0, cy);
-        g.addColorStop(0, "#fff6b0");
-        g.addColorStop(0.35, "#ffd23a");
-        g.addColorStop(0.7, "#ff8a1f");
-        g.addColorStop(1, "#e8361a");
-        ctx.shadowColor = "rgba(255,140,40,0.9)";
-        ctx.shadowBlur = px * 2.2;
-        ctx.fillStyle = g;
-        pixText(ctx, c, cx, cy, px, ph, 1, 8);
-        ctx.shadowBlur = 0;
         const lx = (cx + pixWidth(c, px, 1) / 2) / cw;
-        const sh = 1 - Math.abs(lx - shine) * 5;
-        if (sh > 0) {
-          ctx.globalAlpha = sh * 0.8;
-          ctx.fillStyle = "#ffffff";
-          pixText(ctx, c, cx, cy, px, ph, 1, 8);
-          ctx.globalAlpha = 1;
-        }
+        titleLetter(ctx, c, cx, cy, px, 1 - Math.abs(lx - shine) * 5);
         x += pixWidth(c, px, 1) + 1 * px;
       });
       y += 7 * ph + Math.ceil(px * 2.2);
@@ -13213,6 +13197,30 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ctx.shadowBlur = 0;
     if ("letterSpacing" in ctx) ctx.letterSpacing = "0px";
     ctx.textAlign = "start";
+  }
+  function titleLetter(ctx, c, cx, cy, px, sh) {
+    const ph = px;
+    for (let d = Math.ceil(px * 0.9); d > 0; d--) {
+      ctx.fillStyle = d > px * 0.45 ? "#2a0610" : "#6a1220";
+      pixText(ctx, c, cx + d * 0.5, cy + d, px, ph, 1, 8);
+    }
+    const g = ctx.createLinearGradient(0, cy - 7 * ph, 0, cy);
+    g.addColorStop(0, "#fff6b0");
+    g.addColorStop(0.35, "#ffd23a");
+    g.addColorStop(0.7, "#ff8a1f");
+    g.addColorStop(1, "#e8361a");
+    ctx.shadowColor = "rgba(255,140,40,0.9)";
+    ctx.shadowBlur = px * 2.2;
+    ctx.fillStyle = g;
+    pixText(ctx, c, cx, cy, px, ph, 1, 8);
+    ctx.shadowBlur = 0;
+    if (sh > 0) {
+      const a = ctx.globalAlpha;
+      ctx.globalAlpha = a * sh * 0.8;
+      ctx.fillStyle = "#ffffff";
+      pixText(ctx, c, cx, cy, px, ph, 1, 8);
+      ctx.globalAlpha = a;
+    }
   }
   var titlePx = (cw) => Math.max(4, Math.floor(Math.min(cw * 0.92 / pixWidth("RUNNER", 1, 1), 15)));
   var titleBottom = (cw, top) => top + titlePx(cw) * 16 + Math.ceil(titlePx(cw) * 2.2) + 20;
@@ -15633,7 +15641,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       return r * cols + Math.floor((x + (r & 1) * (B >> 1)) / B);
     };
     for (let y = 0; y < Y1; y++) for (let x = 0; x < CW; x++) if (dist[y * CW + x] <= D2) dressed[key(x, y)] = 1;
-    const hash6 = (a, b) => {
+    const hash7 = (a, b) => {
       let v = Math.imul(a, 374761393) + Math.imul(b, 668265263) + Math.imul(o.seed, 982451653) | 0;
       v = Math.imul(v ^ v >>> 13, 1274126177);
       return ((v ^ v >>> 16) >>> 0) / 4294967296;
@@ -15648,11 +15656,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       let c;
       if (mortar) c = T2.mortar;
       else {
-        c = mix(T2.brick[0], T2.brick[1], hash6(k, 7));
+        c = mix(T2.brick[0], T2.brick[1], hash7(k, 7));
         if (!mat[i - CW]) c = c.map((v) => v * 1.3);
         else if (y + 1 < CH && !mat[i + CW]) c = c.map((v) => v * 0.72);
       }
-      const j = (hash6(x * 3 + 1, y * 5 + 2) - 0.5) * 8;
+      const j = (hash7(x * 3 + 1, y * 5 + 2) - 0.5) * 8;
       d[i * 4] = c[0] + j;
       d[i * 4 + 1] = c[1] + j;
       d[i * 4 + 2] = c[2] + j;
@@ -15661,32 +15669,32 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var GLYPHS2 = [["#.#", ".#."], ["###", "#.#"], [".#.", "###"], ["#..", "###"], ["#.#", "###"], ["##.", ".##"], [".#.", "#.#"]];
   function paintTombWall(hi, bg, seed, noise) {
     const W = hi.width, H = hi.height, d = hi.data, BWK = 7, BHK = 4, FRIEZE = 13, PIL = 41, PW2 = 5;
-    const hash6 = (a, b2) => {
+    const hash7 = (a, b2) => {
       let v = Math.imul(a, 374761393) + Math.imul(b2, 668265263) + Math.imul(seed + 77, 982451653) | 0;
       v = Math.imul(v ^ v >>> 13, 1274126177);
       return ((v ^ v >>> 16) >>> 0) / 4294967296;
     };
     const STONE = [[44, 40, 37], [60, 54, 48]], MORTAR = [22, 20, 19], CUT = [26, 23, 21];
-    const pilOff = Math.floor(hash6(1, 2) * PIL), S2 = W / bg.width;
+    const pilOff = Math.floor(hash7(1, 2) * PIL), S2 = W / bg.width;
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
       const course = Math.floor(y / BHK), cy = y % BHK, fr = course % FRIEZE === FRIEZE - 1;
       const px = (x + pilOff) % PIL, pil = px < PW2;
       let c;
       if (pil) {
-        const t = hash6(Math.floor((x + pilOff) / PIL), 9) * 0.15;
+        const t = hash7(Math.floor((x + pilOff) / PIL), 9) * 0.15;
         c = mix(STONE[0], STONE[1], 0.55 + t);
         if (px === 0) c = c.map((v) => v * 1.18);
         else if (px === PW2 - 1) c = c.map((v) => v * 0.7);
         if (fr) c = c.map((v) => v * (cy === 0 ? 1.15 : 0.85));
       } else if (fr) {
-        const g = GLYPHS2[Math.floor(hash6(Math.floor(x / 4), course) * GLYPHS2.length)], gx = x % 4;
+        const g = GLYPHS2[Math.floor(hash7(Math.floor(x / 4), course) * GLYPHS2.length)], gx = x % 4;
         c = mix(STONE[0], STONE[1], 0.7);
         if (cy === 0) c = c.map((v) => v * 1.12);
         else if (cy === BHK - 1) c = MORTAR;
         else if (gx < 3 && g[cy - 1] && g[cy - 1][gx] === "#") c = CUT;
       } else {
         const off = (course & 1) * (BWK >> 1), bx = Math.floor((x + off) / BWK), cx = (x + off) % BWK;
-        const r = hash6(bx, course);
+        const r = hash7(bx, course);
         if (cx === BWK - 1 || cy === BHK - 1) c = MORTAR;
         else if (r < 0.025) c = MORTAR.map((v) => v * 0.8);
         else {
@@ -15696,7 +15704,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
       }
       const big = noise(x / S2 / 34 + 700, y / S2 / 34 + 500), shade = 1 - 0.5 * Math.max(0, Math.min(1, (big - 0.35) / 0.3));
-      const j = (hash6(x + 900, y + 900) - 0.5) * 4, k = (y * W + x) * 4;
+      const j = (hash7(x + 900, y + 900) - 0.5) * 4, k = (y * W + x) * 4;
       d[k] = c[0] * shade + j;
       d[k + 1] = c[1] * shade + j;
       d[k + 2] = c[2] * shade + j;
@@ -15849,7 +15857,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function furnishRoom(mat, img, dimg, fuel, r, seed, R, Kf, Kb, prize) {
     const cx = r.cx, F2 = r.floor, dd = dimg.data, id = img.data, hw = Math.floor(r.w / 2);
     const kit = r.kit = [];
-    const hash6 = (a, b) => {
+    const hash7 = (a, b) => {
       let v = Math.imul(a, 374761393) + Math.imul(b, 668265263) + Math.imul(seed + r.id * 31, 982451653) | 0;
       v = Math.imul(v ^ v >>> 13, 1274126177);
       return ((v ^ v >>> 16) >>> 0) / 4294967296;
@@ -15862,7 +15870,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const pair = (u, up, ch, a) => {
       const y = Y(up), xr = XR(u), xl = XL(u);
       if (u < 0 || !open(xr, y) || !open(xl, y)) return;
-      const c = KIT_PAL[ch], j = (hash6(u * 7 + 1, up * 13 + 5) - 0.5) * 12, al = a == null ? 255 : a;
+      const c = KIT_PAL[ch], j = (hash7(u * 7 + 1, up * 13 + 5) - 0.5) * 12, al = a == null ? 255 : a;
       for (const x of [xr, xl]) {
         const i = y * CW + x, k = i * 4;
         dd[k] = c[0] + j;
@@ -16018,8 +16026,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         if (fits(u0, 0, 10, sh, true)) {
           rect(u0, 0, 10, sh, "w");
           for (let up = 2; up < sh - 1; up += 5) for (let u = u0 + 1; u < u0 + 9; u++) {
-            const hgt = 3 + (hash6(u, up) < 0.4 ? 0 : 0), col = "CVgTPc"[Math.floor(hash6(u * 3, up) * 6)];
-            for (let q = 0; q < hgt; q++) pair(u, up + q, hash6(u, up + 99) < 0.12 ? "w" : col);
+            const hgt = 3 + (hash7(u, up) < 0.4 ? 0 : 0), col = "CVgTPc"[Math.floor(hash7(u * 3, up) * 6)];
+            for (let q = 0; q < hgt; q++) pair(u, up + q, hash7(u, up + 99) < 0.12 ? "w" : col);
           }
           note("shelf", u0, 0, 10, sh);
           made++;
@@ -16044,7 +16052,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         rect(u, up, 7, 7, "s");
         rect(u + 1, up + 1, 5, 5, "k");
         rect(u, up, 7, 1, "S");
-        if (hash6(u, up) < 0.85) for (let row = 0; row < 4; row++) for (let col = 0; col < 5; col++) {
+        if (hash7(u, up) < 0.85) for (let row = 0; row < 4; row++) for (let col = 0; col < 5; col++) {
           const ch = SKULL[row][col];
           if (ch !== ".") pair(u + 1 + col, up + 4 - row, ch);
         }
@@ -16130,7 +16138,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         rect(14, 4, tw, 2, "W");
         rect(15, 0, 1, 4, "w");
         rect(14 + tw - 2, 0, 1, 4, "w");
-        for (let u = 17; u < 14 + tw - 3; u += 5) rect(u, 6, 1, hash6(u, 1) < 0.5 ? 2 : 1, hash6(u, 2) < 0.5 ? "g" : "G");
+        for (let u = 17; u < 14 + tw - 3; u += 5) rect(u, 6, 1, hash7(u, 1) < 0.5 ? 2 : 1, hash7(u, 2) < 0.5 ? "g" : "G");
         note("table", 14, 0, tw, 6);
         for (const bu of [11, 14 + tw + 1]) if (fits(bu, 0, 3, 3, true)) {
           rect(bu, 0, 1, 2, "w");
@@ -16510,7 +16518,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var EXIT_X = [CW / 6, CW / 2, CW * 5 / 6].map(Math.round);
   function makeLevel(seed, floor, owned) {
     floor = floor || 1;
-    const hash6 = (x, y) => {
+    const hash7 = (x, y) => {
       let v = Math.imul(x, 374761393) + Math.imul(y, 668265263) + Math.imul(seed, 982451653) | 0;
       v = Math.imul(v ^ v >>> 13, 1274126177);
       v ^= v >>> 16;
@@ -16519,7 +16527,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const vn = (x, y) => {
       const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi;
       const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
-      const a = hash6(xi, yi), b = hash6(xi + 1, yi), c = hash6(xi, yi + 1), d2 = hash6(xi + 1, yi + 1);
+      const a = hash7(xi, yi), b = hash7(xi + 1, yi), c = hash7(xi, yi + 1), d2 = hash7(xi + 1, yi + 1);
       return a + (b - a) * u + (c - a) * v + (a - b - c + d2) * u * v;
     };
     const fbm2 = (x, y) => 0.55 * vn(x, y) + 0.3 * vn(x * 2 + 17, y * 2 + 31) + 0.15 * vn(x * 4 + 53, y * 4 + 7);
@@ -16873,7 +16881,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       for (let cx = 0; cx < CW; cx++) {
         const i = cy * CW + cx, m = mat[i];
         if (!m) continue;
-        const r1 = hash6(cx * 7 + 3, cy * 13 + 5);
+        const r1 = hash7(cx * 7 + 3, cy * 13 + 5);
         let c;
         if (m === ROCK) {
           const exposed = cy > 1 && (mat[i - CW] === 0 || mat[i - 2 * CW] === 0);
@@ -16882,7 +16890,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           const k = cx + cy % 2 * 3;
           if (k % 6 === 0) c = T2.mortar;
           else {
-            c = mix(T2.brick[0], T2.brick[1], hash6(Math.floor(k / 6), cy));
+            c = mix(T2.brick[0], T2.brick[1], hash7(Math.floor(k / 6), cy));
             if (cy > 0 && mat[i - CW] === 0) c = c.map((v) => v * 1.18);
           }
         } else {
@@ -16900,7 +16908,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       for (let cx = 0; cx < CW; cx++) {
         const i = cy * CW + cx;
         if (!mat[i]) continue;
-        const c = shopPanel(cx, cy), j = (hash6(cx * 5 + 1, cy * 3 + 2) - 0.5) * 4;
+        const c = shopPanel(cx, cy), j = (hash7(cx * 5 + 1, cy * 3 + 2) - 0.5) * 4;
         d[i * 4] = c[0] + j;
         d[i * 4 + 1] = c[1] + j;
         d[i * 4 + 2] = c[2] + j;
@@ -16910,7 +16918,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       for (let cx = 0; cx < CW; cx++) mat[cy * CW + cx] = BED;
     for (const n of nests) for (const i of n.mound) {
       if (mat[i] !== ROCK) continue;
-      const r1 = hash6(i % CW * 3 + 5, (i / CW | 0) * 7 + 1), c = mix([92, 70, 48], [128, 98, 66], r1);
+      const r1 = hash7(i % CW * 3 + 5, (i / CW | 0) * 7 + 1), c = mix([92, 70, 48], [128, 98, 66], r1);
       d[i * 4] = c[0];
       d[i * 4 + 1] = c[1];
       d[i * 4 + 2] = c[2];
@@ -16922,7 +16930,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         const c = mix(T2.bg, T2.bg2, Math.min(1, t * 1.3));
         const big = fbm2(x / 34 + 700, y / 34 + 500);
         let shade = 1 - 0.55 * Math.max(0, Math.min(1, (big - 0.35) / 0.3));
-        const j = (hash6(x + 900, y + 900) - 0.5) * 4, k = (y * BW + x) * 4;
+        const j = (hash7(x + 900, y + 900) - 0.5) * 4, k = (y * BW + x) * 4;
         bgImg.data[k] = c[0] * shade + j;
         bgImg.data[k + 1] = c[1] * shade + j;
         bgImg.data[k + 2] = c[2] * shade + j;
@@ -17026,7 +17034,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           t: 0.5 + n.x % 7 * 0.4,
           stash: 0,
           max: 0,
-          left: Math.round(kru("raBrood", hash6(n.x * 3 + 11, n.y * 5 + 7)))
+          left: Math.round(kru("raBrood", hash7(n.x * 3 + 11, n.y * 5 + 7)))
         }
       });
     }
@@ -17130,7 +17138,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (!sh || darkData.mask[i]) continue;
       const x = i % CW, y = i / CW | 0, t = sh / 255;
       if (mat[i] === ROCK) {
-        const k = Math.min(1, t * (0.3 + 0.9 * hash6(x * 3 + 1, y * 7 + 4))), c = zoneRock(at(tintL, x, y));
+        const k = Math.min(1, t * (0.3 + 0.9 * hash7(x * 3 + 1, y * 7 + 4))), c = zoneRock(at(tintL, x, y));
         for (let n = 0; n < 3; n++) d[i * 4 + n] = d[i * 4 + n] * (1 - k) + c[n] * k;
       }
     }
@@ -17144,7 +17152,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         fuel[i] = 0;
         continue;
       }
-      const c = zoneRock(at(tintL, i % CW, i / CW | 0)), j = (hash6(i % CW * 3 + 7, (i / CW | 0) * 5 + 3) - 0.5) * 8;
+      const c = zoneRock(at(tintL, i % CW, i / CW | 0)), j = (hash7(i % CW * 3 + 7, (i / CW | 0) * 5 + 3) - 0.5) * 8;
       d[i * 4] = c[0] + j;
       d[i * 4 + 1] = c[1] + j;
       d[i * 4 + 2] = c[2] + j;
@@ -17171,7 +17179,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         continue;
       }
       fuel[i] = 0;
-      const r1 = hash6(i % CW * 5 + 11, (i / CW | 0) * 3 + 7), k = i * 4;
+      const r1 = hash7(i % CW * 5 + 11, (i / CW | 0) * 3 + 7), k = i * 4;
       const glint = r1 > 0.9 ? 1.25 : 0.8 + r1 * 0.3;
       d[k] = Math.min(255, 222 * glint);
       d[k + 1] = Math.min(255, 168 * glint);
@@ -36055,6 +36063,75 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return "#ffc93c";
   }
 
+  // src/art/cleared.js
+  var CLEARED_LINES = ["LEVEL", "CLEARED"];
+  var CLEARED_N = CLEARED_LINES.join("").length;
+  var STAGGER = 0.09;
+  var FALL = 0.42;
+  var SPARK_T = 0.55;
+  var SHINE_T = 0.7;
+  var FADE = 0.5;
+  var clearedLand = (i) => i * STAGGER + FALL * 0.55;
+  var clearedShine = () => (CLEARED_N - 1) * STAGGER + FALL + 0.1;
+  function dropAt(u) {
+    if (u <= 0) return 1;
+    if (u >= 1) return 0;
+    const b = u < 0.55 ? (u / 0.55) ** 2 : u < 0.82 ? 1 - 0.18 * Math.sin(Math.PI * (u - 0.55) / 0.27) : 1 - 0.05 * Math.sin(Math.PI * (u - 0.82) / 0.18);
+    return 1 - b;
+  }
+  var hash5 = (n) => {
+    const v = Math.sin(n * 127.1 + 311.7) * 43758.5453;
+    return v - Math.floor(v);
+  };
+  function clearedText(ctx, a, dur, cw, top) {
+    if (a < 0 || a > dur) return;
+    const px = Math.max(3, Math.floor(Math.min(cw * 0.86 / pixWidth("CLEARED", 1, 1), 13)));
+    const fade = Math.max(0, Math.min(1, (dur - a) / FADE));
+    ctx.save();
+    ctx.globalAlpha = fade;
+    const shine = (a - clearedShine()) / SHINE_T * 1.6 - 0.3;
+    let y = top + 7 * px, n = 0;
+    const lands = [];
+    for (const s of CLEARED_LINES) {
+      let x = (cw - pixWidth(s, px, 1)) / 2;
+      for (const c of s) {
+        const u = (a - n * STAGGER) / FALL;
+        if (u > 0) {
+          const settle = Math.max(0, a - clearedShine());
+          const bob = Math.sin(settle * 3.2 + n * 0.7) * px * 0.45 * Math.min(1, settle * 2);
+          const cy = y - dropAt(u) * (y + px * 4) + bob;
+          const lx = (x + pixWidth(c, px, 1) / 2) / cw;
+          titleLetter(ctx, c, x, cy, px, 1 - Math.abs(lx - shine) * 5);
+          const lt = a - clearedLand(n);
+          if (lt >= 0 && lt < SPARK_T) lands.push({ x: x + pixWidth(c, px, 1) / 2, y, t: lt, n });
+        }
+        x += pixWidth(c, px, 1) + px;
+        n++;
+      }
+      y += 7 * px + Math.ceil(px * 2.2);
+    }
+    ctx.globalCompositeOperation = "lighter";
+    for (const L3 of lands) {
+      const k = L3.t / SPARK_T;
+      for (let j = 0; j < 12; j++) {
+        const h1 = hash5(L3.n * 31 + j), h23 = hash5(L3.n * 57 + j * 3 + 1);
+        const ang = Math.PI + h1 * Math.PI, sp = px * (5 + h23 * 9);
+        const sx = L3.x + Math.cos(ang) * sp * L3.t * 2.2, sy = L3.y + Math.sin(ang) * sp * L3.t * 2.2 + px * 30 * L3.t * L3.t;
+        const r = Math.max(1, px * 0.35 * (1 - k));
+        ctx.fillStyle = j % 3 ? "rgba(255,190,70," + (1 - k).toFixed(3) + ")" : "rgba(255,250,215," + (1 - k).toFixed(3) + ")";
+        ctx.fillRect(sx - r, sy - r, r * 2, r * 2);
+      }
+      if (L3.t < 0.18) {
+        ctx.strokeStyle = "rgba(255,220,140," + (1 - L3.t / 0.18).toFixed(3) + ")";
+        ctx.lineWidth = Math.max(1, px * 0.4);
+        ctx.beginPath();
+        ctx.ellipse(L3.x, L3.y, px * (1 + L3.t * 30), px * (0.3 + L3.t * 8), 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+
   // src/auto/level.js
   var LVL_SCROLL = 34;
   var LVL_PADX = 60;
@@ -36233,7 +36310,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     if (L3.phase === "arena" && (L3.bossDead || S2.t - L3.arenaT >= DEV.autoLvlBossT)) {
       L3.bossDead = true;
-      L3.phase = "out";
+      L3.phase = "cleared";
+      L3.lootT = S2.t;
+      L3.clearT = -1;
+    }
+    if (L3.phase === "cleared") {
+      S2.pace = 0;
+      cleared(S2, L3, dt);
+      return;
     }
     if (L3.phase === "out" && levelTeamX(S2) >= stop - 0.5) {
       L3.phase = "exit";
@@ -36271,6 +36355,23 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (L3.blocked && S2.team && teamClearer(S2.team, L3.blockKind || "rock", 0)) L3.blocked = false;
     const want = L3.webK * pilotPace({ x: levelTeamX(S2), stopX: stop, elites: L3.elites, chests: L3.chests, hold: L3.hold, blocked: L3.blocked });
     S2.pace = pilotEase(S2.pace || 0, want, dt);
+  }
+  function cleared(S2, L3, dt) {
+    if ((L3.clearT ?? -1) < 0) {
+      const left = (S2.loot ? S2.loot.length : 0) + S2.coins.length;
+      if (left === 0 || S2.t - (L3.lootT ?? S2.t) >= DEV.autoClearWait) L3.clearT = S2.t;
+      return;
+    }
+    const a = S2.t - (L3.clearT ?? S2.t), a0 = a - dt, cx = levelTeamX(S2), cy = S2.top + 30;
+    for (let i = 0; i < CLEARED_N; i++) {
+      const lt = clearedLand(i);
+      if (a0 < lt && a >= lt) S2.snd.push({ k: "land", x: cx, y: cy, a: 160 });
+    }
+    if (a >= DEV.autoClearT) L3.phase = "out";
+  }
+  function levelClearedAge(S2) {
+    const L3 = levelState(S2);
+    return L3 && L3.phase === "cleared" && (L3.clearT ?? -1) >= 0 ? S2.t - (L3.clearT ?? 0) : -1;
   }
   function gather(S2, L3, dt) {
     const n = S2.runners.length, px = L3.plan.exitX - S2.scroll;
@@ -36739,7 +36840,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   // src/game/render/titledraw.js
   var T = THEMES[0];
   var CACHE = /* @__PURE__ */ new WeakMap();
-  var hash5 = (c, r) => {
+  var hash6 = (c, r) => {
     const s = Math.sin(c * 12.9898 + r * 78.233) * 43758.5453;
     return s - Math.floor(s);
   };
@@ -36747,18 +36848,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var TIMBER = [112, 80, 50];
   var fbm = (x, y) => titleNoise(x, y) * 0.65 + titleNoise(x * 2.1 + 17, y * 2.1 + 5) * 0.35;
   function cellRGB(m, c, r, up) {
-    const h4 = hash5(c, r), j = (h4 - 0.5) * 10;
+    const h4 = hash6(c, r), j = (h4 - 0.5) * 10;
     const J = (q) => [q[0] + j, q[1] + j, q[2] + j];
     if (m === TM.ROCK) return J(up ? mixc(T.moss[0], T.moss[1], h4) : mixc(T.rock[0], T.rock[1], fbm(c / 6 + 100, r / 6 + 100)));
     if (m === TM.MOSS) return J(mixc(T.moss[0], T.moss[1], h4));
     if (m === TM.BRICK) {
       const k = c + r % 2 * 3;
       if (k % 6 === 0) return J(T.mortar);
-      const q = mixc(T.brick[0], T.brick[1], hash5(Math.floor(k / 6), r));
+      const q = mixc(T.brick[0], T.brick[1], hash6(Math.floor(k / 6), r));
       return J(up ? q.map((v) => v * 1.18) : q);
     }
     if (m === TM.GRASS || m === TM.RUBM) return mixc(T.moss[1], T.moss[1], 0, 0.9 + h4 * 0.25);
-    if (m === TM.RUB) return J(h4 < 0.2 ? T.mortar : mixc(T.brick[0], T.brick[1], hash5(c * 3, r * 5)));
+    if (m === TM.RUB) return J(h4 < 0.2 ? T.mortar : mixc(T.brick[0], T.brick[1], hash6(c * 3, r * 5)));
     if (m === TM.BEAM || m === TM.WOOD) return J(mixc(TIMBER, TIMBER, 0, 0.95));
     if (m === TM.BEAMD) return J(mixc(TIMBER, TIMBER, 0, 0.7));
     if (m === TM.CHAR) return mixc([30, 26, 26], [52, 44, 40], h4);
@@ -36774,7 +36875,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (m === TM.STEEL) return c % 8 === 0 || r % 6 === 0 ? [34, 38, 46] : c % 8 === 1 && r % 6 === 1 ? [96, 104, 118] : mixc([62, 68, 80], [74, 80, 92], h4);
     if (m === TM.BWALL) {
       const k = c + r % 2 * 3;
-      return k % 6 === 0 || r % 3 === 0 ? [22, 20, 22] : mixc(T.brick[0], T.brick[1], hash5(Math.floor(k / 6), r), 0.5);
+      return k % 6 === 0 || r % 3 === 0 ? [22, 20, 22] : mixc(T.brick[0], T.brick[1], hash6(Math.floor(k / 6), r), 0.5);
     }
     if (m === TM.SWALL) return c % 10 === 0 ? [20, 23, 28] : r % 14 === 0 ? [58, 64, 76] : mixc([36, 40, 48], [42, 46, 54], h4);
     const bx = c / 4, by = r / 4, t = Math.pow(fbm(bx / 10 + 300, by / 10 + 300), 1.6);
@@ -38060,6 +38161,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           return { S: S2, C, warm: 0 };
         },
         paused: () => pausedRef.current,
+        // LEVEL CLEARED (stage 7), in the upper part of the play area
+        over: (ctx, S2, w, hh) => {
+          const a = levelClearedAge(S2);
+          if (a >= 0) clearedText(ctx, a, DEV.autoClearT, w, hh * 0.14);
+        },
         // through the exit pad: to the level; the level's exit pad: home, tier + 1, healed (saved); everyone fallen: home, same tier
         next: (S2) => {
           if (where.current === "hub" && hubLeft(S2)) {

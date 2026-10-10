@@ -607,7 +607,7 @@ DEV_META.push(
 DEV_GROUPS.push(['autohub', 'Auto: hub']);
 // CaveRunner Auto's level (auto/level.js, auto/pilot.js, stage 4a): its length and the team's pace
 Object.assign(DEV_DEFAULTS, { autoLvlMin: 5, autoLvlPace: 1, autoLvlHurry: 1.6, autoLvlSlow: 0.3, autoLvlElite: 0.4, autoLvlChest: 0.5,
-  autoLvlEliteR: 120, autoLvlChestR: 50, autoLvlBossT: 120, autoLvlEase: 1.5 });
+  autoLvlEliteR: 120, autoLvlChestR: 50, autoLvlBossT: 120, autoLvlEase: 1.5, autoClearT: 3, autoClearWait: 4 });
 DEV_META.push(
   { k: 'autoLvlMin',    g: 'autolevel', label: 'Level length (minutes at normal pace)', min: 0.2, max: 20, step: 0.1 },
   { k: 'autoLvlPace',   g: 'autolevel', label: 'Normal pace (× the menu’s scroll, 34 world units / s)', min: 0.1, max: 4, step: 0.05 },
@@ -618,7 +618,9 @@ DEV_META.push(
   { k: 'autoLvlEliteR', g: 'autolevel', label: 'An elite counts as near within (world units)', min: 10, max: 400, step: 5 },
   { k: 'autoLvlChestR', g: 'autolevel', label: 'A chest counts as near within (world units)', min: 5, max: 300, step: 5 },
   { k: 'autoLvlBossT',  g: 'autolevel', label: 'Boss arena: given up after (s; a fallback if the boss can’t be reached)', min: 5, max: 600, step: 5 },
-  { k: 'autoLvlEase',   g: 'autolevel', label: 'Pace changes by at most (× pace / s)', min: 0.2, max: 10, step: 0.1 });
+  { k: 'autoLvlEase',   g: 'autolevel', label: 'Pace changes by at most (× pace / s)', min: 0.2, max: 10, step: 0.1 },
+  { k: 'autoClearT',    g: 'autolevel', label: 'LEVEL CLEARED shows for (s; then the team walks to the exit)', min: 1, max: 10, step: 0.1 },
+  { k: 'autoClearWait', g: 'autolevel', label: 'LEVEL CLEARED waits for the boss’s loot at most (s; a full bag leaves it lying)', min: 0, max: 20, step: 0.5 });
 DEV_GROUPS.push(['autolevel', 'Auto: level']);
 // CaveRunner Auto's blocked zones (auto/blocked.js, stage 6b)
 Object.assign(DEV_DEFAULTS, { autoBlockN: 2, autoBlockMin: 0.2, autoBlockMax: 1, autoBlockFull: 0.85, autoBlockThin: 16, autoBlockWide: 0.75, autoWebSlow: 0.2, autoWebHalt: 0.25 });
