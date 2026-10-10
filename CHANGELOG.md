@@ -5,6 +5,14 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.20 — CaveRunner Auto: the full-loop suite (branch `autobattler`, stage 14)
+Released 2026-10-10 on the branch (tests and a tool only; nothing visible changed).
+- Browser suite `auto-loop` (~55 s): new run → pay the gun machine by lump → pill stick to the exit pad, A → level
+  (hurry, a chest opened with A, elites, the boss) → LEVEL CLEARED → hub at tier 2 → a green gem onto an empty circle →
+  2 players. Shortcuts: a Buzzsaw gun for player 1, short level and weak-boss knobs, the boss's hp zeroed if alive 3 s in.
+- `tools/autoperf.js`: a level's frame times. Phone size: ×1 CPU mean ~17 ms (60 fps), ×4 CPU mean ~26 ms (~39 fps),
+  p95 ~36 ms.
+
 ## v1.0.19 — CaveRunner Auto: save, resume, cleanup (branch `autobattler`, stage 13)
 Released 2026-10-10 on the branch (owner OK'd the New run shots, `tools/newrunshots.js`).
 - Drops picked up in a level are saved at once: a quit mid-level reopens in the hub with the bag kept.

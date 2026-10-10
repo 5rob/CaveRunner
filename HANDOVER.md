@@ -43,7 +43,11 @@ mock-up `docs/autobattler-mockup.png`). Progress: AUTOBATTLER.md's Log. `main` k
 - **Stage 11 done (v1.0.17, owner OK'd):** chests. Polish later: the chest is small, moss grass draws over it; no
   chest browser suite yet. 
 - **Stage 12 done (v1.0.18, owner OK'd):** extra players.
-- **Stage 13 done (v1.0.19, owner OK'd):** level drops saved at once (mid-level quit → hub, bag kept), ⏸ → New run (two taps), the old App and level worker out of the build (index.html −401 KB), the old game's 91 browser suites in `tests/retired/` (on this branch `node tests/run.js browser` runs only `auto-*` and `title`; `tests/determinism.js` drives the old game, so it's dead here too). Next: stage 14.
+- **Stage 13 done (v1.0.19, owner OK'd):** level drops saved at once (mid-level quit → hub, bag kept), ⏸ → New run (two taps), the old App and level worker out of the build (index.html −401 KB), the old game's 91 browser suites in `tests/retired/` (on this branch `node tests/run.js browser` runs only `auto-*` and `title`; `tests/determinism.js` drives the old game, so it's dead here too). 
+- **Stage 14 (v1.0.20):** `auto-loop` plays the whole loop; `tools/autoperf.js` (×4 CPU ~39 fps). Found: (1) the team
+  doesn't finish the boss (it sat at 2 hp; the 120 s `autoLvlBossT` fallback moves on) — to look at; (2) a fresh run's
+  starter guns can't dig, so the team stops at the first natural rock until the Buzzsaw is dragged into a gun (by design:
+  "Path blocked"). **Waiting on the owner:** play the full loop on the phone and OK it (the project's done-when).
 
 ## NEXT (as of v0.0.176, 2026-10-09)
 
