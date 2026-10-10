@@ -8,10 +8,11 @@ release loop, testing), then the README of the `src/` folder you're working in.
 Planned with the owner (brief + quiz answers + 16 stages + the PM's kick-start prompt, all in `AUTOBATTLER.md`;
 mock-up `docs/autobattler-mockup.png`). Progress: AUTOBATTLER.md's Log. `main` keeps the old game.
 
-**Where it stands (2026-10-10, v1.0.25 live at /auto/): all stages 0–14 built; feedback rounds 1 and 2a released.** Round 2a (v1.0.25):
-the nav as a rising stack, hold a gun to equip, the gun panel over the mod slots, pay with A. **Next (round 2b):** the hub
-rebuilt as the old shop room (owner: its look exactly, signage, tubes, dust, background; the machines' shake/chase
-lights/demo; the old spacing). Round 1
+**Where it stands (2026-10-10, v1.0.26 live at /auto/): all stages 0–14 built; feedback rounds 1 and 2 released.** Round 2b (v1.0.26):
+the hub is the old shop's room (spacing 120, the old wall/roof/floor/sign/dust, the gem demo; exit sign INCINERATOR "(for real)");
+in a level a tapped player is steered by the stick, B lets go. Round 2a (v1.0.25): the nav as a rising stack, hold a gun to
+equip, the gun panel over the mod slots, pay with A. Waiting on the owner: try it on the phone. Noted by the agent: the hub's
+camera shows ~250 units across vs the old ~214 (things a little smaller). Round 1
 (v1.0.24: the level no longer restarts on a resize, e.g. the app switcher; guns face left in the hub; machine items
 land before the pull. v1.0.23: drags go where they're put, bag → bag and slot → slot too; the gold lump removed. v1.0.22: the pill stick as the old thumbstick, its knob free past the pill; creatures start as a trickle, `levelSpawn`;
 jet-over fix. v1.0.21, the PM alone): hub movement now the old game's exactly; old saves get the starter kit (`kitMissing`); the

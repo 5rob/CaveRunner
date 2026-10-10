@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v1.0.25</title>
-<!-- VERSION = 'v1000025' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v1.0.26</title>
+<!-- VERSION = 'v1000026' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -1045,7 +1045,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v1.0.25';</script>
+<script>const VERSION = 'v1.0.26';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -12440,6 +12440,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     r.modeT -= dt;
     r.retarget -= dt;
     if (r.dig) digStep(S2, r, dt);
+    else if (r.ctl) ctlStep(S2, r, r.ctl, dt);
     else if (r.mode === "run") runStep(S2, r, dt);
     else flyStep(S2, r, dt);
     r.x = Math.max(8, Math.min(TITLE_VW * 0.62, r.x));
@@ -12477,6 +12478,51 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       } else {
         const sy = dy > 0 ? 1 : -1;
         if (!(shove(a, 0, -sy * oy / 2) && shove(b, 0, sy * oy / 2))) shove(b, 0, sy * oy) || shove(a, 0, -sy * oy);
+      }
+    }
+  }
+  function ctlStep(S2, r, st, dt) {
+    const m = st.active && st.mag > DEAD ? (st.mag - DEAD) / (1 - DEAD) : 0, jet = m > 0 && st.ny < 0, mv = DEV.move;
+    r.cvx = r.cvx || 0;
+    if (jet) {
+      r.cvx = approach(r.cvx, st.nx * m * JET * mv, JET_ACC * dt);
+      const ty = st.ny * m * JET * mv;
+      r.vy = ty < r.vy ? ty : approach(r.vy, ty, JET_ACC * dt);
+    } else {
+      r.cvx = approach(r.cvx, m > 0 ? st.nx * m * WALK * mv : 0, (r.ground ? GROUND_ACC : AIR_ACC) * dt);
+      r.vy = Math.min(r.vy + GRAVITY * dt, 900);
+    }
+    r.flame = jet ? m : 0;
+    const vx = r.cvx - sv(S2), nx = r.x + vx * dt;
+    if (!boxRock(S2, nx, r.y, false)) r.x = nx;
+    else if (r.ground && !boxRock(S2, nx, r.y - 8, false)) {
+      r.x = nx;
+      r.y -= 8;
+    } else {
+      const dir = Math.abs(r.cvx) > 5 ? Math.sign(r.cvx) : 1;
+      r.cvx = 0;
+      startDig(S2, r, dir, 0, dir > 0 ? "wall" : "aim");
+      if (r.dig) return;
+    }
+    const ny = r.y + r.vy * dt, cx = r.x + PW / 2;
+    if (!boxRock(S2, r.x, ny)) {
+      r.y = ny;
+      r.ground = false;
+    } else if (r.vy > 0) {
+      if (r.vy > 100) snd(S2, "land", cx, r.y + PH, r.vy * 2);
+      const g = titleSurf(S2, cx, r.y + PH - 9, 1);
+      if (g >= r.y + PH - 9 && !boxRock(S2, r.x, g - PH)) r.y = g - PH;
+      r.vy = 0;
+      r.ground = true;
+    } else r.vy = 0;
+    r.mode = r.ground ? "run" : "fly";
+    r.vx = vx;
+    if (Math.abs(r.cvx) > 1) r.face = Math.sign(r.cvx);
+    if (r.ground) {
+      r.gait += Math.abs(r.cvx) * dt * 0.38;
+      if (Math.abs(r.cvx) > 10 && (r.stepT = (r.stepT || 0) - dt * Math.abs(r.cvx) / 20) <= 0) {
+        r.stepT = 1;
+        snd(S2, "step", cx, r.y + PH);
       }
     }
   }
@@ -15391,6 +15437,23 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const L = levelState(S2);
     if (L) L.hold = Math.max(-1, Math.min(1, dir || 0));
   }
+  function levelControl(S2, id, st) {
+    for (const r of S2.runners) {
+      if (r.id === id && !r.out) {
+        r.ctl = st ? { active: st.active, nx: st.nx, ny: st.ny, mag: st.mag } : r.ctl || LEVEL_CTL_REST;
+        continue;
+      }
+      if (!r.ctl) continue;
+      r.ctl = null;
+      r.cvx = 0;
+      r.retarget = 0;
+      if (!r.ground) {
+        r.mode = "fly";
+        r.modeT = 0;
+      }
+    }
+  }
+  var LEVEL_CTL_REST = { active: false, nx: 0, ny: 0, mag: 0 };
   function levelLost(S2) {
     const L = levelState(S2);
     return !!L && L.failed;
@@ -26989,7 +27052,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     return w;
   }
-  function drawTeleSign(ctx, cx, cy) {
+  function drawTeleSign(ctx, cx, cy, o = {}) {
     ctx.save();
     const pw = 78, ph = 20, px = cx - pw / 2 + 6, py = cy - ph / 2 - 2;
     ctx.fillStyle = "#4a4740";
@@ -27004,13 +27067,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ctx.font = '900 15px "Arial Black", Impact, system-ui, sans-serif';
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText("PRINTER", px + pw / 2, py + ph / 2 + 1, pw - 6);
+    ctx.fillText(o.plate || "PRINTER", px + pw / 2, py + ph / 2 + 1, pw - 6);
     ctx.fillStyle = "#7a7465";
     ctx.fillRect(px + 2, py + ph / 2 - 1, 2, 2);
     ctx.fillRect(px + pw - 4, py + ph / 2 - 1, 2, 2);
-    const bw = 72, bh = 17;
-    ctx.translate(cx - 13, cy + 7);
-    ctx.rotate(-0.11);
+    const bw = 72, bh = o.sub ? 24 : 17, ly = o.sub ? -3.5 : 0;
+    ctx.translate(cx + (o.dx ?? -13), cy + (o.dy ?? 7));
+    ctx.rotate(o.rot ?? -0.11);
     ctx.fillStyle = "rgba(0,0,0,0.35)";
     ctx.fillRect(-bw / 2 + 1.5, -bh / 2 + 2, bw, bh);
     ctx.fillStyle = "#7b5532";
@@ -27040,15 +27103,24 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       ctx.fillRect(nx - 0.9, -0.4, 1, 1);
     }
     const lh = 10, gap = 0.18, tw = paintW("TELEPORTER", lh, gap), s = Math.min(1, (bw - 10) / tw);
+    if (o.sub) {
+      ctx.font = "italic 700 6px system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = "rgba(30,18,8,0.5)";
+      ctx.fillText(o.sub, 0.5, bh / 2 - 4.2);
+      ctx.fillStyle = "#f1ead8";
+      ctx.fillText(o.sub, 0, bh / 2 - 4.7);
+    }
     ctx.scale(s, 1);
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     ctx.strokeStyle = "rgba(30,18,8,0.5)";
     ctx.lineWidth = 2.6;
-    paint2(ctx, "TELEPORTER", -tw / 2 + 0.6, -lh / 2 + 0.8, lh, gap);
+    paint2(ctx, "TELEPORTER", -tw / 2 + 0.6, -lh / 2 + 0.8 + ly, lh, gap);
     ctx.strokeStyle = "#f1ead8";
     ctx.lineWidth = 2;
-    paint2(ctx, "TELEPORTER", -tw / 2, -lh / 2, lh, gap);
+    paint2(ctx, "TELEPORTER", -tw / 2, -lh / 2 + ly, lh, gap);
     ctx.restore();
   }
 
@@ -27551,11 +27623,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const H = hubState(S2);
     if (!H) return;
     const t = S2.t;
-    backWall(ctx, H.roof, H.fy, H.tier);
+    backWall(ctx, H.roof, H.fy);
     ctx.drawImage(shell(H.fy, S2.rows), 0, 0, HUB_W / TCELL, S2.rows, 0, 0, HUB_W, S2.rows * TCELL);
     HUB_STOPS.forEach((st, i) => {
       const lv = hubTube(S2, i), y = H.roof;
-      if (st.id === "enter" || st.id === "exit") drawTeleSign(ctx, st.x - 6, H.fy - 64);
+      if (st.id === "enter") drawTeleSign(ctx, st.x - 6, H.fy - 64);
+      if (st.id === "exit") drawTeleSign(ctx, st.x - 6, H.fy - 72, { plate: "INCINERATOR", dx: 8, dy: 11, rot: 0.09, sub: "(for real)" });
       ctx.fillStyle = "#20242c";
       ctx.fillRect(st.x - TUBE_W2 / 2 - 3, y, TUBE_W2 + 6, 3);
       ctx.fillStyle = "#3a404c";
@@ -27767,7 +27840,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ctx.fillText(text, l + 7 + kr2 * 2, ky + 0.3);
     ctx.restore();
   }
-  function backWall(ctx, top, wb, floor) {
+  function backWall(ctx, top, wb) {
     const WW2 = HUB_W, wh = wb - top, rail = top + Math.round(wh * 0.64);
     ctx.save();
     ctx.fillStyle = "#161b24";
@@ -27795,12 +27868,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ctx.font = "600 11px system-ui, sans-serif";
     ctx.textAlign = "center";
     ctx.fillText("SHOP", WW2 / 2, top + 14);
-    const label = "FLOOR " + floor;
-    ctx.fillStyle = "rgba(255,255,255,0.07)";
-    ctx.font = "800 " + Math.round(wh * 0.62) + "px system-ui, sans-serif";
-    ctx.textBaseline = "middle";
-    const margin = WW2 * 0.05, span = WW2 - margin * 2, cy = top + wh / 2 + 4;
-    for (let i = 0; i < label.length; i++) ctx.fillText(label[i], margin + span * (i + 0.5) / label.length, cy);
     ctx.restore();
   }
   var SHELL = { key: "", cv: null };
@@ -29402,6 +29469,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const paidV = { current: 0 }, bagV = { current: 0 };
       const id = setInterval(() => {
         const L = scene.current && levelState(scene.current);
+        if (L && scene.current && cam.current) levelControl(scene.current, cam.current.lock, null);
         setBlocked(!!(L && L.blocked));
         if (L) setBagV(L.bagV);
         if (L && L.bagV !== bagV.current) {
@@ -29515,7 +29583,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const steer = (st) => {
       const S2 = scene.current;
       if (!S2) return;
-      if (S2.lvl) levelHold(S2, st.active && st.mag > DEAD ? st.nx * (st.mag - DEAD) / (1 - DEAD) : 0);
+      const sel = S2.lvl && cam.current ? cam.current.lock : -1;
+      if (S2.lvl && sel >= 0) {
+        levelHold(S2, 0);
+        levelControl(S2, sel, st);
+      } else if (S2.lvl) levelHold(S2, st.active && st.mag > DEAD ? st.nx * (st.mag - DEAD) / (1 - DEAD) : 0);
       else hubStick(S2, st);
     };
     const downA = (e) => {
@@ -29581,6 +29653,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       addEventListener("pointermove", move, { passive: false });
       addEventListener("pointerup", up);
       addEventListener("pointercancel", up);
+    };
+    const pressB = () => {
+      nothing();
+      const S2 = scene.current, C = cam.current;
+      if (S2 && S2.lvl && C && C.lock >= 0) {
+        C.lock = -1;
+        levelControl(S2, -1, null);
+        SFX.fx("close");
+        return;
+      }
+      setNav(navBack);
     };
     const pressA = () => {
       SFX.ui("tap");
@@ -29841,10 +29924,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       h(
         "div",
         { className: "abtns" },
-        h("button", { className: "abtn ab", onPointerDown: tap(() => {
-          nothing();
-          setNav(navBack);
-        }) }, "B"),
+        h("button", { className: "abtn ab", onPointerDown: tap(pressB) }, "B"),
         h(PillStick, { onMove: steer }),
         h("button", { className: "abtn aa", onPointerDown: downA }, "A")
       ),

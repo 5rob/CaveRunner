@@ -21,7 +21,7 @@ import { DEAD } from '../../core/consts.js';
 import { chestOpen } from '../../auto/chests.js';
 import { HUB_W, hubExit, hubLeft, hubScene, hubState, hubStick, hubStopX } from '../../auto/hub.js';
 import { THROW_TAKES, hubPayAt, hubPayOne, payVel } from '../../auto/throw.js';
-import { levelClearedAge, levelDone, levelHold, levelLost, levelScene, levelState } from '../../auto/level.js';
+import { levelClearedAge, levelControl, levelDone, levelHold, levelLost, levelScene, levelState } from '../../auto/level.js';
 import { clearedText } from '../../art/cleared.js';
 import { DEV } from '../../dev/knobs.js';
 import { levelBoss } from '../../auto/enemies.js';
@@ -108,6 +108,8 @@ export function AutoScreen() {
     const paidV = { current: 0 }, bagV = { current: 0 };
     const id = setInterval(() => {
       const L = scene.current && levelState(scene.current);
+      // (feedback round 2) the player picked in the play area (the camera's lock) is steered by hand
+      if (L && scene.current && cam.current) levelControl(scene.current, cam.current.lock, null);
       setBlocked(!!(L && L.blocked));
       if (L) setBagV(L.bagV);   // drops went into the bag: redraw it
       // stage 13: and save it, so a quit mid-level resumes in the hub with the bag kept
@@ -192,7 +194,10 @@ export function AutoScreen() {
   const steer = st => {
     const S = scene.current;
     if (!S) return;
-    if (S.lvl) levelHold(S, st.active && st.mag > DEAD ? st.nx * (st.mag - DEAD) / (1 - DEAD) : 0);
+    // (feedback round 2) a player picked (tapped in the play area): the stick steers him; none: it hurries or slows the team
+    const sel = S.lvl && cam.current ? cam.current.lock : -1;
+    if (S.lvl && sel >= 0) { levelHold(S, 0); levelControl(S, sel, st); }
+    else if (S.lvl) levelHold(S, st.active && st.mag > DEAD ? st.nx * (st.mag - DEAD) / (1 - DEAD) : 0);
     else hubStick(S, st);
   };
   // (feedback round 2) A at a hub machine pays it: a tap one of what it takes (THROW_TAKES) out of player 1's chest, held
@@ -233,6 +238,13 @@ export function AutoScreen() {
       if (!stream) { dx = ev.clientX - x0; dy = ev.clientY - y0; if (!one()) SFX.ui('tap'); }
     };
     addEventListener('pointermove', move, { passive: false }); addEventListener('pointerup', up); addEventListener('pointercancel', up);
+  };
+  // B: in a level with a player picked, lets him go (back on the autopilot, the camera free); else back up the nav
+  const pressB = () => {
+    nothing();
+    const S = scene.current, C = cam.current;
+    if (S && S.lvl && C && C.lock >= 0) { C.lock = -1; levelControl(S, -1, null); SFX.fx('close'); return; }
+    setNav(navBack);
   };
   const pressA = () => { SFX.ui('tap'); if (scene.current && (hubExit(scene.current) || (!!scene.current.lvl && chestOpen(scene.current)))) SFX.fx('open'); };
   /** what the source item is: a bag slot's, or a nav slot's at the nav's level @param {DragSrc} src @returns {BagItem | null} */
@@ -437,7 +449,7 @@ export function AutoScreen() {
         lift: !!drag && drag.src.from === 'bag' && drag.src.i === i,
         drop: !!drag && !!drag.over && drag.over.ok && drag.over.key === 's' + i }))),
     h('div', { className: 'abtns' },
-      h('button', { className: 'abtn ab', onPointerDown: tap(() => { nothing(); setNav(navBack); }) }, 'B'),
+      h('button', { className: 'abtn ab', onPointerDown: tap(pressB) }, 'B'),
       h(PillStick, { onMove: steer }),
       h('button', { className: 'abtn aa', onPointerDown: downA }, 'A')),
     arc ? h(GunArc, { arc, run }) : null,

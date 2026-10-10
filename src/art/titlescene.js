@@ -9,7 +9,8 @@
 // suite runs it); game/render/titledraw.js paints it (it needs the game's bullet looks, layer 5);
 // titleText paints the big CAVE RUNNER. ui/title.js runs it on one requestAnimationFrame.
 
-import { CELL, COIN_PULL, GRAVITY, PW, PH } from '../core/consts.js';
+import { AIR_ACC, CELL, COIN_PULL, DEAD, GRAVITY, GROUND_ACC, JET as P_JET, JET_ACC, PW, PH, WALK } from '../core/consts.js';
+import { approach } from '../core/util.js';
 import { ROSTERS, enemyFor } from '../data/creatures.js';
 import { THEMES } from '../data/themes.js';
 import { DEV, carrotAt, kr, kru, spr } from '../dev/knobs.js';
@@ -103,7 +104,10 @@ export const TITLE_HOME = {
  *   dig: number, clearT: number, keep: TKit | null, dx: number, dy: number, digY: number, sawT: number, switches: number[],
  *   bursty: number, burst: boolean, jet: boolean, jetT: number, jetCd: number, pace: number, spd: number,
  *   nav: { F: any, fx: number, fy: number, t: number }, stepT?: number, sawS?: number, rst?: { t?: number }, rub?: string, rubWas?: boolean,
- *   hide?: boolean, out?: boolean, outT?: number, stand?: boolean, dealt?: number, clr?: { p: number, g: number } | null, clrT?: number }} TRunner */
+ *   hide?: boolean, out?: boolean, outT?: number, stand?: boolean, dealt?: number, clr?: { p: number, g: number } | null, clrT?: number,
+ *   ctl?: RunnerCtl | null, cvx?: number }} TRunner */
+/** a player steered by hand (CaveRunner Auto, feedback round 2: the selected player in a level): the pill stick's push
+ * @typedef {{ active: boolean, nx: number, ny: number, mag: number }} RunnerCtl */
 // a fixed strip in place of the scrolling ring (CaveRunner Auto's hub, auto/hub.js): w columns, each cell's material from
 // cell(c, r, rows); step runs after titleStep's own (the runners are its: S.still); data is the strip's own state;
 // fits / take: as the level's, for the machines' payouts (S.loot) going into the bag (CaveRunner Auto stage 10b)
@@ -1189,6 +1193,7 @@ function setMode(S, r, mode, t) {
 function stepRunnerMove(S, r, dt) {
   r.modeT -= dt; r.retarget -= dt;
   if (r.dig) digStep(S, r, dt);
+  else if (r.ctl) ctlStep(S, r, r.ctl, dt);
   else if (r.mode === 'run') runStep(S, r, dt);
   else flyStep(S, r, dt);
   r.x = Math.max(8, Math.min(TITLE_VW * 0.62, r.x));
@@ -1229,6 +1234,48 @@ function separate(S, dt) {
       const sy = dy > 0 ? 1 : -1;
       if (!(shove(a, 0, -sy * oy / 2) && shove(b, 0, sy * oy / 2))) shove(b, 0, sy * oy) || shove(a, 0, -sy * oy);
     }
+  }
+}
+// (CaveRunner Auto, feedback round 2) the selected player, steered by the pill stick as the old game's left stick (the
+// hub's steering, auto/hub.js hubMove: walk, jet up, gravity; r.cvx his speed through the world, the screen's is that
+// less the scroll). A step up to 8 he takes; rock in the way he's pushing toward (or the scroll pushes him into) he saws
+// as anyone does (startDig: the clearing rule). His gun aims and fires by itself
+/** @param {TitleScene} S @param {TRunner} r @param {RunnerCtl} st @param {number} dt */
+function ctlStep(S, r, st, dt) {
+  const m = st.active && st.mag > DEAD ? (st.mag - DEAD) / (1 - DEAD) : 0, jet = m > 0 && st.ny < 0, mv = DEV.move;
+  r.cvx = r.cvx || 0;
+  if (jet) {
+    r.cvx = approach(r.cvx, st.nx * m * P_JET * mv, JET_ACC * dt);
+    const ty = st.ny * m * P_JET * mv;
+    r.vy = ty < r.vy ? ty : approach(r.vy, ty, JET_ACC * dt);
+  } else {
+    r.cvx = approach(r.cvx, m > 0 ? st.nx * m * WALK * mv : 0, (r.ground ? GROUND_ACC : AIR_ACC) * dt);
+    r.vy = Math.min(r.vy + GRAVITY * dt, 900);
+  }
+  r.flame = jet ? m : 0;
+  const vx = r.cvx - sv(S), nx = r.x + vx * dt;
+  if (!boxRock(S, nx, r.y, false)) r.x = nx;
+  else if (r.ground && !boxRock(S, nx, r.y - 8, false)) { r.x = nx; r.y -= 8; }
+  else {
+    const dir = Math.abs(r.cvx) > 5 ? Math.sign(r.cvx) : 1;
+    r.cvx = 0;
+    startDig(S, r, dir, 0, dir > 0 ? 'wall' : 'aim');
+    if (r.dig) return;
+  }
+  const ny = r.y + r.vy * dt, cx = r.x + PW / 2;
+  if (!boxRock(S, r.x, ny)) { r.y = ny; r.ground = false; }
+  else if (r.vy > 0) {
+    if (r.vy > 100) snd(S, 'land', cx, r.y + PH, r.vy * 2);
+    const g = titleSurf(S, cx, r.y + PH - 9, 1);
+    if (g >= r.y + PH - 9 && !boxRock(S, r.x, g - PH)) r.y = g - PH;
+    r.vy = 0; r.ground = true;
+  } else r.vy = 0;
+  r.mode = r.ground ? 'run' : 'fly';
+  r.vx = vx;
+  if (Math.abs(r.cvx) > 1) r.face = Math.sign(r.cvx);
+  if (r.ground) {
+    r.gait += Math.abs(r.cvx) * dt * 0.38;
+    if (Math.abs(r.cvx) > 10 && (r.stepT = (r.stepT || 0) - dt * Math.abs(r.cvx) / 20) <= 0) { r.stepT = 1; snd(S, 'step', cx, r.y + PH); }
   }
 }
 /** @param {TitleScene} S @param {TRunner} r @param {number} dt */

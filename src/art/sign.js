@@ -51,9 +51,11 @@ function paintW(text, h, gap) {
   return w;
 }
 
-// the plate and the plank, centred on (cx, cy)
-/** @param {CanvasRenderingContext2D} ctx @param {number} cx @param {number} cy */
-export function drawTeleSign(ctx, cx, cy) {
+// the plate and the plank, centred on (cx, cy). o (CaveRunner Auto's exit pad, feedback round 2): the plate's old word
+// (default PRINTER), the plank's place over it (dx, dy from the centre; rot its slant), so a second sign looks different, and
+// sub: a smaller line painted under TELEPORTER (the plank a little taller for it)
+/** @param {CanvasRenderingContext2D} ctx @param {number} cx @param {number} cy @param {{ plate?: string, dx?: number, dy?: number, rot?: number, sub?: string }} [o] */
+export function drawTeleSign(ctx, cx, cy, o = {}) {
   ctx.save();
   // ---- the old plate: cream enamel, a dark rim, PRINTER in heavy capitals, two screws ----
   const pw = 78, ph = 20, px = cx - pw / 2 + 6, py = cy - ph / 2 - 2;
@@ -64,13 +66,13 @@ export function drawTeleSign(ctx, cx, cy) {
   ctx.fillStyle = '#2a2f3a';
   ctx.font = '900 15px "Arial Black", Impact, system-ui, sans-serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText('PRINTER', px + pw / 2, py + ph / 2 + 1, pw - 6);
+  ctx.fillText(o.plate || 'PRINTER', px + pw / 2, py + ph / 2 + 1, pw - 6);
   ctx.fillStyle = '#7a7465';
   ctx.fillRect(px + 2, py + ph / 2 - 1, 2, 2); ctx.fillRect(px + pw - 4, py + ph / 2 - 1, 2, 2);
   // ---- the plank: nailed on at a slant, low on the left, leaving the plate's top-left and its end showing ----
-  const bw = 72, bh = 17;
-  ctx.translate(cx - 13, cy + 7);
-  ctx.rotate(-0.11);
+  const bw = 72, bh = o.sub ? 24 : 17, ly = o.sub ? -3.5 : 0;
+  ctx.translate(cx + (o.dx ?? -13), cy + (o.dy ?? 7));
+  ctx.rotate(o.rot ?? -0.11);
   ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(-bw / 2 + 1.5, -bh / 2 + 2, bw, bh);   // its shadow on the plate
   ctx.fillStyle = '#7b5532'; ctx.fillRect(-bw / 2, -bh / 2, bw, bh);
   // the grain: long uneven streaks, a knot
@@ -91,11 +93,16 @@ export function drawTeleSign(ctx, cx, cy) {
   }
   // TELEPORTER, painted on by hand, a touch uphill
   const lh = 10, gap = 0.18, tw = paintW('TELEPORTER', lh, gap), s = Math.min(1, (bw - 10) / tw);
+  if (o.sub) {
+    ctx.font = 'italic 700 6px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = 'rgba(30,18,8,0.5)'; ctx.fillText(o.sub, 0.5, bh / 2 - 4.2);
+    ctx.fillStyle = '#f1ead8'; ctx.fillText(o.sub, 0, bh / 2 - 4.7);
+  }
   ctx.scale(s, 1);
   ctx.lineCap = 'round'; ctx.lineJoin = 'round';
   ctx.strokeStyle = 'rgba(30,18,8,0.5)'; ctx.lineWidth = 2.6;
-  paint(ctx, 'TELEPORTER', -tw / 2 + 0.6, -lh / 2 + 0.8, lh, gap);
+  paint(ctx, 'TELEPORTER', -tw / 2 + 0.6, -lh / 2 + 0.8 + ly, lh, gap);
   ctx.strokeStyle = '#f1ead8'; ctx.lineWidth = 2;
-  paint(ctx, 'TELEPORTER', -tw / 2, -lh / 2, lh, gap);
+  paint(ctx, 'TELEPORTER', -tw / 2, -lh / 2 + ly, lh, gap);
   ctx.restore();
 }

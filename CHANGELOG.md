@@ -5,6 +5,18 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.26 — CaveRunner Auto: feedback round 2, second batch (branch `autobattler`)
+Released 2026-10-10 on the branch (owner OK'd; shots `tools/hubshots.js`, the old shop's `tools/oldshopshots.js`).
+- The hub is the old shop's room (agent, then PM rounds): the old 120 between stops (was 100), the room 96 high, the
+  old steel back wall with its lit rail and SHOP (no FLOOR n: owner), the roof with its strip of lights, the deck floor,
+  dust in the tubes' cones, the TELEPORTER-over-PRINTER sign over the way in; the mod and perk machines play the old
+  hologram demo of a gem going in until one has been paid (`stepHubDemo`, knob `autoHubDemoNear`).
+- The exit pad's sign: TELEPORTER nailed over INCINERATOR, its plank lower and sloped the other way, "(for real)" under it
+  (`art/sign.js` `drawTeleSign` options `plate`, `dx`, `dy`, `rot`, `sub`).
+- In a level, a player tapped in the play area is steered by the pill stick (walk, jet up; the old game's steering,
+  `titlescene.js` `ctlStep`); his gun still aims and fires by itself. B lets him go (back on the autopilot), else B is
+  the nav's back. `auto/level.js` `levelControl`; suite `auto-control`.
+
 ## v1.0.25 — CaveRunner Auto: feedback round 2, first batch (branch `autobattler`)
 Released 2026-10-10 on the branch (owner OK'd; shots `tools/stackshots.js`, `tools/payshots.js`).
 - The nav is a stack: going down a level, the row rises over the play area and the next slides in from the right; B

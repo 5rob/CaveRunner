@@ -152,6 +152,20 @@ export function levelHold(S, dir) {
   const L = levelState(S);
   if (L) L.hold = Math.max(-1, Math.min(1, dir || 0));
 }
+// (feedback round 2) the selected player (id; -1 none) is steered by hand: the pill stick's push (st; null: the stick at
+// rest) goes to him (titlescene.js ctlStep: he walks and jets, his gun aims and fires by itself); everyone else is back on
+// the autopilot (let go in the air, he comes in to land). A fallen player isn't steered
+/** @param {import('../art/titlescene.js').TitleScene} S @param {number} id @param {import('../art/titlescene.js').RunnerCtl | null} st */
+export function levelControl(S, id, st) {
+  for (const r of S.runners) {
+    if (r.id === id && !r.out) { r.ctl = st ? { active: st.active, nx: st.nx, ny: st.ny, mag: st.mag } : r.ctl || LEVEL_CTL_REST; continue; }
+    if (!r.ctl) continue;
+    r.ctl = null; r.cvx = 0; r.retarget = 0;
+    if (!r.ground) { r.mode = 'fly'; r.modeT = 0; }
+  }
+}
+/** @type {import('../art/titlescene.js').RunnerCtl} */
+const LEVEL_CTL_REST = { active: false, nx: 0, ny: 0, mag: 0 };
 // has every player fallen (stage 6: home to the hub, the tier unchanged: run.js levelFailed)?
 /** @param {import('../art/titlescene.js').TitleScene} S */
 export function levelLost(S) {

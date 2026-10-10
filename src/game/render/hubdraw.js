@@ -170,11 +170,13 @@ export function hubBack(ctx, S) {
   const H = hubState(S);
   if (!H) return;
   const t = S.t;
-  backWall(ctx, H.roof, H.fy, H.tier);
+  backWall(ctx, H.roof, H.fy);
   ctx.drawImage(shell(H.fy, S.rows), 0, 0, HUB_W / TCELL, S.rows, 0, 0, HUB_W, S.rows * TCELL);
   HUB_STOPS.forEach((st, i) => {
     const lv = hubTube(S, i), y = H.roof;
-    if (st.id === 'enter' || st.id === 'exit') drawTeleSign(ctx, st.x - 6, H.fy - 64);   // TELEPORTER, nailed over PRINTER (art/sign.js)
+    // TELEPORTER, nailed over PRINTER (art/sign.js); the exit's over INCINERATOR, its plank lower (the plate's word showing), sloping the other way, "(for real)" under TELEPORTER (owner)
+    if (st.id === 'enter') drawTeleSign(ctx, st.x - 6, H.fy - 64);
+    if (st.id === 'exit') drawTeleSign(ctx, st.x - 6, H.fy - 72, { plate: 'INCINERATOR', dx: 8, dy: 11, rot: 0.09, sub: '(for real)' });
     ctx.fillStyle = '#20242c'; ctx.fillRect(st.x - TUBE_W / 2 - 3, y, TUBE_W + 6, 3);
     ctx.fillStyle = '#3a404c'; ctx.fillRect(st.x - TUBE_W / 2 - 3, y + 3, 2, 2); ctx.fillRect(st.x + TUBE_W / 2 + 1, y + 3, 2, 2);
     ctx.fillStyle = lv > 0.2 ? `rgb(${Math.round(150 + 105 * lv)},${Math.round(165 + 90 * lv)},${Math.round(180 + 75 * lv)})` : '#363b44';
@@ -363,9 +365,9 @@ export function drawHint(ctx, x, y, text, t) {
 
 // ---- the old shop's room (feedback round 2: "make sure it looks the same") ----
 // The back wall, as render/cave.js drawTerrain paints the old shop's: steel panels (a seam every 64, rivets), a rail
-// with a lit line along it, a darker skirting, SHOP small at the top and FLOOR n huge and faint along the whole wall
-/** @param {CanvasRenderingContext2D} ctx @param {number} top the roof's underside (world y) @param {number} wb the floor's top @param {number} floor */
-function backWall(ctx, top, wb, floor) {
+// with a lit line along it, a darker skirting, SHOP small at the top (the old FLOOR n letters left out: owner, feedback round 2)
+/** @param {CanvasRenderingContext2D} ctx @param {number} top the roof's underside (world y) @param {number} wb the floor's top */
+function backWall(ctx, top, wb) {
   const WW = HUB_W, wh = wb - top, rail = top + Math.round(wh * 0.64);
   ctx.save();
   ctx.fillStyle = '#161b24'; ctx.fillRect(0, top, WW, wh);
@@ -381,10 +383,6 @@ function backWall(ctx, top, wb, floor) {
   ctx.fillStyle = 'rgba(90,200,255,0.28)'; ctx.fillRect(0, rail + 1, WW, 0.8);
   ctx.fillStyle = 'rgba(233,236,242,0.30)'; ctx.font = '600 11px system-ui, sans-serif'; ctx.textAlign = 'center';
   ctx.fillText('SHOP', WW / 2, top + 14);
-  const label = 'FLOOR ' + floor;
-  ctx.fillStyle = 'rgba(255,255,255,0.07)'; ctx.font = '800 ' + Math.round(wh * 0.62) + 'px system-ui, sans-serif'; ctx.textBaseline = 'middle';
-  const margin = WW * 0.05, span = WW - margin * 2, cy = top + wh / 2 + 4;
-  for (let i = 0; i < label.length; i++) ctx.fillText(label[i], margin + span * (i + 0.5) / label.length, cy);
   ctx.restore();
 }
 

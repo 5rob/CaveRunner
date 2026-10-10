@@ -370,6 +370,7 @@ chest slow ×0.5. Grab radius 35% of a tile.
 | feedback round 1 (c) | done | v1.0.23 | PM alone. Owner: auto-arranging made gun setup impossible → `bagMove` / `rowMove` / `rowToBag` (drops go to the slot under the finger; slot-to-slot moves); spraying gold got stuck on the whole-stack lump → lump removed (`autoLumpMs` gone). `auto-drag` checks the moves with a real pointer. |
 | feedback round 1 (d) | done | v1.0.24 | PM alone. Owner: "opening chests restarts the run" → really any resize remade the scene (the app switcher's card), `runScene` `keep`, suite `auto-keep`; guns face left in the hub; machine items land and rest before the pull (`PAY_REST`, `TLoot.land`). `auto-loot` flake fixed. |
 | feedback round 2 (a) | done | v1.0.25 | PM alone. Owner: the nav as a rising stack (B reverses), white ring = menu pick, the equipped gun's X ticks; hold a gun to equip; the gun panel (old Bag stats + firing window) over the mod slots; pay with A (tap one, hold a stream, drag to aim; real-size colliding nuggets; into the machine paid at). Next: the hub as the old shop room (agent). |
+| feedback round 2 (b) | done | v1.0.26 | Agent (~14 min, worktree `cr-hub`): the hub as the old shop's room (spacing 120, height 96, steel wall, roof lights, deck floor, sign, cone dust, the gem demo). PM: no FLOOR n; exit sign INCINERATOR + "(for real)"; in a level a tapped player is steered by the stick (`levelControl`, `ctlStep`), B lets go. |
 
 ## 8. The PM's kick-start prompt
 
