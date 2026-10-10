@@ -32,6 +32,9 @@ mock-up `docs/autobattler-mockup.png`). Progress: AUTOBATTLER.md's Log. `main` k
 - **Stage 7 done (v1.0.12, owner OK'd):** LEVEL CLEARED. 
 - **Stage 8a done (v1.0.13, owner OK'd):** the context nav, helmets, pixel icons, machine colours. Next: stage 8b,
   dragging between the bag and the slots (grab radius, cards).
+- **Stage 8b done (v1.0.14, owner OK'd):** dragging, cards, colour groups. Not yet: dragging a gun out of its circle,
+  slot-to-slot moves, bag reordering. `auto-loot` failed once in a full logic run and never in 16 runs alone (watch it).
+  Next: stage 9, the gun swap arc, stats meters, scrap.
 
 ## NEXT (as of v0.0.176, 2026-10-09)
 

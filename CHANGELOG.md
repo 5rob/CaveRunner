@@ -5,6 +5,17 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.14 — CaveRunner Auto: dragging, cards, colour groups (branch `autobattler`, stage 8b)
+Released 2026-10-10 on the branch (owner OK'd after three rounds, `tools/dragshots.js`).
+- Drag from the bag onto the nav's slots (mods into a gun, guns onto the gun circles, exo mods into their kind, perks)
+  and back down to the bag (`fitMod`/`fitGun`/`fitExo`/`fitPerk`/`unfit*`, saved each move); a ghost follows the
+  finger, the right slot glows green, a wrong drop slides back. Works while playing. A touch grabs only within
+  `autoGrab` (0.35 of the tile) of the icon's centre, else the bag scrolls. A tap opens the item's card (exo mods
+  their own). Dev → Auto → "Auto: bag". Suite `auto-drag`.
+- Owner rounds: tiles edged by group (mods their family's colour, guns/exo/perks their machine's, gold and gems light
+  grey) and the icons coloured the same (exo shaded teal; gold, gems, guns their own); the cards in the dark purple
+  theme with the pixel icons (`cards.js` `CARD_ICON`), no pin/trash; icon padding × 1.5 everywhere.
+
 ## v1.0.13 — CaveRunner Auto: the context nav (branch `autobattler`, stage 8a)
 Released 2026-10-10 on the branch (owner OK'd after four rounds, `tools/navshots.js`).
 - The row above the bag (`auto/nav.js`, `NavRow`): players → a player's Guns / Exo suit / Perks / Stats → his 4
