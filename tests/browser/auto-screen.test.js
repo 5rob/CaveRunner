@@ -22,6 +22,8 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     bagAdd(run, { kind: 'gun', gun: scratchPistol(), n: 1 });
     bagAdd(run, { kind: 'gold', n: 120 });
     bagAdd(run, { kind: 'mod', id: 'bolt', n: 3 });
+    run.players[0].guns[0] = scratchPistol();   // (stage 8a: a gun with a mod fitted, Bolt in slot 1 of 3)
+    run.players[0].guns[1] = null;
     saveAutoRun(run);
   });
   check('the title has ▶ and ⚙ only (no slots)', !!(await page.$('.tstart')) && !!(await page.$('.tgear')) && !(await page.$('.tslot')));
@@ -80,6 +82,44 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   await page.locator('.abtn.aa').dispatchEvent('pointerdown');
   check('A away from the exit does nothing', await page.evaluate(() => hubExitFlash(window.__title.S) === 0));
 
+  // stage 8a: the context nav. Tap a player → 4 choices; Guns → 4 gun slots; a gun → its mod tiles; B back up to the
+  // players; Exo → 4 categories → 5 slots; Perks → 6 slots. The row keeps its height at every level.
+  const navH = async () => page.$eval('.anav', e => e.getBoundingClientRect().height);
+  const h0 = await navH(), hs = [];
+  const nav = () => page.evaluate(() => { const a = document.querySelector('.anav');
+    return { level: a.dataset.level, circles: a.querySelectorAll('.anavc').length, slots: a.querySelectorAll('.anavs').length,
+      full: a.querySelectorAll('.anavs.full').length, dim: a.querySelectorAll('.anavc.locked').length, txt: a.textContent }; });
+  const tapNav = async sel => { await page.locator('.anav ' + sel).first().dispatchEvent('pointerdown'); await page.waitForTimeout(60); hs.push(await navH()); };
+  const B = async () => { await page.locator('.abtn.ab').dispatchEvent('pointerdown'); await page.waitForTimeout(60); hs.push(await navH()); };
+  await tapNav('[data-player="0"]');
+  let v = await nav();
+  check('tap player 1: 4 choices (Guns, Exo suit, Perks, Stats), in his colour', v.level === 'player' && v.circles === 4
+    && await page.$eval('.anav', e => e.style.borderColor !== ''), v);
+  await tapNav('[data-open="guns"]');
+  v = await nav();
+  check('Guns: 4 gun slots, the empty ones dim', v.level === 'guns' && v.circles === 4 && v.dim >= 1 && !!(await page.$('.anav .anavc.gun canvas')), v);
+  await tapNav('[data-open="0"]');
+  v = await nav();
+  check('a gun: its mod tiles (3, Bolt fitted)', v.level === 'gun' && v.slots === 3 && v.full >= 1, v);
+  check('the mod row scrolls sideways (pan-x)', await page.$eval('.anav', e => getComputedStyle(e).touchAction === 'pan-x' && getComputedStyle(e).overflowX === 'auto'));
+  await B(); await B(); await B();
+  v = await nav();
+  check('B three times: back to the players', v.level === 'players' && v.circles === 4, v);
+  await B();
+  check('B at the top: nothing', (await nav()).level === 'players');
+  await tapNav('[data-player="0"]'); await tapNav('[data-open="exo"]');
+  v = await nav();
+  check('Exo suit: 4 categories', v.level === 'exo' && v.circles === 4, v);
+  await tapNav('[data-open="jet"]');
+  v = await nav();
+  check('a category: 5 slots', v.level === 'cat' && v.slots === 5, v);
+  await B(); await B(); await tapNav('[data-open="perks"]');
+  v = await nav();
+  check('Perks: 6 slots', v.level === 'perks' && v.slots === 6, v);
+  await B(); await B();
+  check('the nav row keeps its height at every level', hs.every(x => Math.abs(x - h0) < 0.5), [h0, hs]);
+  check('the scene kept running (no pause)', await page.$eval('.aplaycvs', c => c.dataset.t) !== t1);
+
   // stage 4b: A on the exit pad takes the team into the level; the level's exit pad brings it home, tier + 1, healed
   await page.evaluate(() => { const S = window.__title.S, r = S.runners[0]; r.x = hubStopX('exit') - PW / 2; r.vx = 0; hubState(S).lx = hubStopX('exit'); });
   await page.waitForTimeout(100);
@@ -87,6 +127,9 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   let lvl = false;
   for (let i = 0; i < 60 && !lvl; i++) { await page.waitForTimeout(50); lvl = await page.evaluate(() => !!levelState(window.__title.S)); }
   check('A on the exit pad: the level loads', lvl);
+  await page.locator('.anav [data-player="1"]').dispatchEvent('pointerdown');
+  await page.waitForTimeout(60);
+  check('in a level the nav works too (player 2 → his menu); B back', (await nav()).level === 'player' && (await B(), (await nav()).level === 'players'));
   await page.evaluate(() => { const L = levelState(window.__title.S); L.phase = 'exit'; L.doneT = 0; });
   let home = false;
   for (let i = 0; i < 60 && !home; i++) { await page.waitForTimeout(50); home = await page.evaluate(() => !!hubState(window.__title.S)); }

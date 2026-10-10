@@ -925,10 +925,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   box-shadow:0 0 10px rgba(255,40,60,0.35)}
 .abosstrack i{display:block;height:100%;background:linear-gradient(#ff7a6a,#d01c34);transition:width .2s linear}
 .anav,.abag,.abtns{border-radius:14px;background:rgba(14,9,26,0.92);border:2px solid #3d2f5c;box-sizing:border-box}
-.anav{flex:none;display:flex;justify-content:space-around;align-items:center;padding:6px 8px}
+.anav{flex:none;display:flex;justify-content:space-around;align-items:center;padding:6px 8px;height:66px;transition:border-color .15s}
 .anavc{width:50px;height:50px;border-radius:50%;box-sizing:border-box;border:3px solid #2a2140;background:#140e22;
   display:flex;align-items:center;justify-content:center}
 .anavc.on{background:#1d1531}
+.anavc.sel{box-shadow:0 0 0 3px #fff,0 0 12px rgba(255,255,255,0.5)!important}
+.anavc.locked.gun{opacity:.35}
+.anavc.gun .gicon{width:80%;height:auto}
+.anavg{font:900 24px system-ui,sans-serif;line-height:1}
+.anav.slots{justify-content:flex-start;gap:6px;overflow-x:auto;overflow-y:hidden;touch-action:pan-x;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.anavs{flex:0 0 48px;width:48px;height:48px}
+.anavs:not(.full){opacity:.55}
+.anavsoon{font:800 14px ui-monospace,SFMono-Regular,Menlo,monospace;color:#9a8ab8}
 .anavp{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;
   font:900 15px ui-monospace,SFMono-Regular,Menlo,monospace;color:#0b0716;box-shadow:inset 0 -3px 0 rgba(0,0,0,0.3)}
 .abag{flex:1 1 0;min-height:0;overflow-y:auto;overflow-x:hidden;touch-action:pan-y;-webkit-overflow-scrolling:touch;
@@ -36444,6 +36452,60 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
   }
 
+  // src/auto/nav.js
+  var NAV_MENU = [
+    { open: "guns", glyph: "🔫", label: "Guns" },
+    { open: "exo", glyph: "🧑‍🚀", label: "Exo suit" },
+    { open: "perks", glyph: "⭐", label: "Perks" },
+    { open: "stats", glyph: "📈", label: "Stats" }
+  ];
+  var EXO_NAMES = { hp: "Max Health", speed: "Movement Speed", jet: "Jetpack", carrot: "Carrot" };
+  var navStart = () => ({ level: "players", p: -1, g: 0, cat: "hp" });
+  var UP = { players: null, player: "players", guns: "player", gun: "guns", exo: "player", cat: "exo", perks: "player", stats: "player" };
+  function navOpen(nav, what, run) {
+    const L3 = nav.level;
+    if (L3 === "players") return typeof what === "number" && run.players[what] ? { ...nav, level: "player", p: what } : nav;
+    if (L3 === "player") return what === "guns" || what === "exo" || what === "perks" || what === "stats" ? { ...nav, level: what } : nav;
+    if (L3 === "guns") {
+      const pl = run.players[nav.p];
+      return typeof what === "number" && pl && pl.guns[what] ? { ...nav, level: "gun", g: what } : nav;
+    }
+    if (L3 === "exo") {
+      const cat = EXO_CATS.find((c) => c === what);
+      return cat ? { ...nav, level: "cat", cat } : nav;
+    }
+    return nav;
+  }
+  function navBack(nav) {
+    const up = UP[nav.level];
+    return up ? { ...nav, level: up } : nav;
+  }
+  function navRow(nav, run, max) {
+    const pl = run.players[nav.p];
+    if (nav.level === "players" || !pl) {
+      return { shape: "circles", col: null, cells: Array.from({ length: max }, (_, i) => {
+        const q = run.players[i];
+        return q ? { key: "p" + i, label: String(i + 1), col: q.col, sel: i === nav.p, open: i } : { key: "p" + i, dim: true };
+      }) };
+    }
+    const col = pl.col;
+    if (nav.level === "player") return { shape: "circles", col, cells: NAV_MENU.map((m) => ({ key: m.open, glyph: m.glyph, label: m.label, col, open: m.open })) };
+    if (nav.level === "guns") {
+      return { shape: "circles", col, cells: pl.guns.map((g, i) => ({ key: "g" + i, gun: g, col, dim: !g, sel: !!g && i === pl.active, open: g ? i : void 0 })) };
+    }
+    if (nav.level === "gun") {
+      const g = pl.guns[nav.g];
+      const slots = g ? g.slots : [];
+      return { shape: "slots", col, cells: slots.map((id, i) => ({ key: "s" + i, item: id ? { kind: "mod", id, n: 1 } : null })) };
+    }
+    if (nav.level === "exo") {
+      return { shape: "circles", col, cells: EXO_CATS.map((c) => ({ key: c, glyph: EXO_GLYPH[c], label: EXO_NAMES[c], col, open: c })) };
+    }
+    if (nav.level === "cat") return { shape: "slots", col, cells: pl.exo[nav.cat].map((it, i) => ({ key: "x" + i, item: it })) };
+    if (nav.level === "perks") return { shape: "slots", col, cells: pl.perks.map((it, i) => ({ key: "k" + i, item: it })) };
+    return { shape: "stats", col, cells: [] };
+  }
+
   // src/game/render/hubdraw.js
   var MW = 56, MH = 84;
   var PAD_W2 = 30, BEAM_H2 = 64;
@@ -38126,6 +38188,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const noBoss = null;
     const [boss, setBoss] = useState(noBoss);
     const [, setBagV] = useState(0);
+    const [nav, setNav] = useState(navStart);
     useEffect(() => {
       const id = setInterval(() => {
         const L3 = scene.current && levelState(scene.current);
@@ -38209,6 +38272,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       SFX.ui("tap");
       if (scene.current && hubExit(scene.current)) SFX.fx("open");
     };
+    const openNav = (w) => {
+      nothing();
+      setNav((n) => navOpen(n, w, run));
+    };
     return h(
       "div",
       { className: "auto" },
@@ -38228,24 +38295,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           setPaused(true);
         }) }, "⏸")
       ),
-      h(
-        "div",
-        { className: "anav" },
-        ...Array.from({ length: MAX_PLAYERS }, (_, i) => {
-          const p = run.players[i];
-          return h(
-            "div",
-            {
-              key: i,
-              className: "anavc" + (p ? " on" : " locked"),
-              "data-player": i,
-              style: p ? { borderColor: p.col, boxShadow: "0 0 10px " + p.col + "66" } : void 0,
-              onPointerDown: tap(nothing)
-            },
-            p ? h("span", { className: "anavp", style: { background: p.col } }, i + 1) : null
-          );
-        })
-      ),
+      h(NavRow, { row: navRow(nav, run, MAX_PLAYERS), level: nav.level, open: openNav }),
       h(
         "div",
         { className: "abag" },
@@ -38254,7 +38304,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       h(
         "div",
         { className: "abtns" },
-        h("button", { className: "abtn ab", onPointerDown: tap(nothing) }, "B"),
+        h("button", { className: "abtn ab", onPointerDown: tap(() => {
+          nothing();
+          setNav(navBack);
+        }) }, "B"),
         h(PillStick, { onMove: steer }),
         h("button", { className: "abtn aa", onPointerDown: tap(press) }, "A")
       ),
@@ -38309,6 +38362,47 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       "div",
       { ref, className: "apill", onPointerDown: down, onPointerMove: move, onPointerUp: end, onPointerCancel: end },
       h("div", { className: "apillknob" + (knob2.jet ? " jet" : ""), style: { transform: "translate(" + knob2.x + "px," + knob2.y + "px)" } })
+    );
+  }
+  function NavRow({ row, level, open }) {
+    const cell = (c, i) => {
+      const to = c.open;
+      const go = (e) => {
+        e.preventDefault();
+        if (to !== void 0) open(to);
+      };
+      if (row.shape === "slots") {
+        const it = c.item || null;
+        return h(
+          "div",
+          { key: c.key, className: "aslot anavs" + (it ? " full k-" + it.kind : ""), "data-nslot": i },
+          it ? h(ItemIcon, { it }) : null
+        );
+      }
+      const cls = "anavc" + (c.dim ? " locked" : " on") + (c.sel ? " sel" : "") + (c.gun ? " gun" : "");
+      const style = c.col && !c.dim ? { borderColor: c.col, boxShadow: "0 0 10px " + c.col + "66" } : void 0;
+      let inner = null;
+      if (c.gun) inner = h(GunIcon, { gun: c.gun });
+      else if (c.glyph) inner = h("span", { className: "anavg" }, c.glyph);
+      else if (c.label) inner = h("span", { className: "anavp", style: { background: c.col } }, c.label);
+      return h("div", {
+        key: c.key,
+        className: cls,
+        "data-player": level === "players" ? i : void 0,
+        "data-open": c.open,
+        title: c.glyph ? c.label : void 0,
+        style,
+        onPointerDown: go
+      }, inner);
+    };
+    return h(
+      "div",
+      {
+        className: "anav l-" + level + (row.shape === "slots" ? " slots" : ""),
+        "data-level": level,
+        style: row.col ? { borderColor: row.col + "aa" } : void 0
+      },
+      row.shape === "stats" ? h("span", { className: "anavsoon" }, "Stats — soon") : row.cells.map(cell)
     );
   }
   function BagSlot({ i, it }) {
