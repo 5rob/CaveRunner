@@ -16,7 +16,7 @@
 // (direction and speed). (Stage 10a's throw from the bag tile is gone.)
 
 import { SFX } from '../../audio/sfx.js';
-import { TITLE_VW, camAt, titleCam } from '../../art/titlescene.js';
+import { TITLE_VW, TITLE_ZLOCK, camAt, titleCam } from '../../art/titlescene.js';
 import { DEAD } from '../../core/consts.js';
 import { chestOpen } from '../../auto/chests.js';
 import { HUB_W, hubExit, hubLeft, hubScene, hubState, hubStick, hubStopX } from '../../auto/hub.js';
@@ -246,11 +246,17 @@ export function AutoScreen() {
     addEventListener('pointermove', move, { passive: false }); addEventListener('pointerup', up); addEventListener('pointercancel', up);
   };
   // B: in a level with a player picked, lets him go (back on the autopilot, the camera free); else back up the nav
+  // (feedback round 2, recheck) backing out to the player row (or B there) deselects him: back on the autopilot, the camera free
   const pressB = () => {
     nothing();
-    const S = scene.current, C = cam.current;
-    if (S && S.lvl && C && C.lock >= 0) { C.lock = -1; levelControl(S, -1, null); SFX.fx('close'); return; }
-    setNav(navBack);
+    const S = scene.current, C = cam.current, n = navRef.current, up = navBack(n);
+    const picked = (C && C.lock >= 0) || n.p >= 0;
+    if (S && S.lvl && C && up.level === 'players' && picked) {
+      C.lock = -1; levelControl(S, -1, null); SFX.fx('close');
+      setNav({ ...up, p: -1 });
+      return;
+    }
+    setNav(up);
   };
   const pressA = () => { SFX.ui('tap'); if (scene.current && (hubExit(scene.current) || (!!scene.current.lvl && chestOpen(scene.current)))) SFX.fx('open'); };
   /** what the source item is: a bag slot's, or a nav slot's at the nav's level @param {DragSrc} src @returns {BagItem | null} */
@@ -380,7 +386,17 @@ export function AutoScreen() {
     setTimeout(() => setDrag(d => d && d.back ? null : d), 170);
   };
   /** a nav circle tapped: one level down from its row's state (a raised row's: back to there, then down) @param {NavState} s @param {string | number} w */
-  const openAt = (s, w) => { nothing(); setNav(navOpen(s, w, run)); };
+  const openAt = (s, w) => {
+    nothing();
+    const next = navOpen(s, w, run);
+    // (feedback round 2, recheck) in a level, a player picked by his helmet is the one the stick steers: the camera follows him
+    const S = scene.current, C = cam.current;
+    if (S && S.lvl && C && s.level === 'players' && next.level === 'player') {
+      C.lock = next.p; if (C.z < TITLE_ZLOCK * 0.8) C.zt = TITLE_ZLOCK;
+      levelControl(S, next.p, null);
+    }
+    setNav(next);
+  };
   // (owner, feedback round 2) a gun circle (the Guns row): a tap opens it, held DEV.autoHoldMs it becomes the gun that fires
   /** @param {any} e @param {NavState} s @param {number} i */
   const holdGun = (e, s, i) => {

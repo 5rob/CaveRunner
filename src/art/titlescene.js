@@ -1196,7 +1196,7 @@ function stepRunnerMove(S, r, dt) {
   else if (r.ctl) ctlStep(S, r, r.ctl, dt);
   else if (r.mode === 'run') runStep(S, r, dt);
   else flyStep(S, r, dt);
-  r.x = Math.max(8, Math.min(TITLE_VW * 0.62, r.x));
+  r.x = Math.max(8, Math.min(r.ctl ? TITLE_VW - PW - 8 : TITLE_VW * 0.62, r.x));   // (one steered by hand: the whole screen)
   r.y = Math.max(S.top - 40, Math.min(S.bot + 10, r.y));
 }
 // The players keep apart (owner, v0.0.167): within TITLE_SEP of each other they're eased apart (sideways on the

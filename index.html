@@ -12451,7 +12451,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     else if (r.ctl) ctlStep(S2, r, r.ctl, dt);
     else if (r.mode === "run") runStep(S2, r, dt);
     else flyStep(S2, r, dt);
-    r.x = Math.max(8, Math.min(TITLE_VW * 0.62, r.x));
+    r.x = Math.max(8, Math.min(r.ctl ? TITLE_VW - PW - 8 : TITLE_VW * 0.62, r.x));
     r.y = Math.max(S2.top - 40, Math.min(S2.bot + 10, r.y));
   }
   function separate(S2, dt) {
@@ -29685,14 +29685,16 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     };
     const pressB = () => {
       nothing();
-      const S2 = scene.current, C = cam.current;
-      if (S2 && S2.lvl && C && C.lock >= 0) {
+      const S2 = scene.current, C = cam.current, n = navRef.current, up = navBack(n);
+      const picked = C && C.lock >= 0 || n.p >= 0;
+      if (S2 && S2.lvl && C && up.level === "players" && picked) {
         C.lock = -1;
         levelControl(S2, -1, null);
         SFX.fx("close");
+        setNav({ ...up, p: -1 });
         return;
       }
-      setNav(navBack);
+      setNav(up);
     };
     const pressA = () => {
       SFX.ui("tap");
@@ -29829,7 +29831,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     };
     const openAt = (s, w) => {
       nothing();
-      setNav(navOpen(s, w, run));
+      const next = navOpen(s, w, run);
+      const S2 = scene.current, C = cam.current;
+      if (S2 && S2.lvl && C && s.level === "players" && next.level === "player") {
+        C.lock = next.p;
+        if (C.z < TITLE_ZLOCK * 0.8) C.zt = TITLE_ZLOCK;
+        levelControl(S2, next.p, null);
+      }
+      setNav(next);
     };
     const holdGun = (e, s, i) => {
       e.preventDefault();
