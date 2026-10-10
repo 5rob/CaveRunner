@@ -365,6 +365,7 @@ chest slow ×0.5. Grab radius 35% of a tile.
 | 12 | done | v1.0.18 | Agent ~10 min. `auto/addrunner.js` `sceneAddRunner(S)`, titlescene `titleRunner`/`zapArc` exported, empty circles as green-only drop targets (a hub throw turns into a drag over them), `window.__autoHub`. Camera follows player 1. |
 | 14 | done (owner's phone OK pending) | v1.0.20 | Agent ~20 min: `auto-loop` suite, `tools/autoperf.js`. Boss not finished by the team (fallback timer); fresh runs stop at rock until the Buzzsaw is fitted. |
 | 13 | done | v1.0.19 | Agent ~20 min. Save gaps filled (level drops saved), ⏸ New run (two taps), old App + levelgen out of the build (index.html −401 KB), 91 old browser suites → `tests/retired/`, README how-to-play. Test `auto-save`. |
+| feedback round 1 | done | v1.0.21 | PM alone, no agent. Owner's notes: hub movement as the old game (hubMove on core/consts WALK/JET/GRAVITY, knobs autoHubRun/Jet removed); starter items missing (old saves from before 5a: `kitMissing` on load); the rock wall: "not in the first 20 s, random after" → `plantWall` (one of the level's own blocked zones made full past a random time; a custom-drawn wall was tried and dropped: the owner wanted the stage 6b looks) + `levelFree` (knobs autoWallMin/Max, 0 off), suite `auto-wall`, shot `tools/wallshots.js`. Open item 1 fixed: boss targeted by its edge and from behind, `autoBossHp` 40 → 12, suite `auto-boss`. Suites auto-blocked / auto-clear set the wall knobs to 0. |
 
 ## 8. The PM's kick-start prompt
 

@@ -135,7 +135,7 @@ export const TITLE_HOME = {
 /** @typedef {{ zp: TitlePlan, step?: (S: TitleScene, dt: number) => void, data?: any, hurt?: (S: TitleScene, i: number, dmg: number) => void,
  *   loot?: (S: TitleScene, f: Enemy) => BagItem[], fits?: (S: TitleScene, it: BagItem) => boolean, take?: (S: TitleScene, it: BagItem) => boolean, lootCol?: (it: BagItem) => string,
  *   blockCell?: (B: import('../auto/blocked.js').ZoneBlock, wx: number, y: number, cy: number, fy: number, cur: number) => number,
- *   blockCol?: (S: TitleScene, B: import('../auto/blocked.js').ZoneBlock, c: number, wx: number, cy: number, fy: number) => void, blockKind?: (S: TitleScene, wx: number) => string }} TitleLevel */
+ *   blockCol?: (S: TitleScene, B: import('../auto/blocked.js').ZoneBlock, c: number, wx: number, cy: number, fy: number) => void, blockKind?: (S: TitleScene, wx: number) => string, free?: (S: TitleScene, r?: TRunner) => boolean }} TitleLevel */
 // blockCell, blockCol, blockKind (CaveRunner Auto stage 6b, auto/blocked.js): a blocked zone's cells and web lines, and what a dig goes into
 // loot (CaveRunner Auto, auto/level.js): what a kill drops (its gold spills as nuggets, the rest as TLoot pickups); fits: would it go in the bag;
 // take: put it in the bag (false: it didn't fit). A pickup: the item, its colour, nopull (s before it can fly), wait (the bag is full)
@@ -1139,7 +1139,8 @@ function pickTarget(S, r) {
 function startDig(S, r, dx, dy, why) {
   // CaveRunner Auto's level (stage 5b, the clearing rule): his own best clearing gun, else a teammate's; no gun in play
   // can clear rock: he doesn't dig (the scroll's push: blocked, the pilot stops the team; his own aim: somewhere else)
-  if (!r.dig && S.team && S.lvl) {
+  // (feedback round 1: early in a level, S.lvl.free, nothing blocks: he digs through as on the title)
+  if (!r.dig && S.team && S.lvl && !(S.lvl.free && S.lvl.free(S, r))) {
     const kind = S.lvl.blockKind ? S.lvl.blockKind(S, r.x + PW / 2 + S.scroll + 8 * Math.sign(dx || 1)) : 'rock';
     const c = teamClearer(S.team, kind, r.id);
     if (!c) {
@@ -1308,6 +1309,12 @@ function flyStep(S, r, dt) {
 /** @param {TitleScene} S @param {TRunner} r @param {number} dt */
 function digStep(S, r, dt) {
   const R = S.rnd;
+  // (feedback round 1) a free dig (no clearing gun, S.lvl.free) ends with the level's free stretch: the rock decides again
+  if (S.lvl && S.team && !r.clr && S.lvl.free && !S.lvl.free(S, r)) {
+    r.dig = 0; r.clearT = 0; if (r.keep) r.kit = r.keep; r.keep = null;
+    startDig(S, r, r.dx || 1, r.dy || 0, 'came');
+    if (!r.dig) return;
+  }
   S.digT += dt; r.dig += dt;
   if (r.mode === 'fly' && (r.retarget <= 0 || Math.hypot(r.tx - r.x, r.ty - r.y) < 6)) pickTarget(S, r);
   if (r.dig > 6 && r.mode === 'fly') {                   // long enough underground: up to the open air
@@ -1367,7 +1374,11 @@ function stepRunnerGun(S, r, dt) {
   }
   // aim at the nearest creature within TITLE_AIM, well on screen (owner: they come into view before he blasts them)
   let best = null, bd = TITLE_AIM;
-  for (const f of S.foes) { const fx = f.x - S.scroll, d = Math.hypot(fx - r.x, f.ty - r.y); if (f.hp > 0 && fx < TITLE_VW - 24 && fx > cx() - 30 && d < bd) { bd = d; best = f; } }
+  // (CaveRunner Auto's boss, feedback round 1: measured to its edge, and shot from behind too, so the team finishes it)
+  for (const f of S.foes) {
+    const fx = f.x - S.scroll, boss = f.k && f.k.boss, d = Math.hypot(fx - r.x, f.ty - r.y) - (boss ? f.r : 0);
+    if (f.hp > 0 && (boss || (fx < TITLE_VW - 24 && fx > cx() - 30)) && d < bd) { bd = d; best = f; }
+  }
   const gx0 = cx(), gy0 = r.y + PH * 0.45;
   if (best) {
     const want = Math.atan2(best.ty - gy0, best.x - S.scroll - gx0);

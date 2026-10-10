@@ -27,7 +27,7 @@ import { levelBoss } from '../../auto/enemies.js';
 import { MODS, famCol } from '../../spells/mods.js';
 import { HUB_MACHINES } from '../../auto/hub.js';
 import { PERKS, STAT_PERKS } from '../../data/perks.js';
-import { BAG_SLOTS, EXO_STATS, MAX_PLAYERS, addPlayer, bagAdd, fitExo, fitGun, fitMod, fitPerk, healRun, levelCleared, levelFailed, levelSeed, newRun,
+import { BAG_SLOTS, EXO_STATS, MAX_PLAYERS, addPlayer, bagAdd, fitExo, fitGun, fitMod, fitPerk, healRun, levelCleared, levelFailed, levelSeed, kitMissing, newRun,
   scrapAt, setActive, spend, unfitExo, unfitMod, unfitPerk } from '../../auto/run.js';
 import { loadAutoRun, saveAutoRun } from '../../auto/save.js';
 import { EXO_NAMES, arcPick, gunArc, navBack, navOpen, navRow, navStart } from '../../auto/nav.js';
@@ -48,7 +48,7 @@ const ROMAN = ['I', 'II', 'III', 'IV', 'V'];
 /** @returns {AutoRun} */
 function openRun() {
   const r = loadAutoRun();
-  if (r) return r;
+  if (r) return kitMissing(r);
   const n = newRun();
   saveAutoRun(n);
   return n;

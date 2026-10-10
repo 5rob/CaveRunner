@@ -5,6 +5,19 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.21 — CaveRunner Auto: feedback round 1 (branch `autobattler`)
+Released 2026-10-10 on the branch.
+- Hub: player 1 moves exactly as in the old game (its walk, jetpack and gravity numbers, `core/consts.js`; the jet aims
+  the stick's way). The knobs `autoHubRun` / `autoHubJet` are gone; the others' line-up walk is 150. No fuel in the hub.
+- Starter items: a run saved before the starter kit existed (stage 5a) now gets it on load (`run.js` `kitMissing`).
+- The boss: the team aims at its edge and shoots it from behind too; its health ×40 → ×12 (`autoBossHp`), so one
+  starter gun kills a tier-1 boss in ~5–65 s instead of hitting the 120 s fallback. New suite `auto-boss`.
+- The first wall (owner: none in the first 20 s, and not always at 20): each level makes sure of one of its own stage 6b
+  blocked zones (`level.js` `plantWall`: the first random zone past its own random time, 20–35 s at full hurry, gets a
+  normal `rollBlock` blockage at severity 1; `plan.wallX` its face): about 40–70 s in at normal pace. Before it nothing
+  blocks (`levelFree`: the team digs through as on the title; a free dig ends with it). Knobs `autoWallMin` /
+  `autoWallMax` (both 0: off). New suite `auto-wall`, shot tool `tools/wallshots.js`.
+
 ## v1.0.20 — CaveRunner Auto: the full-loop suite (branch `autobattler`, stage 14)
 Released 2026-10-10 on the branch (tests and a tool only; nothing visible changed).
 - Browser suite `auto-loop` (~55 s): new run → pay the gun machine by lump → pill stick to the exit pad, A → level

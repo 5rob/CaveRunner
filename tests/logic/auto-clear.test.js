@@ -2,6 +2,7 @@
 // MODS, and in a level scene (a wall of rock built across the strip in front of the team, the sandbox way): a team with
 // a Buzzsaw in a gun clears it with real shots and goes on; a team of starter guns stops, blocked.
 const G = require('../load');
+G.DEV.autoWallMin = G.DEV.autoWallMax = 0;   // no planted first wall, no free stretch: these suites build their own walls
 let fails = 0;
 const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FAIL'} ${n}${x !== undefined ? ' -> ' + JSON.stringify(x) : ''}`); };
 const gun = slots => ({ name: 't', cap: slots.length, castDelay: 0.2, recharge: 0.5, manaMax: 200, manaRegen: 60, spread: 0, multi: 1,

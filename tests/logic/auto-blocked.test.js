@@ -3,6 +3,7 @@
 // variant (blocked all the way, in the first random zone) is got through by a team with a Buzzsaw gun within a frame
 // budget, and stops a team of starter guns (blocked, the pilot at 0) short of it.
 const G = require('../load');
+G.DEV.autoWallMin = G.DEV.autoWallMax = 0;   // no planted first wall, no free stretch: these suites build their own walls
 let fails = 0;
 const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FAIL'} ${n}${x !== undefined ? ' -> ' + JSON.stringify(x) : ''}`); };
 const gun = slots => ({ name: 't', cap: slots.length, castDelay: 0.2, recharge: 0.5, manaMax: 200, manaRegen: 60, spread: 0, multi: 1,

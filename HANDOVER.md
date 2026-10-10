@@ -8,12 +8,13 @@ release loop, testing), then the README of the `src/` folder you're working in.
 Planned with the owner (brief + quiz answers + 16 stages + the PM's kick-start prompt, all in `AUTOBATTLER.md`;
 mock-up `docs/autobattler-mockup.png`). Progress: AUTOBATTLER.md's Log. `main` keeps the old game.
 
-**Where it stands (2026-10-10, v1.0.20 live at /auto/): all stages 0–14 built and released on the branch.** Waiting
-on the owner: play the full loop on the phone and OK it (the project's "done"). Open, in order of weight:
-1. The team doesn't finish the boss (it sits at a few hp; the `autoLvlBossT` 120 s fallback moves on). Look at
-   who targets the boss (`auto/enemies.js`, `art/scenegun.js`).
-2. A fresh run stops at the first natural rock ("Path blocked") until the Buzzsaw is dragged into a gun: by design,
-   but it comes within seconds; the owner may want it later or a hint.
+**Where it stands (2026-10-10, v1.0.21 live at /auto/): all stages 0–14 built; feedback round 1 released.** Round 1
+(v1.0.21, the PM alone): hub movement now the old game's exactly; old saves get the starter kit (`kitMissing`); the
+boss is finished (aimed at by its edge and from behind, `autoBossHp` 12); one of the level's blocked zones is made full
+past a random 20 s+ (`plantWall`, `levelFree`, knobs `autoWallMin/Max`). Waiting on the owner: try it on the phone and OK it.
+Open, in order of weight:
+1. ~~The team doesn't finish the boss~~ fixed in v1.0.21 (suite `auto-boss`).
+2. ~~A fresh run stops at the first rock within seconds~~ v1.0.21: nothing blocks till the level's sure blocked zone (suite `auto-wall`).
 3. The owner will tune the gold stream (Dev → Auto → "Auto: throw": slow start, quick pull) and test the payouts.
 4. Polish noted: the gun arc crowds the left corner for player 1, empty arc circles faint; chest small, grass over it;
    the menu icons small after the ×1.5 padding; only bag items scrap/drop (not slot items); no dragging a gun out of

@@ -65,6 +65,12 @@ function giveKit(run, pl, rnd) {
   pl.guns[0] = k.gun; pl.active = 0;
   bagAdd(run, k.saw);
 }
+// a run saved before the starter kit existed (stage 5a): each player with no gun at all gets its kit (feedback round 1)
+/** @param {AutoRun} run @param {() => number} [rnd] @returns {AutoRun} */
+export function kitMissing(run, rnd) {
+  for (const pl of run.players) if (pl.guns.every(g => !g)) giveKit(run, pl, rnd);
+  return run;
+}
 
 /** tier 1, one player with its starter kit (its gun, a Buzzsaw in the bag); seed: the run's levels (levelSeed)
  * @param {number} [seed] @returns {AutoRun} */

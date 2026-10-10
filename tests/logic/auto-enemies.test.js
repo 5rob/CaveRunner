@@ -88,7 +88,7 @@ const B = L4.boss;
 check('the boss comes in, hunting', !!B && B.aggro === true && S4.foes.includes(B));
 if (B) {
   const base = G.enemyFor(B.k.id, 3);
-  check('scaled: size ×4, health ×40, damage ×3', Math.abs(B.r - base.r * D.autoBossSize) < 1e-9 && B.hpMax === Math.round(base.hp * D.autoBossHp)
+  check('scaled: size ×4, health ×12, damage ×3', Math.abs(B.r - base.r * D.autoBossSize) < 1e-9 && B.hpMax === Math.round(base.hp * D.autoBossHp)
     && B.k.dmg === Math.round(base.dmg * D.autoBossDmg), [B.k.id, B.r, B.hpMax, B.k.dmg]);
   check('its kind is the floor\'s', G.TITLE_KINDS.includes(B.k.id));
   const bar = G.levelBoss(S4);

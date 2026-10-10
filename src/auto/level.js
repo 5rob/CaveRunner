@@ -10,12 +10,12 @@
 
 import { PH, PW } from '../core/consts.js';
 import { DEV } from '../dev/knobs.js';
-import { TITLE_VW, TITLE_ZLEN, titleClearWebs, titleFloor, titlePlan, titleScene, titleSurf, titleZoneAdd } from '../art/titlescene.js';
+import { TITLE_VW, TITLE_ZLEN, titleClearWebs, titleRng, titleFloor, titlePlan, titleScene, titleSurf, titleZoneAdd } from '../art/titlescene.js';
 import { hubArriveT } from './hub.js';
 import { meterAdd, meterNew, meterSet, meterStep } from './meters.js';
 import { pilotEase, pilotPace } from './pilot.js';
 import { clearPower, teamClearer } from './clear.js';
-import { blockCell, blockCol, blockKind, planBlocks, webSlow } from './blocked.js';
+import { blockCell, blockCol, blockKind, planBlocks, rollBlock, webSlow } from './blocked.js';
 import { elitePlan, levelFoes, levelHurt } from './enemies.js';
 import { bagFits, killLoot, lootCol } from './loot.js';
 import { bagAdd } from './run.js';
@@ -43,7 +43,7 @@ function flatZone(P, x0, x1, co) {
 // LevelPlan: the zone plan (the scene's S.zp) and its landmarks (world x): the start pad's middle, where the random zones
 // begin and end (len their total), the arena's span and middle, the exit pad's middle
 /** @typedef {{ zp: import('../art/titlescene.js').TitlePlan, seed: number, padX: number, z0: number, z1: number, len: number,
- *   arena: { x0: number, x1: number, mid: number }, exitX: number }} LevelPlan */
+ *   arena: { x0: number, x1: number, mid: number }, exitX: number, wallX: number }} LevelPlan */
 
 // The finite plan: same seed, same level. minutes (default the knob) at normal pace (DEV.autoLvlPace) of random zones;
 // blocks of them blocked (stage 6b, auto/blocked.js planBlocks; default DEV.autoBlockN; 0: none)
@@ -56,11 +56,42 @@ export function levelPlan(seed, minutes = DEV.autoLvlMin, blocks = DEV.autoBlock
   const zs = [];
   while (x - LVL_PAD < want) { const z = titleZoneAdd(P, x); zs.push(z.i); x = z.x1; }
   planBlocks(P, zs, seed, blocks);
+  const wallX = plantWall(P, zs, seed);
   const a = flatZone(P, x, x + LVL_ARENA, -14);
   const e = flatZone(P, a.x1, a.x1 + LVL_EXITW, 0);
   flatZone(P, e.x1, 1e9, 400);   // solid rock: the roof far below the floor (it closes over ZMIX)
   return { zp: P, seed, padX: LVL_PADX, z0: LVL_PAD, z1: x, len: x - LVL_PAD,
-    arena: { x0: a.x0, x1: a.x1, mid: (a.x0 + a.x1) / 2 }, exitX: (e.x0 + e.x1) / 2 };
+    arena: { x0: a.x0, x1: a.x1, mid: (a.x0 + a.x1) / 2 }, exitX: (e.x0 + e.x1) / 2, wallX };
+}
+
+// The level's first wall (owner, feedback round 1: none in the first 20 s, and not always at 20). One of the level's
+// own blocked zones (stage 6b, planBlocks) is made sure of: the first random zone the team reaches past its own random
+// time, DEV.autoWallMin to autoWallMax seconds at full hurry (normal pace takes autoLvlHurry × longer; from the seed),
+// gets a blockage rolled as any is (rollBlock: a variant that suits it, its size and place in the zone) but blocked all
+// the way (severity 1). Before it nothing blocks: the team digs through rock and webs as the title's runners do (levelFree)
+/** @param {number} seed @returns {number} the wall's seconds at full hurry */
+export function levelWallT(seed) {
+  const u = Math.abs(Math.sin(seed * 91.37 + 4.1) * 43758.5453) % 1;
+  return DEV.autoWallMin + u * Math.max(0, DEV.autoWallMax - DEV.autoWallMin);
+}
+const WALL_FREE = 40;                  // levelFree ends this far before the wall (the team's middle to its face)
+/** @param {import('../art/titlescene.js').TitlePlan} P @param {number[]} zs @param {number} seed @returns {number} the wall's x (Infinity: none in the level; -Infinity: knobs at 0) */
+function plantWall(P, zs, seed) {
+  if (DEV.autoWallMax <= 0) return -Infinity;   // knobs at 0: no sure wall and no free stretch (the rock blocks from the start)
+  const x = LVL_PAD + levelWallT(seed) * LVL_SCROLL * DEV.autoLvlPace * DEV.autoLvlHurry;
+  const i = zs.find(j => P.z[j].x0 >= x);
+  if (i == null) return Infinity;
+  const Z = P.z[i];
+  Z.blk = rollBlock(titleRng((seed * 7919 + 13) >>> 0), Z);
+  Object.assign(Z.blk, { sev: 1, full: true });
+  return Z.blk.x0;
+}
+// nothing blocks yet: arriving, or the team still short of the level's wall; with r, that runner's own front (he flies
+// ahead of the team: he mustn't start a free dig into the wall)
+/** @param {import('../art/titlescene.js').TitleScene} S @param {LevelState} L @param {import('../art/titlescene.js').TRunner} [r] */
+export function levelFree(S, L, r) {
+  if (L.phase === 'arrive') return true;
+  return levelTeamX(S) < L.plan.wallX - WALL_FREE && (!r || r.x + PW + S.scroll + 6 < L.plan.wallX);
 }
 
 // LevelState: the plan; phase: 'arrive' (teleporting in), 'run' (to the arena), 'arena' (stopped till the boss is dead),
@@ -92,7 +123,7 @@ export function levelScene(vh, seed, n, plan = levelPlan(seed), team, tier = 1, 
     loot: (S, f) => killLoot(f.k.boss ? 'boss' : f.k.elite ? 'elite' : 'foe', S.tier || 1, S.rnd, f.k.gold),
     fits: (_S, it) => !L.run || bagFits(L.run, it),
     take: (_S, it) => { if (L.run && bagAdd(L.run, it)) return false; L.bagV++; return true; },
-    lootCol, blockCell, blockCol, blockKind }, team, tier });
+    lootCol, blockCell, blockCol, blockKind, free: (S, r) => levelFree(S, L, r) }, team, tier });
   L.elites = elitePlan(plan, S.rnd);
   L.chests = chestPlan(plan);
   L.meters = S.runners.map(() => ({ dmg: meterNew(), hp: meterNew(), dealt: 0 }));
@@ -187,14 +218,14 @@ export function levelStep(S, dt) {
   L.webK = ws.halt ? 0 : ws.k;
   if (ws.halt && ws.i >= 0) {
     const cl = S.team ? teamClearer(S.team, 'web', ws.i) : null;
-    if (cl || !S.team) {
+    if (cl || !S.team || levelFree(S, L)) {
       if ((L.webT = (L.webT || 0) - dt) <= 0) {
         const gun = cl && S.team ? S.team[cl.p].guns[cl.g] : null, fire = !!gun && gun.slots.some(id => !!id && clearPower(id).fire > 0);
         L.webT = 0.15; titleClearWebs(S, S.runners[ws.i], fire, 12);
       }
     } else if (!cl) { L.blocked = true; L.blockKind = 'web'; }
   }
-  if (L.blocked && S.team && teamClearer(S.team, L.blockKind || 'rock', 0)) L.blocked = false;
+  if (L.blocked && S.team && (teamClearer(S.team, L.blockKind || 'rock', 0) || levelFree(S, L))) L.blocked = false;
   const want = L.webK * pilotPace({ x: levelTeamX(S), stopX: stop, elites: L.elites, chests: L.chests, hold: L.hold, blocked: L.blocked });
   S.pace = pilotEase(S.pace || 0, want, dt);
 }

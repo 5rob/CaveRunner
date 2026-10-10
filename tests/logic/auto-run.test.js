@@ -211,5 +211,15 @@ check('scrap follows its Dev knob', (() => { const o = G.DEV.autoScrap; G.DEV.au
 check('the Auto tab holds the auto group', G.DEV_TABS.some(t => t[0] === 'auto' && t[2].includes('auto'))
   && G.DEV_GROUPS.some(g => g[0] === 'auto') && G.DEV_META.filter(m => m.g === 'auto').length >= 7);
 
+// an old save (before the starter kit): a gunless player gets its kit on load, a kitted one is left alone (feedback round 1)
+{
+  const old = G.newRun(5); old.players[0].guns = [null, null, null, null]; old.bag = old.bag.map(() => null);
+  G.kitMissing(old, () => 0.3);
+  check('old save: the gunless player gets a starter gun and a Buzzsaw', !!old.players[0].guns[0] && old.bag.some(b => b && b.id === 'saw'));
+  const ok = G.newRun(6), g0 = ok.players[0].guns[0], bag0 = JSON.stringify(ok.bag);
+  G.kitMissing(ok);
+  check('a kitted run is left alone', ok.players[0].guns[0] === g0 && JSON.stringify(ok.bag) === bag0);
+}
+
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
 process.exit(fails ? 1 : 0);

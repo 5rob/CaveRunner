@@ -9,7 +9,8 @@
 // the room (hubStick, hubMove), the others line up behind him on the floor; the exit (hubAtExit, hubExit: A at the exit pad flashes it) and the asking
 // price on each machine (hubPrice, at the run's tier). Its numbers are Dev knobs (dev/knobs.js, 'Auto: hub').
 
-import { DEAD, PH, PW } from '../core/consts.js';
+import { AIR_ACC, DEAD, GRAVITY, GROUND_ACC, JET, JET_ACC, PH, PW, WALK } from '../core/consts.js';
+import { approach } from '../core/util.js';
 import { DEV } from '../dev/knobs.js';
 import { STAT_PERKS } from '../data/perks.js';
 import { LIGHT_RUN, LIGHT_WAIT, tubeLevel } from '../world/shoplights.js';
@@ -163,22 +164,25 @@ function walkTo(x, tx, dt, k) {
 
 // the room's inside, for a player's middle (between the end walls)
 const IN_L = HUB_WALL * TCELL + PW / 2, IN_R = HUB_W - HUB_WALL * TCELL - PW / 2;
-const HUB_GRAV = 260;                 // gravity (art/titlescene.js GRAV)
 
-// One step of the team. The leader: the stick's sideways push runs him (up to DEV.autoHubRun, as the old game, eased),
-// pushed up he jets (DEV.autoHubJet × gravity against gravity, the menu's runners' jetpack), he lands on the floor,
-// the end walls and the roof hold him. The others walk the floor in a line behind him (DEV.autoHubSpace apart),
-// running while they move, standing when they don't, facing the way they go
+// One step of the team. The leader steers exactly as the old game's player (game/systems/player.js movePlayer: walk
+// WALK with GROUND_ACC / AIR_ACC; the jet aims the stick's way at JET, rising beats a fall at once; gravity GRAVITY,
+// falls capped at 900; no fuel in the hub), he lands on the floor, the end walls and the roof hold him. The others walk
+// the floor in a line behind him (DEV.autoHubSpace apart), running while they move, standing when they don't
 /** @param {import('../art/titlescene.js').TitleScene} S @param {HubState} H @param {number} dt */
 function hubMove(S, H, dt) {
   const L = S.runners[0];
   if (!L || !H.arrived[0]) return;
-  const st = H.stick, m = push(st), jet = m > 0 && st.dy < 0;
-  const want = st.nx * m * DEV.autoHubRun;
-  const acc = (L.ground ? 6 : 3) * DEV.autoHubRun;
-  L.vx = L.vx < want ? Math.min(want, L.vx + acc * dt) : Math.max(want, L.vx - acc * dt);
-  const thr = jet ? 1 : 0;
-  L.vy = Math.max(-170, Math.min(240, L.vy + (HUB_GRAV - HUB_GRAV * DEV.autoHubJet * thr) * dt));
+  const st = H.stick, m = push(st), jet = m > 0 && st.dy < 0, mv = DEV.move;
+  if (jet) {
+    L.vx = approach(L.vx, st.nx * m * JET * mv, JET_ACC * dt);
+    const ty = st.ny * m * JET * mv;
+    L.vy = ty < L.vy ? ty : approach(L.vy, ty, JET_ACC * dt);
+  } else {
+    L.vx = approach(L.vx, m > 0 ? st.nx * m * WALK * mv : 0, (L.ground ? GROUND_ACC : AIR_ACC) * dt);
+    L.vy = Math.min(L.vy + GRAVITY * dt, 900);
+  }
+  const thr = jet ? m : 0;
   let cx = L.x + PW / 2 + L.vx * dt;
   if (cx < IN_L) { cx = IN_L; L.vx = Math.max(0, L.vx); }
   if (cx > IN_R) { cx = IN_R; L.vx = Math.min(0, L.vx); }

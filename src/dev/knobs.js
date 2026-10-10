@@ -598,10 +598,9 @@ DEV_META.push(
   { k: 'autoModGold',  g: 'auto', label: 'Scrap: a gun mod (gold × the tier’s gold scale)', min: 0, max: 500, step: 1 });
 DEV_GROUPS.push(['auto', 'Auto: economy']);
 // CaveRunner Auto's hub (auto/hub.js, stage 3b): the team walking between the stops
-Object.assign(DEV_DEFAULTS, { autoHubRun: 70, autoHubJet: 2.4, autoHubWalk: 80, autoHubSpace: 16 });
+// (player 1 moves on the old game's own numbers, core/consts.js WALK / JET / GRAVITY, feedback round 1)
+Object.assign(DEV_DEFAULTS, { autoHubWalk: 150, autoHubSpace: 16 });
 DEV_META.push(
-  { k: 'autoHubRun',   g: 'autohub', label: 'Player 1’s top run speed, stick pushed all the way (world units / s)', min: 10, max: 300, step: 5 },
-  { k: 'autoHubJet',   g: 'autohub', label: 'Jetpack push, stick pushed up (× gravity)', min: 1, max: 6, step: 0.1 },
   { k: 'autoHubWalk',  g: 'autohub', label: 'The others’ walk speed to their place in line (world units / s)', min: 10, max: 400, step: 5 },
   { k: 'autoHubSpace', g: 'autohub', label: 'Players line up this far apart (world units)', min: 4, max: 40, step: 1 });
 DEV_GROUPS.push(['autohub', 'Auto: hub']);
@@ -623,8 +622,10 @@ DEV_META.push(
   { k: 'autoClearWait', g: 'autolevel', label: 'LEVEL CLEARED waits for the boss’s loot at most (s; a full bag leaves it lying)', min: 0, max: 20, step: 0.5 });
 DEV_GROUPS.push(['autolevel', 'Auto: level']);
 // CaveRunner Auto's blocked zones (auto/blocked.js, stage 6b)
-Object.assign(DEV_DEFAULTS, { autoBlockN: 2, autoBlockMin: 0.2, autoBlockMax: 1, autoBlockFull: 0.85, autoBlockThin: 16, autoBlockWide: 0.75, autoWebSlow: 0.2, autoWebHalt: 0.25 });
+Object.assign(DEV_DEFAULTS, { autoBlockN: 2, autoBlockMin: 0.2, autoBlockMax: 1, autoBlockFull: 0.85, autoBlockThin: 16, autoBlockWide: 0.75, autoWebSlow: 0.2, autoWebHalt: 0.25, autoWallMin: 20, autoWallMax: 35 });
 DEV_META.push(
+  { k: 'autoWallMin',   g: 'autoblocks', label: 'The level’s first wall: at least this many seconds in at full hurry (normal pace: × the hurry knob)', min: 0, max: 120, step: 1 },
+  { k: 'autoWallMax',   g: 'autoblocks', label: '… and at most this many (each level picks between; both 0: no planted wall)', min: 0, max: 180, step: 1 },
   { k: 'autoBlockN',    g: 'autoblocks', label: 'Blocked zones a level (a fraction: a chance of one more)', min: 0, max: 8, step: 0.1 },
   { k: 'autoBlockMin',  g: 'autoblocks', label: 'Severity: at least (0 a low lump … 1 blocked all the way)', min: 0, max: 1, step: 0.05 },
   { k: 'autoBlockMax',  g: 'autoblocks', label: 'Severity: at most', min: 0, max: 1, step: 0.05 },
@@ -650,7 +651,7 @@ DEV_META.push(
   { k: 'autoClearGap',  g: 'autoguns', label: 'Digging: the tunnel is cut while the clearing gun fired within (s)', min: 0.05, max: 3, step: 0.05 });
 DEV_GROUPS.push(['autoguns', 'Auto: guns']);
 // the level's enemies (auto/enemies.js, stage 6): how hard they hit, the elites, the boss
-Object.assign(DEV_DEFAULTS, { autoFoeDmg: 0.5, autoFoeElites: 2, autoBossSize: 4, autoBossHp: 40, autoBossDmg: 3 });
+Object.assign(DEV_DEFAULTS, { autoFoeDmg: 0.5, autoFoeElites: 2, autoBossSize: 4, autoBossHp: 12, autoBossDmg: 3 });
 DEV_META.push(
   { k: 'autoFoeDmg',    g: 'autofoes', label: 'Creatures hurt the players (× their damage)', min: 0, max: 5, step: 0.05 },
   { k: 'autoFoeElites', g: 'autofoes', label: 'Elites a level', min: 0, max: 12, step: 1 },

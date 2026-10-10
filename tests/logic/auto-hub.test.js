@@ -57,10 +57,10 @@ check('no control before he is through', Math.abs(cx(L) - G.hubStopX('enter')) <
 step(T, 60);
 const x0 = cx(L); step(T, 30);
 check('pushed right: he runs right, facing right, running', cx(L) > x0 + 20 && L.face === 1 && !L.stand && L.ground, [x0, cx(L)]);
-check('…at the top speed knob', Math.abs(Math.abs(L.vx) - D.autoHubRun) < 1, L.vx);
+check('…at the old game\'s walk speed', Math.abs(Math.abs(L.vx) - G.WALK) < 1, L.vx);
 const x1 = cx(L); stick(T, 0.5, 0, 0.5); step(T, 30);
 const half = cx(L) - x1;
-check('a half push runs slower', half > 0 && half < (D.autoHubRun / 30) * 30 * 0.6, half);
+check('a half push runs slower', half > 0 && half < G.WALK * 0.6, half);
 stick(T, -1, 0); step(T, 40);
 check('pushed left: he runs left, facing left', L.vx < -1 && L.face === -1, [L.vx, L.face]);
 stick(T, 0, 0, 0); step(T, 30);
