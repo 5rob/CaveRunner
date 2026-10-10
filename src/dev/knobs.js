@@ -667,8 +667,13 @@ DEV_META.push(
   { k: 'autoLootEliteGold', g: 'autoloot', label: 'An elite’s gold (× a normal kill’s)', min: 1, max: 20, step: 0.5 },
   { k: 'autoLootBossGold',  g: 'autoloot', label: 'The boss’s gold (× a normal kill’s)', min: 1, max: 100, step: 1 });
 DEV_GROUPS.push(['autoloot', 'Auto: loot']);
+// CaveRunner Auto's bag (ui/auto/AutoScreen.js, stage 8b): a touch grabs an item only this near its icon's centre
+Object.assign(DEV_DEFAULTS, { autoGrab: 0.35 });
+DEV_META.push(
+  { k: 'autoGrab', g: 'autobag', label: 'Grab radius: a touch picks up an item this near its centre (× the tile width); elsewhere it scrolls', min: 0.1, max: 0.5, step: 0.01 });
+DEV_GROUPS.push(['autobag', 'Auto: bag']);
 // before the last tab: that one also takes any group in no tab
-DEV_TABS.splice(DEV_TABS.length - 1, 0, ['auto', 'Auto', ['auto', 'autohub', 'autolevel', 'autoblocks', 'autoguns', 'autofoes', 'autoloot']]);
+DEV_TABS.splice(DEV_TABS.length - 1, 0, ['auto', 'Auto', ['auto', 'autohub', 'autolevel', 'autoblocks', 'autoguns', 'autofoes', 'autoloot', 'autobag']]);
 export const DEV_KEY = 'caverunner-dev';
 /** @type {DevKnobs} */
 export const DEV = Object.assign({}, DEV_DEFAULTS);

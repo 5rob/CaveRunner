@@ -22,9 +22,11 @@ import { DEV } from '../../dev/knobs.js';
 import { levelBoss } from '../../auto/enemies.js';
 import { MODS } from '../../spells/mods.js';
 import { PERKS, STAT_PERKS } from '../../data/perks.js';
-import { BAG_SLOTS, EXO_GLYPH, EXO_STATS, MAX_PLAYERS, healRun, levelCleared, levelFailed, levelSeed, newRun } from '../../auto/run.js';
+import { BAG_SLOTS, EXO_STATS, MAX_PLAYERS, fitExo, fitGun, fitMod, fitPerk, healRun, levelCleared, levelFailed, levelSeed, newRun,
+  unfitExo, unfitMod, unfitPerk } from '../../auto/run.js';
 import { loadAutoRun, saveAutoRun } from '../../auto/save.js';
-import { navBack, navOpen, navRow, navStart } from '../../auto/nav.js';
+import { EXO_NAMES, navBack, navOpen, navRow, navStart } from '../../auto/nav.js';
+import { GunCard, ModCard, PerkCard } from '../cards.js';
 import { GunIcon } from '../editor.js';
 import { GlyphIcon, HelmetIcon, PixIcon } from './icons.js';
 import { PauseMenu } from '../pause.js';
@@ -63,6 +65,18 @@ export function AutoScreen() {
   const [, setBagV] = useState(0);
   // the context nav (stage 8a, auto/nav.js): a tap on a circle goes down a level, B back up one
   const [nav, setNav] = useState(navStart);
+  const navRef = useRef(nav);
+  navRef.current = nav;
+  // stage 8b: dragging between the bag and the nav's slots, a tap's card
+  const [, setV] = useState(0);
+  /** @type {BagItem | null} */
+  const noCard = null;
+  const [card, setCard] = useState(noCard);
+  /** @type {Drag | null} */
+  const noDrag = null;
+  const [drag, setDrag] = useState(noDrag);
+  /** @type {{ current: Press | null }} */
+  const press = useRef(null);
   useEffect(() => {
     const id = setInterval(() => {
       const L = scene.current && levelState(scene.current);
@@ -132,7 +146,94 @@ export function AutoScreen() {
     if (S.lvl) levelHold(S, st.active && st.mag > DEAD ? st.nx * (st.mag - DEAD) / (1 - DEAD) : 0);
     else hubStick(S, st);
   };
-  const press = () => { SFX.unlock(); SFX.ui('tap'); if (scene.current && hubExit(scene.current)) SFX.fx('open'); };
+  const pressA = () => { SFX.unlock(); SFX.ui('tap'); if (scene.current && hubExit(scene.current)) SFX.fx('open'); };
+  /** what the source item is: a bag slot's, or a nav slot's at the nav's level @param {DragSrc} src @returns {BagItem | null} */
+  const srcItem = src => {
+    if (src.from === 'bag') return run.bag[src.i] || null;
+    const c = navRow(navRef.current, run, MAX_PLAYERS).cells[src.i];
+    return (c && c.item) || null;
+  };
+  // a press on a tile: on the grab handle it may become a drag (past MOVE px); a release without one is a tap (its card);
+  // a cancelled press (the browser took it for a scroll) does nothing
+  /** @param {any} e @param {DragSrc} src */
+  const down = (e, src) => {
+    if (press.current || !srcItem(src)) return;
+    const grab = !!(e.target && e.target.closest && e.target.closest('.agrab'));
+    if (grab) e.preventDefault();
+    /** @type {Press} */
+    const p = { id: e.pointerId, x0: e.clientX, y0: e.clientY, src, grab, drag: false };
+    press.current = p;
+    const finish = () => {
+      press.current = null;
+      removeEventListener('pointermove', move); removeEventListener('pointerup', up); removeEventListener('pointercancel', cancel);
+    };
+    /** @param {any} ev */
+    const move = ev => {
+      if (ev.pointerId !== p.id) return;
+      if (!p.drag && Math.hypot(ev.clientX - p.x0, ev.clientY - p.y0) > MOVE) {
+        if (!p.grab) { if (ev.pointerType === 'mouse') finish(); return; }
+        p.drag = true;
+        SFX.unlock(); SFX.ui('tap');
+      }
+      if (p.drag) { ev.preventDefault(); setDrag({ src, x: ev.clientX, y: ev.clientY, over: dropAt(src, ev.clientX, ev.clientY), back: false }); }
+    };
+    /** @param {any} ev */
+    const up = ev => {
+      if (ev.pointerId !== p.id) return;
+      finish();
+      if (p.drag) drop(src, ev.clientX, ev.clientY, p);
+      else if (Math.hypot(ev.clientX - p.x0, ev.clientY - p.y0) <= MOVE) { const it = srcItem(src); if (it && hasCard(it)) { SFX.ui('tap'); setCard(it); } }
+    };
+    /** @param {any} ev */
+    const cancel = ev => { if (ev.pointerId === p.id) { finish(); setDrag(null); } };
+    addEventListener('pointermove', move, { passive: false }); addEventListener('pointerup', up); addEventListener('pointercancel', cancel);
+  };
+  /** the drop target under a point, and whether this item fits there @param {DragSrc} src @param {number} x @param {number} y @returns {DropAt | null} */
+  const dropAt = (src, x, y) => {
+    const el = document.elementFromPoint(x, y);
+    /** @type {HTMLElement | null} */
+    const t = el && el.closest('[data-nslot],[data-gslot],.abag');
+    const it = srcItem(src), n = navRef.current;
+    if (!t || !it) return null;
+    if (t.dataset.nslot !== undefined) {
+      const s = Number(t.dataset.nslot);
+      const ok = src.from === 'bag' && ((n.level === 'gun' && it.kind === 'mod') || (n.level === 'cat' && it.kind === 'exo' && it.cat === n.cat) ||
+        (n.level === 'perks' && it.kind === 'perk' && !!it.id && !!PERKS[it.id] && !PERKS[it.id].stat));
+      return { key: 'n' + s, to: 'nav', s, ok };
+    }
+    if (t.dataset.gslot !== undefined) {
+      const s = Number(t.dataset.gslot);
+      return { key: 'g' + s, to: 'gun', s, ok: src.from === 'bag' && n.level === 'guns' && it.kind === 'gun' };
+    }
+    return { key: 'bag', to: 'bag', s: -1, ok: src.from === 'nav' };
+  };
+  /** let go: the move on the run (saved), or the ghost springs back @param {DragSrc} src @param {number} x @param {number} y @param {Press} p */
+  const drop = (src, x, y, p) => {
+    const at = dropAt(src, x, y), n = navRef.current;
+    let done = false;
+    if (at && at.ok) {
+      if (src.from === 'bag' && at.to === 'nav') {
+        if (n.level === 'gun') done = fitMod(run, src.i, n.p, n.g, at.s);
+        else if (n.level === 'cat') done = fitExo(run, src.i, n.p, n.cat, at.s);
+        else if (n.level === 'perks') done = fitPerk(run, src.i, n.p, at.s);
+      } else if (src.from === 'bag' && at.to === 'gun') done = fitGun(run, src.i, n.p, at.s);
+      else if (src.from === 'nav' && at.to === 'bag') {
+        if (n.level === 'gun') done = unfitMod(run, n.p, n.g, src.i);
+        else if (n.level === 'cat') done = unfitExo(run, n.p, n.cat, src.i);
+        else if (n.level === 'perks') done = unfitPerk(run, n.p, src.i);
+      }
+    }
+    if (done) {
+      saveAutoRun(run);
+      SFX.fx('open');
+      setDrag(null);
+      setV(v => v + 1);
+      return;
+    }
+    // refused: back to where it came from
+    setDrag({ src, x: p.x0, y: p.y0, over: null, back: true });
+    setTimeout(() => setDrag(d => d && d.back ? null : d), 170);
+  };
   /** a nav circle tapped: one level down @param {string | number} w */
   const openNav = w => { nothing(); setNav(n => navOpen(n, w, run)); };
   return h('div', { className: 'auto' },
@@ -142,13 +243,16 @@ export function AutoScreen() {
       boss ? h('div', { className: 'abossbar' }, h('b', null, boss.name),
         h('div', { className: 'abosstrack' }, h('i', { style: { width: (100 * boss.hp / Math.max(1, boss.max)).toFixed(1) + '%' } }))) : null,
       h('button', { className: 'pausebtn', title: 'Pause', onPointerDown: tap(() => { SFX.fx('open'); setPaused(true); }) }, '⏸')),
-    h(NavRow, { row: navRow(nav, run, MAX_PLAYERS), level: nav.level, open: openNav }),
-    h('div', { className: 'abag' },
-      ...Array.from({ length: BAG_SLOTS }, (_, i) => h(BagSlot, { key: i, i, it: run.bag[i] }))),
+    h(NavRow, { row: navRow(nav, run, MAX_PLAYERS), level: nav.level, open: openNav, down, drag }),
+    h('div', { className: 'abag' + (drag && drag.over && drag.over.key === 'bag' && drag.over.ok ? ' drop' : '') },
+      ...Array.from({ length: BAG_SLOTS }, (_, i) => h(BagSlot, { key: i, i, it: run.bag[i], down,
+        lift: !!drag && drag.src.from === 'bag' && drag.src.i === i }))),
     h('div', { className: 'abtns' },
       h('button', { className: 'abtn ab', onPointerDown: tap(() => { nothing(); setNav(navBack); }) }, 'B'),
       h(PillStick, { onMove: steer }),
-      h('button', { className: 'abtn aa', onPointerDown: tap(press) }, 'A')),
+      h('button', { className: 'abtn aa', onPointerDown: tap(pressA) }, 'A')),
+    drag ? h(Ghost, { drag, it: srcItem(drag.src) }) : null,
+    card ? h(CardPop, { it: card, close: () => setCard(null) }) : null,
     paused ? h(PauseMenu, { input, label: 'Tier ' + run.tier, close: () => { SFX.fx('close'); setPaused(false); } }) : null);
 }
 
@@ -205,8 +309,9 @@ function PillStick({ onMove }) {
 // The context nav's row (auto/nav.js navRow): circles for choices (a player's ring and number, a menu glyph, a gun's
 // sprite), square tiles for slots (the bag's tile look; a gun's mod row scrolls sideways when it has more than fit).
 // Below the top the row's edge takes the tapped player's colour. Same height at every level (style.css .anav).
-/** @param {{ row: import('../../auto/nav.js').NavRow, level: string, open: (w: string | number) => void }} props */
-function NavRow({ row, level, open }) {
+/** @param {{ row: import('../../auto/nav.js').NavRow, level: string, open: (w: string | number) => void, down: (e: any, src: DragSrc) => void, drag: Drag | null }} props */
+function NavRow({ row, level, open, down, drag }) {
+  const over = drag && drag.over && drag.over.ok ? drag.over.key : '';
   /** @param {import('../../auto/nav.js').NavCell} c @param {number} i */
   const cell = (c, i) => {
     const to = c.open;
@@ -214,10 +319,14 @@ function NavRow({ row, level, open }) {
     const go = e => { e.preventDefault(); if (to !== undefined) open(to); };
     if (row.shape === 'slots') {
       const it = c.item || null;
-      return h('div', { key: c.key, className: 'aslot anavs' + (it ? ' full k-' + it.kind : ''), 'data-nslot': i },
-        it ? h(ItemIcon, { it }) : null);
+      const lift = !!drag && drag.src.from === 'nav' && drag.src.i === i;
+      /** @param {any} e */
+      const grab = e => down(e, { from: 'nav', i });
+      return h('div', { key: c.key, className: 'aslot anavs' + (it ? ' full k-' + it.kind : '') + (over === 'n' + i ? ' drop' : '') + (lift ? ' lift' : ''),
+        'data-nslot': i, onPointerDown: it ? grab : undefined },
+        it ? h(ItemIcon, { it }) : null, it ? h(Grab) : null);
     }
-    const cls = 'anavc' + (c.dim ? ' locked' : ' on') + (c.sel ? ' sel' : '') + (c.gun ? ' gun' : '');
+    const cls = 'anavc' + (c.dim ? ' locked' : ' on') + (c.sel ? ' sel' : '') + (c.gun ? ' gun' : '') + (over === 'g' + i ? ' drop' : '');
     const style = c.col && !c.dim ? { borderColor: c.col, boxShadow: '0 0 10px ' + (c.glow || c.col + '66') } : undefined;
     let inner = null;
     if (c.gun) inner = h(GunIcon, { gun: c.gun });
@@ -225,7 +334,7 @@ function NavRow({ row, level, open }) {
     else if (c.icon) inner = h(PixIcon, { id: c.icon, size: 28 });      // themed pixel icons, not emoji (owner)
     else if (c.glyph) inner = h('span', { className: 'anavg' }, c.glyph);
     else if (c.label) inner = h('span', { className: 'anavp', style: { background: c.col } }, c.label);
-    return h('div', { key: c.key, className: cls, 'data-player': level === 'players' ? i : undefined, 'data-open': c.open,
+    return h('div', { key: c.key, className: cls, 'data-player': level === 'players' ? i : undefined, 'data-open': c.open, 'data-gslot': level === 'guns' ? i : undefined,
       title: c.glyph ? c.label : undefined, style, onPointerDown: go }, inner);
   };
   return h('div', { className: 'anav l-' + level + (row.shape === 'slots' ? ' slots' : ''), 'data-level': level,
@@ -234,10 +343,13 @@ function NavRow({ row, level, open }) {
 }
 
 // one bag slot: empty, or the item's icon and its count
-/** @param {{ i: number, it: BagItem | null }} props */
-function BagSlot({ i, it }) {
-  return h('div', { className: 'aslot' + (it ? ' full k-' + it.kind : ''), 'data-slot': i },
-    it ? h(ItemIcon, { it }) : null,
+/** @param {{ i: number, it: BagItem | null, down: (e: any, src: DragSrc) => void, lift: boolean }} props */
+function BagSlot({ i, it, down, lift }) {
+  /** @param {any} e */
+  const grab = e => down(e, { from: 'bag', i });
+  return h('div', { className: 'aslot' + (it ? ' full k-' + it.kind : '') + (lift ? ' lift' : ''), 'data-slot': i,
+    onPointerDown: it ? grab : undefined },
+    it ? h(ItemIcon, { it }) : null, it ? h(Grab) : null,
     it && (it.n > 1 || it.kind === 'gold' || it.kind === 'red' || it.kind === 'green') ? h('b', { className: 'acount' }, it.n) : null);
 }
 
@@ -257,4 +369,61 @@ function ItemIcon({ it }) {
   if (!g) return null;
   return h('span', { className: 'aglyph' }, h(GlyphIcon, { glyph: g.glyph, col: g.col }),
     g.tier ? h('i', { className: 'atier' }, ROMAN[g.tier - 1]) : null);
+}
+
+// ---- stage 8b: drag and drop, the cards ----
+/** @typedef {{ from: 'bag' | 'nav', i: number }} DragSrc */
+/** @typedef {{ key: string, to: 'nav' | 'gun' | 'bag', s: number, ok: boolean }} DropAt */
+/** @typedef {{ src: DragSrc, x: number, y: number, over: DropAt | null, back: boolean }} Drag */
+/** @typedef {{ id: number, x0: number, y0: number, src: DragSrc, grab: boolean, drag: boolean }} Press */
+// a press moving this far (px) is a drag (on the handle) or not a tap
+const MOVE = 6;
+
+// the grab handle: a circle round the tile's centre, DEV.autoGrab of the tile's width in radius (touch-action none:
+// only it starts a drag; the rest of the tile scrolls the bag)
+function Grab() {
+  const d = (200 * DEV.autoGrab).toFixed(1) + '%';
+  return h('i', { className: 'agrab', style: { width: d, height: d } });
+}
+
+// the dragged item, under the finger (a refused drop slides it home: .back)
+/** @param {{ drag: Drag, it: BagItem | null }} props */
+function Ghost({ drag, it }) {
+  if (!it) return null;
+  return h('div', { className: 'aslot full aghost k-' + it.kind + (drag.back ? ' back' : ''), style: { left: drag.x + 'px', top: drag.y + 'px' } },
+    h(ItemIcon, { it }));
+}
+
+/** gold and gems have no card @param {BagItem} it */
+const hasCard = it => (it.kind === 'mod' && !!it.id && !!MODS[it.id]) || (it.kind === 'gun' && !!it.gun) ||
+  (it.kind === 'perk' && !!it.id && !!PERKS[it.id]) || (it.kind === 'exo' && !!it.cat && !!it.tier);
+
+// a tapped item's card (the old Bag's: ModCard, GunCard, PerkCard; an exo mod's own small one), over a shade
+/** @param {{ it: BagItem, close: () => void }} props */
+function CardPop({ it, close }) {
+  /** @param {any} e */
+  const shut = e => { e.preventDefault(); close(); };
+  let c = null;
+  if (it.kind === 'mod' && it.id) c = h(ModCard, { id: it.id, top: true, onClose: close });
+  else if (it.kind === 'gun' && it.gun) c = h(GunCard, { gun: it.gun, label: 'Bag', onClose: close });
+  else if (it.kind === 'perk' && it.id) c = h(PerkCard, { id: it.id, top: true, onClose: close });
+  else if (it.kind === 'exo' && it.cat && it.tier) c = h(ExoCard, { cat: it.cat, tier: it.tier, onClose: close });
+  // (into the body, as ModPop: the cards take the page's colours, not the auto screen's)
+  return ReactDOM.createPortal(h('div', { className: 'modpop acard' }, h('div', { className: 'shade', onPointerDown: shut }), c), document.body);
+}
+
+// an exo mod's card: its category, tier, and what it adds (STAT_PERKS, by its tier)
+/** @param {{ cat: ExoCat, tier: number, onClose: () => void }} props */
+function ExoCard({ cat, tier, onClose }) {
+  const S0 = STAT_PERKS[EXO_STATS[cat][0]];
+  /** @param {any} e */
+  const shut = e => { e.preventDefault(); onClose(); };
+  return h('div', { className: 'pop scroll top aexocard' },
+    h('div', { className: 'phead' },
+      h('div', { className: 'pglyph', style: { borderColor: S0.tint } }, h(PixIcon, { id: cat, size: 26 })),
+      h('div', { className: 'ptitle' },
+        h('b', { style: { color: S0.tint } }, EXO_NAMES[cat] + ' ' + ROMAN[tier - 1]),
+        h('span', null, 'Exo mod · tier ' + ROMAN[tier - 1] + ' of V · fits the suit’s ' + EXO_NAMES[cat] + ' slots')),
+      h('button', { className: 'pclose', onPointerDown: shut }, '×')),
+    ...EXO_STATS[cat].map(st => { const S = STAT_PERKS[st]; return h('p', { key: st, className: 'pinfo' }, S.say(S.vals[tier - 1])); }));
 }

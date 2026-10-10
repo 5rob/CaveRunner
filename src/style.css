@@ -938,6 +938,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   box-sizing:border-box;display:flex;align-items:center;justify-content:center;overflow:hidden}
 .aslot.full{border-color:rgba(255,179,90,0.45);background:#2c1f45}
 .aslot .gicon{width:92%;height:auto}
+/* stage 8b: the grab handle (a circle round the icon's centre, the autoGrab radius): only it takes a drag, the rest of the tile scrolls */
+.agrab{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);border-radius:50%;touch-action:none;cursor:grab;z-index:2}
+.aslot.lift{opacity:.35}
+.aslot.drop{border-color:#5ee05a!important;box-shadow:0 0 0 2px #5ee05a,0 0 14px rgba(94,224,90,0.7)!important;opacity:1!important}
+.anavc.drop{box-shadow:0 0 0 3px #5ee05a,0 0 16px rgba(94,224,90,0.8)!important;opacity:1!important}
+.abag.drop{border-color:#5ee05a}
+/* the dragged ghost sits above the finger, so the lit target shows */
+.aghost{position:fixed;z-index:50;width:56px;height:56px;margin:-64px 0 0 -28px;pointer-events:none;opacity:.92;transform:scale(1.15);
+  box-shadow:0 6px 18px rgba(0,0,0,0.6)}
+.aghost.back{transition:left .16s ease-out,top .16s ease-out}
+.aexocard .ptitle span{display:block}
 .aglyph{position:relative;font:900 24px system-ui,sans-serif;line-height:1;display:flex;align-items:center;justify-content:center;width:100%;height:100%;text-align:center}
 .atier{position:absolute;left:4px;top:3px;font:900 9px ui-monospace,SFMono-Regular,Menlo,monospace;font-style:normal;color:#ffd23a}
 .acount{position:absolute;right:3px;bottom:1px;font:800 11px ui-monospace,SFMono-Regular,Menlo,monospace;color:#fff;
