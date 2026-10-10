@@ -10,9 +10,10 @@
 import { PH, PW } from '../core/consts.js';
 import { DEV } from '../dev/knobs.js';
 import { eliteOf, enemyFor } from '../data/creatures.js';
+import { deathFall } from './death.js';
 import { TCELL, TITLE_HOME, TITLE_KINDS, TITLE_VW, titleFoeAt, titleZone } from '../art/titlescene.js';
 
-export const FALL_FLICKER = 0.6;      // a fallen player's teleport-out flicker (s), then hidden
+export const FALL_FLICKER = 0.6;      // (retired, feedback round 2: a fallen player is a ragdoll now, auto/death.js)
 const BOSS_IN = 90;                   // the boss comes in this far right of the team (world units)
 
 // LevelFoe: a planned elite (L.elites: x its world x, the live one's while it lives), f the creature once it's in
@@ -55,29 +56,24 @@ export function levelHurt(S, i, dmg) {
   pl.hp = Math.max(0, pl.hp - dmg * DEV.autoFoeDmg);
   if (pl.hp <= 0) levelFall(S, i);
 }
-// player i falls: out of the level till the hub (a teleport-out flicker, sparks)
+// player i falls: out of the level till the hub (feedback round 2: the old game's ragdoll, auto/death.js deathFall)
 /** @param {import('../art/titlescene.js').TitleScene} S @param {number} i */
 export function levelFall(S, i) {
   const pl = S.team && S.team[i], r = S.runners[i];
   if (!r || r.out) return;
   if (pl) { pl.hp = 0; pl.alive = false; }
   r.out = true; r.outT = S.t; r.dig = 0; r.clr = null;
-  const cx = r.x + PW / 2, cy = r.y + PH / 2;
-  for (let k = 0; k < 16; k++) {
-    const a = S.rnd() * Math.PI * 2, sp = 20 + S.rnd() * 50;
-    S.parts.push({ x: cx, y: cy, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 20, life: 0.5, max: 0.5, r: 1.2, col: k % 3 ? '#7cc8ff' : '#e6f6ff', kind: 'spark' });
-  }
-  S.snd.push({ k: 'arc', x: cx, y: cy });
+  if (r.keep) { r.kit = r.keep; r.keep = null; }
+  deathFall(S, r);
+  S.snd.push({ k: 'land', x: r.x + PW / 2, y: r.y + PH, a: 200 });
 }
 // is every player out?
 /** @param {import('../art/titlescene.js').TitleScene} S */
 export const allFallen = S => S.runners.length > 0 && S.runners.every(r => r.out);
 
-// One step of the level's enemies (levelStep calls it): the fallen flicker, the elites in and marked, the boss
+// One step of the level's enemies (levelStep calls it): the elites in and marked, the boss (the fallen: auto/death.js)
 /** @param {import('../art/titlescene.js').TitleScene} S @param {import('./level.js').LevelState} L @param {number} teamX the team's place (world x) */
 export function levelFoes(S, L, teamX) {
-  for (const r of S.runners) if (r.out) r.hide = S.t - (r.outT || 0) < FALL_FLICKER ? Math.floor((S.t - (r.outT || 0)) * 24) % 2 === 0 : true;
-  if (allFallen(S)) L.failed = true;
   if (L.phase === 'arrive') return;
   const tier = S.tier || 1;
   // the elites: in as the scene's right edge reaches them (where the terrain is made), then tracked

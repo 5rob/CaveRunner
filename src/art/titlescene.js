@@ -9,7 +9,7 @@
 // suite runs it); game/render/titledraw.js paints it (it needs the game's bullet looks, layer 5);
 // titleText paints the big CAVE RUNNER. ui/title.js runs it on one requestAnimationFrame.
 
-import { AIR_ACC, CELL, COIN_PULL, DEAD, GRAVITY, GROUND_ACC, JET as P_JET, JET_ACC, PW, PH, WALK } from '../core/consts.js';
+import { COL, AIR_ACC, CELL, COIN_PULL, DEAD, GRAVITY, GROUND_ACC, JET as P_JET, JET_ACC, PW, PH, WALK } from '../core/consts.js';
 import { approach } from '../core/util.js';
 import { ROSTERS, enemyFor } from '../data/creatures.js';
 import { THEMES } from '../data/themes.js';
@@ -105,7 +105,7 @@ export const TITLE_HOME = {
  *   bursty: number, burst: boolean, jet: boolean, jetT: number, jetCd: number, pace: number, spd: number,
  *   nav: { F: any, fx: number, fy: number, t: number }, stepT?: number, sawS?: number, rst?: { t?: number }, rub?: string, rubWas?: boolean,
  *   hide?: boolean, out?: boolean, outT?: number, stand?: boolean, dealt?: number, clr?: { p: number, g: number } | null, clrT?: number,
- *   ctl?: RunnerCtl | null, cvx?: number }} TRunner */
+ *   ctl?: RunnerCtl | null, cvx?: number, jx?: number, jy?: number, smokeAcc?: number, rag?: import('../world/ragdoll.js').Ragdoll | null, lamp?: boolean }} TRunner */
 /** a player steered by hand (CaveRunner Auto, feedback round 2: the selected player in a level): the pill stick's push
  * @typedef {{ active: boolean, nx: number, ny: number, mag: number }} RunnerCtl */
 // a fixed strip in place of the scrolling ring (CaveRunner Auto's hub, auto/hub.js): w columns, each cell's material from
@@ -1044,7 +1044,7 @@ export function titleStep(S, dt) {
       if (titleSolid(S, p.x, p.y)) p.life = 0;
       continue;
     }
-    if (p.kind === 'fsmoke') {         // game/systems/particles.js smoke
+    if (p.kind === 'fsmoke' || p.kind === 'jsmoke') {         // game/systems/particles.js smoke (the jetpack's too)
       p.x += (p.vx - sv(S)) * dt; p.y += p.vy * dt; p.vx *= 1 - 2.5 * dt; p.vy = p.vy * (1 - 2.5 * dt) - 12 * dt; p.r += 5 * dt;
       continue;
     }
@@ -1109,11 +1109,44 @@ export function titleStep(S, dt) {
 function stepRunner(S, r, dt) {
   const x0 = r.x, y0 = r.y;
   stepRunnerMove(S, r, dt);
+  jetStep(S, r, dt);
   // how fast he's going through the world (it scrolls under him): what pushes the vines and webs he passes
   const k = Math.min(1, 12 * dt);
   r.wvx += (Math.max(-250, Math.min(250, (r.x - x0) / Math.max(dt, 1e-3) + sv(S))) - r.wvx) * k;
   r.wvy += (Math.max(-250, Math.min(250, (r.y - y0) / Math.max(dt, 1e-3))) - r.wvy) * k;
   stepRunnerGun(S, r, dt);
+}
+// The jetpack as the old game's (game/systems/player.js, particles.js, render/actors.js drawJetFlame): the thrust's way
+// (r.jx, r.jy: a hand-steered player's stick; the autopilot's mostly up, tilted by how fast he's going across), the
+// flame pointing away from it out of the backpack's nozzle (titleNozzle), and smoke puffing out after it (parts 'jsmoke')
+export const TITLE_NOZZLE_X = 4.4, TITLE_NOZZLE_Y = 17.6;    // as game/systems/player.js NOZZLE_X / NOZZLE_Y
+/** @param {TRunner} r */
+export const titleNozzle = r => ({ x: r.x + PW / 2 - TITLE_NOZZLE_X * (r.face || 1), y: r.y + TITLE_NOZZLE_Y });
+// the flame's way (unit): away from the thrust, sagging down (drawJetFlame's -jx, -jy + 0.8)
+/** @param {TRunner} r */
+export function titleFlameDir(r) {
+  let fx = -(r.jx || 0), fy = -(r.jy == null ? -1 : r.jy) + 0.8;
+  const d = Math.hypot(fx, fy) || 1; fx /= d; fy /= d;
+  return { fx, fy };
+}
+/** @param {TitleScene} S @param {TRunner} r @param {number} dt */
+function jetStep(S, r, dt) {
+  let jx, jy;
+  if (r.ctl && r.ctl.active && r.ctl.mag > DEAD) { jx = r.ctl.nx; jy = r.ctl.ny; }
+  else { const tl = Math.max(-DEV.autoJetTilt, Math.min(DEV.autoJetTilt, r.vx / 60)), d = Math.hypot(tl, 1); jx = tl / d; jy = -1 / d; }
+  const k = Math.min(1, 10 * dt);
+  r.jx = (r.jx == null ? jx : r.jx) + (jx - (r.jx == null ? jx : r.jx)) * k;
+  r.jy = (r.jy == null ? jy : r.jy) + (jy - (r.jy == null ? jy : r.jy)) * k;
+  if (!(r.flame > 0) || r.mode !== 'fly' || r.dig) { r.smokeAcc = 0; return; }
+  const { fx, fy } = titleFlameDir(r), R = S.rnd;
+  r.smokeAcc = (r.smokeAcc || 0) + dt * (25 + 35 * r.flame) * DEV.autoJetSmoke;
+  while (r.smokeAcc >= 1) {
+    r.smokeAcc--;
+    if (S.parts.length >= TITLE_PARTS - 60) continue;
+    const nz = titleNozzle(r);
+    S.parts.push({ x: nz.x + fx * 6 + (R() - 0.5) * 3, y: nz.y + fy * 6 + 1, vx: fx * 50 + (R() - 0.5) * 20, vy: fy * 50 + (R() - 0.5) * 20,
+      life: 0.9, max: 0.9, r: 1.5 + R(), col: COL.smoke, kind: 'jsmoke' });
+  }
 }
 // is any of the body's box (screen x, y: its top left) in rock? (a grid of points just inside it)
 // (feet: false leaves out the bottom row, so a step under his feet isn't rock in his way)

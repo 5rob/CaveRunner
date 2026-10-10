@@ -21,7 +21,7 @@ import { DEAD } from '../../core/consts.js';
 import { chestOpen } from '../../auto/chests.js';
 import { HUB_W, hubExit, hubLeft, hubScene, hubState, hubStick, hubStopX } from '../../auto/hub.js';
 import { THROW_TAKES, hubPayAt, hubPayOne, payVel } from '../../auto/throw.js';
-import { levelClearedAge, levelControl, levelDone, levelHold, levelLost, levelScene, levelState } from '../../auto/level.js';
+import { levelClearedAge, levelControl, levelDone, levelHold, levelLost, levelScene, levelState, levelTeleportHome } from '../../auto/level.js';
 import { clearedText } from '../../art/cleared.js';
 import { DEV } from '../../dev/knobs.js';
 import { levelBoss } from '../../auto/enemies.js';
@@ -258,7 +258,8 @@ export function AutoScreen() {
     }
     setNav(up);
   };
-  const pressA = () => { SFX.ui('tap'); if (scene.current && (hubExit(scene.current) || (!!scene.current.lvl && chestOpen(scene.current)))) SFX.fx('open'); };
+  // (feedback round 2) everyone down in a level: A sets off the teleport home (the helmet light, the blast: auto/death.js)
+  const pressA = () => { SFX.ui('tap'); if (scene.current && scene.current.lvl && levelTeleportHome(scene.current)) { SFX.fx('open'); return; } if (scene.current && (hubExit(scene.current) || (!!scene.current.lvl && chestOpen(scene.current)))) SFX.fx('open'); };
   /** what the source item is: a bag slot's, or a nav slot's at the nav's level @param {DragSrc} src @returns {BagItem | null} */
   const srcItem = src => {
     if (src.from === 'bag') return run.bag[src.i] || null;

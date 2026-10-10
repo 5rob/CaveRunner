@@ -1974,6 +1974,16 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "autoBossDmg", g: "autofoes", label: "Boss damage (× a normal one)", min: 0.5, max: 10, step: 0.25 }
   );
   DEV_GROUPS.push(["autofoes", "Auto: enemies"]);
+  Object.assign(DEV_DEFAULTS, { autoJetTilt: 0.6, autoJetSmoke: 1, autoDeathStop: 1.5, autoTpBlink: 1, autoTpBoomWait: 0.6, autoTpBoomR: 60 });
+  DEV_META.push(
+    { k: "autoJetTilt", g: "autodeath", label: "Jet flame: the autopilot’s tilt with its speed across (at most)", min: 0, max: 1.5, step: 0.05 },
+    { k: "autoJetSmoke", g: "autodeath", label: "Jet smoke (× the old game’s rate)", min: 0, max: 3, step: 0.05 },
+    { k: "autoDeathStop", g: "autodeath", label: "All fallen: the scroll eases to a stop over (s)", min: 0.1, max: 6, step: 0.1 },
+    { k: "autoTpBlink", g: "autodeath", label: "Tap A: the helmet light blinks for (s)", min: 0.1, max: 4, step: 0.05 },
+    { k: "autoTpBoomWait", g: "autodeath", label: "… then the blast, home after (s)", min: 0.1, max: 4, step: 0.05 },
+    { k: "autoTpBoomR", g: "autodeath", label: "The blast’s size", min: 10, max: 200, step: 1 }
+  );
+  DEV_GROUPS.push(["autodeath", "Auto: jetpack and death"]);
   Object.assign(DEV_DEFAULTS, { autoLootMod: 6, autoLootRed: 2, autoLootExo: 30, autoLootEliteGold: 3, autoLootBossGold: 10 });
   DEV_META.push(
     { k: "autoLootMod", g: "autoloot", label: "A kill drops a gun mod (% chance)", min: 0, max: 100, step: 0.5 },
@@ -10315,8 +10325,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       ft: [J[4], J[6]]
     };
   }
-  function drawRagdoll(ctx, R) {
-    paintBody(ctx, ragPose(R), 0, false, null);
+  function drawRagdoll(ctx, R, tint) {
+    paintBody(ctx, ragPose(R), 0, false, null, tint);
   }
   var PIX = { c: null, x: null };
   function pixelSprite(ctx, x0, y0, w, h3, px, line, paint3) {
@@ -12272,7 +12282,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         if (titleSolid(S2, p.x, p.y)) p.life = 0;
         continue;
       }
-      if (p.kind === "fsmoke") {
+      if (p.kind === "fsmoke" || p.kind === "jsmoke") {
         p.x += (p.vx - sv(S2)) * dt;
         p.y += p.vy * dt;
         p.vx *= 1 - 2.5 * dt;
@@ -12360,10 +12370,56 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function stepRunner(S2, r, dt) {
     const x0 = r.x, y0 = r.y;
     stepRunnerMove(S2, r, dt);
+    jetStep(S2, r, dt);
     const k = Math.min(1, 12 * dt);
     r.wvx += (Math.max(-250, Math.min(250, (r.x - x0) / Math.max(dt, 1e-3) + sv(S2))) - r.wvx) * k;
     r.wvy += (Math.max(-250, Math.min(250, (r.y - y0) / Math.max(dt, 1e-3))) - r.wvy) * k;
     stepRunnerGun(S2, r, dt);
+  }
+  var TITLE_NOZZLE_X = 4.4, TITLE_NOZZLE_Y = 17.6;
+  var titleNozzle = (r) => ({ x: r.x + PW / 2 - TITLE_NOZZLE_X * (r.face || 1), y: r.y + TITLE_NOZZLE_Y });
+  function titleFlameDir(r) {
+    let fx = -(r.jx || 0), fy = -(r.jy == null ? -1 : r.jy) + 0.8;
+    const d = Math.hypot(fx, fy) || 1;
+    fx /= d;
+    fy /= d;
+    return { fx, fy };
+  }
+  function jetStep(S2, r, dt) {
+    let jx, jy;
+    if (r.ctl && r.ctl.active && r.ctl.mag > DEAD) {
+      jx = r.ctl.nx;
+      jy = r.ctl.ny;
+    } else {
+      const tl = Math.max(-DEV.autoJetTilt, Math.min(DEV.autoJetTilt, r.vx / 60)), d = Math.hypot(tl, 1);
+      jx = tl / d;
+      jy = -1 / d;
+    }
+    const k = Math.min(1, 10 * dt);
+    r.jx = (r.jx == null ? jx : r.jx) + (jx - (r.jx == null ? jx : r.jx)) * k;
+    r.jy = (r.jy == null ? jy : r.jy) + (jy - (r.jy == null ? jy : r.jy)) * k;
+    if (!(r.flame > 0) || r.mode !== "fly" || r.dig) {
+      r.smokeAcc = 0;
+      return;
+    }
+    const { fx, fy } = titleFlameDir(r), R = S2.rnd;
+    r.smokeAcc = (r.smokeAcc || 0) + dt * (25 + 35 * r.flame) * DEV.autoJetSmoke;
+    while (r.smokeAcc >= 1) {
+      r.smokeAcc--;
+      if (S2.parts.length >= TITLE_PARTS - 60) continue;
+      const nz = titleNozzle(r);
+      S2.parts.push({
+        x: nz.x + fx * 6 + (R() - 0.5) * 3,
+        y: nz.y + fy * 6 + 1,
+        vx: fx * 50 + (R() - 0.5) * 20,
+        vy: fy * 50 + (R() - 0.5) * 20,
+        life: 0.9,
+        max: 0.9,
+        r: 1.5 + R(),
+        col: COL.smoke,
+        kind: "jsmoke"
+      });
+    }
   }
   var boxRock = (S2, x, y, feet = true) => {
     for (let i = 0; i <= 2; i++) for (let j = 0; j <= (feet ? 4 : 3); j++) if (titleSolid(S2, x + 1 + (PW - 2) * i / 2, y + 1 + (PH - 2) * j / 4)) return true;
@@ -15165,6 +15221,228 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return { k, i, halt: k < DEV.autoWebHalt };
   }
 
+  // src/world/ragdoll.js
+  var RAG_POSE = [
+    [0, 5],
+    // 0 head (the helmet's centre)
+    [0, 10],
+    // 1 chest (the shoulders)
+    [0, 15.4],
+    // 2 hip
+    [-1.2, 18.4],
+    // 3 back knee
+    [-1.7, 21],
+    // 4 back foot
+    [1.8, 18.2],
+    // 5 front knee
+    [1.7, 21],
+    // 6 front foot
+    [4.6, 11.6],
+    // 7 front hand (the gun's)
+    [2.2, 12.2],
+    // 8 front elbow
+    [-2.1, 12.4],
+    // 9 back elbow
+    [-3.6, 11]
+    // 10 back hand (the torch's)
+  ];
+  var RAG_STICKS = [[0, 1], [1, 2], [2, 3], [3, 4], [2, 5], [5, 6], [1, 8], [8, 7], [1, 9], [9, 10], [0, 2], [1, 3], [1, 5]];
+  var RAG_BRACE = 11;
+  var RAG_SUB = 4;
+  var RAG_ITER = 3;
+  var RAG_VMAX = 900;
+  var RAG_FRICTION = 0.01;
+  var RAG_SLUMP = 1.5;
+  var RAG_DRAG = 0.4;
+  function ragNew(x, y, w, face, vx, vy, rnd2) {
+    rnd2 = rnd2 || Math.random;
+    const cx = x + w / 2, sp = Math.hypot(vx, vy);
+    const joints = RAG_POSE.map(([px, py], i) => {
+      const up = 1 - py / 22;
+      const tipX = (rnd2() - 0.5) * 50 - face * 25;
+      return {
+        x: cx + px * face,
+        y: y + py,
+        vx: vx * (0.85 + 0.4 * up) + tipX * up + (i === 7 || i === 10 ? (rnd2() - 0.5) * 80 : 0),
+        vy: vy - (sp > 250 ? 60 * up : 0),
+        ox: 0,
+        oy: 0,
+        g: 0
+      };
+    });
+    const len = RAG_STICKS.map(([a, b]) => Math.hypot(joints[a].x - joints[b].x, joints[a].y - joints[b].y));
+    const tip = rnd2() < 0.75 ? -(face || 1) : face || 1;
+    return { face: face || 1, joints, len, rest: 0, still: false, tip, age: 0 };
+  }
+  function collide(j, solid, fr) {
+    if (!solid(j.x, j.y)) return;
+    if (!solid(j.ox, j.y)) {
+      j.x = j.ox;
+      return;
+    }
+    if (!solid(j.x, j.oy)) {
+      if (j.y > j.oy) j.g = 1;
+      j.y = j.oy;
+      j.x = j.ox + (j.x - j.ox) * fr;
+      return;
+    }
+    j.x = j.ox;
+    j.y = j.oy;
+    if (solid(j.x, j.y)) j.y -= 1;
+  }
+  function ragStep(R, dt, solid) {
+    if (R.still || dt <= 0) return;
+    const h3 = dt / RAG_SUB, J = R.joints, fr = Math.pow(RAG_FRICTION, h3), drag = Math.pow(RAG_DRAG, h3);
+    R.age += dt;
+    const slump = R.age < RAG_SLUMP ? R.tip * 420 * h3 : 0;
+    for (let s = 0; s < RAG_SUB; s++) {
+      J[0].vx += slump;
+      J[1].vx += slump * 0.5;
+      J[2].vx -= slump * 0.75;
+      for (const j of J) {
+        j.ox = j.x;
+        j.oy = j.y;
+        j.g = 0;
+        j.vy += GRAVITY * h3;
+        j.vx *= drag;
+        j.vy *= drag;
+        const v = Math.hypot(j.vx, j.vy);
+        if (v > RAG_VMAX) {
+          j.vx *= RAG_VMAX / v;
+          j.vy *= RAG_VMAX / v;
+        }
+        j.x += j.vx * h3;
+        j.y += j.vy * h3;
+        collide(j, solid, fr);
+      }
+      for (let it = 0; it < RAG_ITER; it++) {
+        for (let k = 0; k < RAG_STICKS.length; k++) {
+          const a = J[RAG_STICKS[k][0]], b = J[RAG_STICKS[k][1]];
+          const dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 1e-6;
+          if (k >= RAG_BRACE && d >= R.len[k]) continue;
+          const f = (d - R.len[k]) / d * 0.5;
+          a.x += dx * f;
+          a.y += dy * f;
+          b.x -= dx * f;
+          b.y -= dy * f;
+        }
+        for (const j of J) collide(j, solid, 1);
+      }
+      for (const j of J) {
+        j.vx = (j.x - j.ox) / h3;
+        j.vy = (j.y - j.oy) / h3;
+      }
+    }
+    let fast = 0;
+    for (const j of J) fast = Math.max(fast, Math.abs(j.vx) + Math.abs(j.vy));
+    R.rest = fast < 8 ? R.rest + dt : 0;
+    if (R.rest > 1) {
+      R.still = true;
+      for (const j of J) {
+        j.vx = 0;
+        j.vy = 0;
+      }
+    }
+  }
+  function ragPush(R, x, y, rad, power) {
+    const P = power || 500;
+    let hit = false;
+    for (const j of R.joints) {
+      const dx = j.x - x, dy = j.y - y, d = Math.hypot(dx, dy);
+      if (d >= rad) continue;
+      const f = 1 - d / rad;
+      j.vx += dx / (d || 1) * P * f;
+      j.vy += dy / (d || 1) * P * f - 150 * f;
+      hit = true;
+    }
+    if (hit) {
+      R.still = false;
+      R.rest = 0;
+    }
+  }
+  var ragHip = (R) => R.joints[2];
+
+  // src/auto/death.js
+  function deathFall(S2, r) {
+    r.rag = ragNew(r.x + S2.scroll, r.y, PW, r.face || 1, r.wvx || 0, r.vy || 0, S2.rnd);
+    r.hide = true;
+    r.ctl = null;
+    r.flame = 0;
+  }
+  function deathRags(S2, dt) {
+    const solid = (x, y) => titleSolid(S2, x - S2.scroll, y);
+    for (const r of S2.runners) {
+      if (!r.out || !r.rag) continue;
+      const hip = r.rag.joints[2];
+      if (hip.x - S2.scroll > -120) ragStep(r.rag, dt, solid);
+      r.hide = true;
+      r.x = hip.x - S2.scroll - PW / 2;
+      r.y = hip.y - 15;
+      r.vx = 0;
+      r.vy = 0;
+    }
+  }
+  function deathStep(S2, L, dt) {
+    deathRags(S2, dt);
+    const all = S2.runners.length > 0 && S2.runners.every((r2) => r2.out);
+    if (!all) return false;
+    if (L.deadT == null) {
+      L.deadT = S2.t;
+      L.pace0 = S2.pace || 0;
+      let last = 0;
+      S2.runners.forEach((r2, i) => {
+        if ((r2.outT || 0) >= (S2.runners[last].outT || 0)) last = i;
+      });
+      L.lastI = last;
+    }
+    const u = Math.min(1, (S2.t - L.deadT) / DEV.autoDeathStop);
+    S2.pace = (L.pace0 || 0) * (1 - u) * (1 - u);
+    const r = S2.runners[L.lastI || 0];
+    if (L.tpT == null) {
+      if (r) r.lamp = false;
+      return true;
+    }
+    const a = S2.t - L.tpT, B = DEV.autoTpBlink;
+    if (r) r.lamp = a < B && Math.floor(a * (10 + 14 * a / B)) % 2 === 0;
+    if (a >= B && !L.boomed) {
+      L.boomed = true;
+      deathBlast(S2, r);
+    }
+    if (a >= B + DEV.autoTpBoomWait) L.failed = true;
+    return true;
+  }
+  function deathHelmet(S2, r) {
+    if (!r || !r.rag) return r ? { x: r.x + PW / 2, y: r.y + 5 } : null;
+    const h3 = r.rag.joints[0];
+    return { x: h3.x - S2.scroll, y: h3.y };
+  }
+  function deathBlast(S2, r) {
+    const h3 = deathHelmet(S2, r);
+    if (!h3) return;
+    const R = DEV.autoTpBoomR, rnd2 = S2.rnd, x = h3.x, y = h3.y + PH * 0.3;
+    S2.booms.push({ x, y, r: R, t: 0, max: 0.6 }, { x: x - R * 0.3, y: y - R * 0.2, r: R * 0.6, t: 0, max: 0.45 }, { x: x + R * 0.3, y: y + R * 0.1, r: R * 0.6, t: 0, max: 0.5 });
+    const burst3 = (n, col, spd, kind, life) => {
+      for (let i = 0; i < n && S2.parts.length < 400; i++) {
+        const an = rnd2() * Math.PI * 2, v = spd * (0.3 + rnd2() * 0.7), l = life * (0.6 + rnd2() * 0.6);
+        S2.parts.push({ x, y, vx: Math.cos(an) * v, vy: Math.sin(an) * v - (kind === "smoke" ? 20 : 0), life: l, max: l, r: kind === "smoke" ? 3 + rnd2() * 3 : 1 + rnd2() * 1.5, col, kind });
+      }
+    };
+    burst3(40, "#ffd27a", 220, "fire", 0.7);
+    burst3(20, "#ffffff", 320, "spark", 0.4);
+    burst3(10, "#3a3346", 50, "smoke", 1.6);
+    burst3(10, r ? r.col : "#888", 160, "chunk", 1.1);
+    S2.shake = Math.max(S2.shake, 9);
+    S2.flash = Math.max(S2.flash, 0.8);
+    if (S2.snd.length < 80) S2.snd.push({ k: "boom", x, y, a: R * 2 });
+    for (const q of S2.runners) if (q.rag) ragPush(q.rag, x + S2.scroll, y, R * 1.2, 900);
+  }
+  var deathPrompt = (S2, L) => L.deadT != null && L.tpT == null && S2.t - L.deadT >= DEV.autoDeathStop;
+  function deathTeleport(S2, L) {
+    if (!deathPrompt(S2, L)) return false;
+    L.tpT = S2.t;
+    return true;
+  }
+
   // src/auto/enemies.js
   var FALL_FLICKER = 0.6;
   var BOSS_IN = 90;
@@ -15211,17 +15489,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     r.outT = S2.t;
     r.dig = 0;
     r.clr = null;
-    const cx = r.x + PW / 2, cy = r.y + PH / 2;
-    for (let k = 0; k < 16; k++) {
-      const a = S2.rnd() * Math.PI * 2, sp = 20 + S2.rnd() * 50;
-      S2.parts.push({ x: cx, y: cy, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 20, life: 0.5, max: 0.5, r: 1.2, col: k % 3 ? "#7cc8ff" : "#e6f6ff", kind: "spark" });
+    if (r.keep) {
+      r.kit = r.keep;
+      r.keep = null;
     }
-    S2.snd.push({ k: "arc", x: cx, y: cy });
+    deathFall(S2, r);
+    S2.snd.push({ k: "land", x: r.x + PW / 2, y: r.y + PH, a: 200 });
   }
   var allFallen = (S2) => S2.runners.length > 0 && S2.runners.every((r) => r.out);
   function levelFoes(S2, L, teamX) {
-    for (const r of S2.runners) if (r.out) r.hide = S2.t - (r.outT || 0) < FALL_FLICKER ? Math.floor((S2.t - (r.outT || 0)) * 24) % 2 === 0 : true;
-    if (allFallen(S2)) L.failed = true;
     if (L.phase === "arrive") return;
     const tier = S2.tier || 1;
     for (const e of L.elites) {
@@ -15484,6 +15760,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const L = levelState(S2);
     return !!L && L.failed;
   }
+  function levelDeathPrompt(S2) {
+    const L = levelState(S2);
+    return !!L && deathPrompt(S2, L);
+  }
+  function levelTeleportHome(S2) {
+    const L = levelState(S2);
+    return !!L && deathTeleport(S2, L);
+  }
   function levelDone(S2) {
     const L = levelState(S2);
     return !!L && L.phase === "exit" && L.doneT >= 0;
@@ -15506,6 +15790,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (!L) return;
     levelMeters(S2, L, dt);
     levelFoes(S2, L, levelTeamX(S2));
+    if (deathStep(S2, L, dt)) return;
     chestsStep(S2);
     const P = L.plan;
     if (L.phase === "arrive") {
@@ -18146,147 +18431,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function zoneRock(n) {
     return mix([34, 30, 40], [58, 52, 66], n);
   }
-
-  // src/world/ragdoll.js
-  var RAG_POSE = [
-    [0, 5],
-    // 0 head (the helmet's centre)
-    [0, 10],
-    // 1 chest (the shoulders)
-    [0, 15.4],
-    // 2 hip
-    [-1.2, 18.4],
-    // 3 back knee
-    [-1.7, 21],
-    // 4 back foot
-    [1.8, 18.2],
-    // 5 front knee
-    [1.7, 21],
-    // 6 front foot
-    [4.6, 11.6],
-    // 7 front hand (the gun's)
-    [2.2, 12.2],
-    // 8 front elbow
-    [-2.1, 12.4],
-    // 9 back elbow
-    [-3.6, 11]
-    // 10 back hand (the torch's)
-  ];
-  var RAG_STICKS = [[0, 1], [1, 2], [2, 3], [3, 4], [2, 5], [5, 6], [1, 8], [8, 7], [1, 9], [9, 10], [0, 2], [1, 3], [1, 5]];
-  var RAG_BRACE = 11;
-  var RAG_SUB = 4;
-  var RAG_ITER = 3;
-  var RAG_VMAX = 900;
-  var RAG_FRICTION = 0.01;
-  var RAG_SLUMP = 1.5;
-  var RAG_DRAG = 0.4;
-  function ragNew(x, y, w, face, vx, vy, rnd2) {
-    rnd2 = rnd2 || Math.random;
-    const cx = x + w / 2, sp = Math.hypot(vx, vy);
-    const joints = RAG_POSE.map(([px, py], i) => {
-      const up = 1 - py / 22;
-      const tipX = (rnd2() - 0.5) * 50 - face * 25;
-      return {
-        x: cx + px * face,
-        y: y + py,
-        vx: vx * (0.85 + 0.4 * up) + tipX * up + (i === 7 || i === 10 ? (rnd2() - 0.5) * 80 : 0),
-        vy: vy - (sp > 250 ? 60 * up : 0),
-        ox: 0,
-        oy: 0,
-        g: 0
-      };
-    });
-    const len = RAG_STICKS.map(([a, b]) => Math.hypot(joints[a].x - joints[b].x, joints[a].y - joints[b].y));
-    const tip = rnd2() < 0.75 ? -(face || 1) : face || 1;
-    return { face: face || 1, joints, len, rest: 0, still: false, tip, age: 0 };
-  }
-  function collide(j, solid, fr) {
-    if (!solid(j.x, j.y)) return;
-    if (!solid(j.ox, j.y)) {
-      j.x = j.ox;
-      return;
-    }
-    if (!solid(j.x, j.oy)) {
-      if (j.y > j.oy) j.g = 1;
-      j.y = j.oy;
-      j.x = j.ox + (j.x - j.ox) * fr;
-      return;
-    }
-    j.x = j.ox;
-    j.y = j.oy;
-    if (solid(j.x, j.y)) j.y -= 1;
-  }
-  function ragStep(R, dt, solid) {
-    if (R.still || dt <= 0) return;
-    const h3 = dt / RAG_SUB, J = R.joints, fr = Math.pow(RAG_FRICTION, h3), drag = Math.pow(RAG_DRAG, h3);
-    R.age += dt;
-    const slump = R.age < RAG_SLUMP ? R.tip * 420 * h3 : 0;
-    for (let s = 0; s < RAG_SUB; s++) {
-      J[0].vx += slump;
-      J[1].vx += slump * 0.5;
-      J[2].vx -= slump * 0.75;
-      for (const j of J) {
-        j.ox = j.x;
-        j.oy = j.y;
-        j.g = 0;
-        j.vy += GRAVITY * h3;
-        j.vx *= drag;
-        j.vy *= drag;
-        const v = Math.hypot(j.vx, j.vy);
-        if (v > RAG_VMAX) {
-          j.vx *= RAG_VMAX / v;
-          j.vy *= RAG_VMAX / v;
-        }
-        j.x += j.vx * h3;
-        j.y += j.vy * h3;
-        collide(j, solid, fr);
-      }
-      for (let it = 0; it < RAG_ITER; it++) {
-        for (let k = 0; k < RAG_STICKS.length; k++) {
-          const a = J[RAG_STICKS[k][0]], b = J[RAG_STICKS[k][1]];
-          const dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 1e-6;
-          if (k >= RAG_BRACE && d >= R.len[k]) continue;
-          const f = (d - R.len[k]) / d * 0.5;
-          a.x += dx * f;
-          a.y += dy * f;
-          b.x -= dx * f;
-          b.y -= dy * f;
-        }
-        for (const j of J) collide(j, solid, 1);
-      }
-      for (const j of J) {
-        j.vx = (j.x - j.ox) / h3;
-        j.vy = (j.y - j.oy) / h3;
-      }
-    }
-    let fast = 0;
-    for (const j of J) fast = Math.max(fast, Math.abs(j.vx) + Math.abs(j.vy));
-    R.rest = fast < 8 ? R.rest + dt : 0;
-    if (R.rest > 1) {
-      R.still = true;
-      for (const j of J) {
-        j.vx = 0;
-        j.vy = 0;
-      }
-    }
-  }
-  function ragPush(R, x, y, rad, power) {
-    const P = power || 500;
-    let hit = false;
-    for (const j of R.joints) {
-      const dx = j.x - x, dy = j.y - y, d = Math.hypot(dx, dy);
-      if (d >= rad) continue;
-      const f = 1 - d / rad;
-      j.vx += dx / (d || 1) * P * f;
-      j.vy += dy / (d || 1) * P * f - 150 * f;
-      hit = true;
-    }
-    if (hit) {
-      R.still = false;
-      R.rest = 0;
-    }
-  }
-  var ragHip = (R) => R.joints[2];
 
   // src/world/nests.js
   function ratNests(mat, rnd2, zone, keep, nb, nw) {
@@ -28019,6 +28163,26 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const x = c.x - S2.scroll;
       if (x > -20 && x < TITLE_VW + 20 && c.y != null) drawChest(ctx, x, c.y, c.open ? S2.t - (c.openT || 0) : -1);
     }
+    levelRags(ctx, S2);
+  }
+  function levelRags(ctx, S2) {
+    for (const r of S2.runners) {
+      const R = r.rag;
+      if (!r.out || !R) continue;
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      for (const j of R.joints) {
+        x0 = Math.min(x0, j.x);
+        y0 = Math.min(y0, j.y);
+        x1 = Math.max(x1, j.x);
+        y1 = Math.max(y1, j.y);
+      }
+      if (x1 - S2.scroll < -20 || x0 - S2.scroll > TITLE_VW + 20) continue;
+      const hip = R.joints[2], ox = hip.x - Math.ceil(hip.x - x0 + 9), oy = hip.y - Math.ceil(hip.y - y0 + 9);
+      pixelSprite(ctx, ox - S2.scroll, oy, x1 + 9 - ox, y1 + 9 - oy, 1, false, (c) => {
+        c.translate(-S2.scroll, 0);
+        drawRagdoll(c, R, r.col);
+      });
+    }
   }
   function drawChest(ctx, x, y, age) {
     const l = Math.round(x - 7), b = Math.round(y);
@@ -28080,6 +28244,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       else padGlow(ctx, S2, p.x, p.fy, 5, { ch: 0, fl: 0 }, -99);
     }
     ctx.restore();
+    for (const r of S2.runners) if (r.out && r.lamp) {
+      const h3 = deathHelmet(S2, r);
+      if (h3) {
+        glowAt(ctx, h3.x, h3.y - 1, 10, 0.7, "255,40,30");
+        ctx.fillStyle = "#ff3a2a";
+        ctx.fillRect(Math.round(h3.x - 1), Math.round(h3.y - 4), 2, 2);
+      }
+    }
+    if (levelDeathPrompt(S2)) {
+      const r = S2.runners[L.lastI || 0], h3 = deathHelmet(S2, r);
+      if (h3) drawHint(ctx, Math.max(50, Math.min(TITLE_VW - 50, h3.x)), Math.max(S2.top + 20, h3.y - 14), "Tap A to Teleport back to Hub", S2.t);
+    }
     const c = chestInRange(S2);
     if (c && c.y != null) drawHint(ctx, c.x - S2.scroll, c.y - 28, "Tap A to open", S2.t);
   }
@@ -28243,6 +28419,26 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       ctx.fill();
     }
     ctx.globalAlpha = 1;
+    let jx0 = Infinity, jy0 = Infinity, jx1 = -Infinity, jy1 = -Infinity;
+    for (const p of S2.parts) if (p.kind === "jsmoke") {
+      jx0 = Math.min(jx0, p.x - p.r);
+      jy0 = Math.min(jy0, p.y - p.r);
+      jx1 = Math.max(jx1, p.x + p.r);
+      jy1 = Math.max(jy1, p.y + p.r);
+    }
+    if (jx1 > jx0) {
+      const gx0 = Math.floor(jx0), gy0 = Math.floor(jy0);
+      pixelSoft(ctx, gx0, gy0, jx1 - gx0 + 1, jy1 - gy0 + 1, 1, (c) => {
+        for (const p of S2.parts) if (p.kind === "jsmoke") {
+          c.fillStyle = p.col;
+          c.globalAlpha = Math.max(0, p.life / p.max) * 0.5;
+          c.beginPath();
+          c.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+          c.fill();
+        }
+        c.globalAlpha = 1;
+      });
+    }
     for (const f of S2.foes) {
       const sx2 = f.x - S2.scroll;
       if (sx2 < -60 || sx2 > TITLE_VW + 60) continue;
@@ -28318,7 +28514,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         glowAt(ctx, (f.c + 0.5) * TCELL - S2.scroll, (f.r + 0.5) * TCELL, 20, Math.min(0.14, 0.03 + S2.fire.length / 3e3), "255,120,40");
       }
     }
-    for (const p of S2.parts) if (p.kind !== "smoke" && p.kind !== "fsmoke") {
+    for (const p of S2.parts) if (p.kind !== "smoke" && p.kind !== "fsmoke" && p.kind !== "jsmoke") {
       if (p.kind === "flame" || p.kind === "ember") {
         ctx.globalAlpha = Math.min(1, p.life / (p.max * 0.3));
         ctx.fillStyle = p.col;
@@ -28350,9 +28546,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const lower = r.swap > 0 ? Math.sin(r.swap / 0.3 * Math.PI) * 4 : 0, gy = r.y + PH * 0.45 + lower;
     const hands = { gun: { x: pcx + ax * 2.5, y: gy }, torch: { x: pcx + ax * 7, y: gy + ay * 5 - 0.5 } };
     const ox = r.x - 14, oy = r.y - 8;
-    if (r.mode === "fly") {
-      const len = 6 + r.flame * 14 + S2.rnd() * 3, bx = pcx - r.face * 4.5, by = r.y + PH * 0.55;
-      pixelSprite(ctx, ox - 10, oy, PW + 48, PH + 40, 1, false, (c) => jetFlame(c, bx, by, 0, 1, len, S2.t));
+    if (r.mode === "fly" && r.flame > 0) {
+      const { fx, fy } = titleFlameDir(r), nz = titleNozzle(r), len = 6 + r.flame * 16 + (Math.sin(S2.t * 97.3 + r.id * 17.1) * 0.5 + 0.5) * 3;
+      const R = len + 8, x0 = ox + Math.floor(nz.x - R - ox), y0 = oy + Math.floor(nz.y - R - oy);
+      pixelSprite(ctx, x0, y0, R * 2 + 1, R * 2 + 1, 1, false, (c) => jetFlame(c, nz.x, nz.y, fx, fy, len, S2.t));
     }
     const gait = r.mode === "run" && !r.stand ? r.gait : null;
     pixelHeld(ctx, ox + 14, oy + 8, 1, false, (c) => {
@@ -29698,6 +29895,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     };
     const pressA = () => {
       SFX.ui("tap");
+      if (scene.current && scene.current.lvl && levelTeleportHome(scene.current)) {
+        SFX.fx("open");
+        return;
+      }
       if (scene.current && (hubExit(scene.current) || !!scene.current.lvl && chestOpen(scene.current))) SFX.fx("open");
     };
     const srcItem = (src) => {

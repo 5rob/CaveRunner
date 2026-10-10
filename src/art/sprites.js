@@ -217,9 +217,9 @@ export function ragPose(R) {
     el: [el0, el1], ha: [ha0, J[7]], kn: [J[3], J[5]], ft: [J[4], J[6]] };
 }
 
-// The runner dead: the same body, laid along the ragdoll
-/** @param {CanvasRenderingContext2D} ctx @param {import('../world/ragdoll.js').Ragdoll} R */
-export function drawRagdoll(ctx, R) { paintBody(ctx, ragPose(R), 0, false, null); }
+// The runner dead: the same body, laid along the ragdoll (tint: CaveRunner Auto's player colour, as drawRunner's)
+/** @param {CanvasRenderingContext2D} ctx @param {import('../world/ragdoll.js').Ragdoll} R @param {string} [tint] */
+export function drawRagdoll(ctx, R, tint) { paintBody(ctx, ragPose(R), 0, false, null, tint); }
 
 // ---- pixel sprites ----
 // Draw `paint` (world units) into a small layer at px world units a pixel, its grid pinned at

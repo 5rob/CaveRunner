@@ -4,7 +4,9 @@
 // teleports in on the start pad). Screen x (the cave scrolls under them).
 
 import { hubCharge } from '../../auto/hub.js';
-import { levelPads, levelState } from '../../auto/level.js';
+import { levelDeathPrompt, levelPads, levelState } from '../../auto/level.js';
+import { deathHelmet } from '../../auto/death.js';
+import { drawRagdoll, glowAt, pixelSprite } from '../../art/sprites.js';
 import { drawHint, drawHubPad, padGlow } from './hubdraw.js';
 import { chestInRange } from '../../auto/chests.js';
 import { TITLE_VW } from '../../art/titlescene.js';
@@ -17,6 +19,22 @@ export function levelBack(ctx, S) {
   if (L) for (const c of L.chests) {
     const x = c.x - S.scroll;
     if (x > -20 && x < TITLE_VW + 20 && c.y != null) drawChest(ctx, x, c.y, c.open ? S.t - (c.openT || 0) : -1);
+  }
+  levelRags(ctx, S);
+}
+
+// (feedback round 2) the fallen: the old game's ragdoll (auto/death.js), in world x, on a 1-unit pixel grid riding its hip
+// (render/actors.js drawPlayer's dead branch), each in its player's colour
+/** @param {CanvasRenderingContext2D} ctx @param {import('../../art/titlescene.js').TitleScene} S */
+function levelRags(ctx, S) {
+  for (const r of S.runners) {
+    const R = r.rag;
+    if (!r.out || !R) continue;
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const j of R.joints) { x0 = Math.min(x0, j.x); y0 = Math.min(y0, j.y); x1 = Math.max(x1, j.x); y1 = Math.max(y1, j.y); }
+    if (x1 - S.scroll < -20 || x0 - S.scroll > TITLE_VW + 20) continue;
+    const hip = R.joints[2], ox = hip.x - Math.ceil(hip.x - x0 + 9), oy = hip.y - Math.ceil(hip.y - y0 + 9);
+    pixelSprite(ctx, ox - S.scroll, oy, x1 + 9 - ox, y1 + 9 - oy, 1, false, c => { c.translate(-S.scroll, 0); drawRagdoll(c, R, r.col); });
   }
 }
 
@@ -76,6 +94,15 @@ export function levelGlow(ctx, S) {
     else padGlow(ctx, S, p.x, p.fy, 5, { ch: 0, fl: 0 }, -99);
   }
   ctx.restore();
+  // (feedback round 2) the fallen's helmet light blinking (Tap A: the teleport home), and the prompt over the last one
+  for (const r of S.runners) if (r.out && r.lamp) {
+    const h = deathHelmet(S, r);
+    if (h) { glowAt(ctx, h.x, h.y - 1, 10, 0.7, '255,40,30'); ctx.fillStyle = '#ff3a2a'; ctx.fillRect(Math.round(h.x - 1), Math.round(h.y - 4), 2, 2); }
+  }
+  if (levelDeathPrompt(S)) {
+    const r = S.runners[L.lastI || 0], h = deathHelmet(S, r);
+    if (h) drawHint(ctx, Math.max(50, Math.min(TITLE_VW - 50, h.x)), Math.max(S.top + 20, h.y - 14), 'Tap A to Teleport back to Hub', S.t);
+  }
   // stage 11: a player in range of a shut chest: "Tap A to open" over it (the hub exit's hint)
   const c = chestInRange(S);
   if (c && c.y != null) drawHint(ctx, c.x - S.scroll, c.y - 28, 'Tap A to open', S.t);

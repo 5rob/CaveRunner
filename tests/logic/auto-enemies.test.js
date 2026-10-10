@@ -42,12 +42,9 @@ check('a creature bites him for real', until(S, () => pl.hp < hp1, 600) >= 0, [h
 // the fall
 S.lvl.hurt(S, 0, 1e6);
 check('at 0 hp he falls: out, not alive', pl.hp === 0 && pl.alive === false && r0.out === true);
-const seen = new Set();
-for (let i = 0; i < 12; i++) { G.titleStep(S, dt); seen.add(!!r0.hide); }
-check('the teleport-out flicker (hidden and shown)', seen.has(true) && seen.has(false));
-until(S, () => false, 30);
-check('then hidden for good', r0.hide === true);
-check('one player, fallen: the level is lost', G.levelLost(S) && G.allFallen(S));
+G.titleStep(S, dt);
+check('he goes limp: a ragdoll, his sprite hidden (feedback round 2)', !!r0.rag && r0.hide === true);
+check('one player, fallen: all fallen, not lost till Tap A (auto-death)', G.allFallen(S) && !G.levelLost(S));
 const tier0 = run.tier;
 G.levelFailed(run);
 check('levelFailed: home, tier unchanged, healed and alive', run.tier === tier0 && pl.alive && pl.hp === G.playerStats(pl).maxHp);

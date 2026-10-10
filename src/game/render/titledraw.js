@@ -18,8 +18,8 @@ import { vinePt } from '../../world/sway.js';
 import { crackleAt, crackleBody } from '../../art/crackle.js';
 import { drawProp, propGlow } from '../../art/props.js';
 import { gunArtId } from '../../art/gunart.js';
-import { CRYSTAL_PAL, CRYSTAL_R, GREEN_PAL, GUN_HELD, gunMuzzle, drawGun, drawNugget, glowAt, drawRunner, jetFlame, pixelHeld, pixelSprite } from '../../art/sprites.js';
-import { TCELL, TITLE_SOLID, TITLE_VW, TM, titleNoise, titleSolid, titleSolidCell, titleWebAt } from '../../art/titlescene.js';
+import { CRYSTAL_PAL, CRYSTAL_R, GREEN_PAL, GUN_HELD, gunMuzzle, drawGun, drawNugget, glowAt, drawRunner, jetFlame, pixelHeld, pixelSoft, pixelSprite } from '../../art/sprites.js';
+import { TCELL, TITLE_SOLID, TITLE_VW, TM, titleNoise, titleSolid, titleSolidCell, titleWebAt, titleFlameDir, titleNozzle } from '../../art/titlescene.js';
 import { visPoly } from '../../world/vision.js';
 import { drawBolt, drawLook } from './looks.js';
 import { hubBack, hubGlow, hubLight } from './hubdraw.js';
@@ -188,6 +188,19 @@ export function titleDraw(ctx, S, cw, ch, cam) {
     ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
   }
   ctx.globalAlpha = 1;
+  // the jetpack's smoke, as render/effects.js drawSmoke puffs it: on the players' pixel grid, see-through kept (pixelSoft)
+  let jx0 = Infinity, jy0 = Infinity, jx1 = -Infinity, jy1 = -Infinity;
+  for (const p of S.parts) if (p.kind === 'jsmoke') { jx0 = Math.min(jx0, p.x - p.r); jy0 = Math.min(jy0, p.y - p.r); jx1 = Math.max(jx1, p.x + p.r); jy1 = Math.max(jy1, p.y + p.r); }
+  if (jx1 > jx0) {
+    const gx0 = Math.floor(jx0), gy0 = Math.floor(jy0);
+    pixelSoft(ctx, gx0, gy0, jx1 - gx0 + 1, jy1 - gy0 + 1, 1, c => {
+      for (const p of S.parts) if (p.kind === 'jsmoke') {
+        c.fillStyle = p.col; c.globalAlpha = Math.max(0, p.life / p.max) * 0.5;
+        c.beginPath(); c.arc(p.x, p.y, p.r, 0, Math.PI * 2); c.fill();
+      }
+      c.globalAlpha = 1;
+    });
+  }
   // floor 1's creatures, drawn by the game's own drawEnemy (they live in world coordinates), each in the players'
   // pixel look (v0.0.170) on a grid pinned to it, as the players' is
   for (const f of S.foes) {
@@ -255,7 +268,7 @@ export function titleDraw(ctx, S, cw, ch, cam) {
       glowAt(ctx, (f.c + 0.5) * TCELL - S.scroll, (f.r + 0.5) * TCELL, 20, Math.min(0.14, 0.03 + S.fire.length / 3000), '255,120,40');
     }
   }
-  for (const p of S.parts) if (p.kind !== 'smoke' && p.kind !== 'fsmoke') {
+  for (const p of S.parts) if (p.kind !== 'smoke' && p.kind !== 'fsmoke' && p.kind !== 'jsmoke') {
     if (p.kind === 'flame' || p.kind === 'ember') {   // the game's flame specks and a lantern's burning oil (glowing dparts: bright until their last third)
       ctx.globalAlpha = Math.min(1, p.life / (p.max * 0.3)); ctx.fillStyle = p.col;
       ctx.fillRect(p.x - p.r / 2, p.y - p.r / 2, p.r, p.r);
@@ -286,9 +299,12 @@ function drawTitleRunner(ctx, S, r) {
   const lower = r.swap > 0 ? Math.sin(r.swap / 0.3 * Math.PI) * 4 : 0, gy = r.y + PH * 0.45 + lower;
   const hands = { gun: { x: pcx + ax * 2.5, y: gy }, torch: { x: pcx + ax * 7, y: gy + ay * 5 - 0.5 } };
   const ox = r.x - 14, oy = r.y - 8;     // the pixel grid rides with him (as the game's drawPlayer): not rounded, or it slides over his body
-  if (r.mode === 'fly') {
-    const len = 6 + r.flame * 14 + S.rnd() * 3, bx = pcx - r.face * 4.5, by = r.y + PH * 0.55;
-    pixelSprite(ctx, ox - 10, oy, PW + 48, PH + 40, 1, false, c => jetFlame(c, bx, by, 0, 1, len, S.t));
+  // the jet flame as the old game's drawJetFlame (feedback round 2): out of the backpack's nozzle, pointing away from the
+  // thrust (titleFlameDir), licking (a hash of the time: no random in draw), on his pixel grid
+  if (r.mode === 'fly' && r.flame > 0) {
+    const { fx, fy } = titleFlameDir(r), nz = titleNozzle(r), len = 6 + r.flame * 16 + (Math.sin(S.t * 97.3 + r.id * 17.1) * 0.5 + 0.5) * 3;
+    const R = len + 8, x0 = ox + Math.floor(nz.x - R - ox), y0 = oy + Math.floor(nz.y - R - oy);
+    pixelSprite(ctx, x0, y0, R * 2 + 1, R * 2 + 1, 1, false, c => jetFlame(c, nz.x, nz.y, fx, fy, len, S.t));
   }
   const gait = r.mode === 'run' && !r.stand ? r.gait : null;
   pixelHeld(ctx, ox + 14, oy + 8, 1, false, c => {   // no outline (owner, v0.0.171)

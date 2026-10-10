@@ -16,6 +16,7 @@ import { meterAdd, meterNew, meterSet, meterStep } from './meters.js';
 import { pilotEase, pilotPace } from './pilot.js';
 import { clearPower, teamClearer } from './clear.js';
 import { blockCell, blockCol, blockKind, planBlocks, rollBlock, webSlow } from './blocked.js';
+import { deathPrompt, deathStep, deathTeleport } from './death.js';
 import { elitePlan, levelFoes, levelHurt } from './enemies.js';
 import { bagFits, killLoot, lootCol } from './loot.js';
 import { bagAdd } from './run.js';
@@ -110,7 +111,8 @@ export function levelFree(S, L, r) {
 // run (stage 6 part 2: the drops go into its bag; none: they're just taken), bagV (+1 each time something goes in: the screen redraws the bag)
 /** @typedef {{ plan: LevelPlan, phase: string, arrived: boolean[], zap: number, goT: number, arenaT: number, bossDead: boolean, hold: number,
  *   elites: import('./enemies.js').LevelFoe[], chests: import('./chests.js').LevelChest[], doneT: number, meters: PlayerMeters[], blocked: boolean,
- *   boss: Enemy | null, failed: boolean, run?: AutoRun | null, bagV: number, blockKind?: string, webK?: number, webT?: number, lootT?: number, clearT?: number }} LevelState */
+ *   boss: Enemy | null, failed: boolean, run?: AutoRun | null, bagV: number, blockKind?: string, webK?: number, webT?: number, lootT?: number, clearT?: number,
+ *   deadT?: number, pace0?: number, lastI?: number, tpT?: number, boomed?: boolean }} LevelState */
 // (blockKind: what the block is, rock / web / timber (stage 6b); webK: the team's pace through webs (1 free, auto/blocked.js webSlow); webT: the next cut)
 /** @param {import('../art/titlescene.js').TitleScene} S @returns {LevelState | null} */
 export const levelState = S => (S.lvl && S.lvl.data) || null;
@@ -172,6 +174,18 @@ export function levelLost(S) {
   const L = levelState(S);
   return !!L && L.failed;
 }
+// (feedback round 2) everyone down and the scroll stopped: "Tap A to Teleport back to Hub" shows (leveldraw.js)
+/** @param {import('../art/titlescene.js').TitleScene} S */
+export function levelDeathPrompt(S) {
+  const L = levelState(S);
+  return !!L && deathPrompt(S, L);
+}
+// A pressed with that prompt up: the helmet light blinks, the blast, then levelLost (home). true: it took the press
+/** @param {import('../art/titlescene.js').TitleScene} S */
+export function levelTeleportHome(S) {
+  const L = levelState(S);
+  return !!L && deathTeleport(S, L);
+}
 // is the team gathered on the exit pad (stage 4b: teleport to the hub)?
 /** @param {import('../art/titlescene.js').TitleScene} S */
 export function levelDone(S) {
@@ -201,6 +215,7 @@ export function levelStep(S, dt) {
   if (!L) return;
   levelMeters(S, L, dt);
   levelFoes(S, L, levelTeamX(S));
+  if (deathStep(S, L, dt)) return;   // everyone down (auto/death.js): the slow stop, Tap A, the blast, home
   chestsStep(S);
   const P = L.plan;
   if (L.phase === 'arrive') {
