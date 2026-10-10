@@ -136,6 +136,16 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   check('the level exit pad: back in the hub, tier 2, saved', home && await page.evaluate(() => hubState(window.__title.S).tier === 2
     && JSON.parse(localStorage.getItem('caverunner-auto-run')).run.tier === 2));
 
+  // the item glyphs (owner): their ink fills the pixel grid, centred (to a pixel), nothing cut off at an edge
+  const gl = await page.evaluate(() => [...document.querySelectorAll('.apixg')].map(c => {
+    const x = c.getContext('2d'), N = c.width, d = x.getImageData(0, 0, N, N).data;
+    let x0 = N, y0 = N, x1 = -1, y1 = -1;
+    for (let y = 0; y < N; y++) for (let i = 0; i < N; i++) if (d[(y * N + i) * 4 + 3]) { x0 = Math.min(x0, i); x1 = Math.max(x1, i); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+    return { x0, x1, y0, y1, N };
+  }));
+  check('item glyphs: centred in their grid and filling it', gl.length > 0 && gl.every(g => g.x1 >= 0 && Math.abs(g.x0 - (g.N - 1 - g.x1)) <= 1 && Math.abs(g.y0 - (g.N - 1 - g.y1)) <= 1
+    && Math.max(g.x1 - g.x0, g.y1 - g.y0) >= g.N - 3), gl);
+
   // the bag scrolls
   const sc = await page.evaluate(() => { const b = document.querySelector('.abag'); const was = b.scrollTop; b.scrollTop = 9999; return { was, now: b.scrollTop, over: b.scrollHeight > b.clientHeight, ta: getComputedStyle(b).touchAction }; });
   check('the bag scrolls up and down (pan-y)', sc.over && sc.now > sc.was && sc.ta === 'pan-y', sc);

@@ -131,8 +131,16 @@ export function HelmetIcon({ col, size = 38 }) {
 
 // a text glyph (a mod's, a perk's), owner: centred by its ink (each font puts a symbol at its own height), scaled up to
 // fill its tile inside a padding (.apixg in style.css), and in the game's pixel look: drawn on a GLYPH_PX-pixel grid,
-// each pixel solid or clear, shown crisp (image-rendering: pixelated), with a soft glow in its colour
+// each pixel solid or clear, shown crisp (image-rendering: pixelated), no glow (owner)
 export const GLYPH_PX = 18;
+const GLYPH_BIG = 160;
+/** @type {CanvasRenderingContext2D | null} */
+let BIG = null;
+// the shared big canvas a glyph is measured on
+const glyphBig = () => {
+  if (!BIG) { const c = document.createElement('canvas'); c.width = GLYPH_BIG; c.height = GLYPH_BIG; BIG = c.getContext('2d', { willReadFrequently: true }); }
+  return BIG;
+};
 /** @param {{ glyph: string, col: string }} props */
 export function GlyphIcon({ glyph, col }) {
   /** @type {{ current: HTMLCanvasElement | null }} */
@@ -145,21 +153,27 @@ export function GlyphIcon({ glyph, col }) {
     const ctx = c.getContext('2d', { willReadFrequently: true });
     if (!ctx) return;
     ctx.clearRect(0, 0, N, N);
-    ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
-    // its ink at a reference size, then the size that makes the ink just fill the grid
-    ctx.font = '900 100px system-ui, sans-serif';
-    let m = ctx.measureText(glyph);
-    const iw = (m.actualBoundingBoxLeft || 0) + (m.actualBoundingBoxRight || m.width), ih = (m.actualBoundingBoxAscent || 70) + (m.actualBoundingBoxDescent || 0);
-    const fs = 100 * N / Math.max(1, iw, ih);
-    ctx.font = '900 ' + fs.toFixed(2) + 'px system-ui, sans-serif';
-    m = ctx.measureText(glyph);
-    const l = m.actualBoundingBoxLeft || 0, r = m.actualBoundingBoxRight || m.width, up = m.actualBoundingBoxAscent || fs * 0.7, dn = m.actualBoundingBoxDescent || 0;
-    ctx.fillStyle = col;
-    ctx.fillText(glyph, N / 2 - (r - l) / 2 + l, N / 2 + (up - dn) / 2);
+    // its real ink (font metrics lie for some symbols): drawn big, its painted pixels found, then that box scaled to
+    // fill the grid, centred
+    const B = GLYPH_BIG, big = glyphBig();
+    if (!big) return;
+    big.clearRect(0, 0, B, B);
+    big.font = '900 ' + Math.round(B * 0.6) + 'px system-ui, sans-serif';
+    big.textAlign = 'center'; big.textBaseline = 'middle'; big.fillStyle = col;
+    big.fillText(glyph, B / 2, B / 2);
+    const px = big.getImageData(0, 0, B, B).data;
+    let x0 = B, y0 = B, x1 = -1, y1 = -1;
+    for (let y = 0; y < B; y++) for (let x = 0; x < B; x++) {
+      if (px[(y * B + x) * 4 + 3] > 40) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+    }
+    if (x1 < 0) return;
+    const w = x1 - x0 + 1, ht = y1 - y0 + 1, k = N / Math.max(w, ht);
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(big.canvas, x0, y0, w, ht, (N - w * k) / 2, (N - ht * k) / 2, w * k, ht * k);
     // the pixel look: each pixel solid or clear, full colour
     const im = ctx.getImageData(0, 0, N, N), d = im.data;
     for (let i = 3; i < d.length; i += 4) d[i] = d[i] >= 100 ? 255 : 0;
     ctx.putImageData(im, 0, 0);
   }, [glyph, col]);
-  return h('canvas', { ref, className: 'apixg', style: { filter: 'drop-shadow(0 0 3px ' + col + ')' } });
+  return h('canvas', { ref, className: 'apixg' });
 }
