@@ -28,7 +28,8 @@ mock-up `docs/autobattler-mockup.png`). Progress: AUTOBATTLER.md's Log. `main` k
 - **Stage 6 part 2 done (v1.0.10, owner OK'd):** drops into the bag; gems at the old game's crystal size (owner).
   
 - **Stage 6b part 1 done (v1.0.11, owner OK'd):** 11 blocked-zone kinds with varied shapes. Part 2 dropped by the owner
-  (happy with the 11). Next: stage 7, level cleared.
+  (happy with the 11). 
+- **Stage 7 done (v1.0.12, owner OK'd):** LEVEL CLEARED. Next: stage 8, the context nav and the bag.
 
 ## NEXT (as of v0.0.176, 2026-10-09)
 

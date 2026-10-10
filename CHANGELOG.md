@@ -5,6 +5,13 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.12 — CaveRunner Auto: LEVEL CLEARED (branch `autobattler`, stage 7)
+Released 2026-10-10 on the branch (owner OK'd the frames, `tools/clearedshots.js`).
+- A level phase `cleared` between the arena and the walk out: once the boss's loot is in (or `autoClearWait` s),
+  LEVEL CLEARED in the title's lettering (`titleLetter`, shared with CAVE RUNNER) drops in letter by letter with
+  bounces, sparks, flash rings and a thud each, a shine sweeps, it fades after `autoClearT` s, then the team walks to
+  the exit pad. `art/cleared.js` `clearedText`, `levelClearedAge`, the screen's `over`. Suite `auto-cleared`.
+
 ## v1.0.11 — CaveRunner Auto: blocked zones (branch `autobattler`, stage 6b part 1)
 Released 2026-10-10 on the branch (owner OK'd the sheet, `tools/blockshots.js` + `tools/blocksheet.js`).
 - `auto/blocked.js`: ~`autoBlockN` (2) zones a level carry a blockage suiting their base zone, severity in a knob
