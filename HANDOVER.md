@@ -41,7 +41,8 @@ mock-up `docs/autobattler-mockup.png`). Progress: AUTOBATTLER.md's Log. `main` k
 - **Stage 10 done (v1.0.16):** throwing and payouts. The owner will test and tune it later (the stream is thin: slow
   start, quick pull — knobs in "Auto: throw"). Only the gun machine's payout is browser-tested. 
 - **Stage 11 done (v1.0.17, owner OK'd):** chests. Polish later: the chest is small, moss grass draws over it; no
-  chest browser suite yet. Next: stage 12, extra players.
+  chest browser suite yet. 
+- **Stage 12 done (v1.0.18, owner OK'd):** extra players. Next: stage 13, save/resume and cleanup.
 
 ## NEXT (as of v0.0.176, 2026-10-09)
 

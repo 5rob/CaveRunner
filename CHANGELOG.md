@@ -5,6 +5,13 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.18 — CaveRunner Auto: extra players (branch `autobattler`, stage 12)
+Released 2026-10-10 on the branch (owner OK'd the shots, `tools/teamshots.js`).
+- Drag a green gem onto an empty player circle (it lights green; anything else refused) → `addPlayer` (a green spent,
+  the starter gun, a Buzzsaw into the bag); the new player teleports in beside the team, hub or level, with a flash,
+  sparks and lightning (`auto/addrunner.js` `sceneAddRunner`, titlescene `titleRunner`), and in a level fires his own
+  gun at once. Up to 4. The camera still follows player 1. Suites `auto-addplayer`, `auto-drag`.
+
 ## v1.0.17 — CaveRunner Auto: chests (branch `autobattler`, stage 11)
 Released 2026-10-10 on the branch (owner OK'd the shots, `tools/chestshots.js`).
 - `auto/chests.js`: `autoChestN` (3) chests a level, one per stretch of the random zones (never on the pads, in the
