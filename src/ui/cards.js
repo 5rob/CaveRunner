@@ -17,6 +17,13 @@ import { h, useState } from './h.js';
 // read standing on a plinth is exactly what you get once you own it.
 // Every gun stat in one place, with which direction counts as an improvement:
 // a smaller cast delay, recharge or spread is better, so those read green.
+// how a card draws a mod's or perk's glyph: the text, unless a screen swaps in its own icons while its card is open
+// (CaveRunner Auto, ui/auto: the pixel GlyphIcon; owner: the info cards use the new icons)
+/** @type {{ fn: ((glyph: string, col: string, kind: 'mod' | 'perk') => any) | null }} */
+export const CARD_ICON = { fn: null };
+/** @param {string} glyph @param {string} col @param {'mod' | 'perk'} [kind] */
+const cardGlyph = (glyph, col, kind = 'mod') => (CARD_ICON.fn ? CARD_ICON.fn(glyph, col, kind) : glyph);
+
 export const GUN_STATS = [
   { k: 'cap', label: 'slots', better: 1, get: g => g.cap, fmt: v => String(v) },
   { k: 'delay', label: 'cast delay', better: -1, get: g => g.castDelay, fmt: v => v.toFixed(2) + 's' },
@@ -84,7 +91,7 @@ export function GunCard({ gun, label, onClose, ingame, flow, split, mark, compar
               className: 'tile' + (m ? '' : ' hole') + (m && m.kind === 'shot' ? ' shot' : '') + (m && tapMods ? ' tap' : ''),
               style: m ? { borderColor: famCol(id), color: famCol(id) } : null,
               onPointerDown: m && tapMods ? e => { e.preventDefault(); e.stopPropagation(); setInfo(id); } : undefined },
-            h('span', { className: 'tg' }, m ? m.glyph : ''),
+            h('span', { className: 'tg' }, m ? cardGlyph(m.glyph, famCol(id)) : ''),
             m ? h('span', { className: 'tn' }, m.name) : null,
             m && m.mark ? h('span', { className: 'tmark' }, m.mark) : null);
         })),
@@ -167,7 +174,7 @@ export function ModCard({ id, onClose, ingame, top, flow, act }) {
   const dtile = (did, key, faded) => h('div', {
       key, className: 'tile' + (faded ? ' off' : '') + (MODS[did].kind === 'shot' ? ' shot' : ''),
       style: { borderColor: famCol(did), color: famCol(did) } },
-    h('span', { className: 'tg' }, MODS[did].glyph), h('span', { className: 'tn' }, MODS[did].name));
+    h('span', { className: 'tg' }, cardGlyph(MODS[did].glyph, famCol(did))), h('span', { className: 'tn' }, MODS[did].name));
   const drow = (ok, tiles, note, key) => h('div', { className: 'drow', key },
     h('span', { className: 'dmark ' + (ok ? 'yes' : 'no') }, ok ? '\u2713' : '\u2717'),
     h('div', null,
@@ -237,7 +244,7 @@ export function ModCard({ id, onClose, ingame, top, flow, act }) {
   if (au.fb && !ingame) return h(AuditText, { au, name: m.name, glyph: m.glyph, col: famCol(id), cls });
   return h('div', { className: 'pop scroll' + cls },
     h('div', { className: 'phead' },
-      h('div', { className: 'pglyph', style: { borderColor: famCol(id), color: famCol(id) } }, m.glyph, tgtBadge(id)),
+      h('div', { className: 'pglyph', style: { borderColor: famCol(id), color: famCol(id) } }, cardGlyph(m.glyph, famCol(id)), tgtBadge(id)),
       h('div', { className: 'ptitle' },
         h('b', null, m.name),
         h('span', null, kind + (m.mana ? ' \u00b7 ' + m.mana + ' mana' : ''))),
@@ -268,7 +275,7 @@ export function PerkCard({ id, ingame, flow, top, onClose }) {
   if (au.fb && !ingame) return h(AuditText, { au, name: pk.name, glyph: pk.glyph, col: pk.tint, cls });
   return h('div', { className: 'pop scroll' + cls },
     h('div', { className: 'phead' },
-      h('div', { className: 'pglyph', style: { borderColor: pk.tint, color: pk.tint } }, pk.glyph),
+      h('div', { className: 'pglyph', style: { borderColor: pk.tint, color: pk.tint } }, cardGlyph(pk.glyph, pk.tint, 'perk')),
       h('div', { className: 'ptitle' },
         h('b', { style: { color: pk.tint } }, pk.name),
         h('span', null, 'Perk · counts while fitted to your Exo Suit')),
