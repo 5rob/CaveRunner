@@ -1,5 +1,5 @@
 // CaveRunner Auto stage 14: the full loop on the phone-size page, speeded up by knobs. A fresh run (save cleared) →
-// the hub → the gold streamed into the gun machine (real pointer) → a gun in the bag → the pill stick walks player 1
+// the hub → the gold paid into the gun machine with A held (real pointer) → a gun in the bag → the pill stick walks player 1
 // onto the exit pad, A → the level (short, no blockages, harmless foes, a weak boss) → elites come in → a chest opened
 // with A → the boss dies → LEVEL CLEARED → the hub at tier 2 → a green gem dragged onto an empty player circle → 2 players.
 // Shortcuts: player 1 starts with a Buzzsaw as his second gun (digs through rock); the run starts with the gun's price in gold and a green gem in the bag (no earning); the level's knobs
@@ -38,15 +38,10 @@ const T0 = Date.now();
 
   // the gun machine: the whole gold stack poured in by a stream (the stream knobs turned up so it doesn't wait)
   const saved = () => page.evaluate(() => { const r = loadAutoRun(); return { gold: bagCount(r, 'gold'), guns: r.bag.filter(b => b && b.kind === 'gun').length, players: r.players.length, tier: r.tier }; });
-  const gi = await page.evaluate(() => loadAutoRun().bag.findIndex(b => b && b.kind === 'gold'));
-  const gb = await page.locator('.abag [data-slot="' + gi + '"]').boundingBox();
-  const m = await page.evaluate(() => {
-    const { S, C } = window.__title, H = hubState(S), r = document.querySelector('.aplaycvs').getBoundingClientRect(), k = r.width / TITLE_VW;
-    return { x: r.left + ((hubStopX('gun') - C.x) * C.z + TITLE_VW / 2) * k, y: r.top + ((H.fy - MOUTH_UP - C.y) * C.z + C.ay) * k };
-  });
-  await page.evaluate(() => Object.assign(DEV, { autoStreamWait: 120, autoStreamRate0: 40, autoStreamRate1: 90, autoStreamRamp: 0.2 }));
-  await page.mouse.move(gb.x + gb.width / 2, gb.y + gb.height / 2); await page.mouse.down();
-  await page.mouse.move(m.x, m.y + 20, { steps: 6 });
+  // (feedback round 2) paid with A: player 1 put at the gun machine, A held (the stream knobs turned up)
+  await page.evaluate(() => { const L = window.__title.S.runners[0]; L.x = hubStopX('gun') - PW / 2; L.vx = 0; Object.assign(DEV, { autoPayHold: 100, autoStreamRate0: 40, autoStreamRate1: 90, autoStreamRamp: 0.2 }); });
+  const ab = await page.locator('.abtn.aa').boundingBox();
+  await page.mouse.move(ab.x + ab.width / 2, ab.y + ab.height / 2); await page.mouse.down();
   for (let i = 0; i < 80; i++) { await page.waitForTimeout(100); if ((await saved()).gold === 0) break; }
   await page.mouse.up();
   let s = await saved();

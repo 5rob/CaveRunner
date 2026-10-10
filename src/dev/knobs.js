@@ -696,16 +696,15 @@ DEV_META.push(
   { k: 'autoArcR', g: 'autobag', label: 'Gun arc: its radius (px) above the helmet', min: 70, max: 160, step: 2 });
 DEV_GROUPS.push(['autobag', 'Auto: bag']);
 // stage 10a: throwing gold and gems into the hub's machines (auto/throw.js, ui/auto/AutoScreen.js)
-Object.assign(DEV_DEFAULTS, { autoThrowPull: 45, autoThrowSuck: 500, autoThrowBack: 3, autoFlickMin: 600, autoFlickK: 0.6,
-  autoStreamWait: 250, autoStreamK: 0.4, autoStreamRate0: 2, autoStreamRate1: 14, autoStreamRamp: 1.5 });
+Object.assign(DEV_DEFAULTS, { autoThrowPull: 45, autoThrowSuck: 500, autoThrowBack: 3, autoPayReach: 30, autoPayHold: 300, autoPayK: 4,
+  autoStreamRate0: 2, autoStreamRate1: 14, autoStreamRamp: 1.5 });
 DEV_META.push(
   { k: 'autoThrowPull',   g: 'autothrow', label: 'A machine pulls in what it takes within (world units of its coin slot)', min: 5, max: 200, step: 1 },
   { k: 'autoThrowSuck',   g: 'autothrow', label: 'Its pull’s strength', min: 50, max: 3000, step: 10 },
   { k: 'autoThrowBack',   g: 'autothrow', label: 'Anything not taken flies back to the bag after (s)', min: 0.5, max: 20, step: 0.1 },
-  { k: 'autoFlickMin',    g: 'autothrow', label: 'A flick: let go moving at least (px / s)', min: 100, max: 3000, step: 10 },
-  { k: 'autoFlickK',      g: 'autothrow', label: 'A flick’s throw speed (× the finger’s)', min: 0.1, max: 3, step: 0.05 },
-  { k: 'autoStreamWait',  g: 'autothrow', label: 'Stream: moved away and held still this long (ms) starts it', min: 50, max: 1500, step: 10 },
-  { k: 'autoStreamK',     g: 'autothrow', label: 'Stream: throw speed (world units / s) per px moved away', min: 0.05, max: 3, step: 0.05 },
+  { k: 'autoPayReach',    g: 'autothrow', label: 'Pay with A: player 1 within this of a machine (world units)', min: 5, max: 80, step: 1 },
+  { k: 'autoPayHold',     g: 'autothrow', label: 'Pay with A: held this long (ms) starts the stream', min: 50, max: 1500, step: 10 },
+  { k: 'autoPayK',        g: 'autothrow', label: 'Pay with A: throw speed (world units / s) per px dragged from the press', min: 0.5, max: 12, step: 0.1 },
   { k: 'autoStreamRate0', g: 'autothrow', label: 'Stream: nuggets a second at first', min: 0.5, max: 20, step: 0.5 },
   { k: 'autoStreamRate1', g: 'autothrow', label: 'Stream: nuggets a second, ramped up', min: 1, max: 60, step: 1 },
   { k: 'autoStreamRamp',  g: 'autothrow', label: 'Stream: ramps up over (s)', min: 0.1, max: 6, step: 0.1 });

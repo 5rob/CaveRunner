@@ -70,6 +70,29 @@ export function navBack(nav) {
 }
 
 /**
+ * The stack of rows on screen for a state (owner, feedback round 2): every level from the top down to this one, each a
+ * state at that level. The last is the nav's own row; the ones before it sit raised above it.
+ * @param {NavState} nav @returns {NavState[]}
+ */
+export function navPath(nav) {
+  /** @type {NavState[]} */
+  const out = [];
+  for (let L = nav.level; L; L = UP[L]) out.unshift({ ...nav, level: L });
+  return out;
+}
+/**
+ * In a raised row of level `level`, the cell that was picked to go deeper (its `open`), or undefined.
+ * @param {NavState} nav @param {NavLevel} level @returns {string | number | undefined}
+ */
+export function navPick(nav, level) {
+  if (level === 'players') return nav.p;
+  if (level === 'player') return nav.level === 'gun' ? 'guns' : nav.level === 'cat' ? 'exo' : nav.level;
+  if (level === 'guns') return nav.g;
+  if (level === 'exo') return nav.cat;
+  return undefined;
+}
+
+/**
  * What the row shows for a state: the cells and the tapped player's colour (null at the top). The player's
  * deeper levels fall back to the top if that player is gone (a new run under the same screen).
  * @param {NavState} nav @param {AutoRun} run @param {number} max the row's circles at the top (MAX_PLAYERS) @returns {NavRow}

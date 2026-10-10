@@ -6,16 +6,25 @@
 // from). A machine that doesn't take it knocks it away; anything still lying after DEV.autoThrowBack s flies back to
 // player 1 and into the bag (H.back, drained by the screen). A lump (the whole stack held, then let go) carries its
 // amount as one big nugget or gem.
+// Feedback round 2 (owner): paid with A instead (hubPayAt: player 1 at a machine; hubPayOne: one out of his chest, payVel
+// its velocity from the drag on A). A thing is pulled in only once it has landed; on the floor they collide
+// (collideNuggets) at their real sizes: a gold piece the game's smallest nugget, a gem the game's crystal (CRYSTAL_R).
 
 import { PH, PW } from '../core/consts.js';
 import { DEV } from '../dev/knobs.js';
-import { stepNugget } from '../world/nuggets.js';
+import { NUGGETS, collideNuggets, stepNugget } from '../world/nuggets.js';
+import { CRYSTAL_R } from '../art/sprites.js';
 import { TCELL } from '../art/titlescene.js';
 import { HUB_W, HUB_WALL, hubState, hubStopX } from './hub.js';
 
+// a thrown thing's radius (world units): one gold, the game's smallest nugget; a gem, the game's crystal
+/** @param {{ kind: string, lump?: boolean }} g */
+export const throwR = g => (g.kind === 'gold' ? (g.lump ? NUGGETS[0].r : NUGGETS[2].r) : CRYSTAL_R);
+
 /** @typedef {'gold' | 'red' | 'green'} Cash */
 /** @typedef {{ x: number, y: number, vx: number, vy: number, kind: Cash, n: number, t: number, a: number,
- *   held?: boolean, lump?: boolean, home?: boolean, pull?: string }} HubThrow */
+ *   held?: boolean, lump?: boolean, home?: boolean, pull?: import('./hub.js').HubStopId, ground?: number, landed?: boolean, fly?: boolean,
+ *   to?: import('./hub.js').HubStopId, rest?: number }} HubThrow */
 
 // what each machine takes
 /** @type {Record<string, Cash>} */
@@ -81,6 +90,38 @@ export function hubThrow(S, kind, n, x, y, vx, vy, o) {
   return g;
 }
 
+// ---- feedback round 2: paying with A ----
+/** the machine player 1 stands at (his middle within DEV.autoPayReach of it), to pay with A; null none
+ * @param {import('../art/titlescene.js').TitleScene} S @returns {import('./hub.js').HubStopId | null} */
+export function hubPayAt(S) {
+  const H = hubState(S), L = S.runners[0];
+  if (!H || !L || L.hide || H.exitT >= 0) return null;
+  const cx = L.x + PW / 2;
+  for (const id of MACHINES) if (Math.abs(cx - hubStopX(id)) < DEV.autoPayReach) return id;
+  return null;
+}
+export const PAY_DEAD = 8;       // a drag on A shorter than this (css px) is no drag: the tap's throw
+export const PAY_MAX = 90;       // the drag counts up to this far (css px)
+export const PAY_TAP = { vx: 55, vy: -110 };   // no drag: a little hop forward, onto the floor in front of him
+export const PAY_REST = 0.25;    // a paid thing lies this long on the floor (s) before the machine pulls it in
+/** a paid thing's velocity (world / s) from the drag on A (css px from where it was pressed), facing face (±1)
+ * @param {number} face @param {number} dx @param {number} dy @returns {{ vx: number, vy: number }} */
+export function payVel(face, dx, dy) {
+  const d = Math.hypot(dx, dy);
+  if (d < PAY_DEAD) return { vx: (face < 0 ? -1 : 1) * PAY_TAP.vx, vy: PAY_TAP.vy };
+  const sp = Math.min(d, PAY_MAX) * DEV.autoPayK;
+  return { vx: dx / d * sp, vy: dy / d * sp };
+}
+/** one out of player 1's chest at (vx, vy), paid to machine `to` @param {import('../art/titlescene.js').TitleScene} S @param {Cash} kind @param {number} vx @param {number} vy @param {import('./hub.js').HubStopId} [to] */
+export function hubPayOne(S, kind, vx, vy, to) {
+  const L = S.runners[0];
+  if (!L) return null;
+  S.snd.push({ k: 'coin', x: L.x + PW / 2, y: L.y + PH * 0.4 });
+  const g = hubThrow(S, kind, 1, L.x + PW / 2, L.y + PH * 0.4, vx, vy);
+  if (g && to) g.to = to;
+  return g;
+}
+
 // One step of everything thrown (hubStep calls it)
 /** @param {import('../art/titlescene.js').TitleScene} S @param {import('./hub.js').HubState} H @param {number} dt */
 export function stepThrown(S, H, dt) {
@@ -90,16 +131,23 @@ export function stepThrown(S, H, dt) {
     const g = H.thrown[i];
     if (g.held) continue;
     g.t += dt; g.a += g.vx * dt * 0.2;
+    g.fly = !!g.home || !!g.pull;
     // back to the bag: flies to player 1, into the bag at 12
     if (g.home) {
       const tx = L ? L.x + PW / 2 : g.x, ty = L ? L.y + PH / 2 : g.y;
       if (pullStep(g, tx, ty, 200, dt) < 12) { H.back.push({ kind: g.kind, n: g.n }); H.thrown.splice(i, 1); S.snd.push({ k: 'coin', x: g.x, y: g.y }); }
       continue;
     }
-    const id = pullingMachine(g.x, g.y, g.kind, H.fy, DEV.autoThrowPull);
+    // (feedback round 2) pulled in only once it has landed: it shoots out, lands, then goes in. One paid with A (g.to) lies
+    // PAY_REST s on the floor, then goes into the machine it was paid at from wherever it rolled
+    if (g.ground) g.landed = true;
+    if (g.landed && g.to) g.rest = (g.rest || 0) + dt;
+    const id = g.to ? (g.pull || (g.rest || 0) >= PAY_REST ? g.to : null)
+      : g.landed || g.pull ? pullingMachine(g.x, g.y, g.kind, H.fy, DEV.autoThrowPull) : null;
     if (id) {
       g.pull = id;
-      if (pullStep(g, hubStopX(id), H.fy - MOUTH_UP, DEV.autoThrowPull, dt) < 6) {
+      const tx = hubStopX(id), ty = H.fy - MOUTH_UP;
+      if (pullStep(g, tx, ty, Math.max(DEV.autoThrowPull, g.to ? Math.hypot(tx - g.x, ty - g.y) : 0), dt) < 6) {
         H.paid[id] = (H.paid[id] || 0) + g.n; H.paidV++;
         H.thrown.splice(i, 1);
         S.snd.push({ k: 'coin', x: g.x, y: g.y });
@@ -107,10 +155,14 @@ export function stepThrown(S, H, dt) {
       continue;
     }
     g.pull = undefined;
-    // a machine that doesn't take it knocks it away
+    // a machine that doesn't take it knocks it away (one that does lets it land, then pulls it in)
     const m = machineAt(g.x, g.y, H.fy);
-    if (m) { const s = Math.sign(g.x - hubStopX(m)) || 1; g.vx = s * Math.max(60, Math.abs(g.vx)); g.vy = Math.min(g.vy, -60); }
-    if (stepNugget(g, dt, solid, g.kind === 'gold' ? (g.lump ? 8.4 : 4) : 5)) S.snd.push({ k: 'coinland', x: g.x, y: g.y });
+    if (m && !machineTakes(m, g.kind)) { const s = Math.sign(g.x - hubStopX(m)) || 1; g.vx = s * Math.max(60, Math.abs(g.vx)); g.vy = Math.min(g.vy, -60); }
+    if (stepNugget(g, dt, solid, throwR(g))) S.snd.push({ k: 'coinland', x: g.x, y: g.y });
     if (g.t > DEV.autoThrowBack) g.home = true;
   }
+  // on the floor they knock into each other (the ones flying in or home pass through)
+  /** @type {(b: any) => number} */
+  const rOf = b => throwR(b);
+  collideNuggets(H.thrown.filter(g => !g.held), solid, rOf);
 }

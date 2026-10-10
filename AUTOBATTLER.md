@@ -73,7 +73,7 @@ Mock-up (layout only; keep the main menu's colours and style): `docs/autobattler
 | Chests | **The team slows while passing one** (not a stop). A "tap A" prompt shows while a player is in range; missed is missed. |
 | `<` `>` in a level | ~~Speed / hold; in the hub a tap moves to the next stop.~~ **Changed by the owner (2026-10-09, after stage 4a):** `<` `>` become **one pill-shaped stick** (same height and roundness as the arrow buttons) that works like the old game's left thumbstick (drag sideways to run, up to jetpack). **In the hub: free roam** (run and jet anywhere; the exit prompt shows on the exit pad). **In a level:** left slows the team, right hurries it; it **never stops** them. |
 | Level length | **~5 minutes** start to boss at normal pace. |
-| Gems into the hub machines | **Thrown like gold**, with the same flick, stream and hold gestures from the gem's bag slot. |
+| Gems into the hub machines | ~~Thrown like gold, from the gem's bag slot.~~ **Changed by the owner (feedback round 2):** paid with A at the machine (tap one, hold a stream, drag from the press to aim). |
 | Version | **Starts at v1.0.0 on the branch** and counts on its own (`main` stays v0.0.x). Update number 1,000,000+. |
 | Saving | **One save** (no slot picker). Autosave in the hub and at each level's end. Quitting mid-level resumes in the hub, keeping the loot already banked in the bag. |
 | Mock-up 4's dim slots | Mock-up shading only. Show the gun's real mod slots, and scroll sideways if there are more than fit. |
@@ -369,6 +369,7 @@ chest slow ×0.5. Grab radius 35% of a tile.
 | feedback round 1 (b) | done | v1.0.22 | PM alone. Owner: lateral hub speed held back (the pill's dy was scaled by its tiny half-height: now the old Stick's maths, `PILL_REACH` 54 px, knob free past the pill); too many enemies (`levelSpawn`: trickle 4 s / 3 alive → 1.5 s / 10 by the arena, knobs autoFoeGap0/1, autoFoeCap0/1). Found: jetOver missed a gap he was already flying through (scan from below his feet). `auto-loot` logic flaked once (passed 5/5 alone). |
 | feedback round 1 (c) | done | v1.0.23 | PM alone. Owner: auto-arranging made gun setup impossible → `bagMove` / `rowMove` / `rowToBag` (drops go to the slot under the finger; slot-to-slot moves); spraying gold got stuck on the whole-stack lump → lump removed (`autoLumpMs` gone). `auto-drag` checks the moves with a real pointer. |
 | feedback round 1 (d) | done | v1.0.24 | PM alone. Owner: "opening chests restarts the run" → really any resize remade the scene (the app switcher's card), `runScene` `keep`, suite `auto-keep`; guns face left in the hub; machine items land and rest before the pull (`PAY_REST`, `TLoot.land`). `auto-loot` flake fixed. |
+| feedback round 2 (a) | done | v1.0.25 | PM alone. Owner: the nav as a rising stack (B reverses), white ring = menu pick, the equipped gun's X ticks; hold a gun to equip; the gun panel (old Bag stats + firing window) over the mod slots; pay with A (tap one, hold a stream, drag to aim; real-size colliding nuggets; into the machine paid at). Next: the hub as the old shop room (agent). |
 
 ## 8. The PM's kick-start prompt
 

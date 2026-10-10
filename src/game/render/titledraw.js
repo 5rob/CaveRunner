@@ -24,7 +24,8 @@ import { visPoly } from '../../world/vision.js';
 import { drawBolt, drawLook } from './looks.js';
 import { hubBack, hubGlow, hubLight } from './hubdraw.js';
 import { levelBack, levelGlow, levelLight } from './leveldraw.js';
-import { hubState } from '../../auto/hub.js';
+import { hubState, hubStopX } from '../../auto/hub.js';
+import { MACH_H, hubPayAt, throwR } from '../../auto/throw.js';
 
 const T = THEMES[0];                                   // Mossy caves
 /** @type {WeakMap<object, { cv: HTMLCanvasElement, cx: CanvasRenderingContext2D, img: ImageData, painted: number, white?: number, whiteT?: number }>} */
@@ -269,6 +270,7 @@ export function titleDraw(ctx, S, cw, ch, cam) {
   }
   ctx.globalAlpha = 1;
   ctx.globalCompositeOperation = 'source-over';
+  if (S.hub) drawPayHint(ctx, S);
   ctx.restore();
   // a white flash on a big kill, and a vignette
   if (S.flash > 0) { ctx.fillStyle = 'rgba(255,230,200,' + (S.flash * 0.4) + ')'; ctx.fillRect(0, 0, cw, ch); }
@@ -350,16 +352,31 @@ function worldLayer(c, S) {
   drawLoot(c, S);
 }
 
+// (feedback round 2) player 1 at a machine: "A to Pay" over it (a green A in a dark pill), bobbing, over the dark
+/** @param {CanvasRenderingContext2D} c @param {import('../../art/titlescene.js').TitleScene} S */
+function drawPayHint(c, S) {
+  const H = hubState(S), id = hubPayAt(S);
+  if (!H || !id) return;
+  const x = hubStopX(id) - S.scroll, y = H.fy - MACH_H - 9 + Math.sin(S.t * 4) * 1.2, w = 40, hh = 11;
+  c.fillStyle = 'rgba(14,9,26,0.9)'; c.strokeStyle = '#4ef08a'; c.lineWidth = 1;
+  c.beginPath(); c.roundRect(x - w / 2, y - hh / 2, w, hh, hh / 2); c.fill(); c.stroke();
+  c.fillStyle = '#18c464'; c.beginPath(); c.arc(x - w / 2 + 6, y, 4, 0, Math.PI * 2); c.fill();
+  c.font = 'bold 6px monospace'; c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.fillStyle = '#fff'; c.fillText('A', x - w / 2 + 6, y + 0.3);
+  c.fillStyle = '#f1ecff'; c.fillText('to Pay', x + 4, y + 0.3);
+  c.textBaseline = 'alphabetic';
+}
+
 // CaveRunner Auto stage 10a: gold and gems thrown at the hub's machines (auto/throw.js H.thrown): a nugget, or the game's
-// crystal; a lump (a whole stack) bigger, its count over it
+// crystal, at their real sizes (throwR, feedback round 2); a lump (a whole stack) bigger, its count over it
 /** @param {CanvasRenderingContext2D} c @param {import('../../art/titlescene.js').TitleScene} S */
 function drawThrown(c, S) {
   const H = S.hub ? hubState(S) : null;
   if (!H || !H.thrown.length) return;
   for (const g of H.thrown) {
     const x = g.x - S.scroll, k = g.lump ? Math.min(2.2, 1 + Math.log10(g.n) * 0.6) : 1;
-    if (g.kind === 'gold') drawNugget(c, x, g.y, (g.lump ? 8.4 : 4) * k, g.t, g.a);
-    else drawNugget(c, x, g.y, CRYSTAL_R * 0.45 * k, 3.7, g.a, g.kind === 'green' ? GREEN_PAL : CRYSTAL_PAL);
+    if (g.kind === 'gold') drawNugget(c, x, g.y, throwR(g) * k, g.t, g.a);
+    else drawNugget(c, x, g.y, throwR(g) * k, 3.7, g.a, g.kind === 'green' ? GREEN_PAL : CRYSTAL_PAL);
     if (g.lump) { c.fillStyle = '#ffffff'; c.font = 'bold 7px monospace'; c.textAlign = 'center'; c.fillText(String(g.n), x, g.y - 12 * k); }
   }
 }

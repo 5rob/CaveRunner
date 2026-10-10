@@ -916,23 +916,42 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .abosstrack{width:100%;height:10px;border-radius:6px;background:rgba(14,9,26,0.85);border:2px solid #5a1f2a;box-sizing:border-box;overflow:hidden;
   box-shadow:0 0 10px rgba(255,40,60,0.35)}
 .abosstrack i{display:block;height:100%;background:linear-gradient(#ff7a6a,#d01c34);transition:width .2s linear}
-.anav,.abag,.abtns{border-radius:14px;background:rgba(14,9,26,0.92);border:2px solid #3d2f5c;box-sizing:border-box}
-.anav{flex:none;display:flex;justify-content:space-around;align-items:center;padding:6px 8px;height:66px;transition:border-color .15s}
+.anavrow,.abag,.abtns{border-radius:14px;background:rgba(14,9,26,0.92);border:2px solid #3d2f5c;box-sizing:border-box}
+/* the nav as a stack (feedback round 2): .anavwrap holds the nav's place; each row (.anavslot) sits at its bottom, lifted
+   above it by its translateY (animated); the nav's own row .anav, raised ones .anavup, a leaving one .anavout */
+.anavwrap{position:relative;flex:none;height:66px;z-index:6}
+.anavslot{position:absolute;left:0;right:0;bottom:0;height:66px;transition:transform .28s cubic-bezier(.3,.8,.3,1)}
+.anavslot.panel{height:168px}
+.anavrow{display:flex;justify-content:space-around;align-items:center;padding:6px 8px;height:66px;width:100%;transition:border-color .15s;
+  box-shadow:0 -4px 14px rgba(0,0,0,0.5)}
+.anavrow.slide{animation:anavin .28s cubic-bezier(.3,.8,.3,1) both}
+@keyframes anavin{from{translate:110% 0;opacity:.4}to{translate:0 0;opacity:1}}
+.anavrow.anavout,.agunpanel.anavout{animation:anavout .26s ease-in both;pointer-events:none}
+@keyframes anavout{from{translate:0 0;opacity:1}to{translate:110% 0;opacity:0}}
+.anavrow.anavup{background:rgba(14,9,26,0.96)}
+.anavup.picked .anavc:not(.pick){opacity:.3;filter:grayscale(.8)}
+.anavup .anavc.pick{scale:1.08}
+.anavup .anavc.pick{box-shadow:0 0 0 3px #fff,0 0 12px rgba(255,255,255,0.5)!important}
 .anavc{width:50px;height:50px;border-radius:50%;box-sizing:border-box;border:3px solid #2a2140;background:#140e22;
   display:flex;align-items:center;justify-content:center}
 .anavc.on{background:#1d1531}
 .anavc.sel{box-shadow:0 0 0 3px #fff,0 0 12px rgba(255,255,255,0.5)!important}
 .anavc.locked.gun{opacity:.35}
+/* the equipped gun (feedback round 2): an X with its middle cut out, 4 white diagonal ticks round the circle (the white ring is the menu's pick) */
+.anavc.gun{position:relative}
+.anavc.gun.sel{box-shadow:0 0 10px rgba(255,255,255,0.3)!important}
+.anavc.gun.sel::before{content:"";position:absolute;inset:-11px;pointer-events:none;background:linear-gradient(45deg,transparent calc(50% - 1.5px),#fff calc(50% - 1.5px),#fff calc(50% + 1.5px),transparent calc(50% + 1.5px)),linear-gradient(-45deg,transparent calc(50% - 1.5px),#fff calc(50% - 1.5px),#fff calc(50% + 1.5px),transparent calc(50% + 1.5px));-webkit-mask:radial-gradient(circle,transparent 31px,#000 32px);mask:radial-gradient(circle,transparent 31px,#000 32px)}
+.anavup .anavc.gun.sel.pick{box-shadow:0 0 0 3px #fff,0 0 12px rgba(255,255,255,0.5)!important}
 .anavc.gun .gicon{width:70%;height:auto}
 .anavg{font:900 24px system-ui,sans-serif;line-height:1;display:flex;align-items:center;justify-content:center}
 .apix,.ahelm{display:block;flex:none;pointer-events:none}
 .apixg{display:block;flex:none;width:64%;height:64%;image-rendering:pixelated;pointer-events:none}
-.anav.slots{justify-content:flex-start;gap:6px;overflow-x:auto;overflow-y:hidden;touch-action:pan-x;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.anavrow.slots{justify-content:flex-start;gap:6px;overflow-x:auto;overflow-y:hidden;touch-action:pan-x;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
 .anavs{flex:0 0 48px;width:48px;height:48px}
 .anavs:not(.full){opacity:.55}
 .anavsoon{font:800 14px ui-monospace,SFMono-Regular,Menlo,monospace;color:#9a8ab8}
 /* stage 9: a helmet takes holds (the gun arc); the arc; the stats row; a scrap's coin burst */
-.anav.l-players .anavc.on{touch-action:none;-webkit-touch-callout:none;user-select:none;-webkit-user-select:none}
+.anavrow.l-players .anavc.on,.anavrow.l-guns .anavc.on{touch-action:none;-webkit-touch-callout:none;user-select:none;-webkit-user-select:none}
 .aarc{position:fixed;inset:0;z-index:45;pointer-events:none}
 .aarcc{position:fixed;width:46px;height:46px;margin:-23px 0 0 -23px;animation:aarcin .14s ease-out both}
 .aarcc.drop{scale:1.18}
@@ -979,6 +998,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .apill{position:relative;flex:1 1 auto;height:46px;box-sizing:border-box;border-radius:23px;background:#251c3a;border:2px solid #4a3a6e;box-shadow:0 3px 0 #0b0716,inset 0 2px 6px rgba(0,0,0,0.5);touch-action:none;user-select:none;-webkit-user-select:none;display:flex;align-items:center;justify-content:center}
 .apillknob{position:relative;z-index:5;width:34px;height:34px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#6a58a0,#3a2d5e);border:2px solid #8a76c8;box-sizing:border-box;box-shadow:0 2px 0 #0b0716;pointer-events:none}
 .apillknob.jet{border-color:#ffb347;box-shadow:0 2px 0 #0b0716,0 0 10px rgba(255,160,60,0.7)}
+
+/* the gun panel (feedback round 2, AutoScreen GunPanel): the old Bag's stats and firing window in the cards' colours */
+.agunpanel{--text:#f1ecff;--muted:rgba(241,236,255,0.62);--pad:#1d1531;--ring:#2a2140;--good:#5ee05a;--bad:#ff6a5a;
+  height:168px;display:flex;gap:6px;padding:6px;box-sizing:border-box;border-radius:14px;background:rgba(14,9,26,0.96);
+  border:2px solid var(--pc,#3d2f5c);box-shadow:0 0 12px rgba(0,0,0,0.5),0 -4px 14px rgba(0,0,0,0.5);color:var(--text);
+  animation:agprise .3s cubic-bezier(.3,.8,.3,1) both}
+@keyframes agprise{from{translate:0 74px;opacity:0}to{translate:0 0;opacity:1}}
+.agunpanel .gstats{flex:0 0 46%;border:1px solid var(--ring);padding:4px 7px 2px;overflow:hidden}
+.agunpanel .gsrow{font:700 9.5px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.04em;text-transform:uppercase}
+.agunpanel .gsrow b{font:800 10.5px ui-monospace,SFMono-Regular,Menlo,monospace}
+.agunpanel .gsrow u{font:800 9px ui-monospace,SFMono-Regular,Menlo,monospace;min-width:30px}
+.agunpanel .gfire{min-height:0;border-color:var(--ring)}
 
 /* CaveRunner Auto's item cards (owner, stage 8b): the shared cards (ui/cards.js) in the auto screen's dark purple
    panels, edged in the item's group colour (--ic, AutoScreen itemEdge), titles in the menu's mono caps; no pin/trash */

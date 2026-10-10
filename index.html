@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v1.0.24</title>
-<!-- VERSION = 'v1000024' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v1.0.25</title>
+<!-- VERSION = 'v1000025' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -925,23 +925,42 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .abosstrack{width:100%;height:10px;border-radius:6px;background:rgba(14,9,26,0.85);border:2px solid #5a1f2a;box-sizing:border-box;overflow:hidden;
   box-shadow:0 0 10px rgba(255,40,60,0.35)}
 .abosstrack i{display:block;height:100%;background:linear-gradient(#ff7a6a,#d01c34);transition:width .2s linear}
-.anav,.abag,.abtns{border-radius:14px;background:rgba(14,9,26,0.92);border:2px solid #3d2f5c;box-sizing:border-box}
-.anav{flex:none;display:flex;justify-content:space-around;align-items:center;padding:6px 8px;height:66px;transition:border-color .15s}
+.anavrow,.abag,.abtns{border-radius:14px;background:rgba(14,9,26,0.92);border:2px solid #3d2f5c;box-sizing:border-box}
+/* the nav as a stack (feedback round 2): .anavwrap holds the nav's place; each row (.anavslot) sits at its bottom, lifted
+   above it by its translateY (animated); the nav's own row .anav, raised ones .anavup, a leaving one .anavout */
+.anavwrap{position:relative;flex:none;height:66px;z-index:6}
+.anavslot{position:absolute;left:0;right:0;bottom:0;height:66px;transition:transform .28s cubic-bezier(.3,.8,.3,1)}
+.anavslot.panel{height:168px}
+.anavrow{display:flex;justify-content:space-around;align-items:center;padding:6px 8px;height:66px;width:100%;transition:border-color .15s;
+  box-shadow:0 -4px 14px rgba(0,0,0,0.5)}
+.anavrow.slide{animation:anavin .28s cubic-bezier(.3,.8,.3,1) both}
+@keyframes anavin{from{translate:110% 0;opacity:.4}to{translate:0 0;opacity:1}}
+.anavrow.anavout,.agunpanel.anavout{animation:anavout .26s ease-in both;pointer-events:none}
+@keyframes anavout{from{translate:0 0;opacity:1}to{translate:110% 0;opacity:0}}
+.anavrow.anavup{background:rgba(14,9,26,0.96)}
+.anavup.picked .anavc:not(.pick){opacity:.3;filter:grayscale(.8)}
+.anavup .anavc.pick{scale:1.08}
+.anavup .anavc.pick{box-shadow:0 0 0 3px #fff,0 0 12px rgba(255,255,255,0.5)!important}
 .anavc{width:50px;height:50px;border-radius:50%;box-sizing:border-box;border:3px solid #2a2140;background:#140e22;
   display:flex;align-items:center;justify-content:center}
 .anavc.on{background:#1d1531}
 .anavc.sel{box-shadow:0 0 0 3px #fff,0 0 12px rgba(255,255,255,0.5)!important}
 .anavc.locked.gun{opacity:.35}
+/* the equipped gun (feedback round 2): an X with its middle cut out, 4 white diagonal ticks round the circle (the white ring is the menu's pick) */
+.anavc.gun{position:relative}
+.anavc.gun.sel{box-shadow:0 0 10px rgba(255,255,255,0.3)!important}
+.anavc.gun.sel::before{content:"";position:absolute;inset:-11px;pointer-events:none;background:linear-gradient(45deg,transparent calc(50% - 1.5px),#fff calc(50% - 1.5px),#fff calc(50% + 1.5px),transparent calc(50% + 1.5px)),linear-gradient(-45deg,transparent calc(50% - 1.5px),#fff calc(50% - 1.5px),#fff calc(50% + 1.5px),transparent calc(50% + 1.5px));-webkit-mask:radial-gradient(circle,transparent 31px,#000 32px);mask:radial-gradient(circle,transparent 31px,#000 32px)}
+.anavup .anavc.gun.sel.pick{box-shadow:0 0 0 3px #fff,0 0 12px rgba(255,255,255,0.5)!important}
 .anavc.gun .gicon{width:70%;height:auto}
 .anavg{font:900 24px system-ui,sans-serif;line-height:1;display:flex;align-items:center;justify-content:center}
 .apix,.ahelm{display:block;flex:none;pointer-events:none}
 .apixg{display:block;flex:none;width:64%;height:64%;image-rendering:pixelated;pointer-events:none}
-.anav.slots{justify-content:flex-start;gap:6px;overflow-x:auto;overflow-y:hidden;touch-action:pan-x;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.anavrow.slots{justify-content:flex-start;gap:6px;overflow-x:auto;overflow-y:hidden;touch-action:pan-x;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
 .anavs{flex:0 0 48px;width:48px;height:48px}
 .anavs:not(.full){opacity:.55}
 .anavsoon{font:800 14px ui-monospace,SFMono-Regular,Menlo,monospace;color:#9a8ab8}
 /* stage 9: a helmet takes holds (the gun arc); the arc; the stats row; a scrap's coin burst */
-.anav.l-players .anavc.on{touch-action:none;-webkit-touch-callout:none;user-select:none;-webkit-user-select:none}
+.anavrow.l-players .anavc.on,.anavrow.l-guns .anavc.on{touch-action:none;-webkit-touch-callout:none;user-select:none;-webkit-user-select:none}
 .aarc{position:fixed;inset:0;z-index:45;pointer-events:none}
 .aarcc{position:fixed;width:46px;height:46px;margin:-23px 0 0 -23px;animation:aarcin .14s ease-out both}
 .aarcc.drop{scale:1.18}
@@ -989,6 +1008,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .apillknob{position:relative;z-index:5;width:34px;height:34px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#6a58a0,#3a2d5e);border:2px solid #8a76c8;box-sizing:border-box;box-shadow:0 2px 0 #0b0716;pointer-events:none}
 .apillknob.jet{border-color:#ffb347;box-shadow:0 2px 0 #0b0716,0 0 10px rgba(255,160,60,0.7)}
 
+/* the gun panel (feedback round 2, AutoScreen GunPanel): the old Bag's stats and firing window in the cards' colours */
+.agunpanel{--text:#f1ecff;--muted:rgba(241,236,255,0.62);--pad:#1d1531;--ring:#2a2140;--good:#5ee05a;--bad:#ff6a5a;
+  height:168px;display:flex;gap:6px;padding:6px;box-sizing:border-box;border-radius:14px;background:rgba(14,9,26,0.96);
+  border:2px solid var(--pc,#3d2f5c);box-shadow:0 0 12px rgba(0,0,0,0.5),0 -4px 14px rgba(0,0,0,0.5);color:var(--text);
+  animation:agprise .3s cubic-bezier(.3,.8,.3,1) both}
+@keyframes agprise{from{translate:0 74px;opacity:0}to{translate:0 0;opacity:1}}
+.agunpanel .gstats{flex:0 0 46%;border:1px solid var(--ring);padding:4px 7px 2px;overflow:hidden}
+.agunpanel .gsrow{font:700 9.5px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.04em;text-transform:uppercase}
+.agunpanel .gsrow b{font:800 10.5px ui-monospace,SFMono-Regular,Menlo,monospace}
+.agunpanel .gsrow u{font:800 9px ui-monospace,SFMono-Regular,Menlo,monospace;min-width:30px}
+.agunpanel .gfire{min-height:0;border-color:var(--ring)}
+
 /* CaveRunner Auto's item cards (owner, stage 8b): the shared cards (ui/cards.js) in the auto screen's dark purple
    panels, edged in the item's group colour (--ic, AutoScreen itemEdge), titles in the menu's mono caps; no pin/trash */
 .acard{--bg:#0b0716;--text:#f1ecff;--muted:rgba(241,236,255,0.58);--pad:rgba(255,255,255,0.06);--ring:#3d2f5c;
@@ -1014,7 +1045,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v1.0.24';</script>
+<script>const VERSION = 'v1.0.25';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -1970,10 +2001,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     autoThrowPull: 45,
     autoThrowSuck: 500,
     autoThrowBack: 3,
-    autoFlickMin: 600,
-    autoFlickK: 0.6,
-    autoStreamWait: 250,
-    autoStreamK: 0.4,
+    autoPayReach: 30,
+    autoPayHold: 300,
+    autoPayK: 4,
     autoStreamRate0: 2,
     autoStreamRate1: 14,
     autoStreamRamp: 1.5
@@ -1982,10 +2012,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "autoThrowPull", g: "autothrow", label: "A machine pulls in what it takes within (world units of its coin slot)", min: 5, max: 200, step: 1 },
     { k: "autoThrowSuck", g: "autothrow", label: "Its pull’s strength", min: 50, max: 3e3, step: 10 },
     { k: "autoThrowBack", g: "autothrow", label: "Anything not taken flies back to the bag after (s)", min: 0.5, max: 20, step: 0.1 },
-    { k: "autoFlickMin", g: "autothrow", label: "A flick: let go moving at least (px / s)", min: 100, max: 3e3, step: 10 },
-    { k: "autoFlickK", g: "autothrow", label: "A flick’s throw speed (× the finger’s)", min: 0.1, max: 3, step: 0.05 },
-    { k: "autoStreamWait", g: "autothrow", label: "Stream: moved away and held still this long (ms) starts it", min: 50, max: 1500, step: 10 },
-    { k: "autoStreamK", g: "autothrow", label: "Stream: throw speed (world units / s) per px moved away", min: 0.05, max: 3, step: 0.05 },
+    { k: "autoPayReach", g: "autothrow", label: "Pay with A: player 1 within this of a machine (world units)", min: 5, max: 80, step: 1 },
+    { k: "autoPayHold", g: "autothrow", label: "Pay with A: held this long (ms) starts the stream", min: 50, max: 1500, step: 10 },
+    { k: "autoPayK", g: "autothrow", label: "Pay with A: throw speed (world units / s) per px dragged from the press", min: 0.5, max: 12, step: 0.1 },
     { k: "autoStreamRate0", g: "autothrow", label: "Stream: nuggets a second at first", min: 0.5, max: 20, step: 0.5 },
     { k: "autoStreamRate1", g: "autothrow", label: "Stream: nuggets a second, ramped up", min: 1, max: 60, step: 1 },
     { k: "autoStreamRamp", g: "autothrow", label: "Stream: ramps up over (s)", min: 0.1, max: 6, step: 0.1 }
@@ -14258,6 +14287,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
 
   // src/auto/throw.js
+  var throwR = (g) => g.kind === "gold" ? g.lump ? NUGGETS[0].r : NUGGETS[2].r : CRYSTAL_R;
   var THROW_TAKES = { gun: "gold", exo: "gold", mod: "red", perk: "green" };
   var MACHINES = ["gun", "exo", "mod", "perk"];
   var MOUTH_UP = 30;
@@ -14301,6 +14331,31 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     H.thrown.push(g);
     return g;
   }
+  function hubPayAt(S2) {
+    const H = hubState(S2), L = S2.runners[0];
+    if (!H || !L || L.hide || H.exitT >= 0) return null;
+    const cx = L.x + PW / 2;
+    for (const id of MACHINES) if (Math.abs(cx - hubStopX(id)) < DEV.autoPayReach) return id;
+    return null;
+  }
+  var PAY_DEAD = 8;
+  var PAY_MAX = 90;
+  var PAY_TAP = { vx: 55, vy: -110 };
+  var PAY_REST = 0.25;
+  function payVel(face, dx, dy) {
+    const d = Math.hypot(dx, dy);
+    if (d < PAY_DEAD) return { vx: (face < 0 ? -1 : 1) * PAY_TAP.vx, vy: PAY_TAP.vy };
+    const sp = Math.min(d, PAY_MAX) * DEV.autoPayK;
+    return { vx: dx / d * sp, vy: dy / d * sp };
+  }
+  function hubPayOne(S2, kind, vx, vy, to) {
+    const L = S2.runners[0];
+    if (!L) return null;
+    S2.snd.push({ k: "coin", x: L.x + PW / 2, y: L.y + PH * 0.4 });
+    const g = hubThrow(S2, kind, 1, L.x + PW / 2, L.y + PH * 0.4, vx, vy);
+    if (g && to) g.to = to;
+    return g;
+  }
   function stepThrown(S2, H, dt) {
     if (!H.thrown.length) return;
     const solid = roomSolid(H), L = S2.runners[0];
@@ -14309,6 +14364,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (g.held) continue;
       g.t += dt;
       g.a += g.vx * dt * 0.2;
+      g.fly = !!g.home || !!g.pull;
       if (g.home) {
         const tx = L ? L.x + PW / 2 : g.x, ty = L ? L.y + PH / 2 : g.y;
         if (pullStep(g, tx, ty, 200, dt) < 12) {
@@ -14318,10 +14374,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
         continue;
       }
-      const id = pullingMachine(g.x, g.y, g.kind, H.fy, DEV.autoThrowPull);
+      if (g.ground) g.landed = true;
+      if (g.landed && g.to) g.rest = (g.rest || 0) + dt;
+      const id = g.to ? g.pull || (g.rest || 0) >= PAY_REST ? g.to : null : g.landed || g.pull ? pullingMachine(g.x, g.y, g.kind, H.fy, DEV.autoThrowPull) : null;
       if (id) {
         g.pull = id;
-        if (pullStep(g, hubStopX(id), H.fy - MOUTH_UP, DEV.autoThrowPull, dt) < 6) {
+        const tx = hubStopX(id), ty = H.fy - MOUTH_UP;
+        if (pullStep(g, tx, ty, Math.max(DEV.autoThrowPull, g.to ? Math.hypot(tx - g.x, ty - g.y) : 0), dt) < 6) {
           H.paid[id] = (H.paid[id] || 0) + g.n;
           H.paidV++;
           H.thrown.splice(i, 1);
@@ -14331,14 +14390,16 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
       g.pull = void 0;
       const m = machineAt(g.x, g.y, H.fy);
-      if (m) {
+      if (m && !machineTakes(m, g.kind)) {
         const s = Math.sign(g.x - hubStopX(m)) || 1;
         g.vx = s * Math.max(60, Math.abs(g.vx));
         g.vy = Math.min(g.vy, -60);
       }
-      if (stepNugget(g, dt, solid, g.kind === "gold" ? g.lump ? 8.4 : 4 : 5)) S2.snd.push({ k: "coinland", x: g.x, y: g.y });
+      if (stepNugget(g, dt, solid, throwR(g))) S2.snd.push({ k: "coinland", x: g.x, y: g.y });
       if (g.t > DEV.autoThrowBack) g.home = true;
     }
+    const rOf = (b) => throwR(b);
+    collideNuggets(H.thrown.filter((g) => !g.held), solid, rOf);
   }
 
   // src/auto/hub.js
@@ -14612,7 +14673,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 
   // src/auto/payout.js
   var PAY_CYCLE = 1.6;
-  var PAY_REST = 0.45;
+  var PAY_REST2 = 0.45;
   var PAY_IDS = ["gun", "exo", "mod", "perk"];
   var SHAKE_F0 = 3, SHAKE_F1 = 30;
   var payPhase = (t) => SHAKE_F0 * t + SHAKE_F1 * PAY_CYCLE * Math.pow(Math.min(1, t / PAY_CYCLE), 3) / 3;
@@ -14655,7 +14716,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         const it = machineItem(id, H.tier, S2.rnd);
         if (!it) continue;
         const vx = (x < 300 ? 1 : -1) * (30 + 40 * S2.rnd());
-        (S2.loot || (S2.loot = [])).push({ x, y: H.fy - 14, vx, vy: -150 - 40 * S2.rnd(), it, col: lootCol(it), t: 0, land: PAY_REST + 0.15 * k });
+        (S2.loot || (S2.loot = [])).push({ x, y: H.fy - 14, vx, vy: -150 - 40 * S2.rnd(), it, col: lootCol(it), t: 0, land: PAY_REST2 + 0.15 * k });
       }
       S2.flash = Math.max(S2.flash, 0.25);
       S2.snd.push({ k: "coin", x, y: H.fy - 14 });
@@ -15555,6 +15616,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function navBack(nav) {
     const up = UP[nav.level];
     return up ? { ...nav, level: up } : nav;
+  }
+  function navPath(nav) {
+    const out = [];
+    for (let L = nav.level; L; L = UP[L]) out.unshift({ ...nav, level: L });
+    return out;
+  }
+  function navPick(nav, level) {
+    if (level === "players") return nav.p;
+    if (level === "player") return nav.level === "gun" ? "guns" : nav.level === "cat" ? "exo" : nav.level;
+    if (level === "guns") return nav.g;
+    if (level === "exo") return nav.cat;
+    return void 0;
   }
   function navRow(nav, run, max) {
     const pl = run.players[nav.p];
@@ -27584,6 +27657,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = "source-over";
+    if (S2.hub) drawPayHint(ctx, S2);
     ctx.restore();
     if (S2.flash > 0) {
       ctx.fillStyle = "rgba(255,230,200," + S2.flash * 0.4 + ")";
@@ -27671,13 +27745,37 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     for (const g of S2.coins) drawNugget(c, g.x - S2.scroll, g.y, coinR(g), g.t, g.a || 0);
     drawLoot(c, S2);
   }
+  function drawPayHint(c, S2) {
+    const H = hubState(S2), id = hubPayAt(S2);
+    if (!H || !id) return;
+    const x = hubStopX(id) - S2.scroll, y = H.fy - MACH_H - 9 + Math.sin(S2.t * 4) * 1.2, w = 40, hh = 11;
+    c.fillStyle = "rgba(14,9,26,0.9)";
+    c.strokeStyle = "#4ef08a";
+    c.lineWidth = 1;
+    c.beginPath();
+    c.roundRect(x - w / 2, y - hh / 2, w, hh, hh / 2);
+    c.fill();
+    c.stroke();
+    c.fillStyle = "#18c464";
+    c.beginPath();
+    c.arc(x - w / 2 + 6, y, 4, 0, Math.PI * 2);
+    c.fill();
+    c.font = "bold 6px monospace";
+    c.textAlign = "center";
+    c.textBaseline = "middle";
+    c.fillStyle = "#fff";
+    c.fillText("A", x - w / 2 + 6, y + 0.3);
+    c.fillStyle = "#f1ecff";
+    c.fillText("to Pay", x + 4, y + 0.3);
+    c.textBaseline = "alphabetic";
+  }
   function drawThrown(c, S2) {
     const H = S2.hub ? hubState(S2) : null;
     if (!H || !H.thrown.length) return;
     for (const g of H.thrown) {
       const x = g.x - S2.scroll, k = g.lump ? Math.min(2.2, 1 + Math.log10(g.n) * 0.6) : 1;
-      if (g.kind === "gold") drawNugget(c, x, g.y, (g.lump ? 8.4 : 4) * k, g.t, g.a);
-      else drawNugget(c, x, g.y, CRYSTAL_R * 0.45 * k, 3.7, g.a, g.kind === "green" ? GREEN_PAL : CRYSTAL_PAL);
+      if (g.kind === "gold") drawNugget(c, x, g.y, throwR(g) * k, g.t, g.a);
+      else drawNugget(c, x, g.y, throwR(g) * k, 3.7, g.a, g.kind === "green" ? GREEN_PAL : CRYSTAL_PAL);
       if (g.lump) {
         c.fillStyle = "#ffffff";
         c.font = "bold 7px monospace";
@@ -28837,8 +28935,71 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (S2.lvl) levelHold(S2, st.active && st.mag > DEAD ? st.nx * (st.mag - DEAD) / (1 - DEAD) : 0);
       else hubStick(S2, st);
     };
-    const pressA = () => {
+    const downA = (e) => {
+      e.preventDefault();
       SFX.unlock();
+      const S2 = scene.current, at = S2 && !S2.lvl ? hubPayAt(S2) : null;
+      if (!S2 || !at) {
+        pressA();
+        return;
+      }
+      const kind = THROW_TAKES[at], id = e.pointerId, x0 = e.clientX, y0 = e.clientY;
+      let dx = 0, dy = 0, stream = false, acc = 0, t0 = 0, last = performance.now();
+      const one = () => {
+        if (!spend(run, kind, 1)) return false;
+        const L = S2.runners[0], v = payVel(L ? L.face : 1, dx, dy);
+        hubPayOne(S2, kind, v.vx, v.vy, at);
+        saveAutoRun(run);
+        setV((n) => n + 1);
+        return true;
+      };
+      const hold = setTimeout(() => {
+        stream = true;
+        t0 = performance.now();
+        acc = 1;
+      }, DEV.autoPayHold);
+      const tick = setInterval(() => {
+        const now = performance.now(), dt = (now - last) / 1e3;
+        last = now;
+        if (!stream) return;
+        const ramp = Math.min(1, (now - t0) / 1e3 / DEV.autoStreamRamp);
+        acc += (DEV.autoStreamRate0 + (DEV.autoStreamRate1 - DEV.autoStreamRate0) * ramp) * dt;
+        while (acc >= 1) {
+          acc -= 1;
+          if (!one()) {
+            acc = 0;
+            break;
+          }
+        }
+      }, 33);
+      const finish = () => {
+        clearTimeout(hold);
+        clearInterval(tick);
+        removeEventListener("pointermove", move);
+        removeEventListener("pointerup", up);
+        removeEventListener("pointercancel", up);
+      };
+      const move = (ev) => {
+        if (ev.pointerId === id) {
+          ev.preventDefault();
+          dx = ev.clientX - x0;
+          dy = ev.clientY - y0;
+        }
+      };
+      const up = (ev) => {
+        if (ev.pointerId !== id) return;
+        finish();
+        if (!stream) {
+          dx = ev.clientX - x0;
+          dy = ev.clientY - y0;
+          if (!one()) SFX.ui("tap");
+        }
+      };
+      addEventListener("pointermove", move, { passive: false });
+      addEventListener("pointerup", up);
+      addEventListener("pointercancel", up);
+    };
+    const pressA = () => {
       SFX.ui("tap");
       if (scene.current && (hubExit(scene.current) || !!scene.current.lvl && chestOpen(scene.current))) SFX.fx("open");
     };
@@ -28850,11 +29011,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const down = (e, src) => {
       if (press.current || !srcItem(src)) return;
       const grab = !!(e.target && e.target.closest && e.target.closest(".agrab"));
-      const S0 = scene.current;
-      if (grab && src.from === "bag" && throwable(srcItem(src)) && S0 && S0.hub && !S0.lvl && cvs.current && cam.current) {
-        throwPress(e, src);
-        return;
-      }
       if (grab) e.preventDefault();
       const p = { id: e.pointerId, x0: e.clientX, y0: e.clientY, src, grab, drag: false };
       press.current = p;
@@ -28901,106 +29057,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       addEventListener("pointermove", move, { passive: false });
       addEventListener("pointerup", up);
       addEventListener("pointercancel", cancel);
-    };
-    const throwPress = (e, src) => {
-      e.preventDefault();
-      const it = run.bag[src.i], c = cvs.current, S2 = scene.current;
-      if (!it || !c || !S2) return;
-      const kind = it.kind === "red" ? "red" : it.kind === "green" ? "green" : "gold";
-      const id = e.pointerId, x0 = e.clientX, y0 = e.clientY;
-      const p = { id, x0, y0, src, grab: true, drag: false };
-      press.current = p;
-      let mode = "press", fx = x0, fy = y0, stillAt = performance.now(), sx = x0, sy = y0, t0 = 0, acc = 0, last = performance.now();
-      const trail = [{ x: x0, y: y0, t: performance.now() }];
-      const world = (x, y) => {
-        const r = c.getBoundingClientRect(), k = r.width / TITLE_VW, C = cam.current;
-        const cx = Math.max(r.left + 4, Math.min(r.right - 4, x)), cy = Math.max(r.top + 4, Math.min(r.bottom - 6, y));
-        return C ? camAt(C, (cx - r.left) / k, (cy - r.top) / k) : { x: 0, y: 0 };
-      };
-      const one = (vx, vy) => {
-        if (!spend(run, kind, 1)) return false;
-        const r = c.getBoundingClientRect(), C = cam.current, w = world(fx, fy), v = screenToWorldVel(vx, vy, r.width / TITLE_VW, C ? C.z : 1);
-        hubThrow(S2, kind, 1, w.x, w.y, v.vx, v.vy);
-        SFX.ui("tap");
-        saveAutoRun(run);
-        setV((n) => n + 1);
-        return true;
-      };
-      const tick = setInterval(() => {
-        const now = performance.now(), dt = (now - last) / 1e3;
-        last = now;
-        if (mode === "swipe" && now - stillAt > DEV.autoStreamWait && Math.hypot(fx - x0, fy - y0) > MOVE * 2) {
-          mode = "stream";
-          t0 = now;
-          acc = 1;
-        }
-        if (mode !== "stream") return;
-        const ramp = Math.min(1, (now - t0) / 1e3 / DEV.autoStreamRamp);
-        acc += (DEV.autoStreamRate0 + (DEV.autoStreamRate1 - DEV.autoStreamRate0) * ramp) * dt;
-        const dx = fx - x0, dy = fy - y0, d = Math.hypot(dx, dy) || 1, r = c.getBoundingClientRect(), C = cam.current;
-        const sp = d * DEV.autoStreamK * (r.width / TITLE_VW) * (C ? C.z : 1);
-        while (acc >= 1) {
-          acc -= 1;
-          if (!one(dx / d * sp, dy / d * sp)) {
-            acc = 0;
-            break;
-          }
-        }
-      }, 33);
-      const finish = () => {
-        press.current = null;
-        clearInterval(tick);
-        removeEventListener("pointermove", move);
-        removeEventListener("pointerup", up);
-        removeEventListener("pointercancel", up);
-      };
-      const move = (ev) => {
-        if (ev.pointerId !== id) return;
-        ev.preventDefault();
-        fx = ev.clientX;
-        fy = ev.clientY;
-        const now = performance.now();
-        trail.push({ x: fx, y: fy, t: now });
-        while (trail.length > 2 && now - trail[0].t > 100) trail.shift();
-        if (Math.hypot(fx - sx, fy - sy) > 6) {
-          sx = fx;
-          sy = fy;
-          stillAt = now;
-        }
-        if (mode === "press" && Math.hypot(fx - x0, fy - y0) > MOVE) {
-          mode = "swipe";
-          SFX.unlock();
-        }
-        if (kind === "green" && (mode === "press" || mode === "swipe")) {
-          const at = dropAt2(src, fx, fy);
-          if (at && at.to === "player" && at.ok) {
-            mode = "drag";
-            p.drag = true;
-            SFX.ui("tap");
-          }
-        }
-        if (mode === "drag") {
-          setDrag({ src, x: fx, y: fy, over: dropAt2(src, fx, fy), back: false });
-          return;
-        }
-      };
-      const up = (ev) => {
-        if (ev.pointerId !== id) return;
-        finish();
-        if (mode === "drag") {
-          drop(src, ev.clientX, ev.clientY, p);
-          return;
-        }
-        if (mode === "swipe") {
-          fx = ev.clientX;
-          fy = ev.clientY;
-          const a = trail[0], dt = Math.max(0.016, (performance.now() - a.t) / 1e3), vx = (fx - a.x) / dt, vy = (fy - a.y) / dt;
-          if (Math.hypot(vx, vy) >= DEV.autoFlickMin) one(vx * DEV.autoFlickK, vy * DEV.autoFlickK);
-        }
-      };
-      addEventListener("pointermove", move, { passive: false });
-      addEventListener("pointerup", up);
-      addEventListener("pointercancel", up);
     };
     const dropAt2 = (src, x, y) => {
       const el = document.elementFromPoint(x, y);
@@ -29076,9 +29132,40 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       setDrag({ src, x: p.x0, y: p.y0, over: null, back: true });
       setTimeout(() => setDrag((d) => d && d.back ? null : d), 170);
     };
-    const openNav = (w) => {
+    const openAt = (s, w) => {
       nothing();
-      setNav((n) => navOpen(n, w, run));
+      setNav(navOpen(s, w, run));
+    };
+    const holdGun = (e, s, i) => {
+      e.preventDefault();
+      const pl = run.players[s.p];
+      if (press.current || !pl || !pl.guns[i]) return;
+      const id = e.pointerId;
+      let held = false;
+      const timer = setTimeout(() => {
+        held = true;
+        SFX.unlock();
+        if (setActive(run, s.p, i)) {
+          saveAutoRun(run);
+          SFX.fx("open");
+          setV((v) => v + 1);
+        }
+      }, DEV.autoHoldMs);
+      const finish = () => {
+        clearTimeout(timer);
+        removeEventListener("pointerup", up);
+        removeEventListener("pointercancel", cancel);
+      };
+      const up = (ev) => {
+        if (ev.pointerId !== id) return;
+        finish();
+        if (!held) openAt(s, i);
+      };
+      const cancel = (ev) => {
+        if (ev.pointerId === id) finish();
+      };
+      addEventListener("pointerup", up);
+      addEventListener("pointercancel", cancel);
     };
     const holdHelm = (e, i) => {
       e.preventDefault();
@@ -29112,7 +29199,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         if (ev.pointerId !== id) return;
         finish();
         if (!pts) {
-          openNav(i);
+          openAt({ ...navRef.current, level: "players" }, i);
           return;
         }
         setArc(null);
@@ -29155,7 +29242,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           setPaused(true);
         }) }, "⏸")
       ),
-      h(NavRow, { row: navRow(nav, run, MAX_PLAYERS), level: nav.level, open: openNav, down, drag, holdHelm, meters }),
+      h(NavStack, { nav, run, openAt, down, drag, holdHelm, holdGun, meters }),
       h(
         "div",
         { className: "abag" + (drag && drag.over && drag.over.key === "bag" && drag.over.ok ? " drop" : "") },
@@ -29176,7 +29263,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           setNav(navBack);
         }) }, "B"),
         h(PillStick, { onMove: steer }),
-        h("button", { className: "abtn aa", onPointerDown: tap(pressA) }, "A")
+        h("button", { className: "abtn aa", onPointerDown: downA }, "A")
       ),
       arc ? h(GunArc, { arc, run }) : null,
       burst3 ? h(CoinBurst, { key: burst3.k, burst: burst3 }) : null,
@@ -29230,8 +29317,113 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       h("div", { className: "apillknob" + (knob2.jet ? " jet" : ""), style: { transform: "translate(" + knob2.x + "px," + knob2.y + "px)" } })
     );
   }
-  function NavRow({ row, level, open, down, drag, holdHelm, meters }) {
+  var ROW_H = 66, STACK_GAP = 6, PANEL_H = 168, LEAVE_MS = 260;
+  function NavStack({ nav, run, openAt, down, drag, holdHelm, holdGun, meters }) {
+    const path = navPath(nav);
+    const pl = run.players[nav.p];
+    const gun = nav.level === "gun" && pl ? pl.guns[nav.g] : null;
+    const items = path.map((s) => ({ key: s.level, s }));
+    if (gun) items.splice(items.length - 1, 0, { key: "panel", s: nav, panel: true });
+    const [lit, setLit] = useState(null);
+    const noGone = [];
+    const [gone, setGone] = useState(noGone);
+    const prev = useRef(items);
+    const ready = useRef(false);
+    useEffect(() => {
+      ready.current = true;
+    }, []);
+    const sig = items.map((i) => i.key).join();
+    useEffect(() => {
+      const keys = new Set(items.map((i) => i.key));
+      const out = prev.current.filter((i) => !keys.has(i.key));
+      prev.current = items;
+      if (!out.length) return;
+      const k = performance.now();
+      setGone((g) => [...g.filter((o) => !keys.has(o.it.key)), ...out.map((it) => ({ it, k }))]);
+      setTimeout(() => setGone((g) => g.filter((o) => o.k !== k)), LEAVE_MS);
+    }, [sig]);
+    const off = [];
+    for (let i = items.length - 1, y = 0; i >= 0; i--) {
+      off[i] = y;
+      y += (items[i].panel ? PANEL_H : ROW_H) + STACK_GAP;
+    }
+    const last = items.length - 1;
+    const body = (it, cls, cur) => {
+      if (it.panel) {
+        const g = run.players[it.s.p] && run.players[it.s.p].guns[it.s.g];
+        return g ? h(GunPanel, {
+          gun: g,
+          sig: it.s.p + "|" + it.s.g + "|" + g.slots.join() + "|" + g.multi + "|" + g.shuffle + "|" + g.castDelay + "|" + g.recharge,
+          col: MACHINE_EDGE,
+          onLit: cur ? setLit : void 0,
+          cls
+        }) : null;
+      }
+      const s = it.s;
+      const open = (w) => openAt(s, w);
+      const hg = (e, i) => holdGun(e, s, i);
+      return h(NavRow, {
+        row: navRow(s, run, MAX_PLAYERS),
+        level: s.level,
+        cls,
+        pick: cur ? void 0 : navPick(nav, s.level),
+        open,
+        down,
+        drag: cls === "anav" ? drag : null,
+        holdHelm,
+        holdGun: hg,
+        meters,
+        slide: ready.current,
+        lit: cls === "anav" && nav.level === "gun" ? lit : null
+      });
+    };
+    return h(
+      "div",
+      { className: "anavwrap" },
+      ...items.map((it, i) => h(
+        "div",
+        { key: it.key, className: "anavslot" + (it.panel ? " panel" : ""), style: { transform: "translateY(" + -off[i] + "px)" } },
+        body(it, i === last ? "anav" : it.panel ? "up" : "anavup", i === last)
+      )),
+      ...gone.map((o) => h("div", { key: "gone-" + o.it.key + o.k, className: "anavslot" + (o.it.panel ? " panel" : "") }, body(o.it, "anavout", false)))
+    );
+  }
+  var MACHINE_EDGE = HUB_MACHINES.mod.hue;
+  function GunPanel({ gun, sig, col, onLit, cls }) {
+    const sim = useRef(null);
+    if (!sim.current || sim.current.sig !== sig) sim.current = Object.assign(fireSimNew(gun), { sig });
+    const litFn = useRef(onLit);
+    litFn.current = onLit;
+    useEffect(() => {
+      let raf = 0, last = performance.now(), prev = null;
+      const loop = (now) => {
+        raf = requestAnimationFrame(loop);
+        const S2 = sim.current, dt = Math.min(0.1, (now - last) / 1e3) * DEV.bagSpeed;
+        last = now;
+        if (!S2) return;
+        for (let t = dt; t > 0; t -= 0.01) fireSimStep(S2, Math.min(0.01, t));
+        if (S2.lit !== prev) {
+          prev = S2.lit;
+          if (litFn.current) litFn.current(S2.lit);
+        }
+      };
+      raf = requestAnimationFrame(loop);
+      return () => {
+        cancelAnimationFrame(raf);
+        if (litFn.current) litFn.current(null);
+      };
+    }, []);
+    return h(
+      "div",
+      { className: "agunpanel " + cls, style: { "--pc": col } },
+      h(GunStats, { gun, sim, sig }),
+      h(GunFire, { gun, sim })
+    );
+  }
+  function NavRow({ row, level, cls, pick, open, down, drag, holdHelm, holdGun, meters, lit, slide }) {
+    const [slideIn] = useState(!!slide);
     const over = drag && drag.over && drag.over.ok ? drag.over.key : "";
+    const on = new Set(lit ? lit.slots : []), pc = lit ? PULL_COL[lit.pull % PULL_COL.length] : "";
     const cell = (c, i) => {
       const to = c.open;
       const go = (e) => {
@@ -29239,6 +29431,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         if (to !== void 0) open(to);
       };
       const hold = (e) => holdHelm(e, i);
+      const gunHold = (e) => holdGun(e, i);
       if (row.shape === "slots") {
         const it = c.item || null;
         const lift = !!drag && drag.src.from === "nav" && drag.src.i === i;
@@ -29253,10 +29446,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             onPointerDown: it ? grab : void 0
           },
           it ? h(ItemIcon, { it }) : null,
-          it ? h(Grab) : null
+          it ? h(Grab) : null,
+          on.has(i) ? h("i", { className: "pulse on", style: { background: pc, borderColor: pc, color: pc } }) : null
         );
       }
-      const cls = "anavc" + (c.dim ? " locked" : " on") + (c.sel ? " sel" : "") + (c.gun ? " gun" : "") + (over === "g" + i || over === "p" + i ? " drop" : "");
+      const cls2 = "anavc" + (c.dim ? " locked" : " on") + (c.sel ? " sel" : "") + (c.gun ? " gun" : "") + (over === "g" + i || over === "p" + i ? " drop" : "") + (pick !== void 0 && to === pick ? " pick" : "");
       const style = c.col && !c.dim ? { borderColor: c.col, boxShadow: "0 0 10px " + (c.glow || c.col + "66") } : void 0;
       let inner = null;
       if (c.gun) inner = h(GunIcon, { gun: c.gun });
@@ -29264,22 +29458,23 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       else if (c.icon) inner = h(PixIcon, { id: c.icon, size: 20, tint: level === "exo" ? HUB_MACHINES.exo.hue : void 0 });
       else if (c.glyph) inner = h("span", { className: "anavg" }, c.glyph);
       else if (c.label) inner = h("span", { className: "anavp", style: { background: c.col } }, c.label);
+      const press = c.helm && level === "players" ? hold : level === "guns" && c.gun ? gunHold : go;
       return h("div", {
         key: c.key,
-        className: cls,
+        className: cls2,
         "data-player": level === "players" ? i : void 0,
         "data-open": c.open,
         "data-gslot": level === "guns" ? i : void 0,
         "data-pslot": level === "players" && !c.helm ? i : void 0,
         title: c.glyph ? c.label : void 0,
         style,
-        onPointerDown: c.helm && level === "players" ? hold : go
+        onPointerDown: press
       }, inner);
     };
     return h(
       "div",
       {
-        className: "anav l-" + level + (row.shape === "slots" ? " slots" : ""),
+        className: "anavrow " + cls + " l-" + level + (row.shape === "slots" ? " slots" : "") + (pick !== void 0 ? " picked" : "") + (slideIn ? " slide" : ""),
         "data-level": level,
         style: row.col ? { borderColor: row.col, boxShadow: "0 0 12px " + row.col + "55" } : void 0
       },

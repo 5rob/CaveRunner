@@ -8,7 +8,10 @@ release loop, testing), then the README of the `src/` folder you're working in.
 Planned with the owner (brief + quiz answers + 16 stages + the PM's kick-start prompt, all in `AUTOBATTLER.md`;
 mock-up `docs/autobattler-mockup.png`). Progress: AUTOBATTLER.md's Log. `main` keeps the old game.
 
-**Where it stands (2026-10-10, v1.0.22 live at /auto/): all stages 0–14 built; feedback round 1 released.** Round 1
+**Where it stands (2026-10-10, v1.0.25 live at /auto/): all stages 0–14 built; feedback rounds 1 and 2a released.** Round 2a (v1.0.25):
+the nav as a rising stack, hold a gun to equip, the gun panel over the mod slots, pay with A. **Next (round 2b):** the hub
+rebuilt as the old shop room (owner: its look exactly, signage, tubes, dust, background; the machines' shake/chase
+lights/demo; the old spacing). Round 1
 (v1.0.24: the level no longer restarts on a resize, e.g. the app switcher; guns face left in the hub; machine items
 land before the pull. v1.0.23: drags go where they're put, bag → bag and slot → slot too; the gold lump removed. v1.0.22: the pill stick as the old thumbstick, its knob free past the pill; creatures start as a trickle, `levelSpawn`;
 jet-over fix. v1.0.21, the PM alone): hub movement now the old game's exactly; old saves get the starter kit (`kitMissing`); the
@@ -17,7 +20,7 @@ past a random 20 s+ (`plantWall`, `levelFree`, knobs `autoWallMin/Max`). Waiting
 Open, in order of weight:
 1. ~~The team doesn't finish the boss~~ fixed in v1.0.21 (suite `auto-boss`).
 2. ~~A fresh run stops at the first rock within seconds~~ v1.0.21: nothing blocks till the level's sure blocked zone (suite `auto-wall`).
-3. The owner will tune the gold stream (Dev → Auto → "Auto: throw": slow start, quick pull) and test the payouts.
+3. ~~Tune the gold stream~~ replaced by paying with A (v1.0.25; knobs "Auto: throw").
 4. Polish noted: the gun arc crowds the left corner for player 1, empty arc circles faint; chest small, grass over it;
    the menu icons small after the ×1.5 padding; only bag items scrap/drop (not slot items); no dragging a gun out of
    its circle (slot-to-slot moves within a row: done in v1.0.23); `auto-loot` flakes rarely in a full run (logic and browser: chance, passes alone).

@@ -5,6 +5,22 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.25 — CaveRunner Auto: feedback round 2, first batch (branch `autobattler`)
+Released 2026-10-10 on the branch (owner OK'd; shots `tools/stackshots.js`, `tools/payshots.js`).
+- The nav is a stack: going down a level, the row rises over the play area and the next slides in from the right; B
+  reverses it (the row slides out, the rest drop back). Raised rows keep their pick lit (white ring), the rest dimmed,
+  and still take taps. `auto/nav.js` `navPath`, `navPick`; `AutoScreen` `NavStack`.
+- The equipped gun is marked by 4 white diagonal ticks (an X with its middle cut out); the white ring is the menu's pick.
+- In the Guns row a gun held `autoHoldMs` becomes the active gun (a tap still opens it).
+- At a gun's mod slots the gun panel rises above them: the old Bag's stats (live bars) and firing window
+  (`ui/editor.js` `GunStats`, `GunFire`) in the cards' colours; the mod slots flash with each pull.
+- Paying is A: at a machine "A to Pay" shows over it; a tap drops one of what it takes out of player 1's chest onto the
+  floor in front of him, held it streams (ramping), and a drag from where A was pressed aims it (direction, speed).
+  Each lands, rests `PAY_REST` and goes into the machine it was paid at. Gold and gems at their real sizes, colliding
+  (`throwR`, `collideNuggets`). The throw from the bag tile is gone. `auto/throw.js` `hubPayAt`, `payVel`, `hubPayOne`;
+  knobs `autoPayReach`, `autoPayHold`, `autoPayK` (the flick and stream-start knobs removed).
+- Rows on screen when it opens no longer slide in (a test measured a helmet mid-slide).
+
 ## v1.0.24 — CaveRunner Auto: feedback round 1, fourth batch (branch `autobattler`)
 Released 2026-10-10 on the branch (owner OK'd; shots `tools/vendshots.js`).
 - Fix: the level restarted whenever the play area changed size (the owner found it: the phone's app switcher shrinks the

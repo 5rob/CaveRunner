@@ -11,15 +11,16 @@
 // can clear (auto/clear.js, stage 5b) stops the team and pulses a "Path blocked" hint over the play area. The arena's boss
 // (auto/enemies.js, stage 6) shows its health bar over the top of the play area; every player fallen takes the team home.
 // The boss's loot vacuumed, LEVEL CLEARED drops in over the play area (stage 7, art/cleared.js, runScene's over).
-// Stage 10a (throwPress): in the hub, gold and gems from the bag thrown up into the play area at the machines (auto/throw.js):
-// a flick throws one, moved away and held streams them (the whole-stack lump was removed, feedback round 1).
+// Paying (feedback round 2, payA): at a machine in the hub, "A to Pay" shows over it; A taps out one of what it takes from
+// player 1's chest onto the floor in front of him, held it streams them, and a drag from where A was pressed aims them
+// (direction and speed). (Stage 10a's throw from the bag tile is gone.)
 
 import { SFX } from '../../audio/sfx.js';
 import { TITLE_VW, camAt, titleCam } from '../../art/titlescene.js';
 import { DEAD } from '../../core/consts.js';
 import { chestOpen } from '../../auto/chests.js';
 import { HUB_W, hubExit, hubLeft, hubScene, hubState, hubStick, hubStopX } from '../../auto/hub.js';
-import { hubThrow, screenToWorldVel, throwable } from '../../auto/throw.js';
+import { THROW_TAKES, hubPayAt, hubPayOne, payVel } from '../../auto/throw.js';
 import { levelClearedAge, levelDone, levelHold, levelLost, levelScene, levelState } from '../../auto/level.js';
 import { clearedText } from '../../art/cleared.js';
 import { DEV } from '../../dev/knobs.js';
@@ -30,10 +31,11 @@ import { PERKS, STAT_PERKS } from '../../data/perks.js';
 import { BAG_SLOTS, EXO_STATS, MAX_PLAYERS, addPlayer, bagAdd, fitExo, fitGun, fitMod, fitPerk, healRun, levelCleared, levelFailed, levelSeed, kitMissing, newRun, bagMove, rowMove, rowToBag,
   scrapAt, setActive, spend, unfitExo, unfitMod, unfitPerk } from '../../auto/run.js';
 import { loadAutoRun, saveAutoRun } from '../../auto/save.js';
-import { EXO_NAMES, arcPick, gunArc, navBack, navOpen, navRow, navStart } from '../../auto/nav.js';
+import { EXO_NAMES, arcPick, gunArc, navBack, navOpen, navPath, navPick, navRow, navStart } from '../../auto/nav.js';
 import { meterTail, nextSpan } from '../../auto/meters.js';
 import { CARD_ICON, GunCard, ModCard, PerkCard } from '../cards.js';
-import { GunIcon } from '../editor.js';
+import { GunFire, GunIcon, GunStats, PULL_COL } from '../editor.js';
+import { fireSimNew, fireSimStep } from '../../spells/bagsim.js';
 import { GlyphIcon, HelmetIcon, PixIcon } from './icons.js';
 import { PauseMenu } from '../pause.js';
 import { runScene } from '../scenecanvas.js';
@@ -193,7 +195,46 @@ export function AutoScreen() {
     if (S.lvl) levelHold(S, st.active && st.mag > DEAD ? st.nx * (st.mag - DEAD) / (1 - DEAD) : 0);
     else hubStick(S, st);
   };
-  const pressA = () => { SFX.unlock(); SFX.ui('tap'); if (scene.current && (hubExit(scene.current) || (!!scene.current.lvl && chestOpen(scene.current)))) SFX.fx('open'); };
+  // (feedback round 2) A at a hub machine pays it: a tap one of what it takes (THROW_TAKES) out of player 1's chest, held
+  // DEV.autoPayHold a stream (autoStreamRate0 → 1 over autoStreamRamp); the finger's offset from where A was pressed
+  // aims them (payVel: direction and speed; none: a hop onto the floor in front of him). Each one leaves the bag (saved).
+  // Anywhere else A is A (pressA)
+  /** @param {any} e */
+  const downA = e => {
+    e.preventDefault();
+    SFX.unlock();
+    const S = scene.current, at = S && !S.lvl ? hubPayAt(S) : null;
+    if (!S || !at) { pressA(); return; }
+    const kind = THROW_TAKES[at], id = e.pointerId, x0 = e.clientX, y0 = e.clientY;
+    let dx = 0, dy = 0, stream = false, acc = 0, t0 = 0, last = performance.now();
+    const one = () => {
+      if (!spend(run, kind, 1)) return false;
+      const L = S.runners[0], v = payVel(L ? L.face : 1, dx, dy);
+      hubPayOne(S, kind, v.vx, v.vy, at);
+      saveAutoRun(run); setV(n => n + 1);
+      return true;
+    };
+    const hold = setTimeout(() => { stream = true; t0 = performance.now(); acc = 1; }, DEV.autoPayHold);
+    const tick = setInterval(() => {
+      const now = performance.now(), dt = (now - last) / 1000;
+      last = now;
+      if (!stream) return;
+      const ramp = Math.min(1, (now - t0) / 1000 / DEV.autoStreamRamp);
+      acc += (DEV.autoStreamRate0 + (DEV.autoStreamRate1 - DEV.autoStreamRate0) * ramp) * dt;
+      while (acc >= 1) { acc -= 1; if (!one()) { acc = 0; break; } }
+    }, 33);
+    const finish = () => { clearTimeout(hold); clearInterval(tick); removeEventListener('pointermove', move); removeEventListener('pointerup', up); removeEventListener('pointercancel', up); };
+    /** @param {any} ev */
+    const move = ev => { if (ev.pointerId === id) { ev.preventDefault(); dx = ev.clientX - x0; dy = ev.clientY - y0; } };
+    /** @param {any} ev */
+    const up = ev => {
+      if (ev.pointerId !== id) return;
+      finish();
+      if (!stream) { dx = ev.clientX - x0; dy = ev.clientY - y0; if (!one()) SFX.ui('tap'); }
+    };
+    addEventListener('pointermove', move, { passive: false }); addEventListener('pointerup', up); addEventListener('pointercancel', up);
+  };
+  const pressA = () => { SFX.ui('tap'); if (scene.current && (hubExit(scene.current) || (!!scene.current.lvl && chestOpen(scene.current)))) SFX.fx('open'); };
   /** what the source item is: a bag slot's, or a nav slot's at the nav's level @param {DragSrc} src @returns {BagItem | null} */
   const srcItem = src => {
     if (src.from === 'bag') return run.bag[src.i] || null;
@@ -206,8 +247,6 @@ export function AutoScreen() {
   const down = (e, src) => {
     if (press.current || !srcItem(src)) return;
     const grab = !!(e.target && e.target.closest && e.target.closest('.agrab'));
-    const S0 = scene.current;
-    if (grab && src.from === 'bag' && throwable(srcItem(src)) && S0 && S0.hub && !S0.lvl && cvs.current && cam.current) { throwPress(e, src); return; }
     if (grab) e.preventDefault();
     /** @type {Press} */
     const p = { id: e.pointerId, x0: e.clientX, y0: e.clientY, src, grab, drag: false };
@@ -236,87 +275,6 @@ export function AutoScreen() {
     /** @param {any} ev */
     const cancel = ev => { if (ev.pointerId === p.id) { finish(); setDrag(null); } };
     addEventListener('pointermove', move, { passive: false }); addEventListener('pointerup', up); addEventListener('pointercancel', cancel);
-  };
-  // stage 10a: a press on a gold or gem stack in the hub (auto/throw.js). Moved past MOVE it's a swipe: let go fast (DEV.autoFlickMin
-  // px / s) it flicks one out on the finger's velocity; held still (DEV.autoStreamWait) away from the stack it streams them in
-  // the direction moved, speed × the distance (autoStreamK), the rate ramping up (autoStreamRate0 → 1 over autoStreamRamp).
-  // Each one thrown leaves the bag (spend) and is saved
-  /** @param {any} e @param {DragSrc} src */
-  const throwPress = (e, src) => {
-    e.preventDefault();
-    const it = run.bag[src.i], c = cvs.current, S = scene.current;
-    if (!it || !c || !S) return;
-    /** @type {'gold' | 'red' | 'green'} */
-    const kind = it.kind === 'red' ? 'red' : it.kind === 'green' ? 'green' : 'gold';
-    const id = e.pointerId, x0 = e.clientX, y0 = e.clientY;
-    /** @type {Press} */
-    const p = { id, x0, y0, src, grab: true, drag: false };
-    press.current = p;
-    let mode = 'press', fx = x0, fy = y0, stillAt = performance.now(), sx = x0, sy = y0, t0 = 0, acc = 0, last = performance.now();
-    /** @type {{ x: number, y: number, t: number }[]} */
-    const trail = [{ x: x0, y: y0, t: performance.now() }];
-    // a finger point (css px) → the world, clamped into the play area (from below it: its bottom edge)
-    /** @param {number} x @param {number} y */
-    const world = (x, y) => {
-      const r = c.getBoundingClientRect(), k = r.width / TITLE_VW, C = cam.current;
-      const cx = Math.max(r.left + 4, Math.min(r.right - 4, x)), cy = Math.max(r.top + 4, Math.min(r.bottom - 6, y));
-      return C ? camAt(C, (cx - r.left) / k, (cy - r.top) / k) : { x: 0, y: 0 };
-    };
-    /** one out of the bag at the finger, at (vx, vy) css px / s @param {number} vx @param {number} vy */
-    const one = (vx, vy) => {
-      if (!spend(run, kind, 1)) return false;
-      const r = c.getBoundingClientRect(), C = cam.current, w = world(fx, fy), v = screenToWorldVel(vx, vy, r.width / TITLE_VW, C ? C.z : 1);
-      hubThrow(S, kind, 1, w.x, w.y, v.vx, v.vy);
-      SFX.ui('tap');
-      saveAutoRun(run); setV(n => n + 1);
-      return true;
-    };
-    // (owner, feedback round 1: the whole-stack lift, held still on it, is gone: it got in the way of spraying)
-    const tick = setInterval(() => {
-      const now = performance.now(), dt = (now - last) / 1000;
-      last = now;
-      if (mode === 'swipe' && now - stillAt > DEV.autoStreamWait && Math.hypot(fx - x0, fy - y0) > MOVE * 2) { mode = 'stream'; t0 = now; acc = 1; }
-      if (mode !== 'stream') return;
-      const ramp = Math.min(1, (now - t0) / 1000 / DEV.autoStreamRamp);
-      acc += (DEV.autoStreamRate0 + (DEV.autoStreamRate1 - DEV.autoStreamRate0) * ramp) * dt;
-      const dx = fx - x0, dy = fy - y0, d = Math.hypot(dx, dy) || 1, r = c.getBoundingClientRect(), C = cam.current;
-      // the speed in world units, back to css px / s for one()
-      const sp = d * DEV.autoStreamK * (r.width / TITLE_VW) * (C ? C.z : 1);
-      while (acc >= 1) { acc -= 1; if (!one(dx / d * sp, dy / d * sp)) { acc = 0; break; } }
-    }, 33);
-    const finish = () => {
-      press.current = null; clearInterval(tick);
-      removeEventListener('pointermove', move); removeEventListener('pointerup', up); removeEventListener('pointercancel', up);
-    };
-    /** @param {any} ev */
-    const move = ev => {
-      if (ev.pointerId !== id) return;
-      ev.preventDefault();
-      fx = ev.clientX; fy = ev.clientY;
-      const now = performance.now();
-      trail.push({ x: fx, y: fy, t: now });
-      while (trail.length > 2 && now - trail[0].t > 100) trail.shift();
-      if (Math.hypot(fx - sx, fy - sy) > 6) { sx = fx; sy = fy; stillAt = now; }
-      if (mode === 'press' && Math.hypot(fx - x0, fy - y0) > MOVE) { mode = 'swipe'; SFX.unlock(); }
-      // stage 12: a green gem over an empty player circle stops being a throw: it's a drag (the ghost, the circle lit, drop)
-      if (kind === 'green' && (mode === 'press' || mode === 'swipe')) {
-        const at = dropAt(src, fx, fy);
-        if (at && at.to === 'player' && at.ok) { mode = 'drag'; p.drag = true; SFX.ui('tap'); }
-      }
-      if (mode === 'drag') { setDrag({ src, x: fx, y: fy, over: dropAt(src, fx, fy), back: false }); return; }
-    };
-    /** @param {any} ev */
-    const up = ev => {
-      if (ev.pointerId !== id) return;
-      finish();
-      if (mode === 'drag') { drop(src, ev.clientX, ev.clientY, p); return; }
-      if (mode === 'swipe') {
-        fx = ev.clientX; fy = ev.clientY;
-        const a = trail[0], dt = Math.max(0.016, (performance.now() - a.t) / 1000), vx = (fx - a.x) / dt, vy = (fy - a.y) / dt;
-        if (Math.hypot(vx, vy) >= DEV.autoFlickMin) one(vx * DEV.autoFlickK, vy * DEV.autoFlickK);
-      }
-    };
-    addEventListener('pointermove', move, { passive: false }); addEventListener('pointerup', up); addEventListener('pointercancel', up);
   };
   /** the drop target under a point, and whether this item fits there @param {DragSrc} src @param {number} x @param {number} y @returns {DropAt | null} */
   const dropAt = (src, x, y) => {
@@ -403,8 +361,28 @@ export function AutoScreen() {
     setDrag({ src, x: p.x0, y: p.y0, over: null, back: true });
     setTimeout(() => setDrag(d => d && d.back ? null : d), 170);
   };
-  /** a nav circle tapped: one level down @param {string | number} w */
-  const openNav = w => { nothing(); setNav(n => navOpen(n, w, run)); };
+  /** a nav circle tapped: one level down from its row's state (a raised row's: back to there, then down) @param {NavState} s @param {string | number} w */
+  const openAt = (s, w) => { nothing(); setNav(navOpen(s, w, run)); };
+  // (owner, feedback round 2) a gun circle (the Guns row): a tap opens it, held DEV.autoHoldMs it becomes the gun that fires
+  /** @param {any} e @param {NavState} s @param {number} i */
+  const holdGun = (e, s, i) => {
+    e.preventDefault();
+    const pl = run.players[s.p];
+    if (press.current || !pl || !pl.guns[i]) return;
+    const id = e.pointerId;
+    let held = false;
+    const timer = setTimeout(() => {
+      held = true;
+      SFX.unlock();
+      if (setActive(run, s.p, i)) { saveAutoRun(run); SFX.fx('open'); setV(v => v + 1); }
+    }, DEV.autoHoldMs);
+    const finish = () => { clearTimeout(timer); removeEventListener('pointerup', up); removeEventListener('pointercancel', cancel); };
+    /** @param {any} ev */
+    const up = ev => { if (ev.pointerId !== id) return; finish(); if (!held) openAt(s, i); };
+    /** @param {any} ev */
+    const cancel = ev => { if (ev.pointerId === id) finish(); };
+    addEventListener('pointerup', up); addEventListener('pointercancel', cancel);
+  };
   // stage 9: a press on a player's helmet. Let go soon: his menu (a tap). Held DEV.autoHoldMs: his 4 guns fan out in an
   // arc above it; slide onto one (it lights) and let go: that gun fires (setActive, saved); let go on none: nothing
   /** @param {any} e @param {number} i */
@@ -436,7 +414,7 @@ export function AutoScreen() {
     const up = ev => {
       if (ev.pointerId !== id) return;
       finish();
-      if (!pts) { openNav(i); return; }
+      if (!pts) { openAt({ ...navRef.current, level: 'players' }, i); return; }
       setArc(null);
       if (hi >= 0 && setActive(run, i, hi)) { saveAutoRun(run); SFX.fx('open'); setV(v => v + 1); }
     };
@@ -453,7 +431,7 @@ export function AutoScreen() {
       boss ? h('div', { className: 'abossbar' }, h('b', null, boss.name),
         h('div', { className: 'abosstrack' }, h('i', { style: { width: (100 * boss.hp / Math.max(1, boss.max)).toFixed(1) + '%' } }))) : null,
       h('button', { className: 'pausebtn', title: 'Pause', onPointerDown: tap(() => { SFX.fx('open'); setPaused(true); }) }, '⏸')),
-    h(NavRow, { row: navRow(nav, run, MAX_PLAYERS), level: nav.level, open: openNav, down, drag, holdHelm, meters }),
+    h(NavStack, { nav, run, openAt, down, drag, holdHelm, holdGun, meters }),
     h('div', { className: 'abag' + (drag && drag.over && drag.over.key === 'bag' && drag.over.ok ? ' drop' : '') },
       ...Array.from({ length: BAG_SLOTS }, (_, i) => h(BagSlot, { key: i, i, it: run.bag[i], down,
         lift: !!drag && drag.src.from === 'bag' && drag.src.i === i,
@@ -461,7 +439,7 @@ export function AutoScreen() {
     h('div', { className: 'abtns' },
       h('button', { className: 'abtn ab', onPointerDown: tap(() => { nothing(); setNav(navBack); }) }, 'B'),
       h(PillStick, { onMove: steer }),
-      h('button', { className: 'abtn aa', onPointerDown: tap(pressA) }, 'A')),
+      h('button', { className: 'abtn aa', onPointerDown: downA }, 'A')),
     arc ? h(GunArc, { arc, run }) : null,
     burst ? h(CoinBurst, { key: burst.k, burst }) : null,
     drag ? h(Ghost, { drag, it: srcItem(drag.src) }) : null,
@@ -519,13 +497,114 @@ function PillStick({ onMove }) {
     h('div', { className: 'apillknob' + (knob.jet ? ' jet' : ''), style: { transform: 'translate(' + knob.x + 'px,' + knob.y + 'px)' } }));
 }
 
-// The context nav's row (auto/nav.js navRow): circles for choices (a player's ring and number, a menu glyph, a gun's
+// The context nav as a stack (owner, feedback round 2): the row for the nav's level sits in the nav's place (.anav); every
+// level above it stays on screen, raised above it over the play area (.anavup), its picked cell lit and the rest dimmed.
+// Going down a level the rows rise (a transition on their offset) and the new one slides in from the right; B reverses it
+// (the row leaving slides out, the rest drop back). A raised row still takes taps: from its own level. At a gun's mod slots
+// the gun panel (GunPanel: the old Bag's stats and firing window) rises between the slots and the Guns row.
+/** @typedef {import('../../auto/nav.js').NavState} NavState */
+const ROW_H = 66, STACK_GAP = 6, PANEL_H = 168, LEAVE_MS = 260;
+/** @typedef {{ key: string, s: NavState, panel?: boolean }} StackItem */
+/**
+ * @param {{ nav: NavState, run: AutoRun, openAt: (s: NavState, w: string | number) => void, down: (e: any, src: DragSrc) => void,
+ *   drag: Drag | null, holdHelm: (e: any, i: number) => void, holdGun: (e: any, s: NavState, i: number) => void,
+ *   meters: () => PlayerMeters | null }} props
+ */
+function NavStack({ nav, run, openAt, down, drag, holdHelm, holdGun, meters }) {
+  const path = navPath(nav);
+  const pl = run.players[nav.p];
+  const gun = nav.level === 'gun' && pl ? pl.guns[nav.g] : null;
+  /** @type {StackItem[]} */
+  const items = path.map(s => ({ key: s.level, s }));
+  if (gun) items.splice(items.length - 1, 0, { key: 'panel', s: nav, panel: true });
+  const [lit, setLit] = useState(null);
+  // rows that just left (B, or a tap on a raised row): kept LEAVE_MS to slide out
+  /** @type {{ it: StackItem, k: number }[]} */
+  const noGone = [];
+  const [gone, setGone] = useState(noGone);
+  const prev = useRef(items);
+  // rows there when the screen opens don't slide in; later ones do
+  const ready = useRef(false);
+  useEffect(() => { ready.current = true; }, []);
+  const sig = items.map(i => i.key).join();
+  useEffect(() => {
+    const keys = new Set(items.map(i => i.key));
+    const out = prev.current.filter(i => !keys.has(i.key));
+    prev.current = items;
+    if (!out.length) return;
+    const k = performance.now();
+    setGone(g => [...g.filter(o => !keys.has(o.it.key)), ...out.map(it => ({ it, k }))]);
+    setTimeout(() => setGone(g => g.filter(o => o.k !== k)), LEAVE_MS);
+  }, [sig]);
+  // each item's lift above the nav's place, from the bottom up
+  /** @type {number[]} */
+  const off = [];
+  for (let i = items.length - 1, y = 0; i >= 0; i--) { off[i] = y; y += (items[i].panel ? PANEL_H : ROW_H) + STACK_GAP; }
+  const last = items.length - 1;
+  /** @param {StackItem} it @param {string} cls @param {boolean} cur */
+  const body = (it, cls, cur) => {
+    if (it.panel) {
+      const g = run.players[it.s.p] && run.players[it.s.p].guns[it.s.g];
+      return g ? h(GunPanel, { gun: g, sig: it.s.p + '|' + it.s.g + '|' + g.slots.join() + '|' + g.multi + '|' + g.shuffle + '|' + g.castDelay + '|' + g.recharge,
+        col: MACHINE_EDGE, onLit: cur ? setLit : undefined, cls }) : null;
+    }
+    const s = it.s;
+    /** @param {string | number} w */
+    const open = w => openAt(s, w);
+    /** @param {any} e @param {number} i */
+    const hg = (e, i) => holdGun(e, s, i);
+    return h(NavRow, { row: navRow(s, run, MAX_PLAYERS), level: s.level, cls, pick: cur ? undefined : navPick(nav, s.level),
+      open, down, drag: cls === 'anav' ? drag : null, holdHelm, holdGun: hg, meters, slide: ready.current, lit: cls === 'anav' && nav.level === 'gun' ? lit : null });
+  };
+  return h('div', { className: 'anavwrap' },
+    ...items.map((it, i) => h('div', { key: it.key, className: 'anavslot' + (it.panel ? ' panel' : ''), style: { transform: 'translateY(' + (-off[i]) + 'px)' } },
+      body(it, i === last ? 'anav' : it.panel ? 'up' : 'anavup', i === last))),
+    ...gone.map(o => h('div', { key: 'gone-' + o.it.key + o.k, className: 'anavslot' + (o.it.panel ? ' panel' : '') }, body(o.it, 'anavout', false))));
+}
+// the gun panel's edge: the mod machine's colour, as the mod slots' row under it
+const MACHINE_EDGE = HUB_MACHINES.mod.hue;
+
+// The gun panel (owner, feedback round 2): the old Bag's top (ui/editor.js) in the auto screen's colours: the gun's stats
+// on the left (the live cast/recharge/mana bars), the firing window on the right. Its own fire preview (fireSimStep at
+// DEV.bagSpeed, as SlotGrid) drives both and lights the mod slots below in each pull's colour (onLit).
+/** @param {{ gun: Gun, sig: string, col: string, onLit?: (lit: any) => void, cls: string }} props */
+function GunPanel({ gun, sig, col, onLit, cls }) {
+  /** @type {{ current: import('../../spells/bagsim.js').FireSim & { sig?: string } | null }} */
+  const sim = useRef(null);
+  if (!sim.current || sim.current.sig !== sig) sim.current = Object.assign(fireSimNew(gun), { sig });
+  const litFn = useRef(onLit);
+  litFn.current = onLit;
+  useEffect(() => {
+    let raf = 0, last = performance.now(), prev = null;
+    /** @param {number} now */
+    const loop = now => {
+      raf = requestAnimationFrame(loop);
+      const S = sim.current, dt = Math.min(0.1, (now - last) / 1000) * DEV.bagSpeed;
+      last = now;
+      if (!S) return;
+      for (let t = dt; t > 0; t -= 0.01) fireSimStep(S, Math.min(0.01, t));
+      if (S.lit !== prev) { prev = S.lit; if (litFn.current) litFn.current(S.lit); }
+    };
+    raf = requestAnimationFrame(loop);
+    return () => { cancelAnimationFrame(raf); if (litFn.current) litFn.current(null); };
+  }, []);
+  return h('div', { className: 'agunpanel ' + cls, style: { '--pc': col } },
+    h(GunStats, { gun, sim, sig }),
+    h(GunFire, { gun, sim }));
+}
+
+// One row of the nav (auto/nav.js navRow): circles for choices (a player's ring and number, a menu glyph, a gun's
 // sprite), square tiles for slots (the bag's tile look; a gun's mod row scrolls sideways when it has more than fit).
-// Below the top the row's edge takes the tapped player's colour. Same height at every level (style.css .anav).
-/** @param {{ row: import('../../auto/nav.js').NavRow, level: string, open: (w: string | number) => void, down: (e: any, src: DragSrc) => void, drag: Drag | null,
- *   holdHelm: (e: any, i: number) => void, meters: () => PlayerMeters | null }} props */
-function NavRow({ row, level, open, down, drag, holdHelm, meters }) {
+// Below the top the row's edge takes the tapped player's colour. Same height at every level (style.css .anavrow).
+// cls: 'anav' the nav's own row, 'anavup' raised (pick: its picked cell), 'anavout' leaving. lit: the gun panel's
+// pull lighting the mod slots.
+/** @param {{ row: import('../../auto/nav.js').NavRow, level: string, cls: string, pick?: string | number, open: (w: string | number) => void,
+ *   down: (e: any, src: DragSrc) => void, drag: Drag | null, holdHelm: (e: any, i: number) => void, holdGun: (e: any, i: number) => void,
+ *   meters: () => PlayerMeters | null, lit: { slots: number[], pull: number } | null, slide?: boolean }} props */
+function NavRow({ row, level, cls, pick, open, down, drag, holdHelm, holdGun, meters, lit, slide }) {
+  const [slideIn] = useState(!!slide);
   const over = drag && drag.over && drag.over.ok ? drag.over.key : '';
+  const on = new Set(lit ? lit.slots : []), pc = lit ? PULL_COL[lit.pull % PULL_COL.length] : '';
   /** @param {import('../../auto/nav.js').NavCell} c @param {number} i */
   const cell = (c, i) => {
     const to = c.open;
@@ -533,6 +612,8 @@ function NavRow({ row, level, open, down, drag, holdHelm, meters }) {
     const go = e => { e.preventDefault(); if (to !== undefined) open(to); };
     /** a helmet: a tap or a hold (the gun arc) @param {any} e */
     const hold = e => holdHelm(e, i);
+    /** a gun: a tap opens it, a hold makes it the active gun @param {any} e */
+    const gunHold = e => holdGun(e, i);
     if (row.shape === 'slots') {
       const it = c.item || null;
       const lift = !!drag && drag.src.from === 'nav' && drag.src.i === i;
@@ -540,9 +621,11 @@ function NavRow({ row, level, open, down, drag, holdHelm, meters }) {
       const grab = e => down(e, { from: 'nav', i });
       return h('div', { key: c.key, className: 'aslot anavs' + (it ? ' full k-' + it.kind : '') + (over === 'n' + i ? ' drop' : '') + (lift ? ' lift' : ''),
         style: itemEdge(it), 'data-nslot': i, onPointerDown: it ? grab : undefined },
-        it ? h(ItemIcon, { it }) : null, it ? h(Grab) : null);
+        it ? h(ItemIcon, { it }) : null, it ? h(Grab) : null,
+        on.has(i) ? h('i', { className: 'pulse on', style: { background: pc, borderColor: pc, color: pc } }) : null);
     }
-    const cls = 'anavc' + (c.dim ? ' locked' : ' on') + (c.sel ? ' sel' : '') + (c.gun ? ' gun' : '') + (over === 'g' + i || over === 'p' + i ? ' drop' : '');
+    const cls2 = 'anavc' + (c.dim ? ' locked' : ' on') + (c.sel ? ' sel' : '') + (c.gun ? ' gun' : '') + (over === 'g' + i || over === 'p' + i ? ' drop' : '') +
+      (pick !== undefined && to === pick ? ' pick' : '');
     const style = c.col && !c.dim ? { borderColor: c.col, boxShadow: '0 0 10px ' + (c.glow || c.col + '66') } : undefined;
     let inner = null;
     if (c.gun) inner = h(GunIcon, { gun: c.gun });
@@ -550,10 +633,11 @@ function NavRow({ row, level, open, down, drag, holdHelm, meters }) {
     else if (c.icon) inner = h(PixIcon, { id: c.icon, size: 20, tint: level === 'exo' ? HUB_MACHINES.exo.hue : undefined });      // themed pixel icons, not emoji (owner)
     else if (c.glyph) inner = h('span', { className: 'anavg' }, c.glyph);
     else if (c.label) inner = h('span', { className: 'anavp', style: { background: c.col } }, c.label);
-    return h('div', { key: c.key, className: cls, 'data-player': level === 'players' ? i : undefined, 'data-open': c.open, 'data-gslot': level === 'guns' ? i : undefined, 'data-pslot': level === 'players' && !c.helm ? i : undefined,
-      title: c.glyph ? c.label : undefined, style, onPointerDown: c.helm && level === 'players' ? hold : go }, inner);
+    const press = c.helm && level === 'players' ? hold : level === 'guns' && c.gun ? gunHold : go;
+    return h('div', { key: c.key, className: cls2, 'data-player': level === 'players' ? i : undefined, 'data-open': c.open, 'data-gslot': level === 'guns' ? i : undefined, 'data-pslot': level === 'players' && !c.helm ? i : undefined,
+      title: c.glyph ? c.label : undefined, style, onPointerDown: press }, inner);
   };
-  return h('div', { className: 'anav l-' + level + (row.shape === 'slots' ? ' slots' : ''), 'data-level': level,
+  return h('div', { className: 'anavrow ' + cls + ' l-' + level + (row.shape === 'slots' ? ' slots' : '') + (pick !== undefined ? ' picked' : '') + (slideIn ? ' slide' : ''), 'data-level': level,
     style: row.col ? { borderColor: row.col, boxShadow: '0 0 12px ' + row.col + '55' } : undefined },
     row.shape === 'stats' ? h(StatsRow, { meters }) : row.cells.map(cell));
 }
