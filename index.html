@@ -945,7 +945,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   display:grid;grid-template-columns:repeat(7,1fr);grid-auto-rows:min-content;gap:6px;padding:8px;overscroll-behavior:contain}
 .aslot{position:relative;aspect-ratio:1;border-radius:10px;background:#1d1531;border:2px solid rgba(255,255,255,0.1);
   box-sizing:border-box;display:flex;align-items:center;justify-content:center;overflow:hidden}
-.aslot.full{border-color:rgba(255,179,90,0.45);background:#2c1f45}
+.aslot.full{border-color:var(--ic,rgba(255,179,90,0.45));background:#2c1f45}
 .aslot .gicon{width:92%;height:auto}
 /* stage 8b: the grab handle (a circle round the icon's centre, the autoGrab radius): only it takes a drag, the rest of the tile scrolls */
 .agrab{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);border-radius:50%;touch-action:none;cursor:grab;z-index:2}
@@ -972,6 +972,24 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .apill{position:relative;flex:1 1 auto;height:46px;box-sizing:border-box;border-radius:23px;background:#251c3a;border:2px solid #4a3a6e;box-shadow:0 3px 0 #0b0716,inset 0 2px 6px rgba(0,0,0,0.5);touch-action:none;user-select:none;-webkit-user-select:none;display:flex;align-items:center;justify-content:center}
 .apillknob{width:34px;height:34px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#6a58a0,#3a2d5e);border:2px solid #8a76c8;box-sizing:border-box;box-shadow:0 2px 0 #0b0716;pointer-events:none}
 .apillknob.jet{border-color:#ffb347;box-shadow:0 2px 0 #0b0716,0 0 10px rgba(255,160,60,0.7)}
+
+/* CaveRunner Auto's item cards (owner, stage 8b): the shared cards (ui/cards.js) in the auto screen's dark purple
+   panels, edged in the item's group colour (--ic, AutoScreen itemEdge), titles in the menu's mono caps; no pin/trash */
+.acard{--bg:#0b0716;--text:#f1ecff;--muted:rgba(241,236,255,0.58);--pad:rgba(255,255,255,0.06);--ring:#3d2f5c;
+  --line:rgba(241,236,255,0.25);--btn:#140e22;--good:#5ee05a;--bad:#ff6a5a;--gun-l:72%;color:var(--text)}
+.acard .shade{background:rgba(5,2,12,0.66)}
+.acard .pop{background:rgba(14,9,26,0.97);border:2px solid var(--ic,#3d2f5c);border-radius:14px;
+  box-shadow:0 0 0 1px rgba(0,0,0,0.6),0 0 22px rgba(0,0,0,0.6),inset 0 0 18px rgba(255,255,255,0.03)}
+.acard .ptitle b{font:900 17px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.04em;text-transform:uppercase}
+.acard .ptitle span{font:700 10.5px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.08em;color:var(--muted)}
+.acard .pglyph{background:#2c1f45;border-color:var(--ic,#3d2f5c)!important;border-radius:10px}
+.acard .pclose{background:#1d1531;border:2px solid #3d2f5c;color:#f1ecff;font-weight:900}
+.acard .pinfo{color:#f1ecff}
+.acard .pnote{border-left-color:var(--ic,#3d2f5c)}
+.acard .prow{border-bottom-color:rgba(255,255,255,0.08)}
+.acard .pdemo{border-top-color:#3d2f5c}
+.acard .tile,.acard .dtile{background:#1d1531}
+.acard .aumarks{display:none}
 </style>
 </head>
 <body>
@@ -38698,6 +38716,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           {
             key: c.key,
             className: "aslot anavs" + (it ? " full k-" + it.kind : "") + (over === "n" + i ? " drop" : "") + (lift ? " lift" : ""),
+            style: itemEdge(it),
             "data-nslot": i,
             onPointerDown: it ? grab : void 0
           },
@@ -38741,6 +38760,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       {
         className: "aslot" + (it ? " full k-" + it.kind : "") + (lift ? " lift" : ""),
         "data-slot": i,
+        style: itemEdge(it),
         onPointerDown: it ? grab : void 0
       },
       it ? h(ItemIcon, { it }) : null,
@@ -38775,11 +38795,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const d = (200 * DEV.autoGrab).toFixed(1) + "%";
     return h("i", { className: "agrab", style: { width: d, height: d } });
   }
+  var itemEdge = (it) => {
+    if (!it) return void 0;
+    const c = it.kind === "mod" ? famCol(it.id || "") : it.kind === "gun" ? HUB_MACHINES.gun.hue : it.kind === "exo" ? HUB_MACHINES.exo.hue : it.kind === "perk" ? HUB_MACHINES.perk.hue : ITEM_SPEND;
+    return { "--ic": c };
+  };
+  var ITEM_SPEND = "#c9cdd6";
   function Ghost({ drag, it }) {
     if (!it) return null;
     return h(
       "div",
-      { className: "aslot full aghost k-" + it.kind + (drag.back ? " back" : ""), style: { left: drag.x + "px", top: drag.y + "px" } },
+      { className: "aslot full aghost k-" + it.kind + (drag.back ? " back" : ""), style: { left: drag.x + "px", top: drag.y + "px", ...itemEdge(it) } },
       h(ItemIcon, { it })
     );
   }
@@ -38794,7 +38820,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     else if (it.kind === "gun" && it.gun) c = h(GunCard, { gun: it.gun, label: "Bag", onClose: close });
     else if (it.kind === "perk" && it.id) c = h(PerkCard, { id: it.id, top: true, onClose: close });
     else if (it.kind === "exo" && it.cat && it.tier) c = h(ExoCard, { cat: it.cat, tier: it.tier, onClose: close });
-    return ReactDOM.createPortal(h("div", { className: "modpop acard" }, h("div", { className: "shade", onPointerDown: shut }), c), document.body);
+    return ReactDOM.createPortal(h("div", { className: "modpop acard", style: itemEdge(it) }, h("div", { className: "shade", onPointerDown: shut }), c), document.body);
   }
   function ExoCard({ cat, tier, onClose }) {
     const S0 = STAT_PERKS[EXO_STATS[cat][0]];

@@ -20,7 +20,8 @@ import { levelClearedAge, levelDone, levelHold, levelLost, levelScene, levelStat
 import { clearedText } from '../../art/cleared.js';
 import { DEV } from '../../dev/knobs.js';
 import { levelBoss } from '../../auto/enemies.js';
-import { MODS } from '../../spells/mods.js';
+import { MODS, famCol } from '../../spells/mods.js';
+import { HUB_MACHINES } from '../../auto/hub.js';
 import { PERKS, STAT_PERKS } from '../../data/perks.js';
 import { BAG_SLOTS, EXO_STATS, MAX_PLAYERS, fitExo, fitGun, fitMod, fitPerk, healRun, levelCleared, levelFailed, levelSeed, newRun,
   unfitExo, unfitMod, unfitPerk } from '../../auto/run.js';
@@ -323,7 +324,7 @@ function NavRow({ row, level, open, down, drag }) {
       /** @param {any} e */
       const grab = e => down(e, { from: 'nav', i });
       return h('div', { key: c.key, className: 'aslot anavs' + (it ? ' full k-' + it.kind : '') + (over === 'n' + i ? ' drop' : '') + (lift ? ' lift' : ''),
-        'data-nslot': i, onPointerDown: it ? grab : undefined },
+        style: itemEdge(it), 'data-nslot': i, onPointerDown: it ? grab : undefined },
         it ? h(ItemIcon, { it }) : null, it ? h(Grab) : null);
     }
     const cls = 'anavc' + (c.dim ? ' locked' : ' on') + (c.sel ? ' sel' : '') + (c.gun ? ' gun' : '') + (over === 'g' + i ? ' drop' : '');
@@ -347,7 +348,7 @@ function NavRow({ row, level, open, down, drag }) {
 function BagSlot({ i, it, down, lift }) {
   /** @param {any} e */
   const grab = e => down(e, { from: 'bag', i });
-  return h('div', { className: 'aslot' + (it ? ' full k-' + it.kind : '') + (lift ? ' lift' : ''), 'data-slot': i,
+  return h('div', { className: 'aslot' + (it ? ' full k-' + it.kind : '') + (lift ? ' lift' : ''), 'data-slot': i, style: itemEdge(it),
     onPointerDown: it ? grab : undefined },
     it ? h(ItemIcon, { it }) : null, it ? h(Grab) : null,
     it && (it.n > 1 || it.kind === 'gold' || it.kind === 'red' || it.kind === 'green') ? h('b', { className: 'acount' }, it.n) : null);
@@ -388,9 +389,20 @@ function Grab() {
 
 // the dragged item, under the finger (a refused drop slides it home: .back)
 /** @param {{ drag: Drag, it: BagItem | null }} props */
+// a tile's outline by the item's group (owner): a mod its family's colour (the old Bag's: shots yellow, trajectory
+// purple, …), a gun, exo mod or perk its machine's, gold and gems (things you spend) one light grey
+/** @param {BagItem | null} it @returns {any} */
+const itemEdge = it => {
+  if (!it) return undefined;
+  const c = it.kind === 'mod' ? famCol(it.id || '') : it.kind === 'gun' ? HUB_MACHINES.gun.hue : it.kind === 'exo' ? HUB_MACHINES.exo.hue
+    : it.kind === 'perk' ? HUB_MACHINES.perk.hue : ITEM_SPEND;
+  return { '--ic': c };
+};
+const ITEM_SPEND = '#c9cdd6';
+
 function Ghost({ drag, it }) {
   if (!it) return null;
-  return h('div', { className: 'aslot full aghost k-' + it.kind + (drag.back ? ' back' : ''), style: { left: drag.x + 'px', top: drag.y + 'px' } },
+  return h('div', { className: 'aslot full aghost k-' + it.kind + (drag.back ? ' back' : ''), style: { left: drag.x + 'px', top: drag.y + 'px', ...itemEdge(it) } },
     h(ItemIcon, { it }));
 }
 
@@ -409,7 +421,7 @@ function CardPop({ it, close }) {
   else if (it.kind === 'perk' && it.id) c = h(PerkCard, { id: it.id, top: true, onClose: close });
   else if (it.kind === 'exo' && it.cat && it.tier) c = h(ExoCard, { cat: it.cat, tier: it.tier, onClose: close });
   // (into the body, as ModPop: the cards take the page's colours, not the auto screen's)
-  return ReactDOM.createPortal(h('div', { className: 'modpop acard' }, h('div', { className: 'shade', onPointerDown: shut }), c), document.body);
+  return ReactDOM.createPortal(h('div', { className: 'modpop acard', style: itemEdge(it) }, h('div', { className: 'shade', onPointerDown: shut }), c), document.body);
 }
 
 // an exo mod's card: its category, tier, and what it adds (STAT_PERKS, by its tier)
