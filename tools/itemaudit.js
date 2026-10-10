@@ -33,26 +33,39 @@ const SEC = new Set(['delay', 'life', 'setDelay', 'timer', 'fuse']);
 const num = v => String(+v.toFixed(3));
 const sgn = v => (v > 0 ? '+' : '') + num(v);
 /** @param {string} k @param {number} v @param {boolean} perk */
-const fmtStat = (k, v, perk) => {
-  const L = LABEL[k] || k;
-  if (FLAG.has(k) && v === 1) return L;
-  if (perk && MUL.has(k)) return L + ' ×' + num(v);
-  if (k === 'crit') return L + ' +' + Math.round(v * 100) + '%';
-  if (k === 'd' || k === 'rech') return L + ' ' + sgn(v) + 's';
-  if (k === 'boost' || k === 'manaMul' || k === 'bounceE') return L + ' ×' + num(v);
-  if (k === 'spread') return L + ' ' + num(v) + '°';
-  if (k === 'hpAdd' || k === 'manaMax' || k === 'manaRegen' || (k === 'bounce' && perk)) return L + ' +' + num(v);
-  return L + ' ' + num(v) + (SEC.has(k) ? 's' : '');
+const fmtVal = (k, v, perk) => {
+  if (FLAG.has(k) && v === 1) return '';
+  if (perk && MUL.has(k)) return '×' + num(v);
+  if (k === 'crit') return '+' + Math.round(v * 100) + '%';
+  if (k === 'd' || k === 'rech') return sgn(v) + 's';
+  if (k === 'boost' || k === 'manaMul' || k === 'bounceE') return '×' + num(v);
+  if (k === 'spread') return num(v) + '°';
+  if (k === 'hpAdd' || k === 'manaMax' || k === 'manaRegen' || (k === 'bounce' && perk)) return '+' + num(v);
+  return num(v) + (SEC.has(k) ? 's' : '');
 };
+// what each stat is about (the page colours them by it, owner: to spot them at a glance)
+const CATS = {
+  dmg: ['dmg', 'boost', 'crit', 'close', 'contact', 'explode', 'knock', 'pierce', 'chain', 'arc', 'fire', 'lifeBoom', 'ghost', 'count', 'embers'],
+  cost: ['mana', 'manaMul', 'manaMax', 'manaRegen', 'hp'],
+  time: ['delay', 'd', 'rech', 'setDelay', 'timer', 'fuse', 'multi', 'draw', 'myriad', 'off'],
+  flight: ['speed', 'accel', 'vmax', 'grav', 'drag', 'wig', 'spread', 'homing', 'homeR', 'drift', 'bounce', 'bounceE', 'life', 'reach', 'pop'],
+  rock: ['size', 'pit', 'eat', 'bore', 'pull', 'r', 'beam'],
+  you: ['walk', 'jet', 'fuel', 'refuel', 'hpAdd', 'hpMul', 'heal', 'lives', 'shield', 'invis', 'repel', 'fireImm', 'gold', 'goldPull', 'carrot', 'tele', 'recoil'],
+};
+const CAT_OF = Object.fromEntries(Object.entries(CATS).flatMap(([c, ks]) => ks.map(k => [k, c])));
+/** a stat as [label, value, category] @param {string} k @param {number} v @param {boolean} perk */
+const fmtStat = (k, v, perk) => [LABEL[k] || k, fmtVal(k, v, perk), CAT_OF[k] || 'info'];
 /** @param {any} o @param {boolean} [perk] */
-const stats = (o, perk = false) => Object.entries(o).filter(([k, v]) => !SKIP.has(k) && (typeof v === 'number' || typeof v === 'boolean')).map(([k, v]) => fmtStat(k, +v, perk)).join(', ');
+const stats = (o, perk = false) => Object.entries(o).filter(([k, v]) => !SKIP.has(k) && (typeof v === 'number' || typeof v === 'boolean')).map(([k, v]) => fmtStat(k, +v, perk));
+/** @param {any[]} st */
+const statText = st => st.map(([l, v]) => l + (v ? ' ' + v : '')).join(', ');
 // the game's own icon colours (the bag's): a mod its family's, a perk the perk machine's green, an exo mod the exo machine's teal
 const PERK_HUE = '#3dff7a', EXO_HUE = '#3fe6d6';
 const iconsSrc = fs.readFileSync(path.join(__dirname, '..', 'src', 'ui', 'auto', 'icons.js'), 'utf8').replace(/\r\n/g, '\n');
 const NAV_ICONS = eval('(' + (iconsSrc.match(/export const NAV_ICONS = (\{[\s\S]*?\n\});/) || [])[1] + ')');
 const line = (name, info, st, note, id, glyph, col) => {
-  ROWS.push({ ...CUR, id, name, info: info || '', stats: st || '', note: note || '', glyph: glyph || '', col: col || '' });
-  P('- ' + name + ' — ' + (info || '') + (st ? ' [' + st + ']' : '') + (note ? '  >> ' + note : ''));
+  ROWS.push({ ...CUR, id, name, info: info || '', stats: st || [], note: note || '', glyph: glyph || '', col: col || '' });
+  P('- ' + name + ' — ' + (info || '') + (st && st.length ? ' [' + statText(st) + ']' : '') + (note ? '  >> ' + note : ''));
 };
 const TODO = new Set(G.GUN_TODO);
 const NOTE = {
@@ -106,10 +119,10 @@ const EX = {
 };
 for (const cat of G.EXO_CATS) {
   P(''); P(G.EXO_NAMES[cat] + ': ' + EX[cat][0].toUpperCase() + (EX[cat][1] ? '  >> ' + EX[cat][1] : ''));
-  const vals = G.EXO_STATS[cat].map(st => { const S = G.STAT_PERKS[st]; return (LABEL[S.field] || S.name) + ' by tier I–V: ' + S.vals.map(v => S.field === 'hpAdd' || S.field === 'carrot' ? '+' + v : '×' + v).join(' / '); });
-  for (const v of vals) P('  ' + v);
+  const vals = G.EXO_STATS[cat].map(st => { const S = G.STAT_PERKS[st]; return [(LABEL[S.field] || S.name) + ' by tier I–V', S.vals.map(v => S.field === 'hpAdd' || S.field === 'carrot' ? '+' + v : '×' + v).join(' / '), CAT_OF[S.field] || 'info']; });
+  for (const v of vals) P('  ' + v[0] + ': ' + v[1]);
   ROWS.push({ sec: 'Exo suit', sub: 'Exo suit mods (5 slots per category, tiers I–V; they add up)', verdict: EX[cat][0], id: 'exo:' + cat, name: G.EXO_NAMES[cat],
-    info: EX[cat][2], stats: vals.join('; '), note: EX[cat][1], glyph: G.EXO_GLYPH[cat], col: EXO_HUE, pix: NAV_ICONS[cat] });
+    info: EX[cat][2], stats: vals, note: EX[cat][1], glyph: G.EXO_GLYPH[cat], col: EXO_HUE, pix: NAV_ICONS[cat] });
 }
 P(''); P('Not in Auto\'s exo suit (from the old game): Gold Vacuum (Gold pull range by tier I–V: ×' + G.STAT_PERKS.pull.vals.join(' / ×') + ').');
 fs.writeFileSync(process.argv[2], out.join('\n') + '\n');

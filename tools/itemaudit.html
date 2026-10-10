@@ -50,7 +50,16 @@ h3::before { content: ''; width: 10px; height: 10px; border-radius: 50%; backgro
 .bin[aria-pressed="true"] { color: var(--bg); background: var(--wont); border-color: var(--wont); }
 .body { grid-column: 2 / 4; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
 .info { margin: 0; }
-.stats { font: 12px/1.5 var(--mono); color: var(--mute); overflow-wrap: anywhere; }
+/* the stats stacked, one a line, each in its kind's colour (the legend under the filters) */
+.stats { display: flex; flex-direction: column; gap: 3px; font: 12.5px/1.35 var(--mono); }
+.st { display: flex; align-items: baseline; gap: 8px; min-width: 0; color: var(--k); }
+.st::before { content: ""; flex: none; width: 8px; height: 8px; border-radius: 2px; background: var(--k); transform: translateY(-1px); }
+.st .l { color: var(--ink); opacity: .85; min-width: 0; overflow-wrap: anywhere; }
+.st .v { margin-left: auto; font-weight: 700; color: var(--k); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.k-dmg { --k: #ff5a6a; } .k-cost { --k: #b48cff; } .k-time { --k: #ffd23a; } .k-flight { --k: #6db8ff; } .k-rock { --k: #ff9a3c; } .k-you { --k: #4ee08a; } .k-info { --k: #a094c4; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font: 11px var(--mono); }
+.legend span { display: inline-flex; align-items: center; gap: 5px; color: var(--k); }
+.legend span::before { content: ""; width: 8px; height: 8px; border-radius: 2px; background: var(--k); }
 .pm { font-size: 13px; color: var(--could); }
 .pm b { font: 700 10px var(--display); letter-spacing: .5px; margin-right: 4px; }
 .empty { color: var(--mute); padding: 30px 0; text-align: center; }
@@ -82,6 +91,7 @@ h3::before { content: ''; width: 10px; height: 10px; border-radius: 50%; backgro
       <input type="search" id="q" placeholder="Search names, text, stats" aria-label="Search">
     </div>
     <div class="row scroll" id="chips"></div>
+    <div class="legend" aria-label="Stat colours"><span class="k-dmg">Damage</span><span class="k-cost">Mana and cost</span><span class="k-time">Timing</span><span class="k-flight">Flight</span><span class="k-rock">Size and rock</span><span class="k-you">You</span><span class="k-info">Other</span></div>
   </div>
   <main id="main"></main>
 </div>
@@ -117,7 +127,7 @@ function matches(r) {
   if (filt === 'edited' && !edited(r.id)) return false;
   if (filt === 'binned' && !S.bin[r.id]) return false;
   if (filt !== 'all' && filt !== 'edited' && filt !== 'binned' && r.verdict !== filt) return false;
-  if (q) { const t = (r.name + ' ' + r.id + ' ' + r.info + ' ' + r.stats + ' ' + r.note + ' ' + (S.notes[r.id] || '')).toLowerCase(); if (!t.includes(q)) return false; }
+  if (q) { const t = (r.name + ' ' + r.id + ' ' + r.info + ' ' + r.stats.map(x => x[0] + ' ' + x[1]).join(' ') + ' ' + r.note + ' ' + (S.notes[r.id] || '')).toLowerCase(); if (!t.includes(q)) return false; }
   return true;
 }
 function renderTabs() {
@@ -139,7 +149,7 @@ function card(r) {
     '<button class="bin" type="button" aria-label="Mark ' + esc(r.name) + ' for deletion" aria-pressed="' + !!S.bin[r.id] + '" title="Mark for deletion">' + BIN + '</button>' +
     '<div class="body">' +
     (r.info ? '<p class="info">' + esc(r.info) + '</p>' : '') +
-    (r.stats ? '<div class="stats">' + esc(r.stats) + '</div>' : '') +
+    (r.stats.length ? '<div class="stats">' + r.stats.map(([l, v, k]) => '<div class="st k-' + esc(k) + '"><span class="l">' + esc(l) + '</span>' + (v ? '<span class="v">' + esc(v) + '</span>' : '') + '</div>').join('') + '</div>' : '') +
     (r.note ? '<div class="pm"><b>PM</b>' + esc(r.note) + '</div>' : '') +
     '<textarea id="n-' + esc(r.id) + '" rows="1" placeholder="Your notes on ' + esc(r.name) + '…">' + esc(S.notes[r.id] || '') + '</textarea>' +
     '</div></article>';
