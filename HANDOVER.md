@@ -7,6 +7,23 @@ release loop, testing), then the README of the `src/` folder you're working in.
 
 Planned with the owner (brief + quiz answers + 16 stages + the PM's kick-start prompt, all in `AUTOBATTLER.md`;
 mock-up `docs/autobattler-mockup.png`). Progress: AUTOBATTLER.md's Log. `main` keeps the old game.
+
+**Where it stands (2026-10-10, v1.0.20 live at /auto/): all stages 0–14 built and released on the branch.** Waiting
+on the owner: play the full loop on the phone and OK it (the project's "done"). Open, in order of weight:
+1. The team doesn't finish the boss (it sits at a few hp; the `autoLvlBossT` 120 s fallback moves on). Look at
+   who targets the boss (`auto/enemies.js`, `art/scenegun.js`).
+2. A fresh run stops at the first natural rock ("Path blocked") until the Buzzsaw is dragged into a gun: by design,
+   but it comes within seconds; the owner may want it later or a hint.
+3. The owner will tune the gold stream (Dev → Auto → "Auto: throw": slow start, quick pull) and test the payouts.
+4. Polish noted: the gun arc crowds the left corner for player 1, empty arc circles faint; chest small, grass over it;
+   the menu icons small after the ×1.5 padding; only bag items scrap/drop (not slot items); no dragging a gun out of
+   its circle, no slot-to-slot moves; `auto-loot` flakes rarely in a full run.
+5. Old-game code still bundled through `cards.js` / `editor.js` (GunIcon) / `pause.js` (`save/save.js`).
+How the PM worked: one agent per stage in a hand-made worktree (`git worktree add ../cr-stageN -b stageN autobattler`
++ `node_modules`; the Agent tool's own worktree option fails on the path's casing), the time-box brief word for word
+(AUTOBATTLER.md section 8), small feedback rounds done by the PM. Tests on this branch: `node tests/run.js logic`
+(known failure `spider`), `node tests/run.js auto-` (logic + browser), browser `title`; the old game's browser
+suites are in `tests/retired/` and `tests/determinism.js` no longer applies here.
 - **Stage 0 done (v1.0.0):** the branch deploys to `https://5rob.github.io/CaveRunner/auto/` and builds the
   CaveRunner Auto APK (release `app-auto`); `android/README.md` has how. The only change on `main` was the shared
   workflow file. The owner allowed `autobattler` in Settings → Environments → github-pages (needed for the deploy).
