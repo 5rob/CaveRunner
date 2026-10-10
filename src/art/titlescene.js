@@ -1273,6 +1273,13 @@ function separate(S, dt) {
     }
   }
 }
+// (owner, feedback round 2) the jet's lift by how far up the stick is: full up, the old game's climb (P_JET); lowered
+// toward level it eases off until he sinks (JET_SINK at level), so lowering the stick lowers the thrust; and the flame
+/** the vertical speed aimed for (down +) @param {number} ny the stick's way, up − @param {number} m its push 0..1 */
+export const jetLift = (ny, m) => { const up = Math.max(0, -ny) * m; return -up * P_JET + (1 - up) * JET_SINK; };
+/** the flame, 0..1 @param {number} ny @param {number} m */
+export const jetThrottle = (ny, m) => Math.max(0.15, Math.max(0, -ny) * m);
+export const JET_SINK = 110;
 // (CaveRunner Auto, feedback round 2) the selected player, steered by the pill stick as the old game's left stick (the
 // hub's steering, auto/hub.js hubMove: walk, jet up, gravity; r.cvx his speed through the world, the screen's is that
 // less the scroll). A step up to 8 he takes; rock in the way he's pushing toward (or the scroll pushes him into) he saws
@@ -1283,13 +1290,13 @@ function ctlStep(S, r, st, dt) {
   r.cvx = r.cvx || 0;
   if (jet) {
     r.cvx = approach(r.cvx, st.nx * m * P_JET * mv, JET_ACC * dt);
-    const ty = st.ny * m * P_JET * mv;
+    const ty = jetLift(st.ny, m) * mv;   // (feedback round 2: lowering the stick lowers the thrust)
     r.vy = ty < r.vy ? ty : approach(r.vy, ty, JET_ACC * dt);
   } else {
     r.cvx = approach(r.cvx, m > 0 ? st.nx * m * WALK * mv : 0, (r.ground ? GROUND_ACC : AIR_ACC) * dt);
     r.vy = Math.min(r.vy + GRAVITY * dt, 900);
   }
-  r.flame = jet ? m : 0;
+  r.flame = jet ? jetThrottle(st.ny, m) : 0;
   const vx = r.cvx - sv(S), nx = r.x + vx * dt;
   if (!boxRock(S, nx, r.y, false)) r.x = nx;
   else if (r.ground && !boxRock(S, nx, r.y - 8, false)) { r.x = nx; r.y -= 8; }

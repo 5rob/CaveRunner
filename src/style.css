@@ -919,7 +919,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .anavrow,.abag,.abtns{border-radius:14px;background:rgba(14,9,26,0.92);border:2px solid #3d2f5c;box-sizing:border-box}
 /* the nav as a stack (feedback round 2): .anavwrap holds the nav's place; each row (.anavslot) sits at its bottom, lifted
    above it by its translateY (animated); the nav's own row .anav, raised ones .anavup, a leaving one .anavout */
-.anavwrap{position:relative;flex:none;height:66px;z-index:6}
+.anavwrap{position:relative;flex:none;height:66px;z-index:6;transition:height .28s cubic-bezier(.3,.8,.3,1),margin .28s cubic-bezier(.3,.8,.3,1)}
+/* (feedback round 2) hidden by B at the player row: the rows slide out, the slot closes (the bag gets the room) */
+.anavwrap.hid{height:0;margin-top:-6px}
+.anavwrap.hid .anavslot{transform:translateX(110%)!important;opacity:0;pointer-events:none;transition:transform .28s ease-in,opacity .28s ease-in}
+.anavwrap.hid .apins{bottom:8px}
 .anavslot{position:absolute;left:0;right:0;bottom:0;height:66px;transition:transform .28s cubic-bezier(.3,.8,.3,1);z-index:1}
 .anavs.cold{opacity:.45}
 /* pinned graphs (feedback round 2): above the nav's row, under the raised rows; damage left, health right; no box */

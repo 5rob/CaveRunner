@@ -16,7 +16,7 @@
 // (direction and speed). (Stage 10a's throw from the bag tile is gone.)
 
 import { SFX } from '../../audio/sfx.js';
-import { TITLE_VW, TITLE_ZLOCK, camAt, titleCam } from '../../art/titlescene.js';
+import { TITLE_VW, camAt, titleCam } from '../../art/titlescene.js';
 import { DEAD } from '../../core/consts.js';
 import { chestOpen } from '../../auto/chests.js';
 import { HUB_W, hubExit, hubLeft, hubScene, hubState, hubStick, hubStopX } from '../../auto/hub.js';
@@ -85,6 +85,8 @@ export function AutoScreen() {
   const [, setBagV] = useState(0);
   // the context nav (stage 8a, auto/nav.js): a tap on a circle goes down a level, B back up one
   const [nav, setNav] = useState(navStart);
+  // (feedback round 2) B at the player row hides the nav; a tap on the play area brings it back
+  const [navHidden, setNavHidden] = useState(false);
   const navRef = useRef(nav);
   navRef.current = nav;
   // stage 8b: dragging between the bag and the nav's slots, a tap's card
@@ -163,6 +165,7 @@ export function AutoScreen() {
       },
       paused: () => pausedRef.current,
       keep: true,   // (feedback round 1) the play area's height shifting (the boss bar, a card) must not restart the level
+      still: true,  // (feedback round 2) one fixed view: no pinch, drag or tap to follow
       // LEVEL CLEARED (stage 7), in the upper part of the play area
       // (feedback round 2) everyone down: "Tap A to Teleport back to Hub" (the hub's hint look), on the screen whatever the zoom
       over: (ctx, S, w, hh) => {
@@ -250,19 +253,17 @@ export function AutoScreen() {
     };
     addEventListener('pointermove', move, { passive: false }); addEventListener('pointerup', up); addEventListener('pointercancel', up);
   };
-  // B: in a level with a player picked, lets him go (back on the autopilot, the camera free); else back up the nav
-  // (feedback round 2, recheck) backing out to the player row (or B there) deselects him: back on the autopilot, the camera free
+  // B (feedback round 2): a player steered by hand in a level: let him go (the autopilot); else back up the nav (to the
+  // player row: nobody marked); at the player row: hide the nav (a tap on the play area brings it back)
   const pressB = () => {
     nothing();
-    const S = scene.current, C = cam.current, n = navRef.current, up = navBack(n);
-    const picked = (C && C.lock >= 0) || n.p >= 0;
-    if (S && S.lvl && C && up.level === 'players' && picked) {
-      C.lock = -1; levelControl(S, -1, null); SFX.fx('close');
-      setNav({ ...up, p: -1 });
-      return;
-    }
-    setNav(up);
+    const S = scene.current, C = cam.current, n = navRef.current;
+    if (S && S.lvl && S.runners.some(r => r.ctl)) { if (C) C.lock = -1; levelControl(S, -1, null); SFX.fx('close'); return; }
+    if (n.level !== 'players') { const up = navBack(n); setNav(up.level === 'players' ? { ...up, p: -1 } : up); return; }
+    if (!navHidden) { SFX.fx('close'); setNavHidden(true); }
   };
+  /** a tap on the play area: the nav back if hidden @param {any} e */
+  const playTap = e => { if (navHidden && !(e.target && e.target.closest && e.target.closest('.pausebtn'))) { SFX.fx('open'); setNavHidden(false); } };
   // (feedback round 2) everyone down in a level: A sets off the teleport home (the helmet light, the blast: auto/death.js)
   const pressA = () => { SFX.ui('tap'); if (scene.current && scene.current.lvl && levelTeleportHome(scene.current)) { SFX.fx('open'); return; } if (scene.current && (hubExit(scene.current) || (!!scene.current.lvl && chestOpen(scene.current)))) SFX.fx('open'); };
   /** what the source item is: a bag slot's, or a nav slot's at the nav's level @param {DragSrc} src @returns {BagItem | null} */
@@ -395,12 +396,6 @@ export function AutoScreen() {
   const openAt = (s, w) => {
     nothing();
     const next = navOpen(s, w, run);
-    // (feedback round 2, recheck) in a level, a player picked by his helmet is the one the stick steers: the camera follows him
-    const S = scene.current, C = cam.current;
-    if (S && S.lvl && C && s.level === 'players' && next.level === 'player') {
-      C.lock = next.p; if (C.z < TITLE_ZLOCK * 0.8) C.zt = TITLE_ZLOCK;
-      levelControl(S, next.p, null);
-    }
     setNav(next);
   };
   // (owner, feedback round 2) a gun circle (the Guns row): a tap opens it, held DEV.autoHoldMs it becomes the gun that fires
@@ -469,13 +464,13 @@ export function AutoScreen() {
   /** @param {'dmg' | 'hp'} kind @param {number} span */
   const pinNav = (kind, span) => togglePin(navRef.current.p, kind, span);
   return h('div', { className: 'auto' },
-    h('div', { className: 'aplay' + (drag && drag.over && drag.over.key === 'play' && drag.over.ok ? ' drop' : '') },
+    h('div', { className: 'aplay' + (drag && drag.over && drag.over.key === 'play' && drag.over.ok ? ' drop' : ''), onPointerDown: playTap },
       h('canvas', { ref: cvs, className: 'aplaycvs' }),
       blocked ? h('div', { className: 'ablocked' }, 'Path blocked') : null,
       boss ? h('div', { className: 'abossbar' }, h('b', null, boss.name),
         h('div', { className: 'abosstrack' }, h('i', { style: { width: (100 * boss.hp / Math.max(1, boss.max)).toFixed(1) + '%' } }))) : null,
       h('button', { className: 'pausebtn', title: 'Pause', onPointerDown: tap(() => { SFX.fx('open'); setPaused(true); }) }, '⏸')),
-    h(NavStack, { nav, run, openAt, down, drag, holdHelm, holdGun, meters, pins, metersOf, pinNav }),
+    h(NavStack, { nav, run, openAt, down, drag, holdHelm, holdGun, meters, pins, metersOf, pinNav, hidden: navHidden }),
     h('div', { className: 'abag' + (drag && drag.over && drag.over.key === 'bag' && drag.over.ok ? ' drop' : '') },
       ...Array.from({ length: BAG_SLOTS }, (_, i) => h(BagSlot, { key: i, i, it: run.bag[i], down,
         lift: !!drag && drag.src.from === 'bag' && drag.src.i === i,
@@ -552,9 +547,10 @@ const ROW_H = 66, STACK_GAP = 6, PANEL_H = 168, LEAVE_MS = 260;
 /**
  * @param {{ nav: NavState, run: AutoRun, openAt: (s: NavState, w: string | number) => void, down: (e: any, src: DragSrc) => void,
  *   drag: Drag | null, holdHelm: (e: any, i: number) => void, holdGun: (e: any, s: NavState, i: number) => void,
- *   meters: () => PlayerMeters | null, pins: Pin[], metersOf: (p: number) => PlayerMeters | null, pinNav: (kind: 'dmg' | 'hp', span: number) => void }} props
+ *   meters: () => PlayerMeters | null, pins: Pin[], metersOf: (p: number) => PlayerMeters | null, pinNav: (kind: 'dmg' | 'hp', span: number) => void,
+ *   hidden?: boolean }} props
  */
-function NavStack({ nav, run, openAt, down, drag, holdHelm, holdGun, meters, pins, metersOf, pinNav }) {
+function NavStack({ nav, run, openAt, down, drag, holdHelm, holdGun, meters, pins, metersOf, pinNav, hidden }) {
   const path = navPath(nav);
   const pl = run.players[nav.p];
   const gun = nav.level === 'gun' && pl ? pl.guns[nav.g] : null;
@@ -603,7 +599,7 @@ function NavStack({ nav, run, openAt, down, drag, holdHelm, holdGun, meters, pin
     return h(NavRow, { row: navRow(s, run, MAX_PLAYERS), level: s.level, cls, pick: cur ? undefined : navPick(nav, s.level),
       open, down, drag: cls === 'anav' ? drag : null, holdHelm, holdGun: hg, meters, pinNav, slide: ready.current, cold: cls === 'anav' ? cold : null, lit: cls === 'anav' && nav.level === 'gun' ? lit : null });
   };
-  return h('div', { className: 'anavwrap' },
+  return h('div', { className: 'anavwrap' + (hidden ? ' hid' : '') },
     h(PinStack, { pins, run, metersOf, lift: off[0] || 0 }),
     ...items.map((it, i) => h('div', { key: it.key, className: 'anavslot' + (it.panel ? ' panel' : ''), style: { transform: 'translateY(' + (-off[i]) + 'px)' } },
       body(it, i === last ? 'anav' : it.panel ? 'up' : 'anavup', i === last))),

@@ -928,7 +928,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .anavrow,.abag,.abtns{border-radius:14px;background:rgba(14,9,26,0.92);border:2px solid #3d2f5c;box-sizing:border-box}
 /* the nav as a stack (feedback round 2): .anavwrap holds the nav's place; each row (.anavslot) sits at its bottom, lifted
    above it by its translateY (animated); the nav's own row .anav, raised ones .anavup, a leaving one .anavout */
-.anavwrap{position:relative;flex:none;height:66px;z-index:6}
+.anavwrap{position:relative;flex:none;height:66px;z-index:6;transition:height .28s cubic-bezier(.3,.8,.3,1),margin .28s cubic-bezier(.3,.8,.3,1)}
+/* (feedback round 2) hidden by B at the player row: the rows slide out, the slot closes (the bag gets the room) */
+.anavwrap.hid{height:0;margin-top:-6px}
+.anavwrap.hid .anavslot{transform:translateX(110%)!important;opacity:0;pointer-events:none;transition:transform .28s ease-in,opacity .28s ease-in}
+.anavwrap.hid .apins{bottom:8px}
 .anavslot{position:absolute;left:0;right:0;bottom:0;height:66px;transition:transform .28s cubic-bezier(.3,.8,.3,1);z-index:1}
 .anavs.cold{opacity:.45}
 /* pinned graphs (feedback round 2): above the nav's row, under the raised rows; damage left, health right; no box */
@@ -12549,18 +12553,24 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
     }
   }
+  var jetLift = (ny, m) => {
+    const up = Math.max(0, -ny) * m;
+    return -up * JET + (1 - up) * JET_SINK;
+  };
+  var jetThrottle = (ny, m) => Math.max(0.15, Math.max(0, -ny) * m);
+  var JET_SINK = 110;
   function ctlStep(S2, r, st, dt) {
     const m = st.active && st.mag > DEAD ? (st.mag - DEAD) / (1 - DEAD) : 0, jet = m > 0 && st.ny < 0, mv = DEV.move;
     r.cvx = r.cvx || 0;
     if (jet) {
       r.cvx = approach(r.cvx, st.nx * m * JET * mv, JET_ACC * dt);
-      const ty = st.ny * m * JET * mv;
+      const ty = jetLift(st.ny, m) * mv;
       r.vy = ty < r.vy ? ty : approach(r.vy, ty, JET_ACC * dt);
     } else {
       r.cvx = approach(r.cvx, m > 0 ? st.nx * m * WALK * mv : 0, (r.ground ? GROUND_ACC : AIR_ACC) * dt);
       r.vy = Math.min(r.vy + GRAVITY * dt, 900);
     }
-    r.flame = jet ? m : 0;
+    r.flame = jet ? jetThrottle(st.ny, m) : 0;
     const vx = r.cvx - sv(S2), nx = r.x + vx * dt;
     if (!boxRock(S2, nx, r.y, false)) r.x = nx;
     else if (r.ground && !boxRock(S2, nx, r.y - 8, false)) {
@@ -14667,13 +14677,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const st = H.stick, m = push(st), jet = m > 0 && st.dy < 0, mv = DEV.move;
     if (jet) {
       L.vx = approach(L.vx, st.nx * m * JET * mv, JET_ACC * dt);
-      const ty = st.ny * m * JET * mv;
+      const ty = jetLift(st.ny, m) * mv;
       L.vy = ty < L.vy ? ty : approach(L.vy, ty, JET_ACC * dt);
     } else {
       L.vx = approach(L.vx, m > 0 ? st.nx * m * WALK * mv : 0, (L.ground ? GROUND_ACC : AIR_ACC) * dt);
       L.vy = Math.min(L.vy + GRAVITY * dt, 900);
     }
-    const thr = jet ? m : 0;
+    const thr = jet ? jetThrottle(st.ny, m) : 0;
     let cx = L.x + PW / 2 + L.vx * dt;
     if (cx < IN_L) {
       cx = IN_L;
@@ -29588,10 +29598,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         if (C.lock !== was) SFX.fx(C.lock < 0 ? "close" : "open");
       }
     };
-    c.addEventListener("pointerdown", down);
-    c.addEventListener("pointermove", move);
-    c.addEventListener("pointerup", up);
-    c.addEventListener("pointercancel", up);
+    if (!o.still) {
+      c.addEventListener("pointerdown", down);
+      c.addEventListener("pointermove", move);
+      c.addEventListener("pointerup", up);
+      c.addEventListener("pointercancel", up);
+    }
     return () => {
       cancelAnimationFrame(raf);
       titleSoundStop(loops);
@@ -29682,6 +29694,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const [boss, setBoss] = useState(noBoss);
     const [, setBagV] = useState(0);
     const [nav, setNav] = useState(navStart);
+    const [navHidden, setNavHidden] = useState(false);
     const navRef = useRef(nav);
     navRef.current = nav;
     const [, setV] = useState(0);
@@ -29763,6 +29776,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         paused: () => pausedRef.current,
         keep: true,
         // (feedback round 1) the play area's height shifting (the boss bar, a card) must not restart the level
+        still: true,
+        // (feedback round 2) one fixed view: no pinch, drag or tap to follow
         // LEVEL CLEARED (stage 7), in the upper part of the play area
         // (feedback round 2) everyone down: "Tap A to Teleport back to Hub" (the hub's hint look), on the screen whatever the zoom
         over: (ctx, S2, w, hh) => {
@@ -29896,16 +29911,28 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     };
     const pressB = () => {
       nothing();
-      const S2 = scene.current, C = cam.current, n = navRef.current, up = navBack(n);
-      const picked = C && C.lock >= 0 || n.p >= 0;
-      if (S2 && S2.lvl && C && up.level === "players" && picked) {
-        C.lock = -1;
+      const S2 = scene.current, C = cam.current, n = navRef.current;
+      if (S2 && S2.lvl && S2.runners.some((r) => r.ctl)) {
+        if (C) C.lock = -1;
         levelControl(S2, -1, null);
         SFX.fx("close");
-        setNav({ ...up, p: -1 });
         return;
       }
-      setNav(up);
+      if (n.level !== "players") {
+        const up = navBack(n);
+        setNav(up.level === "players" ? { ...up, p: -1 } : up);
+        return;
+      }
+      if (!navHidden) {
+        SFX.fx("close");
+        setNavHidden(true);
+      }
+    };
+    const playTap = (e) => {
+      if (navHidden && !(e.target && e.target.closest && e.target.closest(".pausebtn"))) {
+        SFX.fx("open");
+        setNavHidden(false);
+      }
     };
     const pressA = () => {
       SFX.ui("tap");
@@ -30047,12 +30074,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const openAt = (s, w) => {
       nothing();
       const next = navOpen(s, w, run);
-      const S2 = scene.current, C = cam.current;
-      if (S2 && S2.lvl && C && s.level === "players" && next.level === "player") {
-        C.lock = next.p;
-        if (C.z < TITLE_ZLOCK * 0.8) C.zt = TITLE_ZLOCK;
-        levelControl(S2, next.p, null);
-      }
       setNav(next);
     };
     const holdGun = (e, s, i) => {
@@ -30149,7 +30170,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       { className: "auto" },
       h(
         "div",
-        { className: "aplay" + (drag && drag.over && drag.over.key === "play" && drag.over.ok ? " drop" : "") },
+        { className: "aplay" + (drag && drag.over && drag.over.key === "play" && drag.over.ok ? " drop" : ""), onPointerDown: playTap },
         h("canvas", { ref: cvs, className: "aplaycvs" }),
         blocked ? h("div", { className: "ablocked" }, "Path blocked") : null,
         boss ? h(
@@ -30163,7 +30184,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           setPaused(true);
         }) }, "⏸")
       ),
-      h(NavStack, { nav, run, openAt, down, drag, holdHelm, holdGun, meters, pins, metersOf, pinNav }),
+      h(NavStack, { nav, run, openAt, down, drag, holdHelm, holdGun, meters, pins, metersOf, pinNav, hidden: navHidden }),
       h(
         "div",
         { className: "abag" + (drag && drag.over && drag.over.key === "bag" && drag.over.ok ? " drop" : "") },
@@ -30236,7 +30257,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     );
   }
   var ROW_H = 66, STACK_GAP = 6, PANEL_H = 168, LEAVE_MS = 260;
-  function NavStack({ nav, run, openAt, down, drag, holdHelm, holdGun, meters, pins, metersOf, pinNav }) {
+  function NavStack({ nav, run, openAt, down, drag, holdHelm, holdGun, meters, pins, metersOf, pinNav, hidden }) {
     const path = navPath(nav);
     const pl = run.players[nav.p];
     const gun = nav.level === "gun" && pl ? pl.guns[nav.g] : null;
@@ -30301,7 +30322,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     };
     return h(
       "div",
-      { className: "anavwrap" },
+      { className: "anavwrap" + (hidden ? " hid" : "") },
       h(PinStack, { pins, run, metersOf, lift: off[0] || 0 }),
       ...items.map((it, i) => h(
         "div",

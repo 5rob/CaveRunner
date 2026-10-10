@@ -14,7 +14,7 @@ import { approach } from '../core/util.js';
 import { DEV } from '../dev/knobs.js';
 import { STAT_PERKS } from '../data/perks.js';
 import { LIGHT_RUN, LIGHT_WAIT, tubeLevel } from '../world/shoplights.js';
-import { TCELL, TM, jetStep, titleScene } from '../art/titlescene.js';
+import { TCELL, TM, jetLift, jetStep, jetThrottle, titleScene } from '../art/titlescene.js';
 import { EXO_CATS, EXO_GLYPH, autoExoPrice, autoGunPrice } from './run.js';
 import { stepThrown } from './throw.js';
 import { stepPay } from './payout.js';
@@ -201,13 +201,13 @@ function hubMove(S, H, dt) {
   const st = H.stick, m = push(st), jet = m > 0 && st.dy < 0, mv = DEV.move;
   if (jet) {
     L.vx = approach(L.vx, st.nx * m * JET * mv, JET_ACC * dt);
-    const ty = st.ny * m * JET * mv;
+    const ty = jetLift(st.ny, m) * mv;
     L.vy = ty < L.vy ? ty : approach(L.vy, ty, JET_ACC * dt);
   } else {
     L.vx = approach(L.vx, m > 0 ? st.nx * m * WALK * mv : 0, (L.ground ? GROUND_ACC : AIR_ACC) * dt);
     L.vy = Math.min(L.vy + GRAVITY * dt, 900);
   }
-  const thr = jet ? m : 0;
+  const thr = jet ? jetThrottle(st.ny, m) : 0;
   let cx = L.x + PW / 2 + L.vx * dt;
   if (cx < IN_L) { cx = IN_L; L.vx = Math.max(0, L.vx); }
   if (cx > IN_R) { cx = IN_R; L.vx = Math.min(0, L.vx); }

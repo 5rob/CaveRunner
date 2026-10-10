@@ -21,6 +21,7 @@ import { titleSound, titleSoundStop } from './titlesound.js';
  *   paused?: () => boolean,
  *   next?: (S: TitleScene) => boolean,
  *   keep?: boolean,
+ *   still?: boolean,
  * }} SceneOpts
  */
 
@@ -29,7 +30,8 @@ import { titleSound, titleSoundStop } from './titlesound.js';
 // many 1/30 s steps it opens on, default 40; the hub's teleport-in opens on 0);
 // over: paints on top (the title's words); paused: true holds the scene (still painted); next: true after a step
 // throws the scene away and calls make again (the auto screen's hub to level and back); keep: a resize only resizes
-// the canvas and the scene runs on (the auto screen: a remake restarted the level whenever the play area's height shifted).
+// the canvas and the scene runs on (the auto screen: a remake restarted the level whenever the play area's height shifted);
+// still: no camera gestures at all, no drag, pinch or tap to follow (the auto screen, feedback round 2: one fixed view).
 /** @param {HTMLCanvasElement} c @param {SceneOpts} o @returns {() => void} */
 export function runScene(c, o) {
   const ctx = c.getContext('2d');
@@ -121,10 +123,12 @@ export function runScene(c, o) {
       if (C.lock !== was) SFX.fx(C.lock < 0 ? 'close' : 'open');
     }
   };
-  c.addEventListener('pointerdown', down);
-  c.addEventListener('pointermove', move);
-  c.addEventListener('pointerup', up);
-  c.addEventListener('pointercancel', up);
+  if (!o.still) {
+    c.addEventListener('pointerdown', down);
+    c.addEventListener('pointermove', move);
+    c.addEventListener('pointerup', up);
+    c.addEventListener('pointercancel', up);
+  }
   return () => {
     cancelAnimationFrame(raf);
     titleSoundStop(loops);
