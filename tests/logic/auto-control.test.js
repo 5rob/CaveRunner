@@ -24,11 +24,11 @@ r.x = 40;
 G.levelControl(S, r.id, push(1, 0));
 const shots0 = S.shots.length + S.kills;
 run(1);
-check('pushed right: he walks right through the world faster than the scroll', r.cvx > 100 && r.x > 40, [r.cvx, r.x]);
+check('pushed right: he walks right through the world faster than the scroll', r.cvx > G.WALK * D.autoMoveK * 0.9 && r.x > 40, [r.cvx, r.x]);
 
 G.levelControl(S, r.id, push(-1, 0));
 run(0.6);
-check('pushed left: he walks back (he faces where his gun aims)', r.cvx < -100, r.cvx);
+check('pushed left: he walks back (he faces where his gun aims)', r.cvx < -G.WALK * D.autoMoveK * 0.9, r.cvx);
 
 const y0 = r.y;
 G.levelControl(S, r.id, push(0, -1));

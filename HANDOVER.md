@@ -8,7 +8,7 @@ release loop, testing), then the README of the `src/` folder you're working in.
 Planned with the owner (brief + quiz answers + 16 stages + the PM's kick-start prompt, all in `AUTOBATTLER.md`;
 mock-up `docs/autobattler-mockup.png`). Progress: AUTOBATTLER.md's Log. `main` keeps the old game.
 
-**Where it stands (2026-10-11, v1.0.31 live at /auto/; v1.0.31: a gentler jetpack, knob `autoJetK` 0.55): all stages 0–14 built; feedback rounds 1 and 2 released.** Round 2f (v1.0.30):
+**Where it stands (2026-10-11, v1.0.32 live at /auto/; v1.0.32: machine items visible and walked over, one hand-steered speed `autoMoveK` 0.55, the Dev panel via ⏸ held 5 s + ⚙️): all stages 0–14 built; feedback rounds 1 and 2 released.** Round 2f (v1.0.30):
 B hides the nav, one fixed camera, hold a helmet in a level for manual mode (scroll stops, damped follow, team behind), jet thrust
 by the stick's height (open: no follow inside the arena; followers may trail the wrong side backing up). Round 2e (v1.0.29):
 the jet flame away from travel (hub and level), full gold stream at twice the drag. Round 2d (v1.0.28):

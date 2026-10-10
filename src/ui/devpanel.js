@@ -602,11 +602,13 @@ export function DevPanel({ input, refresh, close, onRestart, onSpawnGun, onSpawn
           h('h2', null, 'Dev'),
           h('button', { className: 'done', onPointerDown: e => { e.preventDefault(); close(); } }, 'Done')),
         h('div', { className: 'devbtns' },
-          act('toggle' + (LO.debug ? ' on' : ''), 'All mods', () => { LO.debug = !LO.debug; refresh(); bump(n => n + 1); }),
-          act('toggle allperks' + (LO.debugPerks ? ' on' : ''), 'All perks', () => { LO.debugPerks = !LO.debugPerks; refresh(); bump(n => n + 1); }),
-          act('spawngun', 'Spawn gun', onSpawnGun),
-          act('spawnlevel', 'Spawn level', onSpawnLevel),
-          act('restart', 'Restart run', onRestart),
+          // (the old game's run buttons; CaveRunner Auto has no loadout: just the knobs and the report)
+          ...(LO ? [
+            act('toggle' + (LO.debug ? ' on' : ''), 'All mods', () => { LO.debug = !LO.debug; refresh(); bump(n => n + 1); }),
+            act('toggle allperks' + (LO.debugPerks ? ' on' : ''), 'All perks', () => { LO.debugPerks = !LO.debugPerks; refresh(); bump(n => n + 1); }),
+            act('spawngun', 'Spawn gun', onSpawnGun),
+            act('spawnlevel', 'Spawn level', onSpawnLevel),
+            act('restart', 'Restart run', onRestart)] : []),
           act('devcopy', 'Copy Dev settings', () => copyText(devReport)),
           act('devaudit', 'Copy mod & perk audit', () => copyText(() => auditText(loadAudit()), 'audit'))),
         copied ? h('p', { className: 'devnote devcopied' + (copied.ok ? ' ok' : '') }, copied.empty

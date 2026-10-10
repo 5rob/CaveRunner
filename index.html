@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v1.0.31</title>
-<!-- VERSION = 'v1000031' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v1.0.32</title>
+<!-- VERSION = 'v1000032' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -853,6 +853,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   background:rgba(0,0,0,0.35);color:#e9ecf2;border-radius:8px;width:38px;height:38px;padding:0;
   font-size:17px;line-height:1;display:flex;align-items:center;justify-content:center}
 .app.witnessing .pausebtn{visibility:hidden}
+/* CaveRunner Auto (feedback round 2): the Dev ⚙️, left of ⏸, while dev mode is on */
+.adevbtn{position:absolute;top:10px;right:56px;z-index:6;touch-action:none;border:1px solid rgba(255,255,255,0.25);background:rgba(0,0,0,0.35);
+  color:#e9ecf2;border-radius:8px;width:38px;height:38px;padding:0;font-size:17px;line-height:1;display:flex;align-items:center;justify-content:center}
 .pausewrap{position:fixed;inset:0;z-index:29;display:flex;align-items:center;justify-content:center;padding:24px}
 .pausewrap .shade{background:rgba(6,4,14,0.7)}
 .pausecard{position:relative;z-index:30;width:100%;max-width:340px;box-sizing:border-box;padding:18px 16px;
@@ -1057,7 +1060,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v1.0.31';</script>
+<script>const VERSION = 'v1.0.32';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -1983,9 +1986,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "autoBossDmg", g: "autofoes", label: "Boss damage (× a normal one)", min: 0.5, max: 10, step: 0.25 }
   );
   DEV_GROUPS.push(["autofoes", "Auto: enemies"]);
-  Object.assign(DEV_DEFAULTS, { autoJetK: 0.55, autoJetTilt: 1, autoJetSmoke: 1, autoDeathStop: 1.5, autoTpBlink: 1, autoTpBoomWait: 0.6, autoTpBoomR: 60 });
+  Object.assign(DEV_DEFAULTS, { autoMoveK: 0.55, autoJetTilt: 1, autoJetSmoke: 1, autoDeathStop: 1.5, autoTpBlink: 1, autoTpBoomWait: 0.6, autoTpBoomR: 60 });
   DEV_META.push(
-    { k: "autoJetK", g: "autodeath", label: "Jetpack strength (× the old game’s climb, sideways jet speed and push; hub and steering)", min: 0.2, max: 1.5, step: 0.05 },
+    { k: "autoMoveK", g: "autodeath", label: "Hand-steered speed (× the old game’s walk, jet, their pushes; hub and steering a player; the hub’s followers too)", min: 0.2, max: 1.5, step: 0.05 },
     { k: "autoJetTilt", g: "autodeath", label: "Jet flame: the autopilot’s tilt with its speed across (at most)", min: 0, max: 1.5, step: 0.05 },
     { k: "autoJetSmoke", g: "autodeath", label: "Jet smoke (× the old game’s rate)", min: 0, max: 3, step: 0.05 },
     { k: "autoDeathStop", g: "autodeath", label: "All fallen: the scroll eases to a stop over (s)", min: 0.1, max: 6, step: 0.1 },
@@ -2031,6 +2034,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     autoThrowSuck: 500,
     autoThrowBack: 3,
     autoPayReach: 30,
+    autoPickReach: 22,
+    autoPickMin: 1,
     autoPayHold: 300,
     autoPayK: 2,
     autoStreamRate0: 2,
@@ -2040,6 +2045,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   DEV_META.push(
     { k: "autoThrowPull", g: "autothrow", label: "A machine pulls in what it takes within (world units of its coin slot)", min: 5, max: 200, step: 1 },
     { k: "autoThrowSuck", g: "autothrow", label: "Its pull’s strength", min: 50, max: 3e3, step: 10 },
+    { k: "autoPickReach", g: "autothrow", label: "A machine’s item: picked up when a player walks within (world units)", min: 4, max: 80, step: 1 },
+    { k: "autoPickMin", g: "autothrow", label: "A machine’s item: not picked up before it’s this old (s)", min: 0, max: 5, step: 0.1 },
     { k: "autoThrowBack", g: "autothrow", label: "Anything not taken flies back to the bag after (s)", min: 0.5, max: 20, step: 0.1 },
     { k: "autoPayReach", g: "autothrow", label: "Pay with A: player 1 within this of a machine (world units)", min: 5, max: 80, step: 1 },
     { k: "autoPayHold", g: "autothrow", label: "Pay with A: held this long (ms) starts the stream", min: 50, max: 1500, step: 10 },
@@ -12563,7 +12570,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   var jetLift = (ny, m) => {
     const up = Math.max(0, -ny) * m;
-    return -up * JET * DEV.autoJetK + (1 - up) * JET_SINK;
+    return (-up * JET + (1 - up) * JET_SINK) * DEV.autoMoveK;
   };
   var jetThrottle = (ny, m) => Math.max(0.15, Math.max(0, -ny) * m);
   var JET_SINK = 110;
@@ -12571,11 +12578,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const m = st.active && st.mag > DEAD ? (st.mag - DEAD) / (1 - DEAD) : 0, jet = m > 0 && st.ny < 0, mv = DEV.move;
     r.cvx = r.cvx || 0;
     if (jet) {
-      r.cvx = approach(r.cvx, st.nx * m * JET * DEV.autoJetK * mv, JET_ACC * DEV.autoJetK * dt);
+      r.cvx = approach(r.cvx, st.nx * m * JET * DEV.autoMoveK * mv, JET_ACC * DEV.autoMoveK * dt);
       const ty = jetLift(st.ny, m) * mv;
-      r.vy = ty < r.vy ? approach(r.vy, ty, JET_ACC * DEV.autoJetK * 2 * dt) : approach(r.vy, ty, JET_ACC * DEV.autoJetK * dt);
+      r.vy = ty < r.vy ? approach(r.vy, ty, JET_ACC * DEV.autoMoveK * 2 * dt) : approach(r.vy, ty, JET_ACC * DEV.autoMoveK * dt);
     } else {
-      r.cvx = approach(r.cvx, m > 0 ? st.nx * m * WALK * mv : 0, (r.ground ? GROUND_ACC : AIR_ACC) * dt);
+      r.cvx = approach(r.cvx, m > 0 ? st.nx * m * WALK * DEV.autoMoveK * mv : 0, (r.ground ? GROUND_ACC : AIR_ACC) * DEV.autoMoveK * dt);
       r.vy = Math.min(r.vy + GRAVITY * dt, 900);
     }
     r.flame = jet ? jetThrottle(st.ny, m) : 0;
@@ -13197,7 +13204,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (g.nopull > 0) g.nopull -= dt;
       if (g.land > 0 && (g.ground || g.t > 3)) g.land -= dt;
       g.wait = !!(L && L.fits && !L.fits(S2, g.it));
-      g.fly = !g.left && !(g.nopull > 0) && !(g.land > 0) && !g.wait && !ru.out;
+      g.fly = !g.left && !(g.nopull > 0) && !(g.land > 0) && !g.wait && !ru.out && !(g.reach && (g.t < (g.minT || 0) || d > g.reach));
       if (g.fly) {
         const grab = 260 + 900 * Math.max(0, 1 - d / COIN_PULL);
         g.vx += dx / d * grab * dt * 6;
@@ -14675,7 +14682,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function walkTo(x, tx, dt, k) {
     const d = tx - x, a = Math.abs(d);
     if (a < 0.05) return d;
-    const v = DEV.autoHubWalk * k * Math.min(1, Math.max(0.12, a / 6));
+    const v = DEV.autoHubWalk * DEV.autoMoveK * k * Math.min(1, Math.max(0.12, a / 6));
     return Math.sign(d) * Math.min(a, v * dt);
   }
   var IN_L = HUB_WALL * TCELL + PW / 2, IN_R = HUB_W - HUB_WALL * TCELL - PW / 2;
@@ -14684,11 +14691,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (!L || !H.arrived[0]) return;
     const st = H.stick, m = push(st), jet = m > 0 && st.dy < 0, mv = DEV.move;
     if (jet) {
-      L.vx = approach(L.vx, st.nx * m * JET * DEV.autoJetK * mv, JET_ACC * DEV.autoJetK * dt);
+      L.vx = approach(L.vx, st.nx * m * JET * DEV.autoMoveK * mv, JET_ACC * DEV.autoMoveK * dt);
       const ty = jetLift(st.ny, m) * mv;
-      L.vy = ty < L.vy ? approach(L.vy, ty, JET_ACC * DEV.autoJetK * 2 * dt) : approach(L.vy, ty, JET_ACC * DEV.autoJetK * dt);
+      L.vy = ty < L.vy ? approach(L.vy, ty, JET_ACC * DEV.autoMoveK * 2 * dt) : approach(L.vy, ty, JET_ACC * DEV.autoMoveK * dt);
     } else {
-      L.vx = approach(L.vx, m > 0 ? st.nx * m * WALK * mv : 0, (L.ground ? GROUND_ACC : AIR_ACC) * dt);
+      L.vx = approach(L.vx, m > 0 ? st.nx * m * WALK * DEV.autoMoveK * mv : 0, (L.ground ? GROUND_ACC : AIR_ACC) * DEV.autoMoveK * dt);
       L.vy = Math.min(L.vy + GRAVITY * dt, 900);
     }
     const thr = jet ? jetThrottle(st.ny, m) : 0;
@@ -14868,8 +14875,20 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       for (let k = 0; k < due.n; k++) {
         const it = machineItem(id, H.tier, S2.rnd);
         if (!it) continue;
-        const vx = (x < 300 ? 1 : -1) * (30 + 40 * S2.rnd());
-        (S2.loot || (S2.loot = [])).push({ x, y: H.fy - 14, vx, vy: -150 - 40 * S2.rnd(), it, col: lootCol(it), t: 0, land: PAY_REST2 + 0.15 * k });
+        const L1 = S2.runners[0], dx = L1 ? L1.x + PW / 2 - x : 0, side = Math.abs(dx) > 6 ? Math.sign(dx) : S2.rnd() < 0.5 ? -1 : 1;
+        const vx = side * (35 + 35 * S2.rnd());
+        (S2.loot || (S2.loot = [])).push({
+          x,
+          y: H.fy - 14,
+          vx,
+          vy: -150 - 40 * S2.rnd(),
+          it,
+          col: lootCol(it),
+          t: 0,
+          land: PAY_REST2 + 0.15 * k,
+          reach: DEV.autoPickReach,
+          minT: DEV.autoPickMin
+        });
       }
       S2.flash = Math.max(S2.flash, 0.25);
       S2.snd.push({ k: "coin", x, y: H.fy - 14 });
@@ -27991,6 +28010,1184 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     );
   }
 
+  // src/art/ramps.js
+  var LUT_N = 64;
+  var GRAD_RE = /^(\s*[\d.]+:#[0-9a-f]{6}\s*)+$/i;
+  var RAMP_RE = /^(\s*[\d.]+:[\d.]+\s*)+$/;
+  var c01 = (v) => Math.max(0, Math.min(1, v));
+  function parseGrad(s) {
+    const out = [];
+    for (const part of String(s || "").trim().split(/\s+/)) {
+      const [t, c] = part.split(":");
+      if (c && /^#[0-9a-f]{6}$/i.test(c) && isFinite(+t)) out.push({ t: c01(+t), c: c.toLowerCase() });
+    }
+    if (!out.length) out.push({ t: 0, c: "#ffffff" });
+    return out.sort((a, b) => a.t - b.t);
+  }
+  var gradStr = (g) => g.slice().sort((a, b) => a.t - b.t).map((s) => +s.t.toFixed(3) + ":" + s.c).join(" ");
+  var rampStr = (r) => r.slice().sort((a, b) => a.x - b.x).map((p) => +p.x.toFixed(3) + ":" + +p.y.toFixed(3)).join(" ");
+  function parseRamp(s) {
+    const out = [];
+    for (const part of String(s || "").trim().split(/\s+/)) {
+      const [x, y] = part.split(":");
+      if (y != null && isFinite(+x) && isFinite(+y)) out.push({ x: c01(+x), y: c01(+y) });
+    }
+    if (!out.length) out.push({ x: 0, y: 1 }, { x: 1, y: 1 });
+    if (out.length === 1) out.push({ x: 1, y: out[0].y });
+    return out.sort((a, b) => a.x - b.x);
+  }
+  function gradAt(g, t) {
+    if (t <= g[0].t) return hexArr(g[0].c);
+    for (let i = 1; i < g.length; i++) if (t <= g[i].t) {
+      const a = hexArr(g[i - 1].c), b = hexArr(g[i].c), u = (t - g[i - 1].t) / (g[i].t - g[i - 1].t || 1);
+      return [a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u, a[2] + (b[2] - a[2]) * u];
+    }
+    return hexArr(g[g.length - 1].c);
+  }
+  function bspline(P, per = 16) {
+    const Q = [P[0], P[0], ...P, P[P.length - 1], P[P.length - 1]];
+    const out = [];
+    for (let i = 0; i + 3 < Q.length; i++) {
+      const [a, b, c, d] = [Q[i], Q[i + 1], Q[i + 2], Q[i + 3]];
+      for (let k = 0; k <= per; k++) {
+        if (k === per && i + 4 < Q.length) continue;
+        const u = k / per, u2 = u * u, u3 = u2 * u;
+        const w0 = (1 - u) ** 3 / 6, w1 = (3 * u3 - 6 * u2 + 4) / 6, w2 = (-3 * u3 + 3 * u2 + 3 * u + 1) / 6, w3 = u3 / 6;
+        out.push(a.x * w0 + b.x * w1 + c.x * w2 + d.x * w3, a.y * w0 + b.y * w1 + c.y * w2 + d.y * w3);
+      }
+    }
+    return out;
+  }
+  function rampAt(P, x) {
+    const s = bspline(P);
+    if (x <= s[0]) return c01(s[1]);
+    for (let i = 2; i < s.length; i += 2) if (x <= s[i]) {
+      const u = (x - s[i - 2]) / (s[i] - s[i - 2] || 1);
+      return c01(s[i - 1] + (s[i + 1] - s[i - 1]) * u);
+    }
+    return c01(s[s.length - 1]);
+  }
+  var GL = /* @__PURE__ */ new Map();
+  var RL = /* @__PURE__ */ new Map();
+  function gradLut(s) {
+    let L = GL.get(s);
+    if (!L) {
+      const g = parseGrad(s);
+      L = [];
+      for (let i = 0; i <= LUT_N; i++) {
+        const c = gradAt(g, i / LUT_N);
+        L.push("rgb(" + Math.round(c[0]) + "," + Math.round(c[1]) + "," + Math.round(c[2]) + ")");
+      }
+      if (GL.size > 20) GL.clear();
+      GL.set(s, L);
+    }
+    return L;
+  }
+  function rampLut(s) {
+    let L = RL.get(s);
+    if (!L) {
+      const P = parseRamp(s);
+      L = [];
+      for (let i = 0; i <= LUT_N; i++) L.push(rampAt(P, i / LUT_N));
+      if (RL.size > 20) RL.clear();
+      RL.set(s, L);
+    }
+    return L;
+  }
+  var lutAt = (L, t) => L[Math.max(0, Math.min(LUT_N, Math.round(t * LUT_N)))];
+
+  // src/ui/devpanel.js
+  function JellyPreview() {
+    const ref = useRef(null);
+    useEffect(() => {
+      const c = ref.current;
+      if (!c || !c.getContext) return;
+      const ctx = c.getContext("2d");
+      const WU = 110, LEDGE = 8;
+      const k = enemyFor("meduusa", 1);
+      let HU = 60;
+      const e = { x: WU / 2, y: 26, hx: WU / 2, hy: 26, r: k.r, phase: 0 };
+      const solid = (cx, cy) => cx < 0 || cy < 0 || cx * CELL >= WU || (cy + 1) * CELL > HU - LEDGE;
+      let raf, last = performance.now(), t = 0, spitT = 1.2, glob = null;
+      const drops = [], spores = [];
+      const TH2 = themeFor(1), sporeCol = rgbA(TH2.moss[1]);
+      const artC = document.createElement("canvas"), artCtx = artC.getContext("2d", { willReadFrequently: true });
+      const glowC = document.createElement("canvas"), glowCtx = glowC.getContext("2d");
+      const tufts = Array.from({ length: WU }, () => ({ h: Math.random() < 0.15 ? 0 : 1 + Math.floor(Math.random() * 3), c: Math.random() }));
+      const vines = [{ k: "climb", st: "vine", x: 11, y: 0, len: 34, seed: 0.37 }, { k: "climb", st: "vine", x: WU - 13, y: 0, len: 27, seed: 0.81 }];
+      const drop = (x, y, vx, vy, P, g) => {
+        if (drops.length < 120) {
+          const l = 0.5 + Math.random() * 0.5;
+          drops.push({ x, y, vx, vy, g, life: l, max: l, c: Math.random() < 0.35 ? P.drip2 : P.drip, s: 1.1 + Math.random() * 0.8 });
+        }
+      };
+      const tick = (now) => {
+        raf = requestAnimationFrame(tick);
+        const dt = Math.min(0.05, (now - last) / 1e3);
+        last = now;
+        t += dt;
+        const dpr = window.devicePixelRatio || 1, cw = Math.round(c.clientWidth * dpr), ch = Math.round(c.clientHeight * dpr);
+        if (!cw || !ch) return;
+        if (c.width !== cw || c.height !== ch) {
+          c.width = cw;
+          c.height = ch;
+        }
+        const sc = cw / WU;
+        HU = ch / sc;
+        const S2 = e.je;
+        if (S2) {
+          S2.rx = WU / 2 + Math.cos(t * 0.55) * WU * 0.24;
+          S2.ry = (HU - LEDGE) * 0.36 + Math.sin(t * 0.8) * 5;
+          S2.roamR = 1e9;
+          S2.roamSpd = 0;
+        }
+        const pulse = jellyStep(e, { solidCell: solid, hunting: false, goal: null, rnd: Math.random }, dt) === "pulse";
+        const P = jellyPal(e.je.u.col);
+        if (pulse) {
+          const S22 = e.je, B = jellyBell(e.r, S22.shape, kru("jeSquash", S22.u.sq)), c0 = Math.cos(S22.hd), s0 = Math.sin(S22.hd);
+          for (let i = 0, n = Math.round(kr("jeSpores")); i < n && spores.length < 80; i++) {
+            const lx = (Math.random() * 2 - 1) * B.rw * 0.7, r = Math.random();
+            const a2 = S22.hd + Math.PI + (Math.random() * 2 - 1) * kr("jeSporeSpread") * Math.PI / 180, v = kr("jeSporeSpd");
+            spores.push({
+              x: e.x - lx * s0 - B.rim * c0,
+              y: e.y + lx * c0 - B.rim * s0,
+              vx: (r - 0.5) * 8,
+              vy: 0,
+              wob: r * 9,
+              life: 5 + r * 3,
+              max: 8,
+              kx: Math.cos(a2) * v,
+              ky: Math.sin(a2) * v,
+              kd: kr("jeSporeDrag")
+            });
+          }
+        }
+        for (let i = spores.length - 1; i >= 0; i--) {
+          const q = spores[i];
+          q.x += Math.sin(t * 1.3 + q.wob) * 6 * dt + (q.vx + q.kx) * dt;
+          q.y += (q.vy + q.ky) * dt;
+          const kk = Math.exp(-q.kd * dt);
+          q.kx *= kk;
+          q.ky *= kk;
+          if ((q.life -= dt) <= 0 || q.x < 0 || q.x > WU || q.y < 0 || solid(Math.floor(q.x / CELL), Math.floor(q.y / CELL))) spores.splice(i, 1);
+        }
+        if ((spitT -= dt) <= 0 && !glob) {
+          spitT = 2.2;
+          const a2 = e.je.hd, v = 70;
+          glob = {
+            x: e.x + Math.cos(a2) * e.r,
+            y: e.y + Math.sin(a2) * e.r,
+            vx: Math.cos(a2) * v,
+            vy: Math.sin(a2) * v,
+            da: 0,
+            size: kr("jeShotSize"),
+            drip: kr("jeDrip"),
+            g: kr("jeDripG"),
+            n: Math.round(kr("jeSplat")),
+            sv: kr("jeSplatSpd")
+          };
+        }
+        if (glob) {
+          glob.x += glob.vx * dt;
+          glob.y += glob.vy * dt;
+          for (glob.da += glob.drip * dt; glob.da >= 1; glob.da--) drop(glob.x, glob.y + glob.size * 0.5, glob.vx * 0.08, 8 + Math.random() * 18, P, glob.g);
+          if (solid(Math.floor(glob.x / CELL), Math.floor(glob.y / CELL))) {
+            const sp = Math.hypot(glob.vx, glob.vy) || 1;
+            for (let i = 0; i < glob.n; i++) {
+              const a2 = Math.random() * 6.28, v = glob.sv * (0.4 + Math.random() * 0.6);
+              drop(glob.x - glob.vx * dt, glob.y - glob.vy * dt, Math.cos(a2) * v - glob.vx / sp * v * 0.5, Math.sin(a2) * v - glob.vy / sp * v * 0.5 - v * 0.3, P, glob.g);
+            }
+            glob = null;
+          }
+        }
+        for (let i = drops.length - 1; i >= 0; i--) {
+          const q = drops[i];
+          q.vy += q.g * dt;
+          const nx = q.x + q.vx * dt, ny = q.y + q.vy * dt;
+          if (solid(Math.floor(nx / CELL), Math.floor(ny / CELL))) {
+            q.vx *= 0.3;
+            q.vy = 0;
+          } else {
+            q.x = nx;
+            q.y = ny;
+          }
+          if ((q.life -= dt) <= 0) drops.splice(i, 1);
+        }
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.fillStyle = "#0d0f14";
+        ctx.fillRect(0, 0, cw, ch);
+        ctx.setTransform(sc, 0, 0, sc, 0, 0);
+        const aw = WU, ah = Math.ceil(HU), top = HU - LEDGE;
+        if (artC.width !== aw || artC.height !== ah) {
+          artC.width = aw;
+          artC.height = ah;
+          glowC.width = aw;
+          glowC.height = ah;
+        }
+        artCtx.setTransform(1, 0, 0, 1, 0, 0);
+        artCtx.clearRect(0, 0, aw, ah);
+        artCtx.fillStyle = "rgb(62,56,54)";
+        artCtx.fillRect(0, top, aw, LEDGE + 1);
+        artCtx.fillStyle = "rgb(96,84,74)";
+        artCtx.fillRect(0, top, aw, 1.2);
+        tufts.forEach((q, x) => {
+          if (!q.h) return;
+          artCtx.fillStyle = rgbA(mix(TH2.moss[0], TH2.moss[1], q.c));
+          artCtx.fillRect(x, top - q.h + 1, 1, q.h);
+          artCtx.fillStyle = rgbA(TH2.moss[1]);
+          artCtx.fillRect(x, top - q.h + 1, 1, 1);
+        });
+        for (const v of vines) drawProp(artCtx, v, t, TH2);
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(artC, 0, 0);
+        drawJelly(ctx, e.x, e.y, e.r, t, 0, false, k.col, e.je);
+        if (glob) {
+          const z = glob.size;
+          ctx.save();
+          ctx.translate(glob.x, glob.y);
+          ctx.rotate(Math.atan2(glob.vy, glob.vx));
+          ctx.fillStyle = P.spitEdge;
+          ctx.beginPath();
+          ctx.ellipse(0, 0, z * 1.45, z * 1.05, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = P.spit;
+          ctx.beginPath();
+          ctx.ellipse(-z * 0.08, 0, z * 1.2, z * 0.82, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = P.spitShine;
+          ctx.beginPath();
+          ctx.arc(z * 0.3, -z * 0.28, z * 0.32, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+        for (const q of drops) {
+          ctx.globalAlpha = Math.max(0, q.life / q.max);
+          ctx.fillStyle = q.c;
+          ctx.fillRect(q.x - q.s / 2, q.y - q.s / 2, q.s, q.s);
+        }
+        ctx.globalAlpha = 1;
+        ctx.globalCompositeOperation = "lighter";
+        const u = e.je.u, a = kru("jeGlow", u.glow) * (1 + kru("jeFlare", u.flare) * e.je.shape), rgb = hexRgb(P.glow);
+        glowAt(ctx, e.x, e.y, kru("jeGlowR", u.glowR), a, rgb);
+        glowAt(ctx, e.x, e.y, e.r * 1.6, a * 1.4, rgb);
+        if (glob) glowAt(ctx, glob.x, glob.y, glob.size * 6, 0.3, rgb);
+        ctx.fillStyle = sporeCol;
+        for (const q of spores) {
+          ctx.globalAlpha = Math.min(1, q.life / (q.max * 0.3));
+          ctx.fillRect(q.x - 0.65, q.y - 0.65, 1.3, 1.3);
+        }
+        ctx.globalAlpha = 1;
+        const art = artCtx.getImageData(0, 0, aw, ah).data;
+        const white = plantWhite(art);
+        const reach2 = kru("jeGlowR", u.glowR) * kru("jePlantReach", u.plant), out = glowCtx.createImageData(aw, ah);
+        if (reach2 > 2 && plantGlowFill(out.data, art, aw, ah, {
+          ox: 0,
+          oy: 0,
+          px: 1,
+          cx: e.x,
+          cy: e.y,
+          reach: reach2,
+          white,
+          top: kru("jePlantTop", u.plant) / 100,
+          strength: kru("jePlantGlow", u.plant),
+          t: t * kru("jePlantTwinkle", u.plant),
+          size: kru("jePlantSize", u.plant),
+          rgb: hexArr(P.glow)
+        })) {
+          glowCtx.putImageData(out, 0, 0);
+          ctx.imageSmoothingEnabled = true;
+          ctx.drawImage(glowC, 0, 0);
+        }
+        ctx.globalCompositeOperation = "source-over";
+      };
+      raf = requestAnimationFrame(tick);
+      return () => cancelAnimationFrame(raf);
+    }, []);
+    return h("canvas", { ref, className: "jellyprev" });
+  }
+  var FC = { x0: 12, x1: 188, top: 26, bot: 106, lo: -0.3, hi: 1.3 };
+  var KEYS = [["holoC1x", "holoC1y"], ["holoC2x", "holoC2y"]];
+  var fcX = (u) => FC.x0 + u * (FC.x1 - FC.x0);
+  var fcY = (v) => FC.bot - v * (FC.bot - FC.top);
+  function FadeCurve() {
+    const [, bump] = useState(0);
+    const svg = useRef(null), dot = useRef(null), lamp2 = useRef(null), drag = useRef(-1);
+    useEffect(() => {
+      let raf, t0 = performance.now(), seen = "";
+      const tick = (now) => {
+        raf = requestAnimationFrame(tick);
+        const key = DEV.holoMin + "," + DEV.holoMax + "," + DEV.holoFade;
+        if (key !== seen) {
+          seen = key;
+          bump((n) => n + 1);
+        }
+        const len = Math.max(0.05, DEV.holoFade), s = (now - t0) / 1e3 % (len + 0.6), u = Math.min(1, s / len);
+        const v = bezierFade(u, DEV.holoC1x, DEV.holoC1y, DEV.holoC2x, DEV.holoC2y);
+        const b = clamp(DEV.holoMin + (DEV.holoMax - DEV.holoMin) * v, 0, 1);
+        if (dot.current) {
+          dot.current.setAttribute("cx", String(fcX(u)));
+          dot.current.setAttribute("cy", String(fcY(v)));
+        }
+        if (lamp2.current) lamp2.current.setAttribute("opacity", b.toFixed(3));
+      };
+      raf = requestAnimationFrame(tick);
+      return () => cancelAnimationFrame(raf);
+    }, []);
+    const at = (e) => {
+      const s = svg.current, m = s && s.getScreenCTM();
+      if (!m) return null;
+      const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(m.inverse());
+      return { u: clamp((p.x - FC.x0) / (FC.x1 - FC.x0), 0, 1), v: clamp((FC.bot - p.y) / (FC.bot - FC.top), FC.lo, FC.hi) };
+    };
+    const move = (e) => {
+      const p = drag.current >= 0 && at(e);
+      if (!p) return;
+      const [kx, ky] = KEYS[drag.current];
+      devSet(kx, Math.round(p.u * 100) / 100);
+      devSet(ky, Math.round(p.v * 100) / 100);
+      bump((n) => n + 1);
+    };
+    const H = KEYS.map(([kx, ky]) => ({ x: fcX(DEV[kx]), y: fcY(DEV[ky]) }));
+    const P0 = { x: fcX(0), y: fcY(1) }, P3 = { x: fcX(1), y: fcY(0) };
+    const path = "M" + P0.x + " " + P0.y + " C" + H[0].x + " " + H[0].y + " " + H[1].x + " " + H[1].y + " " + P3.x + " " + P3.y;
+    const reset = () => {
+      for (const [kx, ky] of KEYS) {
+        devSet(kx, DEV_DEFAULTS[kx]);
+        devSet(ky, DEV_DEFAULTS[ky]);
+      }
+      bump((n) => n + 1);
+    };
+    return h(
+      "div",
+      { className: "fadecurve" },
+      h(
+        "svg",
+        {
+          ref: svg,
+          viewBox: "0 0 200 132",
+          className: "fcsvg",
+          onPointerDown: (e) => {
+            e.preventDefault();
+            const s = svg.current, m = s && s.getScreenCTM();
+            if (!m) return;
+            const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(m.inverse());
+            drag.current = Math.hypot(p.x - H[0].x, p.y - H[0].y) <= Math.hypot(p.x - H[1].x, p.y - H[1].y) ? 0 : 1;
+            s.setPointerCapture(e.pointerId);
+            move(e);
+          },
+          onPointerMove: move,
+          onPointerUp: () => {
+            drag.current = -1;
+          },
+          onPointerCancel: () => {
+            drag.current = -1;
+          }
+        },
+        h("rect", { x: FC.x0, y: FC.top, width: FC.x1 - FC.x0, height: FC.bot - FC.top, className: "fcbox" }),
+        h("text", { x: FC.x0 + 2, y: FC.top - 4, className: "fctxt" }, "kill: " + DEV.holoMax),
+        h("text", { x: FC.x0 + 2, y: FC.bot + 12, className: "fctxt" }, "rest: " + DEV.holoMin),
+        h("text", { x: FC.x1 - 2, y: FC.bot + 12, className: "fctxt", textAnchor: "end" }, DEV.holoFade + "s"),
+        h("line", { x1: P0.x, y1: P0.y, x2: H[0].x, y2: H[0].y, className: "fcarm" }),
+        h("line", { x1: P3.x, y1: P3.y, x2: H[1].x, y2: H[1].y, className: "fcarm" }),
+        h("path", { d: path, className: "fcline" }),
+        h("circle", { ref: dot, r: 2.5, className: "fcdot" }),
+        H.map((q, i) => h("circle", { key: i, cx: q.x, cy: q.y, r: 5, className: "fchandle" })),
+        h("rect", { ref: lamp2, x: FC.x1 - 22, y: 4, width: 20, height: 14, rx: 2, fill: "#ff0000" })
+      ),
+      h("button", { className: "devreset fcreset", "aria-label": "Default curve", onPointerDown: (e) => {
+        e.preventDefault();
+        reset();
+      } }, "↺")
+    );
+  }
+  function CurveEdit({ p, label, lo, hi }) {
+    const [, bump] = useState(0);
+    const svg = useRef(null), drag = useRef(-1);
+    const cx = (u) => FC.x0 + u * (FC.x1 - FC.x0);
+    const cy = (v) => FC.bot - (v - lo) / (hi - lo) * (FC.bot - FC.top);
+    const K = [[null, p + "0", 0], [p + "C1x", p + "C1y"], [p + "C2x", p + "C2y"], [null, p + "1", 1]];
+    const H = K.map(([kx, ky, fx]) => ({ x: cx(kx ? DEV[kx] : Number(fx)), y: cy(DEV[ky]) }));
+    const at = (e) => {
+      const s = svg.current, m = s && s.getScreenCTM();
+      if (!m) return null;
+      const q = new DOMPoint(e.clientX, e.clientY).matrixTransform(m.inverse());
+      return { sx: q.x, sy: q.y, u: clamp((q.x - FC.x0) / (FC.x1 - FC.x0), 0, 1), v: clamp(lo + (FC.bot - q.y) / (FC.bot - FC.top) * (hi - lo), lo, hi) };
+    };
+    const move = (e) => {
+      const q = drag.current >= 0 && at(e);
+      if (!q) return;
+      const [kx, ky] = K[drag.current];
+      if (kx) devSet(String(kx), Math.round(q.u * 100) / 100);
+      devSet(String(ky), Math.round(q.v * 100) / 100);
+      bump((n) => n + 1);
+    };
+    const path = "M" + H[0].x + " " + H[0].y + " C" + H[1].x + " " + H[1].y + " " + H[2].x + " " + H[2].y + " " + H[3].x + " " + H[3].y;
+    const reset = () => {
+      for (const [kx, ky] of K) {
+        if (kx) devSet(String(kx), DEV_DEFAULTS[kx]);
+        devSet(String(ky), DEV_DEFAULTS[ky]);
+      }
+      bump((n) => n + 1);
+    };
+    return h(
+      "div",
+      { className: "fadecurve", "data-curve": p },
+      h("p", { className: "devlbl" }, label),
+      h(
+        "svg",
+        {
+          ref: svg,
+          viewBox: "0 0 200 132",
+          className: "fcsvg",
+          onPointerDown: (e) => {
+            e.preventDefault();
+            const q = at(e);
+            if (!q) return;
+            let best = 0;
+            H.forEach((c, i) => {
+              if (Math.hypot(q.sx - c.x, q.sy - c.y) < Math.hypot(q.sx - H[best].x, q.sy - H[best].y)) best = i;
+            });
+            drag.current = best;
+            svg.current.setPointerCapture(e.pointerId);
+            move(e);
+          },
+          onPointerMove: move,
+          onPointerUp: () => {
+            drag.current = -1;
+          },
+          onPointerCancel: () => {
+            drag.current = -1;
+          }
+        },
+        h("rect", { x: FC.x0, y: FC.top, width: FC.x1 - FC.x0, height: FC.bot - FC.top, className: "fcbox" }),
+        h("text", { x: FC.x0 + 2, y: FC.top - 4, className: "fctxt" }, "y " + hi),
+        h("text", { x: FC.x0 + 2, y: FC.bot + 12, className: "fctxt" }, "x 0, y " + lo),
+        h("text", { x: FC.x1 - 2, y: FC.bot + 12, className: "fctxt", textAnchor: "end" }, "x 1 (the reach)"),
+        h("line", { x1: H[0].x, y1: H[0].y, x2: H[1].x, y2: H[1].y, className: "fcarm" }),
+        h("line", { x1: H[3].x, y1: H[3].y, x2: H[2].x, y2: H[2].y, className: "fcarm" }),
+        h("path", { d: path, className: "fcline" }),
+        H.map((c, i) => h("circle", { key: i, cx: c.x, cy: c.y, r: 5, className: "fchandle" }))
+      ),
+      h("button", { className: "devreset fcreset", "aria-label": "Default curve", onPointerDown: (e) => {
+        e.preventDefault();
+        reset();
+      } }, "↺")
+    );
+  }
+  var svgPt = (s, e) => {
+    const m = s && s.getScreenCTM();
+    return m ? new DOMPoint(e.clientX, e.clientY).matrixTransform(m.inverse()) : null;
+  };
+  var toHex = (c) => "#" + c.map((v) => Math.round(v).toString(16).padStart(2, "0")).join("");
+  function FlamePreview() {
+    const ref = useRef(null);
+    useEffect(() => {
+      const c = ref.current;
+      if (!c || !c.getContext) return;
+      const ctx = c.getContext("2d");
+      const fx = [];
+      const e = { x: 60, ty: 56, r: 7, fxAcc: 0, px: 60, py: 56 };
+      let raf, last = performance.now(), t = 0;
+      const tick = (now) => {
+        raf = requestAnimationFrame(tick);
+        const dt = Math.min(0.05, (now - last) / 1e3);
+        last = now;
+        t += dt;
+        const cw = c.clientWidth, ch = c.clientHeight, dpr = window.devicePixelRatio || 1;
+        if (c.width !== Math.round(cw * dpr)) {
+          c.width = Math.round(cw * dpr);
+          c.height = Math.round(ch * dpr);
+        }
+        const sc = c.height / 80, wu = c.width / sc;
+        e.x = wu / 2 + Math.sin(t * 0.9) * wu * 0.3;
+        e.ty = 56 + Math.sin(t * 1.7) * 5;
+        const vx = (e.x - e.px) / (dt || 1), vy = (e.ty - e.py) / (dt || 1);
+        e.px = e.x;
+        e.py = e.ty;
+        for (e.fxAcc += kr("elFxRate") * dt; e.fxAcc >= 1; e.fxAcc--) {
+          const a = Math.random() * 6.283, rr2 = e.r * kr("elFxBody") * Math.sqrt(Math.random()), life = kr("elFxLife");
+          fx.push({
+            x: e.x + Math.cos(a) * rr2,
+            y: e.ty + Math.sin(a) * rr2,
+            vx,
+            vy,
+            life,
+            max: life,
+            rise: kr("elFxRise"),
+            wave: kr("elFxWave"),
+            hz: kr("elFxWaveHz"),
+            drag: kr("elFxDrag"),
+            s: kr("elFxSize"),
+            ph: Math.random() * 6.283,
+            age: 0
+          });
+        }
+        for (let i = fx.length - 1; i >= 0; i--) {
+          const q = fx[i];
+          q.age += dt;
+          const k = Math.exp(-q.drag * dt);
+          q.vx *= k;
+          q.vy *= k;
+          q.x += (q.vx + Math.sin(q.age * q.hz * 6.283 + q.ph) * q.wave) * dt;
+          q.y += (q.vy - q.rise) * dt;
+          if ((q.life -= dt) <= 0) fx.splice(i, 1);
+        }
+        if (fx.length > 500) fx.splice(0, fx.length - 500);
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.fillStyle = "#0d0f14";
+        ctx.fillRect(0, 0, c.width, c.height);
+        ctx.setTransform(sc, 0, 0, sc, 0, 0);
+        const cols = gradLut(DEV.elFxGrad), al = rampLut(DEV.elFxAlpha);
+        ctx.globalCompositeOperation = "lighter";
+        for (const q of fx) {
+          const u = 1 - q.life / q.max, a = lutAt(al, u);
+          if (a <= 0.01) continue;
+          ctx.globalAlpha = a;
+          ctx.fillStyle = lutAt(cols, u);
+          ctx.fillRect(Math.round(q.x) - q.s / 2, Math.round(q.y) - q.s / 2, q.s, q.s);
+        }
+        ctx.globalCompositeOperation = "source-over";
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = "#5a4a6a";
+        ctx.beginPath();
+        ctx.arc(e.x, e.ty, e.r, 0, 6.283);
+        ctx.fill();
+        ctx.fillStyle = "#fff";
+        ctx.fillRect(e.x - 3, e.ty - 2, 2, 2);
+        ctx.fillRect(e.x + 1, e.ty - 2, 2, 2);
+      };
+      raf = requestAnimationFrame(tick);
+      return () => cancelAnimationFrame(raf);
+    }, []);
+    return h("canvas", { ref, className: "flameprev" });
+  }
+  function GradEditor() {
+    const [, bump] = useState(0);
+    const [sel, setSel] = useState(-1);
+    const svg = useRef(null), drag = useRef(-1);
+    const G = parseGrad(DEV.elFxGrad);
+    const save = (g, keep) => {
+      const s = g[keep], out = g.slice().sort((a, b) => a.t - b.t);
+      devSet("elFxGrad", gradStr(out));
+      setSel(s ? out.indexOf(s) : -1);
+      bump((n) => n + 1);
+      return s ? out.indexOf(s) : -1;
+    };
+    const X0 = 8, X1 = 192, tOf = (x) => clamp((x - X0) / (X1 - X0), 0, 1);
+    return h(
+      "div",
+      { className: "gradedit" },
+      h(
+        "svg",
+        {
+          ref: svg,
+          viewBox: "0 0 200 44",
+          className: "fcsvg",
+          onPointerDown: (e) => {
+            e.preventDefault();
+            const p = svgPt(svg.current, e);
+            if (!p) return;
+            let i = -1, bd = 7;
+            G.forEach((s, k) => {
+              const d = Math.abs(X0 + s.t * (X1 - X0) - p.x);
+              if (p.y > 22 && d < bd) {
+                bd = d;
+                i = k;
+              }
+            });
+            if (i < 0) {
+              const t = tOf(p.x);
+              G.push({ t, c: toHex(gradAt(G, t)) });
+              i = save(G, G.length - 1);
+            } else setSel(i);
+            drag.current = i;
+            svg.current.setPointerCapture(e.pointerId);
+          },
+          onPointerMove: (e) => {
+            if (drag.current < 0) return;
+            const p = svgPt(svg.current, e);
+            if (!p) return;
+            G[drag.current].t = tOf(p.x);
+            drag.current = save(G, drag.current);
+          },
+          onPointerUp: () => {
+            drag.current = -1;
+          },
+          onPointerCancel: () => {
+            drag.current = -1;
+          }
+        },
+        h("defs", null, h(
+          "linearGradient",
+          { id: "elfxg", x1: 0, x2: 1, y1: 0, y2: 0 },
+          G.map((s, k) => h("stop", { key: k, offset: s.t, stopColor: s.c }))
+        )),
+        h("rect", { x: X0, y: 4, width: X1 - X0, height: 18, rx: 3, fill: "url(#elfxg)" }),
+        G.map((s, k) => {
+          const x = X0 + s.t * (X1 - X0);
+          return h("path", {
+            key: k,
+            d: "M" + x + " 24 l5 8 v8 h-10 v-8 z",
+            fill: s.c,
+            stroke: k === sel ? "#fff" : "rgba(255,255,255,0.45)",
+            strokeWidth: k === sel ? 1.6 : 0.8
+          });
+        })
+      ),
+      sel >= 0 && G[sel] ? h(
+        "div",
+        { className: "gradsel" },
+        h("span", null, "Stop at " + Math.round(G[sel].t * 100) + "%"),
+        h("input", { type: "color", value: G[sel].c, onChange: (e) => {
+          G[sel].c = e.target.value;
+          save(G, sel);
+        } }),
+        G.length > 1 ? h("button", { className: "devreset", onPointerDown: (e) => {
+          e.preventDefault();
+          G.splice(sel, 1);
+          devSet("elFxGrad", gradStr(G));
+          setSel(-1);
+          bump((n) => n + 1);
+        } }, "Delete") : null
+      ) : null,
+      h(
+        "div",
+        { className: "gradsel" },
+        h("span", null, sel >= 0 ? "" : "Tap the bar to add a stop, drag one to move it"),
+        h("button", { className: "devreset", "aria-label": "Default gradient", onPointerDown: (e) => {
+          e.preventDefault();
+          devSet("elFxGrad", DEV_DEFAULTS.elFxGrad);
+          setSel(-1);
+          bump((n) => n + 1);
+        } }, "↺")
+      )
+    );
+  }
+  function RampEditor() {
+    const [, bump] = useState(0);
+    const [sel, setSel] = useState(-1);
+    const svg = useRef(null), drag = useRef(-1), dot = useRef(null);
+    const R = parseRamp(DEV.elFxAlpha);
+    const B = { x0: 10, x1: 190, top: 8, bot: 98 };
+    const px = (x) => B.x0 + x * (B.x1 - B.x0), py = (y) => B.bot - y * (B.bot - B.top);
+    useEffect(() => {
+      let raf, t0 = performance.now();
+      const tick = (now) => {
+        raf = requestAnimationFrame(tick);
+        const len = Math.max(0.05, (DEV.elFxLifeLo + DEV.elFxLifeHi) / 2), u = (now - t0) / 1e3 % (len + 0.4) / len;
+        if (dot.current && u <= 1) {
+          dot.current.setAttribute("cx", String(px(u)));
+          dot.current.setAttribute("cy", String(py(rampAt(parseRamp(DEV.elFxAlpha), u))));
+        }
+      };
+      raf = requestAnimationFrame(tick);
+      return () => cancelAnimationFrame(raf);
+    }, []);
+    const save = (r, keep) => {
+      const p = r[keep], out = r.slice().sort((a, b) => a.x - b.x);
+      devSet("elFxAlpha", rampStr(out));
+      setSel(p ? out.indexOf(p) : -1);
+      bump((n) => n + 1);
+      return p ? out.indexOf(p) : -1;
+    };
+    const at = (e) => {
+      const p = svgPt(svg.current, e);
+      return p && { x: clamp((p.x - B.x0) / (B.x1 - B.x0), 0, 1), y: clamp((B.bot - p.y) / (B.bot - B.top), 0, 1), sx: p.x, sy: p.y };
+    };
+    const curve = bspline(R);
+    let d = "";
+    for (let i = 0; i < curve.length; i += 2) d += (i ? " L" : "M") + px(curve[i]).toFixed(1) + " " + py(curve[i + 1]).toFixed(1);
+    return h(
+      "div",
+      { className: "rampedit" },
+      h(
+        "svg",
+        {
+          ref: svg,
+          viewBox: "0 0 200 112",
+          className: "fcsvg",
+          onPointerDown: (e) => {
+            e.preventDefault();
+            const p = at(e);
+            if (!p) return;
+            let i = -1, bd = 9;
+            R.forEach((q, k) => {
+              const dd = Math.hypot(px(q.x) - p.sx, py(q.y) - p.sy);
+              if (dd < bd) {
+                bd = dd;
+                i = k;
+              }
+            });
+            if (i < 0) {
+              R.push({ x: p.x, y: p.y });
+              i = save(R, R.length - 1);
+            } else setSel(i);
+            drag.current = i;
+            svg.current.setPointerCapture(e.pointerId);
+          },
+          onPointerMove: (e) => {
+            if (drag.current < 0) return;
+            const p = at(e);
+            if (!p) return;
+            R[drag.current].x = p.x;
+            R[drag.current].y = p.y;
+            drag.current = save(R, drag.current);
+          },
+          onPointerUp: () => {
+            drag.current = -1;
+          },
+          onPointerCancel: () => {
+            drag.current = -1;
+          }
+        },
+        h("rect", { x: B.x0, y: B.top, width: B.x1 - B.x0, height: B.bot - B.top, className: "fcbox" }),
+        h("text", { x: B.x0 + 2, y: B.top + 7, className: "fctxt" }, "opaque"),
+        h("text", { x: B.x0 + 2, y: B.bot + 10, className: "fctxt" }, "born"),
+        h("text", { x: B.x1 - 2, y: B.bot + 10, className: "fctxt", textAnchor: "end" }, "gone"),
+        h("polyline", { points: R.map((q) => px(q.x) + "," + py(q.y)).join(" "), className: "fcarm", fill: "none" }),
+        h("path", { d, className: "fcline" }),
+        h("circle", { ref: dot, r: 2.5, className: "fcdot", cx: -10, cy: -10 }),
+        R.map((q, k) => h("circle", {
+          key: k,
+          cx: px(q.x),
+          cy: py(q.y),
+          r: 4.5,
+          className: "fchandle",
+          style: k === sel ? { stroke: "#fff" } : null
+        }))
+      ),
+      h(
+        "div",
+        { className: "gradsel" },
+        sel >= 0 && R[sel] ? h("span", null, "Point: life " + Math.round(R[sel].x * 100) + "%, opacity " + Math.round(R[sel].y * 100) + "%") : h("span", null, "Tap to add a point, drag to move"),
+        sel >= 0 && R.length > 2 ? h("button", { className: "devreset", onPointerDown: (e) => {
+          e.preventDefault();
+          R.splice(sel, 1);
+          devSet("elFxAlpha", rampStr(R));
+          setSel(-1);
+          bump((n) => n + 1);
+        } }, "Delete") : null,
+        h("button", { className: "devreset", "aria-label": "Default ramp", onPointerDown: (e) => {
+          e.preventDefault();
+          devSet("elFxAlpha", DEV_DEFAULTS.elFxAlpha);
+          setSel(-1);
+          bump((n) => n + 1);
+        } }, "↺")
+      )
+    );
+  }
+  function DevRow({ meta }) {
+    const [val, setVal] = useState(String(DEV[meta.k]));
+    if (meta.type === "curve" || meta.type === "grad" || meta.type === "ramp") return null;
+    if (meta.type === "slider") {
+      const set = (v) => {
+        devSet(meta.k, v);
+        setVal(String(v));
+      };
+      return h(
+        "div",
+        { className: "devrow" },
+        h("label", null, meta.label, h("span", { className: "devval" }, String(DEV[meta.k]))),
+        h("input", {
+          type: "range",
+          min: meta.min,
+          max: meta.max,
+          step: meta.step,
+          value: DEV[meta.k],
+          onChange: (e) => set(parseFloat(e.target.value))
+        }),
+        h("button", { className: "devreset", "aria-label": "Default", onPointerDown: () => set(DEV_DEFAULTS[meta.k]) }, "↺")
+      );
+    }
+    if (meta.type === "color") {
+      const set = (v) => {
+        devSet(meta.k, v);
+        setVal(v);
+      };
+      return h(
+        "div",
+        { className: "devrow" },
+        h("label", null, meta.label),
+        h("input", { type: "color", value: DEV[meta.k], onChange: (e) => set(e.target.value) }),
+        h("button", { className: "devreset", "aria-label": "Default", onPointerDown: () => set(DEV_DEFAULTS[meta.k]) }, "↺")
+      );
+    }
+    const commit = () => {
+      const s = val.trim();
+      let v;
+      if (s === "") v = DEV_DEFAULTS[meta.k];
+      else {
+        v = parseFloat(s);
+        if (!isFinite(v)) {
+          setVal(String(DEV[meta.k]));
+          return;
+        }
+      }
+      v = Math.max(meta.min, Math.min(meta.max, v));
+      devSet(meta.k, v);
+      setVal(String(v));
+    };
+    return h(
+      "div",
+      { className: "devrow" },
+      h("label", null, meta.label),
+      h("input", {
+        type: "number",
+        inputMode: "decimal",
+        step: meta.step,
+        value: val,
+        placeholder: String(DEV_DEFAULTS[meta.k]),
+        onChange: (e) => setVal(e.target.value),
+        onBlur: commit,
+        onKeyDown: (e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            e.target.blur();
+          }
+        }
+      })
+    );
+  }
+  function DevGroupHead({ g, name, shut, toggle, n, changed, tab }) {
+    return h(
+      "button",
+      {
+        className: "devghead" + (shut ? "" : " open"),
+        "data-g": g,
+        "aria-expanded": !shut,
+        onClick: () => toggle(g)
+      },
+      h("span", { className: "devcaret" }, "›"),
+      h("span", { className: "devgname" }, name, tab ? h("span", { className: "devgtab" }, tab) : null),
+      changed ? h("span", { className: "devgchg", title: "changed from default" }, changed + " changed") : null,
+      h("span", { className: "devgn" }, String(n))
+    );
+  }
+  var groupExtras = (g) => [
+    g === "jellycol" ? h(JellyPreview, { key: "jp" }) : null,
+    // the live jelly its colours paint
+    g === "holoflash" ? h(FadeCurve, { key: "fc" }) : null,
+    ...CURVES.filter((c) => c.g === g).map((c) => h(CurveEdit, { key: c.p, p: c.p, label: c.label, lo: c.lo, hi: c.hi })),
+    ...g === "elitefx" ? [
+      h(FlamePreview, { key: "fp" }),
+      h("p", { key: "gl", className: "devlbl" }, "Colour over life"),
+      h(GradEditor, { key: "ge" }),
+      h("p", { key: "rl", className: "devlbl" }, "Opacity over life"),
+      h(RampEditor, { key: "re" })
+    ] : []
+  ];
+  var lsGet = (k) => {
+    try {
+      return JSON.parse(localStorage.getItem(k));
+    } catch (_) {
+      return null;
+    }
+  };
+  var lsSet = (k, v) => {
+    try {
+      localStorage.setItem(k, JSON.stringify(v));
+    } catch (_) {
+    }
+  };
+  var blurBox = () => {
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+  };
+  function DevPanel({ input, refresh, close, onRestart, onSpawnGun, onSpawnLevel }) {
+    const LO = input.current.loadout;
+    const [, bump] = useState(0);
+    const [copied, setCopied] = useState(null);
+    const [q, setQ] = useState("");
+    const [openG, setOpenG] = useState(() => lsGet("caverunner-devgroups") || {});
+    const [tab, setTabS] = useState(() => {
+      const t = lsGet("caverunner-devtab");
+      if (DEV_TABS.some((x) => x[0] === t)) return t;
+      const o = DEV_GROUPS.find(([g]) => openG[g]);
+      return o ? devTabOf(o[0]) : DEV_TABS[0][0];
+    });
+    const setTab = (t) => {
+      blurBox();
+      setTabS(t);
+      lsSet("caverunner-devtab", t);
+    };
+    const toggleG = (g) => {
+      blurBox();
+      const o = Object.assign({}, openG, { [g]: !openG[g] });
+      setOpenG(o);
+      lsSet("caverunner-devgroups", o);
+    };
+    const copyText = (make, what) => {
+      blurBox();
+      const text = make();
+      if (!text) {
+        setCopied({ text, ok: false, empty: true, what });
+        return;
+      }
+      const fallback = () => {
+        let ok = false;
+        try {
+          const ta = document.createElement("textarea");
+          ta.value = text;
+          ta.style.position = "fixed";
+          ta.style.opacity = "0";
+          document.body.appendChild(ta);
+          ta.select();
+          ok = document.execCommand("copy");
+          ta.remove();
+        } catch (_) {
+        }
+        setCopied({ text, ok, what });
+      };
+      try {
+        navigator.clipboard.writeText(text).then(() => setCopied({ text, ok: true, what }), fallback);
+      } catch (_) {
+        fallback();
+      }
+    };
+    const act = (cls, label, fn) => h("button", { className: "dbg " + cls, onPointerDown: (e) => {
+      e.preventDefault();
+      fn();
+    } }, label);
+    const needle = q.trim().toLowerCase();
+    const tabName = (t) => (DEV_TABS.find((x) => x[0] === t) || DEV_TABS[0])[1];
+    const shown = DEV_GROUPS.filter(([g]) => needle || devTabOf(g) === tab).map(([g, name]) => {
+      const rows = DEV_META.filter((m) => m.g === g);
+      const nameHit = needle && name.toLowerCase().includes(needle);
+      const hits = needle && !nameHit ? rows.filter((m) => (m.label + " " + m.k).toLowerCase().includes(needle)) : rows;
+      return { g, name, rows, hits, nameHit };
+    }).filter((x) => !needle || x.nameHit || x.hits.length);
+    return h(
+      "div",
+      { className: "devwrap" },
+      h("div", { className: "devback", onPointerDown: (e) => {
+        e.preventDefault();
+        close();
+      } }),
+      h(
+        "div",
+        { className: "devpanel scroll" },
+        h(
+          "div",
+          { className: "devtop" },
+          h(
+            "div",
+            { className: "devhead" },
+            h("h2", null, "Dev"),
+            h("button", { className: "done", onPointerDown: (e) => {
+              e.preventDefault();
+              close();
+            } }, "Done")
+          ),
+          h(
+            "div",
+            { className: "devbtns" },
+            ...LO ? [
+              act("toggle" + (LO.debug ? " on" : ""), "All mods", () => {
+                LO.debug = !LO.debug;
+                refresh();
+                bump((n) => n + 1);
+              }),
+              act("toggle allperks" + (LO.debugPerks ? " on" : ""), "All perks", () => {
+                LO.debugPerks = !LO.debugPerks;
+                refresh();
+                bump((n) => n + 1);
+              }),
+              act("spawngun", "Spawn gun", onSpawnGun),
+              act("spawnlevel", "Spawn level", onSpawnLevel),
+              act("restart", "Restart run", onRestart)
+            ] : [],
+            act("devcopy", "Copy Dev settings", () => copyText(devReport)),
+            act("devaudit", "Copy mod & perk audit", () => copyText(() => auditText(loadAudit()), "audit"))
+          ),
+          copied ? h("p", { className: "devnote devcopied" + (copied.ok ? " ok" : "") }, copied.empty ? "Nothing audited yet — pin, trash or give feedback on a mod or perk card first." : copied.ok ? copied.what === "audit" ? "Audit copied — paste it into Claude Code." : "Copied — paste it to Claude." : "Could not reach the clipboard — press and hold the text below to copy it.") : null,
+          copied && !copied.ok && !copied.empty ? h("textarea", { className: "devcopytext", readOnly: true, value: copied.text }) : null,
+          h(
+            "div",
+            { className: "devsearchw" },
+            h("input", {
+              className: "devsearch",
+              type: "search",
+              placeholder: "Search knobs…",
+              value: q,
+              onChange: (e) => setQ(e.target.value)
+            }),
+            q ? h("button", { className: "devclear", "aria-label": "Clear search", onPointerDown: (e) => {
+              e.preventDefault();
+              setQ("");
+            } }, "×") : null
+          ),
+          needle ? null : h(
+            "div",
+            { className: "devtabs", role: "tablist" },
+            DEV_TABS.map(([t, name, gs]) => {
+              const chg = DEV_META.filter((m) => gs.includes(m.g) && DEV[m.k] !== DEV_DEFAULTS[m.k]).length;
+              return h("button", {
+                key: t,
+                className: "devtab" + (t === tab ? " on" : ""),
+                "data-t": t,
+                role: "tab",
+                "aria-selected": t === tab,
+                onClick: () => setTab(t)
+              }, name, chg ? h("i", { className: "devdot" }) : null);
+            })
+          )
+        ),
+        h(
+          "div",
+          { className: "devbody" },
+          shown.length ? null : h("p", { className: "devnote" }, "No knob matches “" + q.trim() + "”."),
+          shown.map(({ g, name, rows, hits, nameHit }) => {
+            const shut = needle ? false : !openG[g];
+            const changed = rows.filter((m) => DEV[m.k] !== DEV_DEFAULTS[m.k]).length;
+            return h(
+              "div",
+              { key: g, className: "devgroup" + (shut ? "" : " open") },
+              h(DevGroupHead, {
+                g,
+                name,
+                shut,
+                toggle: toggleG,
+                n: rows.filter((m) => m.type !== "curve").length,
+                changed,
+                tab: needle ? tabName(devTabOf(g)) : ""
+              }),
+              shut ? null : h(
+                "div",
+                { className: "devvars" },
+                !needle || nameHit ? groupExtras(g) : null,
+                hits.map((m) => h(DevRow, { key: m.k, meta: m }))
+              )
+            );
+          }),
+          h(
+            "p",
+            { className: "devnote" },
+            "Values save on their own and stick across reloads and sessions. Leave a box empty to put its default back; ↺ resets a slider or colour. Copy Dev settings sends every knob you changed (to make them the defaults); Copy mod & perk audit sends your 📌 / 🗑️ / feedback notes."
+          )
+        )
+      )
+    );
+  }
+  function SpawnLevel({ input, close }) {
+    const cur = input.current.floor || 1;
+    const go = (n) => {
+      input.current.newCave = n;
+      close();
+    };
+    return h(
+      "div",
+      { className: "devwrap" },
+      h("div", { className: "devback", onPointerDown: (e) => {
+        e.preventDefault();
+        close();
+      } }),
+      h(
+        "div",
+        { className: "devpanel spawnpanel" },
+        h(
+          "div",
+          { className: "devhead" },
+          h("h2", null, "Spawn level"),
+          h("button", { className: "done", onPointerDown: (e) => {
+            e.preventDefault();
+            close();
+          } }, "Cancel")
+        ),
+        h(
+          "div",
+          { className: "lvlpick" },
+          THEMES.map((t, i) => h("button", {
+            key: i,
+            className: "dbg lvlgo" + (i + 1 === cur ? " on" : ""),
+            "data-floor": i + 1,
+            onPointerDown: (e) => {
+              e.preventDefault();
+              go(i + 1);
+            }
+          }, h("b", null, i + 1), " " + t.name))
+        )
+      )
+    );
+  }
+  function SpawnGun({ input, close }) {
+    const [lvl, setLvl] = useState(String(input.current.floor || 1));
+    const spawn = () => {
+      input.current.spawnGun = Math.max(1, Math.floor(Number(lvl) || 1));
+      close();
+    };
+    return h(
+      "div",
+      { className: "devwrap" },
+      h("div", { className: "devback", onPointerDown: (e) => {
+        e.preventDefault();
+        close();
+      } }),
+      h(
+        "div",
+        { className: "devpanel spawnpanel" },
+        h(
+          "div",
+          { className: "devhead" },
+          h("h2", null, "Spawn gun"),
+          h("button", { className: "done", onPointerDown: (e) => {
+            e.preventDefault();
+            close();
+          } }, "Cancel")
+        ),
+        h(
+          "div",
+          { className: "devrow" },
+          h("label", null, "Level"),
+          h("input", {
+            className: "spawnlvl",
+            type: "number",
+            min: 1,
+            inputMode: "numeric",
+            value: lvl,
+            onChange: (e) => setLvl(e.target.value)
+          })
+        ),
+        h("button", { className: "dbg spawngo", onPointerDown: (e) => {
+          e.preventDefault();
+          spawn();
+        } }, "Spawn"),
+        h(PresetList, { input, close })
+      )
+    );
+  }
+  function PresetList({ input, close }) {
+    const [list, setList] = useState(loadPresets);
+    const [asking, setAsking] = useState(-1);
+    const tap = (f) => (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      f();
+    };
+    const del = (i) => {
+      const next = removePreset(loadPresets(), i);
+      savePresets(next);
+      setList(next);
+      setAsking(-1);
+    };
+    return h(
+      "div",
+      { className: "presets" },
+      h("p", { className: "lab" }, "Presets"),
+      list.length ? h("div", { className: "prelist" }, list.map((p, i) => h(
+        "div",
+        { key: i, className: "prerow", "data-preset": i },
+        h("button", {
+          className: "pregun",
+          style: { color: gunColor(p.gun) },
+          onPointerDown: tap(() => {
+            input.current.spawnPreset = presetGun(p);
+            close();
+          })
+        }, p.name),
+        asking === i ? h("button", { className: "predel", onPointerDown: tap(() => del(i)) }, "Delete") : h("button", { className: "predelask", "aria-label": "Delete preset", onPointerDown: tap(() => setAsking(i)) }, "🗑️")
+      ))) : h("p", { className: "prenone" }, "No presets yet — 💾 in the Bag saves one")
+    );
+  }
+
   // src/creatures/classic.js
   function drawDrone(ctx, x, y, r, lx, ly, time, phase, flash, col) {
     const shell2 = flash ? "#f4f0ff" : col.b;
@@ -28502,7 +29699,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         ctx.restore();
       }
     }
-    if (S2.hub) hubBack(ctx, S2);
+    if (S2.hub) {
+      hubBack(ctx, S2);
+      drawLoot(ctx, S2);
+    }
     if (S2.lvl) levelBack(ctx, S2);
     for (const r of S2.runners) if (!r.hide) drawTitleRunner(ctx, S2, r);
     drawThrown(ctx, S2);
@@ -28664,7 +29864,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     c.stroke();
     for (const g of S2.coins) drawNugget(c, g.x - S2.scroll, g.y, coinR(g), g.t, g.a || 0);
-    drawLoot(c, S2);
+    if (!S2.hub) drawLoot(c, S2);
   }
   function drawPayHint(c, S2) {
     const H = hubState(S2), id = hubPayAt(S2);
@@ -29715,7 +30915,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const [run] = useState(openRun);
     const [paused, setPaused] = useState(false);
     const pausedRef = useRef(false);
-    pausedRef.current = paused;
+    const [devOn, setDevOn] = useState(devShown);
+    const [devOpen, setDevOpen] = useState(false);
+    pausedRef.current = paused || devOpen;
     const cvs = useRef(null);
     const scene = useRef(null);
     const cam = useRef(null);
@@ -29938,6 +31140,29 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
       };
       addEventListener("pointermove", move, { passive: false });
+      addEventListener("pointerup", up);
+      addEventListener("pointercancel", up);
+    };
+    const pauseDown = (e) => {
+      e.preventDefault();
+      SFX.fx("open");
+      setPaused(true);
+      const id = e.pointerId;
+      const t = setTimeout(() => {
+        const v = !devShown();
+        setDevShown(v);
+        setDevOn(v);
+        try {
+          if (navigator.vibrate) navigator.vibrate(60);
+        } catch (_) {
+        }
+      }, DEV_HOLD_MS);
+      const up = (ev) => {
+        if (ev.pointerId !== id) return;
+        clearTimeout(t);
+        removeEventListener("pointerup", up);
+        removeEventListener("pointercancel", up);
+      };
       addEventListener("pointerup", up);
       addEventListener("pointercancel", up);
     };
@@ -30224,10 +31449,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           h("b", null, boss.name),
           h("div", { className: "abosstrack" }, h("i", { style: { width: (100 * boss.hp / Math.max(1, boss.max)).toFixed(1) + "%" } }))
         ) : null,
-        h("button", { className: "pausebtn", title: "Pause", onPointerDown: tap(() => {
+        devOn ? h("button", { className: "adevbtn", title: "Dev", onPointerDown: tap(() => {
           SFX.fx("open");
-          setPaused(true);
-        }) }, "⏸")
+          setDevOpen(true);
+        }) }, "⚙️") : null,
+        h("button", { className: "pausebtn", title: "Pause (hold 5 s: dev mode)", onPointerDown: pauseDown }, "⏸")
       ),
       h(NavStack, { nav, run, openAt, down, drag, holdHelm, holdGun, meters, pins, metersOf, pinNav, hidden: navHidden }),
       h(
@@ -30253,6 +31479,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       burst3 ? h(CoinBurst, { key: burst3.k, burst: burst3 }) : null,
       drag ? h(Ghost, { drag, it: srcItem(drag.src) }) : null,
       card ? h(CardPop, { it: card, close: () => setCard(null) }) : null,
+      devOpen ? h(DevPanel, { input, refresh: () => setV((v) => v + 1), close: () => {
+        SFX.fx("close");
+        setDevOpen(false);
+      } }) : null,
       paused ? h(PauseMenu, { input, label: "Tier " + run.tier, onNew: freshRun, close: () => {
         SFX.fx("close");
         setPaused(false);

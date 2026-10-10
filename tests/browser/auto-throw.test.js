@@ -120,7 +120,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     check('pay in full: the run holds the price + 7 in gold, no gun yet', g0.gold === price + 7 && g0.guns === 0, { g0, price });
     await pour(page);
     let s = g0;
-    for (let i = 0; i < 80 && !(s.guns === 1 && s.paid === 7); i++) { await page.waitForTimeout(100); s = await saved(page); }
+    for (let i = 0; i < 80 && !(s.guns === 1 && s.paid === 7); i++) { await page.waitForTimeout(100); await page.evaluate(() => { const S = window.__title.S, g = S.loot && S.loot[0]; if (g) { S.runners[0].x = g.x - PW / 2; S.runners[0].vx = 0; } }); s = await saved(page); }
     check('paid in full by a stream: a gun lands in the bag (saved)', s.guns === 1 && s.gold === 0, s);
     check('the change (7) stays in run.paid.gun', s.paid === 7, s);
     await ctx.close();

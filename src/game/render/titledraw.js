@@ -212,7 +212,7 @@ export function titleDraw(ctx, S, cw, ch, cam) {
   }
   // the four players: body and jet flame on the 1-unit pixel grid like the game's drawPlayer, the gun in it
   // (pixelHeld), each with its colour on the backpack and helmet
-  if (S.hub) hubBack(ctx, S);
+  if (S.hub) { hubBack(ctx, S); drawLoot(ctx, S); }
   if (S.lvl) levelBack(ctx, S);   // the auto level's pads (game/render/leveldraw.js)   // the auto hub's machines, pads and tubes (game/render/hubdraw.js)
   for (const r of S.runners) if (!r.hide) drawTitleRunner(ctx, S, r);
   drawThrown(ctx, S);   // stage 10a: over the machines
@@ -365,7 +365,7 @@ function worldLayer(c, S) {
   c.stroke();
   // gold, the game's nuggets (its size from its amount: coinR), turned as they roll
   for (const g of S.coins) drawNugget(c, g.x - S.scroll, g.y, coinR(g), g.t, g.a || 0);
-  drawLoot(c, S);
+  if (!S.hub) drawLoot(c, S);   // (the hub's after its back wall, below: the wall hid a machine's item, feedback round 2)
 }
 
 // (feedback round 2) player 1 at a machine: "A to Pay" over it (a green A in a dark pill), bobbing, over the dark

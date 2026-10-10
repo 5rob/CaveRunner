@@ -673,9 +673,9 @@ DEV_META.push(
 DEV_GROUPS.push(['autofoes', 'Auto: enemies']);
 // the jetpack (art/titlescene.js jetStep, feedback round 2: the old game's flame and smoke) and a death (auto/death.js: the ragdoll,
 // the slow stop, Tap A, the helmet light, the blast, home)
-Object.assign(DEV_DEFAULTS, { autoJetK: 0.55, autoJetTilt: 1, autoJetSmoke: 1, autoDeathStop: 1.5, autoTpBlink: 1, autoTpBoomWait: 0.6, autoTpBoomR: 60 });
+Object.assign(DEV_DEFAULTS, { autoMoveK: 0.55, autoJetTilt: 1, autoJetSmoke: 1, autoDeathStop: 1.5, autoTpBlink: 1, autoTpBoomWait: 0.6, autoTpBoomR: 60 });
 DEV_META.push(
-  { k: 'autoJetK',       g: 'autodeath', label: 'Jetpack strength (× the old game’s climb, sideways jet speed and push; hub and steering)', min: 0.2, max: 1.5, step: 0.05 },
+  { k: 'autoMoveK',      g: 'autodeath', label: 'Hand-steered speed (× the old game’s walk, jet, their pushes; hub and steering a player; the hub’s followers too)', min: 0.2, max: 1.5, step: 0.05 },
   { k: 'autoJetTilt',    g: 'autodeath', label: 'Jet flame: the autopilot’s tilt with its speed across (at most)', min: 0, max: 1.5, step: 0.05 },
   { k: 'autoJetSmoke',   g: 'autodeath', label: 'Jet smoke (× the old game’s rate)', min: 0, max: 3, step: 0.05 },
   { k: 'autoDeathStop',  g: 'autodeath', label: 'All fallen: the scroll eases to a stop over (s)', min: 0.1, max: 6, step: 0.1 },
@@ -716,11 +716,13 @@ DEV_META.push(
   { k: 'autoArcR', g: 'autobag', label: 'Gun arc: its radius (px) above the helmet', min: 70, max: 160, step: 2 });
 DEV_GROUPS.push(['autobag', 'Auto: bag']);
 // stage 10a: throwing gold and gems into the hub's machines (auto/throw.js, ui/auto/AutoScreen.js)
-Object.assign(DEV_DEFAULTS, { autoThrowPull: 45, autoThrowSuck: 500, autoThrowBack: 3, autoPayReach: 30, autoPayHold: 300, autoPayK: 2,
+Object.assign(DEV_DEFAULTS, { autoThrowPull: 45, autoThrowSuck: 500, autoThrowBack: 3, autoPayReach: 30, autoPickReach: 22, autoPickMin: 1, autoPayHold: 300, autoPayK: 2,
   autoStreamRate0: 2, autoStreamRate1: 14, autoStreamRamp: 1.5 });
 DEV_META.push(
   { k: 'autoThrowPull',   g: 'autothrow', label: 'A machine pulls in what it takes within (world units of its coin slot)', min: 5, max: 200, step: 1 },
   { k: 'autoThrowSuck',   g: 'autothrow', label: 'Its pull’s strength', min: 50, max: 3000, step: 10 },
+  { k: 'autoPickReach',   g: 'autothrow', label: 'A machine’s item: picked up when a player walks within (world units)', min: 4, max: 80, step: 1 },
+  { k: 'autoPickMin',     g: 'autothrow', label: 'A machine’s item: not picked up before it’s this old (s)', min: 0, max: 5, step: 0.1 },
   { k: 'autoThrowBack',   g: 'autothrow', label: 'Anything not taken flies back to the bag after (s)', min: 0.5, max: 20, step: 0.1 },
   { k: 'autoPayReach',    g: 'autothrow', label: 'Pay with A: player 1 within this of a machine (world units)', min: 5, max: 80, step: 1 },
   { k: 'autoPayHold',     g: 'autothrow', label: 'Pay with A: held this long (ms) starts the stream', min: 50, max: 1500, step: 10 },

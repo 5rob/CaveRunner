@@ -6,6 +6,8 @@
 // land), then flies into the bag as the level's loot does (S.loot, art/titlescene.js
 // stepLoot through S.hub's fits/take); the bag full, it waits on the floor. The change carries over.
 
+import { PW } from '../core/consts.js';
+import { DEV } from '../dev/knobs.js';
 import { PERKS } from '../data/perks.js';
 import { shopGun } from '../spells/gunshop.js';
 import { crystalRoll } from '../spells/collection.js';
@@ -67,8 +69,13 @@ export function stepPay(S, H) {
     for (let k = 0; k < due.n; k++) {
       const it = machineItem(id, H.tier, S.rnd);
       if (!it) continue;
-      const vx = (x < 300 ? 1 : -1) * (30 + 40 * S.rnd());
-      (S.loot || (S.loot = [])).push({ x, y: H.fy - 14, vx, vy: -150 - 40 * S.rnd(), it, col: lootCol(it), t: 0, land: PAY_REST + 0.15 * k });
+      // out toward player 1 (so it lands near him, on screen); he stands right at it: either way
+      const L1 = S.runners[0], dx = L1 ? L1.x + PW / 2 - x : 0, side = Math.abs(dx) > 6 ? Math.sign(dx) : (S.rnd() < 0.5 ? -1 : 1);
+      const vx = side * (35 + 35 * S.rnd());
+      // (feedback round 2) it pops out, bounces and lies there: picked up only once DEV.autoPickMin s old and a player walks
+      // within DEV.autoPickReach of it (it used to fly straight into a player standing at the machine)
+      (S.loot || (S.loot = [])).push({ x, y: H.fy - 14, vx, vy: -150 - 40 * S.rnd(), it, col: lootCol(it), t: 0, land: PAY_REST + 0.15 * k,
+        reach: DEV.autoPickReach, minT: DEV.autoPickMin });
     }
     S.flash = Math.max(S.flash, 0.25);
     S.snd.push({ k: 'coin', x, y: H.fy - 14 });

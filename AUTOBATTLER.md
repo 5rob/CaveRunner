@@ -376,6 +376,7 @@ chest slow ×0.5. Grab radius 35% of a tile.
 | feedback round 2 (e) | done | v1.0.29 | PM alone. Owner: the jet flame must point away from travel (the hub never ran `jetStep`; the level tilt used screen speed) — fixed; full gold stream at twice the drag (`PAY_MAX` 180). |
 | feedback round 2 (f) | done | v1.0.30 | PM: B hides the nav (a play tap shows it), one fixed camera (no gestures), jet thrust by the stick's height, auto-loot race. Agent (~13 min, worktree `cr-roam`): hold a helmet in a level → manual mode (scroll stops, damped follow forward/back, team behind, B lets go). Open: the view doesn't follow inside the arena; followers can trail the wrong side backing up. |
 | feedback round 2 (g) | done | v1.0.31 | PM alone. Owner: the jetpack way too fast and strong → `autoJetK` 0.55 (climb, sideways, push). |
+| feedback round 2 (h) | done | v1.0.32 | PM alone. Owner: machine items didn't pop out (hidden behind the hub wall since v1.0.26 — fixed; walk over, 1 s min); manual run too fast vs jet → one `autoMoveK`; no Dev panel on the auto screen → ⏸ held 5 s + ⚙️. |
 
 ## 8. The PM's kick-start prompt
 

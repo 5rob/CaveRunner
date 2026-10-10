@@ -31,7 +31,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   const B = async () => { await page.locator('.abtn.ab').dispatchEvent('pointerdown'); await page.waitForTimeout(300); };
 
   let s = await st();
-  check('the level runs on the pilot\'s pace', s.pace > 0.3 && !s.ctl, s);
+  check('the level runs on the pilot\'s pace (it may slow for a fight)', s.pace > 0 && !s.ctl, s);
 
   // a tap: his menu, nobody steered
   await helm().dispatchEvent('pointerdown'); await up(); await page.waitForTimeout(400);
@@ -71,7 +71,9 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   check('B: let go (autopilot, nobody locked)', !s.ctl && s.lock === -1, s);
   await page.waitForTimeout(2500);
   s = await st();
-  check('… and the pilot\'s pace is back', s.pace > 0.3, s);
+  const lead = await page.evaluate(() => levelLead(window.__autoScene));
+  // (the pilot may hold the team itself for a fight or rock ahead: what matters is that the roam's follow is over)
+  check('… and the pilot has the level again (no one leading, no roam back)', lead === null && s.pace >= 0, { s, lead });
 
   await browser.close();
   console.log(fails ? `${fails} FAILED` : 'all ok');

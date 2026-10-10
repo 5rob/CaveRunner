@@ -5,6 +5,18 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.32 — CaveRunner Auto: machine items seen and walked over, one hand-steered speed, the Dev panel (branch `autobattler`)
+Released 2026-10-11 on the branch (owner OK'd; shots `tools/vendshots.js`, `tools/devshots.js`).
+- Fix: a machine's item was hidden behind the hub's back wall (since v1.0.26: `drawLoot` ran before `hubBack`); now drawn
+  after it. It pops out toward player 1, bounces and lies there; picked up only once `autoPickMin` (1 s) old and a player
+  within `autoPickReach` (22) of it (`TLoot.reach`, `minT`; it used to fly into a player standing at the machine).
+- One hand-steered speed, `autoMoveK` (0.55, replaces `autoJetK`): × the old game's walk, jet, their pushes and the sink, in
+  the hub and steering a player (the hub's followers too), so running and jetting keep the old game's balance.
+- The Dev panel on the auto screen: ⏸ held 5 s toggles dev mode (the menu opens at once), a ⚙️ beside ⏸ opens it; the old
+  game's run buttons are left out when there's no loadout (`ui/devpanel.js`).
+- Tests: `auto-payout`, `auto-throw`, `auto-loop` walk player 1 to the item; `auto-steer`'s pace checks allow the
+  pilot's own holds; `auto-control` uses the new speed.
+
 ## v1.0.31 — CaveRunner Auto: a gentler jetpack (branch `autobattler`)
 Released 2026-10-11 on the branch (owner: "the jetpack feels way too fast and strong").
 - New knob `autoJetK` (0.55, Dev → Auto → "Auto: jetpack and death"): × the old game's climb (`jetLift`), sideways jet speed and

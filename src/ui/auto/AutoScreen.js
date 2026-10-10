@@ -39,6 +39,8 @@ import { GunFire, GunIcon, GunStats, PULL_COL } from '../editor.js';
 import { fireSimNew, fireSimStep, pullSteps } from '../../spells/bagsim.js';
 import { GlyphIcon, HelmetIcon, PixIcon } from './icons.js';
 import { PauseMenu } from '../pause.js';
+import { DevPanel } from '../devpanel.js';
+import { DEV_HOLD_MS, devShown, setDevShown } from '../devmode.js';
 import { runScene } from '../scenecanvas.js';
 import { leaveItem } from '../../art/titlescene.js';
 import { sceneAddRunner } from '../../auto/addrunner.js';
@@ -67,7 +69,10 @@ export function AutoScreen() {
   const [run] = useState(openRun);
   const [paused, setPaused] = useState(false);
   const pausedRef = useRef(false);
-  pausedRef.current = paused;
+  // (feedback round 2) the Dev panel: ⏸ held DEV_HOLD_MS toggles dev mode (as the old game); on, a ⚙️ beside ⏸ opens it
+  const [devOn, setDevOn] = useState(devShown);
+  const [devOpen, setDevOpen] = useState(false);
+  pausedRef.current = paused || devOpen;
   const cvs = useRef(null);
   /** @type {{ current: import('../../art/titlescene.js').TitleScene | null }} */
   const scene = useRef(null);
@@ -252,6 +257,19 @@ export function AutoScreen() {
       if (!stream) { dx = ev.clientX - x0; dy = ev.clientY - y0; if (!one()) SFX.ui('tap'); }
     };
     addEventListener('pointermove', move, { passive: false }); addEventListener('pointerup', up); addEventListener('pointercancel', up);
+  };
+  // ⏸: the pause menu at once; held on DEV_HOLD_MS (a let-go anywhere ends it) it also toggles dev mode (the ⚙️)
+  /** @param {any} e */
+  const pauseDown = e => {
+    e.preventDefault(); SFX.fx('open'); setPaused(true);
+    const id = e.pointerId;
+    const t = setTimeout(() => {
+      const v = !devShown(); setDevShown(v); setDevOn(v);
+      try { if (navigator.vibrate) navigator.vibrate(60); } catch (_) { /* no vibration */ }
+    }, DEV_HOLD_MS);
+    /** @param {any} ev */
+    const up = ev => { if (ev.pointerId !== id) return; clearTimeout(t); removeEventListener('pointerup', up); removeEventListener('pointercancel', up); };
+    addEventListener('pointerup', up); addEventListener('pointercancel', up);
   };
   // B (feedback round 2): a player steered by hand in a level: let him go (the autopilot); else back up the nav (to the
   // player row: nobody marked); at the player row: hide the nav (a tap on the play area brings it back)
@@ -479,7 +497,8 @@ export function AutoScreen() {
       blocked ? h('div', { className: 'ablocked' }, 'Path blocked') : null,
       boss ? h('div', { className: 'abossbar' }, h('b', null, boss.name),
         h('div', { className: 'abosstrack' }, h('i', { style: { width: (100 * boss.hp / Math.max(1, boss.max)).toFixed(1) + '%' } }))) : null,
-      h('button', { className: 'pausebtn', title: 'Pause', onPointerDown: tap(() => { SFX.fx('open'); setPaused(true); }) }, '⏸')),
+      devOn ? h('button', { className: 'adevbtn', title: 'Dev', onPointerDown: tap(() => { SFX.fx('open'); setDevOpen(true); }) }, '⚙️') : null,
+      h('button', { className: 'pausebtn', title: 'Pause (hold 5 s: dev mode)', onPointerDown: pauseDown }, '⏸')),
     h(NavStack, { nav, run, openAt, down, drag, holdHelm, holdGun, meters, pins, metersOf, pinNav, hidden: navHidden }),
     h('div', { className: 'abag' + (drag && drag.over && drag.over.key === 'bag' && drag.over.ok ? ' drop' : '') },
       ...Array.from({ length: BAG_SLOTS }, (_, i) => h(BagSlot, { key: i, i, it: run.bag[i], down,
@@ -493,6 +512,7 @@ export function AutoScreen() {
     burst ? h(CoinBurst, { key: burst.k, burst }) : null,
     drag ? h(Ghost, { drag, it: srcItem(drag.src) }) : null,
     card ? h(CardPop, { it: card, close: () => setCard(null) }) : null,
+    devOpen ? h(DevPanel, { input, refresh: () => setV(v => v + 1), close: () => { SFX.fx('close'); setDevOpen(false); } }) : null,
     paused ? h(PauseMenu, { input, label: 'Tier ' + run.tier, onNew: freshRun, close:() => { SFX.fx('close'); setPaused(false); } }) : null);
 }
 

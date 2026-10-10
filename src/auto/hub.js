@@ -183,7 +183,7 @@ const push = st => (st.active && st.mag > DEAD ? (st.mag - DEAD) / (1 - DEAD) : 
 function walkTo(x, tx, dt, k) {
   const d = tx - x, a = Math.abs(d);
   if (a < 0.05) return d;
-  const v = DEV.autoHubWalk * k * Math.min(1, Math.max(0.12, a / 6));
+  const v = DEV.autoHubWalk * DEV.autoMoveK * k * Math.min(1, Math.max(0.12, a / 6));   // (they keep up with him: × autoMoveK)
   return Math.sign(d) * Math.min(a, v * dt);
 }
 
@@ -200,11 +200,11 @@ function hubMove(S, H, dt) {
   if (!L || !H.arrived[0]) return;
   const st = H.stick, m = push(st), jet = m > 0 && st.dy < 0, mv = DEV.move;
   if (jet) {
-    L.vx = approach(L.vx, st.nx * m * JET * DEV.autoJetK * mv, JET_ACC * DEV.autoJetK * dt);
+    L.vx = approach(L.vx, st.nx * m * JET * DEV.autoMoveK * mv, JET_ACC * DEV.autoMoveK * dt);
     const ty = jetLift(st.ny, m) * mv;
-    L.vy = ty < L.vy ? approach(L.vy, ty, JET_ACC * DEV.autoJetK * 2 * dt) : approach(L.vy, ty, JET_ACC * DEV.autoJetK * dt);
+    L.vy = ty < L.vy ? approach(L.vy, ty, JET_ACC * DEV.autoMoveK * 2 * dt) : approach(L.vy, ty, JET_ACC * DEV.autoMoveK * dt);
   } else {
-    L.vx = approach(L.vx, m > 0 ? st.nx * m * WALK * mv : 0, (L.ground ? GROUND_ACC : AIR_ACC) * dt);
+    L.vx = approach(L.vx, m > 0 ? st.nx * m * WALK * DEV.autoMoveK * mv : 0, (L.ground ? GROUND_ACC : AIR_ACC) * DEV.autoMoveK * dt);
     L.vy = Math.min(L.vy + GRAVITY * dt, 900);
   }
   const thr = jet ? jetThrottle(st.ny, m) : 0;

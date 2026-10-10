@@ -143,7 +143,9 @@ export const TITLE_HOME = {
 // blockCell, blockCol, blockKind (CaveRunner Auto stage 6b, auto/blocked.js): a blocked zone's cells and web lines, and what a dig goes into
 // loot (CaveRunner Auto, auto/level.js): what a kill drops (its gold spills as nuggets, the rest as TLoot pickups); fits: would it go in the bag;
 // take: put it in the bag (false: it didn't fit). A pickup: the item, its colour, nopull (s before it can fly), wait (the bag is full)
-/** @typedef {{ x: number, y: number, vx: number, vy: number, it: BagItem, col: string, t: number, nopull?: number, land?: number, ground?: number, wait?: boolean, fly?: boolean, amount?: number, left?: boolean }} TLoot */
+/** @typedef {{ x: number, y: number, vx: number, vy: number, it: BagItem, col: string, t: number, nopull?: number, land?: number, ground?: number, wait?: boolean, fly?: boolean, amount?: number, left?: boolean,
+ *   reach?: number, minT?: number }} TLoot */
+// (reach, minT: a hub machine's item, feedback round 2: picked up only once minT s old and a player within reach of it: walk over it)
 // a sound the scene asks for this frame (v0.0.174): ui/titlesound.js plays it with the game's own voice. k its name, x, y where (screen
 // units), a what it needs (a creature's kind, a shot, a radius)
 /** @typedef {{ k: string, x: number, y: number, a?: any }} TSnd */
@@ -1279,10 +1281,10 @@ function separate(S, dt) {
     }
   }
 }
-// (owner, feedback round 2) the jet's lift by how far up the stick is: full up, the old game's climb (P_JET); lowered
+// (owner, feedback round 2) the jet's lift by how far up the stick is (all × DEV.autoMoveK, the hand-steered speed, as the walk): full up, the old game's climb (P_JET); lowered
 // toward level it eases off until he sinks (JET_SINK at level), so lowering the stick lowers the thrust; and the flame
 /** the vertical speed aimed for (down +) @param {number} ny the stick's way, up − @param {number} m its push 0..1 */
-export const jetLift = (ny, m) => { const up = Math.max(0, -ny) * m; return -up * P_JET * DEV.autoJetK + (1 - up) * JET_SINK; };   // (× autoJetK: owner, "way too fast and strong")
+export const jetLift = (ny, m) => { const up = Math.max(0, -ny) * m; return (-up * P_JET + (1 - up) * JET_SINK) * DEV.autoMoveK; };   // (× autoMoveK: owner, "way too fast")
 /** the flame, 0..1 @param {number} ny @param {number} m */
 export const jetThrottle = (ny, m) => Math.max(0.15, Math.max(0, -ny) * m);
 export const JET_SINK = 110;
@@ -1295,11 +1297,11 @@ function ctlStep(S, r, st, dt) {
   const m = st.active && st.mag > DEAD ? (st.mag - DEAD) / (1 - DEAD) : 0, jet = m > 0 && st.ny < 0, mv = DEV.move;
   r.cvx = r.cvx || 0;
   if (jet) {
-    r.cvx = approach(r.cvx, st.nx * m * P_JET * DEV.autoJetK * mv, JET_ACC * DEV.autoJetK * dt);
+    r.cvx = approach(r.cvx, st.nx * m * P_JET * DEV.autoMoveK * mv, JET_ACC * DEV.autoMoveK * dt);
     const ty = jetLift(st.ny, m) * mv;   // (feedback round 2: lowering the stick lowers the thrust)
-    r.vy = ty < r.vy ? approach(r.vy, ty, JET_ACC * DEV.autoJetK * 2 * dt) : approach(r.vy, ty, JET_ACC * DEV.autoJetK * dt);
+    r.vy = ty < r.vy ? approach(r.vy, ty, JET_ACC * DEV.autoMoveK * 2 * dt) : approach(r.vy, ty, JET_ACC * DEV.autoMoveK * dt);
   } else {
-    r.cvx = approach(r.cvx, m > 0 ? st.nx * m * WALK * mv : 0, (r.ground ? GROUND_ACC : AIR_ACC) * dt);
+    r.cvx = approach(r.cvx, m > 0 ? st.nx * m * WALK * DEV.autoMoveK * mv : 0, (r.ground ? GROUND_ACC : AIR_ACC) * DEV.autoMoveK * dt);
     r.vy = Math.min(r.vy + GRAVITY * dt, 900);
   }
   r.flame = jet ? jetThrottle(st.ny, m) : 0;
@@ -1764,7 +1766,7 @@ function stepLoot(S, dt) {
     // (a hub machine's item, feedback round 1: g.land) it falls and lands first, rests g.land s on the floor, then the pull
     if (g.land > 0 && (g.ground || g.t > 3)) g.land -= dt;
     g.wait = !!(L && L.fits && !L.fits(S, g.it));
-    g.fly = !g.left && !(g.nopull > 0) && !(g.land > 0) && !g.wait && !ru.out;
+    g.fly = !g.left && !(g.nopull > 0) && !(g.land > 0) && !g.wait && !ru.out && !(g.reach && (g.t < (g.minT || 0) || d > g.reach));
     if (g.fly) {
       const grab = 260 + 900 * Math.max(0, 1 - d / COIN_PULL);
       g.vx += (dx / d) * grab * dt * 6; g.vy += (dy / d) * grab * dt * 6;

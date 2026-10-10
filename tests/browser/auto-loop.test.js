@@ -45,7 +45,7 @@ const T0 = Date.now();
   for (let i = 0; i < 80; i++) { await page.waitForTimeout(100); if ((await saved()).gold === 0) break; }
   await page.mouse.up();
   let s = await saved();
-  for (let i = 0; i < 60 && s.guns < 1; i++) { await page.waitForTimeout(100); s = await saved(); }
+  for (let i = 0; i < 80 && s.guns < 1; i++) { await page.waitForTimeout(100); await page.evaluate(() => { const S = window.__title.S, g = S.loot && S.loot[0]; if (g) { S.runners[0].x = g.x - PW / 2; S.runners[0].vx = 0; } }); s = await saved(); }
   check(`the gun machine paid in full (${price} gold): a gun in the bag`, s.guns === 1 && s.gold === 0, s);
 
   // the pill stick: walk player 1 onto the exit pad (full push far off, a light one near), let go, A

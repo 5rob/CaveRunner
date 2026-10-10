@@ -57,10 +57,10 @@ check('no control before he is through', Math.abs(cx(L) - G.hubStopX('enter')) <
 step(T, 60);
 const x0 = cx(L); step(T, 30);
 check('pushed right: he runs right, facing right, running', cx(L) > x0 + 20 && L.face === 1 && !L.stand && L.ground, [x0, cx(L)]);
-check('…at the old game\'s walk speed', Math.abs(Math.abs(L.vx) - G.WALK) < 1, L.vx);
+check('…at the old game\'s walk speed × autoMoveK (feedback round 2)', Math.abs(Math.abs(L.vx) - G.WALK * G.DEV.autoMoveK) < 1, L.vx);
 const x1 = cx(L); stick(T, 0.5, 0, 0.5); step(T, 30);
 const half = cx(L) - x1;
-check('a half push runs slower', half > 0 && half < G.WALK * 0.6, half);
+check('a half push runs slower', half > 0 && half < G.WALK * G.DEV.autoMoveK * 0.6, half);
 stick(T, -1, 0); step(T, 40);
 check('pushed left: he runs left, facing left', L.vx < -1 && L.face === -1, [L.vx, L.face]);
 stick(T, 0, 0, 0); step(T, 30);
@@ -162,7 +162,7 @@ check('the old shop\'s spacing, room height and way-in margin', G.HUB_GAP === G.
   check('level: an autopilot player going right through the world (keeping pace on screen): the flame leans back', G.titleFlameDir(R0).fx < -0.2, G.titleFlameDir(R0));
 }
 
-check('jet: lowering the stick lowers the thrust (full up climbs at JET, level sinks, the flame drops)', Math.abs(G.jetLift(-1, 1) + G.JET * G.DEV.autoJetK) < 1e-9 && G.jetLift(-0.5, 1) > G.jetLift(-1, 1) && G.jetLift(-0.05, 1) > 0 && G.jetThrottle(-0.3, 1) < G.jetThrottle(-1, 1), [G.jetLift(-1, 1), G.jetLift(-0.5, 1), G.jetLift(-0.05, 1)]);
+check('jet: lowering the stick lowers the thrust (full up climbs at JET, level sinks, the flame drops)', Math.abs(G.jetLift(-1, 1) + G.JET * G.DEV.autoMoveK) < 1e-9 && G.jetLift(-0.5, 1) > G.jetLift(-1, 1) && G.jetLift(-0.05, 1) > 0 && G.jetThrottle(-0.3, 1) < G.jetThrottle(-1, 1), [G.jetLift(-1, 1), G.jetLift(-0.5, 1), G.jetLift(-0.05, 1)]);
 
 console.log(fails ? fails + ' FAILED' : 'all passed');
 process.exit(fails ? 1 : 0);
