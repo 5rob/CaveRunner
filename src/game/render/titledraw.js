@@ -23,6 +23,7 @@ import { visPoly } from '../../world/vision.js';
 import { drawBolt, drawLook } from './looks.js';
 import { hubBack, hubGlow, hubLight } from './hubdraw.js';
 import { levelBack, levelGlow, levelLight } from './leveldraw.js';
+import { hubState } from '../../auto/hub.js';
 
 const T = THEMES[0];                                   // Mossy caves
 /** @type {WeakMap<object, { cv: HTMLCanvasElement, cx: CanvasRenderingContext2D, img: ImageData, painted: number, white?: number, whiteT?: number }>} */
@@ -199,6 +200,7 @@ export function titleDraw(ctx, S, cw, ch, cam) {
   if (S.hub) hubBack(ctx, S);
   if (S.lvl) levelBack(ctx, S);   // the auto level's pads (game/render/leveldraw.js)   // the auto hub's machines, pads and tubes (game/render/hubdraw.js)
   for (const r of S.runners) if (!r.hide) drawTitleRunner(ctx, S, r);
+  drawThrown(ctx, S);   // stage 10a: over the machines
   // the game's dark over it all, the players' gun lights, the lanterns, fire and the jellyfish cutting through it (v0.0.171)
   titleDark(ctx, S);
   // the bright stuff, added light
@@ -345,6 +347,20 @@ function worldLayer(c, S) {
   // gold, the game's nuggets (its size from its amount: coinR), turned as they roll
   for (const g of S.coins) drawNugget(c, g.x - S.scroll, g.y, coinR(g), g.t, g.a || 0);
   drawLoot(c, S);
+}
+
+// CaveRunner Auto stage 10a: gold and gems thrown at the hub's machines (auto/throw.js H.thrown): a nugget, or the game's
+// crystal; a lump (a whole stack) bigger, its count over it
+/** @param {CanvasRenderingContext2D} c @param {import('../../art/titlescene.js').TitleScene} S */
+function drawThrown(c, S) {
+  const H = S.hub ? hubState(S) : null;
+  if (!H || !H.thrown.length) return;
+  for (const g of H.thrown) {
+    const x = g.x - S.scroll, k = g.lump ? Math.min(2.2, 1 + Math.log10(g.n) * 0.6) : 1;
+    if (g.kind === 'gold') drawNugget(c, x, g.y, (g.lump ? 8.4 : 4) * k, g.t, g.a);
+    else drawNugget(c, x, g.y, CRYSTAL_R * 0.45 * k, 3.7, g.a, g.kind === 'green' ? GREEN_PAL : CRYSTAL_PAL);
+    if (g.lump) { c.fillStyle = '#ffffff'; c.font = 'bold 7px monospace'; c.textAlign = 'center'; c.fillText(String(g.n), x, g.y - 12 * k); }
+  }
 }
 
 // CaveRunner Auto's drops (S.loot: a gun mod, gems, an exo mod): a red or green gem is the game's crystal at its size
