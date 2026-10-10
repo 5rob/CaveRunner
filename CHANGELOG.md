@@ -5,8 +5,8 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
-## (unreleased) — CaveRunner Auto: save, resume, cleanup (branch `autobattler`, stage 13)
-Built on `stage13`, waiting on the PM (the New run button's look: `tools/newrunshots.js`).
+## v1.0.19 — CaveRunner Auto: save, resume, cleanup (branch `autobattler`, stage 13)
+Released 2026-10-10 on the branch (owner OK'd the New run shots, `tools/newrunshots.js`).
 - Drops picked up in a level are saved at once: a quit mid-level reopens in the hub with the bag kept.
 - ⏸ → **New run** (tap twice to confirm): a fresh run, back to the title.
 - The old game (`ui/app.js` App, `game/levelgen.js`) is out of this branch's build: `index.html` 1,594,144 → 1,192,534 bytes.

@@ -363,7 +363,7 @@ chest slow ×0.5. Grab radius 35% of a tile.
 | 10 | done | v1.0.16 | Split by PM: 10a throws (agent ~10 min: `auto/throw.js`, `H.thrown/paid/back`, `throwPress`, `drawThrown`, knobs "Auto: throw"), 10b payout (agent ~14 min: `auto/payout.js`, `run.paid`, `stepPay`, `payRing`, hub `fits/take`). PM: gun sprite in flight, drawPrice regex. Owner to tune the stream later. |
 | 11 | done | v1.0.17 | Agent ~24 min (past the box). `auto/chests.js` (`chestPlan`, `chestRoll`, `chestInRange`, `chestOpen`, `chestsStep`), titlescene `titleSpill`, leveldraw `drawChest`, knobs "Auto: chests" (9). `auto-level` sets `autoChestN = 0`. |
 | 12 | done | v1.0.18 | Agent ~10 min. `auto/addrunner.js` `sceneAddRunner(S)`, titlescene `titleRunner`/`zapArc` exported, empty circles as green-only drop targets (a hub throw turns into a drag over them), `window.__autoHub`. Camera follows player 1. |
-| 13 | built (agent) | — | Save gaps filled (level drops saved), ⏸ New run (two taps), old App + levelgen out of the build (index.html −401 KB), 91 old browser suites → `tests/retired/`, README how-to-play. Test `auto-save`. |
+| 13 | done | v1.0.19 | Agent ~20 min. Save gaps filled (level drops saved), ⏸ New run (two taps), old App + levelgen out of the build (index.html −401 KB), 91 old browser suites → `tests/retired/`, README how-to-play. Test `auto-save`. |
 
 ## 8. The PM's kick-start prompt
 
