@@ -54,6 +54,12 @@ function openRun() {
   return n;
 }
 
+// ⏸ → New run (confirmed): a fresh run replaces the save, and the page reloads to the title (▶ opens it)
+function freshRun() {
+  saveAutoRun(newRun());
+  location.reload();
+}
+
 export function AutoScreen() {
   const [run] = useState(openRun);
   const [paused, setPaused] = useState(false);
@@ -97,11 +103,13 @@ export function AutoScreen() {
   const noBurst = null;
   const [burst, setBurst] = useState(noBurst);
   useEffect(() => {
-    const paidV = { current: 0 };
+    const paidV = { current: 0 }, bagV = { current: 0 };
     const id = setInterval(() => {
       const L = scene.current && levelState(scene.current);
       setBlocked(!!(L && L.blocked));
       if (L) setBagV(L.bagV);   // drops went into the bag: redraw it
+      // stage 13: and save it, so a quit mid-level resumes in the hub with the bag kept
+      if (L && L.bagV !== bagV.current) { bagV.current = L.bagV; saveAutoRun(run); }
       // stage 10a: thrown things the machines didn't take, home: back into the bag
       const H = scene.current && !scene.current.lvl ? hubState(scene.current) : null;
       if (H && H.back.length) { for (const b of H.back.splice(0)) bagAdd(run, { kind: b.kind, n: b.n }); saveAutoRun(run); setV(v => v + 1); }
@@ -463,7 +471,7 @@ export function AutoScreen() {
     burst ? h(CoinBurst, { key: burst.k, burst }) : null,
     drag ? h(Ghost, { drag, it: srcItem(drag.src) }) : null,
     card ? h(CardPop, { it: card, close: () => setCard(null) }) : null,
-    paused ? h(PauseMenu, { input, label: 'Tier ' + run.tier, close: () => { SFX.fx('close'); setPaused(false); } }) : null);
+    paused ? h(PauseMenu, { input, label: 'Tier ' + run.tier, onNew: freshRun, close:() => { SFX.fx('close'); setPaused(false); } }) : null);
 }
 
 // PillState: as the old game's left stick (ui/hud.js Stick): active while held; dx, dy the finger from the middle as a

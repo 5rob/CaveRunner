@@ -1,7 +1,8 @@
 // Makes tests/build/test.html: the real game, but with React served from disk so the
 // tests never depend on the network, and two hooks the browser suites drive it through.
 //
-//   window.__in   the App's input ref: loadout, guns, bag, prompt, found, keys, sticks
+//   (autobattler branch, stage 13: the old App is out of the build, so window.__in and
+//   window.__lvl are gone; the auto suites set __TEST_TITLE and use the bundle's names)
 //   window.__lvl  the live level: the world object W itself (player, enemies, bullets, fields,
 //                 beams, pickups, stock, roster, theme; rec / rt: the death replay's recorder
 //                 and player), plus sandbox() and placeProp(). Game makes it only when the
@@ -50,10 +51,7 @@ function build() {
     '../lib/react-dom.production.min.js');
   // the flag that makes Game hand its world to the suites as window.__lvl (src/game/testhook.js)
   swap("<script>const VERSION = '", "<script>window.__TEST = true;</script>\n<script>const VERSION = '");
-  // an anchor as esbuild prints it (tools/build.js bundles src/), without the indent so a
-  // change of nesting depth doesn't lose it
-  swap('const [size, setSize] = useState(150);',
-    'window.__in = input;\n  const [size, setSize] = useState(150);');
+  // (window.__in, the old App's input ref, went with the old game: autobattler stage 13)
   exposeGlobals();
   fs.mkdirSync(OUT, { recursive: true });
   fs.writeFileSync(path.join(OUT, 'test.html'), s);

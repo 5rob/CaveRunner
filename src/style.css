@@ -856,6 +856,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   font:800 17px system-ui,sans-serif;letter-spacing:.03em}
 .pbtn.resume{background:#ff8a1f;border-color:#ff8a1f;color:#1a0f06}
 .pbtn.exit{background:#3a1420;border-color:#8a2a3a;color:#ffc0c8}
+.pbtn.newrun.sure{background:#5a3a10;border-color:#ffb84a;color:#ffe0a8}
 .pbtn .saved{color:#7dff9a;animation:pausesaved .6s ease-out}
 @keyframes pausesaved{from{transform:scale(1.35)}to{transform:scale(1)}}
 .pvol{display:flex;flex-direction:column;gap:8px;padding:10px 12px;border-radius:12px;background:#1c1530;font:700 15px system-ui,sans-serif}

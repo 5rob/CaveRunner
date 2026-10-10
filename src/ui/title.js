@@ -10,7 +10,6 @@
 
 import { SFX } from '../audio/sfx.js';
 import { TITLE_VW, titleBottom, titleCam, titleScene, titleText } from '../art/titlescene.js';
-import { App } from './app.js';
 import { AutoScreen } from './auto/AutoScreen.js';
 import { runScene } from './scenecanvas.js';
 import { Volumes } from './volume.js';
@@ -72,10 +71,8 @@ function Settings({ close }) {
 }
 
 // The page: the title first (every load), then CaveRunner Auto (AutoScreen; its ⏸ → Exit reloads to the
-// title). The old game (App) is mounted only by the browser test page without __TEST_TITLE, so the old
-// game's suites keep running on this branch.
+// title). Stage 13: the old game (ui/app.js App: sticks, HUD, shops) is no longer in this branch's build.
 export function Root() {
   const [play, setPlay] = useState(false);
-  if (window.__TEST && !window.__TEST_TITLE) return h(App);
   return play ? h(AutoScreen) : h(Title, { onStart: () => setPlay(true) });
 }
