@@ -18,7 +18,7 @@ up~~ (fixed v1.0.34); after a wipe the camera doesn't move onto the last ragdoll
 folders `../cr-hub`, `../cr-death`, `../cr-roam`, `../oldmain` can't be deleted (Permission denied): harmless, ignore.
 Screenshot tools for the owner live in `tools/*shots.js` (e.g. `devshots`, `roamshots`, `hubshots`, `vendshots`).
 
-Bug round 2 (v1.0.34): manual mode semi-automatic (steered only while the stick is pushed; `ctlOn`), the crosshair on
+**Waiting on the owner: the item audit** (`docs/auto-item-audit.txt`, made by `tools/itemaudit.js`): every mod, perk and exo mod, works now / could / wouldn't. Most perks do nothing in Auto yet (only max health); the owner will send notes for an overhaul (likely an agent-sized stage: perk effects + a unique look on the player for each, Permanent Shield first: a light-blue radial glow brighter outside, flashing off on a hit, back when ready). Bug round 2 (v1.0.34): manual mode semi-automatic (steered only while the stick is pushed; `ctlOn`), the crosshair on
 the picked helmet, slow frames stepped in pieces (`scenecanvas.js`: the owner felt manual slower than the hub; waiting
 on the owner to say if it's fixed), followers trail by travel direction (the known rough edge, fixed). Bug round 1 (v1.0.33): a hand-steered player's saw follows the stick (`ctlDig`), no jet-over or snap back for him; stick
 down saws down; the stick is a circle at the bar's left end (B, A right of it; `.astick`, one outline with the bar; shots
