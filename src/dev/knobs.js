@@ -599,10 +599,11 @@ DEV_META.push(
 DEV_GROUPS.push(['auto', 'Auto: economy']);
 // CaveRunner Auto's hub (auto/hub.js, stage 3b): the team walking between the stops
 // (player 1 moves on the old game's own numbers, core/consts.js WALK / JET / GRAVITY, feedback round 1)
-Object.assign(DEV_DEFAULTS, { autoHubWalk: 150, autoHubSpace: 16 });
+Object.assign(DEV_DEFAULTS, { autoHubWalk: 150, autoHubSpace: 16, autoHubDemoNear: 100 });
 DEV_META.push(
   { k: 'autoHubWalk',  g: 'autohub', label: 'The others’ walk speed to their place in line (world units / s)', min: 10, max: 400, step: 5 },
-  { k: 'autoHubSpace', g: 'autohub', label: 'Players line up this far apart (world units)', min: 4, max: 40, step: 1 });
+  { k: 'autoHubSpace', g: 'autohub', label: 'Players line up this far apart (world units)', min: 4, max: 40, step: 1 },
+  { k: 'autoHubDemoNear', g: 'autohub', label: 'A crystal machine plays its demo with you this near (world units; the old shop’s 100)', min: 20, max: 240, step: 5 });
 DEV_GROUPS.push(['autohub', 'Auto: hub']);
 // CaveRunner Auto's level (auto/level.js, auto/pilot.js, stage 4a): its length and the team's pace
 Object.assign(DEV_DEFAULTS, { autoLvlMin: 5, autoLvlPace: 1, autoLvlHurry: 1.6, autoLvlSlow: 0.3, autoLvlElite: 0.4, autoLvlChest: 0.5,

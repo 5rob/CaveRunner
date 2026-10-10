@@ -11,10 +11,18 @@
 // Hashes of time only, never Math.random.
 
 import { gunArtCanvas } from '../../art/gunart.js';
-import { PH } from '../../core/consts.js';
+import { CW, PH, SHOP_FLOOR, SHOP_ROOF, SHOP_TOP } from '../../core/consts.js';
 import { pixText, pixWidth } from '../../art/pixfont.js';
-import { HUB_EXO_GLYPHS, HUB_EXO_T, HUB_MACHINES, HUB_STOPS, HUB_ZAP, hubAtExit, hubCharge, hubExitFlash, hubPrice, hubState, hubTube } from '../../auto/hub.js';
+import { HUB_EXO_GLYPHS, HUB_EXO_T, HUB_MACHINES, HUB_ROOM, HUB_STOPS, HUB_W, HUB_WALL, HUB_ZAP, hubAtExit, hubCharge, hubExitFlash, hubPrice, hubState, hubTube } from '../../auto/hub.js';
 import { drawBolt } from './looks.js';
+import { TCELL } from '../../art/titlescene.js';
+import { drawTeleSign } from '../../art/sign.js';
+import { CRYSTAL_R, drawNugget } from '../../art/sprites.js';
+import { DEV } from '../../dev/knobs.js';
+import { shopPanel } from '../../world/level.js';
+import { coneDust } from './shoplights.js';
+import { holoLight, holoPass } from './guide.js';
+import { demoAt } from '../systems/shops.js';
 import { PAY_CYCLE, machinePay, payPhase } from '../../auto/payout.js';
 
 const MW = 56, MH = 84;                     // a machine's cabinet (render/shops.js: MACHINE_W, MACHINE_H)
@@ -162,8 +170,11 @@ export function hubBack(ctx, S) {
   const H = hubState(S);
   if (!H) return;
   const t = S.t;
+  backWall(ctx, H.roof, H.fy, H.tier);
+  ctx.drawImage(shell(H.fy, S.rows), 0, 0, HUB_W / TCELL, S.rows, 0, 0, HUB_W, S.rows * TCELL);
   HUB_STOPS.forEach((st, i) => {
     const lv = hubTube(S, i), y = H.roof;
+    if (st.id === 'enter' || st.id === 'exit') drawTeleSign(ctx, st.x - 6, H.fy - 64);   // TELEPORTER, nailed over PRINTER (art/sign.js)
     ctx.fillStyle = '#20242c'; ctx.fillRect(st.x - TUBE_W / 2 - 3, y, TUBE_W + 6, 3);
     ctx.fillStyle = '#3a404c'; ctx.fillRect(st.x - TUBE_W / 2 - 3, y + 3, 2, 2); ctx.fillRect(st.x + TUBE_W / 2 + 1, y + 3, 2, 2);
     ctx.fillStyle = lv > 0.2 ? `rgb(${Math.round(150 + 105 * lv)},${Math.round(165 + 90 * lv)},${Math.round(180 + 75 * lv)})` : '#363b44';
@@ -221,10 +232,12 @@ export function hubGlow(ctx, S) {
       const pl = ctx.createRadialGradient(x, fy, 2, x, fy, TUBE_W / 2 + 26);
       pl.addColorStop(0, `rgba(210,235,255,${0.22 * lv})`); pl.addColorStop(1, 'rgba(210,235,255,0)');
       ctx.fillStyle = pl; ctx.beginPath(); ctx.ellipse(x, fy, TUBE_W / 2 + 26, 7, 0, 0, Math.PI * 2); ctx.fill();
+      coneDust(ctx, x, y + 5, fy, lv, t, i);   // the dust hanging in the cone (render/shoplights.js)
     }
     if (st.id === 'enter' || st.id === 'exit') padGlow(ctx, S, x, fy, i, st.id === 'enter' ? hubCharge(S) : { ch: 0, fl: hubExitFlash(S) }, st.id === 'enter' ? H.zap : H.exitT);
   });
   ctx.restore();
+  hubDemo(ctx, S);
   // the leader at the exit pad: "Tap A" over it (not while it flashes)
   if (hubAtExit(S) && hubExitFlash(S) <= 0) drawHint(ctx, HUB_STOPS[HUB_STOPS.length - 1].x, fy - PH - 8, 'Tap A to exit', t);
 }
@@ -346,4 +359,125 @@ export function drawHint(ctx, x, y, text, t) {
   ctx.fillStyle = '#00ff3c'; ctx.textAlign = 'left';
   ctx.font = '700 6px system-ui, sans-serif'; ctx.fillText(text, l + 7 + kr * 2, ky + 0.3);
   ctx.restore();
+}
+
+// ---- the old shop's room (feedback round 2: "make sure it looks the same") ----
+// The back wall, as render/cave.js drawTerrain paints the old shop's: steel panels (a seam every 64, rivets), a rail
+// with a lit line along it, a darker skirting, SHOP small at the top and FLOOR n huge and faint along the whole wall
+/** @param {CanvasRenderingContext2D} ctx @param {number} top the roof's underside (world y) @param {number} wb the floor's top @param {number} floor */
+function backWall(ctx, top, wb, floor) {
+  const WW = HUB_W, wh = wb - top, rail = top + Math.round(wh * 0.64);
+  ctx.save();
+  ctx.fillStyle = '#161b24'; ctx.fillRect(0, top, WW, wh);
+  ctx.fillStyle = '#1b212c'; ctx.fillRect(0, top, WW, 10);
+  ctx.fillStyle = '#10141b'; ctx.fillRect(0, wb - 10, WW, 10);
+  for (let bx = 0; bx < WW; bx += 64) {
+    ctx.fillStyle = '#0c1016'; ctx.fillRect(bx, top, 1.5, wh);
+    ctx.fillStyle = 'rgba(255,255,255,0.035)'; ctx.fillRect(bx + 1.5, top, 1, wh);
+    ctx.fillStyle = '#262e3a';
+    for (const ry of [top + 14, rail - 6, rail + 8, wb - 14]) { ctx.fillRect(bx + 5, ry, 1.5, 1.5); ctx.fillRect(bx + 57.5, ry, 1.5, 1.5); }
+  }
+  ctx.fillStyle = '#222a36'; ctx.fillRect(0, rail, WW, 3);
+  ctx.fillStyle = 'rgba(90,200,255,0.28)'; ctx.fillRect(0, rail + 1, WW, 0.8);
+  ctx.fillStyle = 'rgba(233,236,242,0.30)'; ctx.font = '600 11px system-ui, sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('SHOP', WW / 2, top + 14);
+  const label = 'FLOOR ' + floor;
+  ctx.fillStyle = 'rgba(255,255,255,0.07)'; ctx.font = '800 ' + Math.round(wh * 0.62) + 'px system-ui, sans-serif'; ctx.textBaseline = 'middle';
+  const margin = WW * 0.05, span = WW - margin * 2, cy = top + wh / 2 + 4;
+  for (let i = 0; i < label.length; i++) ctx.fillText(label[i], margin + span * (i + 0.5) / label.length, cy);
+  ctx.restore();
+}
+
+/** @type {{ key: string, cv: HTMLCanvasElement | null }} */
+const SHELL = { key: '', cv: null };
+// The roof, floor and end walls a cell at a time, the old shop's own pixels (world/level.js shopPanel: the roof with its
+// strip of lights, the bright-edged deck plate, the steel side columns); above the roof the dark; inside see-through
+/** @param {number} fy @param {number} rows */
+function shell(fy, rows) {
+  const nc = HUB_W / TCELL, key = fy + ',' + rows + ',' + nc;
+  if (SHELL.cv && SHELL.key === key) return SHELL.cv;
+  const cv = SHELL.cv || document.createElement('canvas');
+  cv.width = nc; cv.height = rows;
+  const cx = cv.getContext('2d');
+  if (!cx) return cv;
+  const img = cx.createImageData(nc, rows), D = img.data, fr = Math.round(fy / TCELL), rr = fr - HUB_ROOM / TCELL;
+  for (let r = 0; r < rows; r++) for (let c = 0; c < nc; c++) {
+    const wall = c < HUB_WALL || c >= nc - HUB_WALL, sx = c < HUB_WALL ? c - HUB_WALL + 3 : wall ? CW - (nc - c) : c;
+    let col = null;
+    if (r >= fr) col = shopPanel(sx, SHOP_FLOOR + (r - fr));
+    else if (r >= rr - SHOP_ROOF) { if (r < rr || wall) col = shopPanel(sx, SHOP_TOP - (rr - r)); }
+    else col = [11, 12, 16];
+    if (!col) continue;
+    const o = (r * nc + c) * 4;
+    D[o] = col[0]; D[o + 1] = col[1]; D[o + 2] = col[2]; D[o + 3] = 255;
+  }
+  cx.putImageData(img, 0, 0);
+  SHELL.key = key; SHELL.cv = cv;
+  return cv;
+}
+
+/** @type {{ c: HTMLCanvasElement | null, x: CanvasRenderingContext2D | null }} */
+const DL = { c: null, x: null };
+const DEMO_BOX = 30, DEMO_SIDE = MW / 2 + 18, DEMO_R = 8;   // as render/shops.js and systems/shops.js
+const DEMO_PAL = ['#56687a', '#a9bccc', '#e4f0f8', '#ffffff'], DEMO_TINT = 0.72;
+// the demo gem's middle u through the suck (systems/shops.js demoPos, on this floor and slot)
+/** @param {number} mx @param {number} side @param {number} u @param {number} fy */
+const demoPos = (mx, side, u, fy) => {
+  const k = u * u, x0 = mx + side * DEMO_SIDE, y0 = fy - DEMO_R - 1, sy = fy - MH + 52;
+  return { x: x0 + (mx - x0) * k, y: y0 + (sy - y0) * Math.sqrt(k) - Math.sin(k * Math.PI) * 6, s: 1 - 0.55 * k };
+};
+
+// A crystal machine's demo (auto/hub.js stepHubDemo; the old render/shops.js drawDemo): its gem as a hologram glitching
+// in on the floor beside it, a faint beam back to the machine, then sucked up into the slot, a flash as it goes in
+/** @param {CanvasRenderingContext2D} ctx @param {import('../../art/titlescene.js').TitleScene} S */
+function hubDemo(ctx, S) {
+  const H = hubState(S);
+  if (!H || !H.demo) return;
+  const t = S.t, fy = H.fy, slotY = fy - MH + 52;
+  for (const k in H.demo) {
+    const m = HUB_MACHINES[k], st = HUB_STOPS.find(q => q.id === k), d = H.demo[k];
+    if (!m || !st) continue;
+    const mx = st.x, { ph, u } = demoAt(d.t);
+    if (ph === 'gap') continue;
+    ctx.save();
+    if (ph === 'flash') {
+      ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 1 - u;
+      const r = 5 + 12 * u, g = ctx.createRadialGradient(mx, slotY, 0, mx, slotY, r);
+      g.addColorStop(0, 'rgba(190,235,255,0.9)'); g.addColorStop(1, 'rgba(90,180,255,0)');
+      ctx.fillStyle = g; ctx.fillRect(mx - r, slotY - r, r * 2, r * 2);
+      ctx.restore(); continue;
+    }
+    const p = demoPos(mx, d.side, ph === 'suck' ? u : 0, fy);
+    const gl = ph === 'in' ? 1 - u : hs(Math.floor(t * 6) + mx) < 0.06 ? 0.35 : 0;
+    const a = ph === 'in' ? (hs(Math.floor(t * 40) + mx) < u + 0.2 ? 1 : 0.15) : 1;
+    const bx = mx + d.side * 8;
+    ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.1 * a; ctx.fillStyle = '#6ec8ff';
+    ctx.beginPath(); ctx.moveTo(bx, slotY - 1); ctx.lineTo(p.x, p.y - 8 * p.s); ctx.lineTo(p.x, p.y + 8 * p.s); ctx.lineTo(bx, slotY + 1); ctx.closePath(); ctx.fill();
+    holoLight(ctx, p.x, p.y, fy, a * (ph === 'suck' ? 1 - u : 1), 0.7);
+    if (ph === 'suck') {
+      ctx.fillStyle = '#9fe0ff';
+      for (let i = 1; i <= 5; i++) {
+        const q = demoPos(mx, d.side, Math.max(0, u - i * 0.07), fy);
+        ctx.globalAlpha = 0.5 * (1 - i / 6);
+        ctx.fillRect(q.x - 0.7 + Math.sin(t * 30 + i) * 1.5, q.y - 0.7 + Math.cos(t * 23 + i) * 1.5, 1.4, 1.4);
+      }
+    }
+    const px = DEV.runnerPx > 0 ? DEV.runnerPx : 1;
+    const x0 = Math.round(p.x - DEMO_BOX / 2), y0 = Math.round(p.y - DEMO_BOX / 2), cw = Math.ceil(DEMO_BOX / px);
+    if (!DL.c) { DL.c = document.createElement('canvas'); DL.x = DL.c.getContext('2d', { willReadFrequently: true }); }
+    const c = DL.c, x = DL.x;
+    if (!x) { ctx.restore(); continue; }
+    if (c.width !== cw || c.height !== cw) { c.width = cw; c.height = cw; }
+    x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, cw, cw);
+    x.setTransform(1 / px, 0, 0, 1 / px, -x0 / px, -y0 / px);
+    drawNugget(x, p.x, p.y, CRYSTAL_R * p.s, 2.7, ph === 'suck' ? u * u * 5 : 0, DEMO_PAL);
+    x.setTransform(1, 0, 0, 1, 0, 0);
+    holoPass(x, cw, cw, t + mx, gl);
+    x.globalCompositeOperation = 'source-atop'; x.globalAlpha = DEMO_TINT;
+    x.fillStyle = m.takes === 'green' ? '#2dff6a' : '#ff3048'; x.fillRect(0, 0, cw, cw);
+    x.globalCompositeOperation = 'source-over'; x.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 0.85 * a; ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(c, 0, 0, cw, cw, x0, y0, cw * px, cw * px);
+    ctx.restore();
+  }
 }

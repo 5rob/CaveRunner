@@ -1888,10 +1888,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "autoModGold", g: "auto", label: "Scrap: a gun mod (gold × the tier’s gold scale)", min: 0, max: 500, step: 1 }
   );
   DEV_GROUPS.push(["auto", "Auto: economy"]);
-  Object.assign(DEV_DEFAULTS, { autoHubWalk: 150, autoHubSpace: 16 });
+  Object.assign(DEV_DEFAULTS, { autoHubWalk: 150, autoHubSpace: 16, autoHubDemoNear: 100 });
   DEV_META.push(
     { k: "autoHubWalk", g: "autohub", label: "The others’ walk speed to their place in line (world units / s)", min: 10, max: 400, step: 5 },
-    { k: "autoHubSpace", g: "autohub", label: "Players line up this far apart (world units)", min: 4, max: 40, step: 1 }
+    { k: "autoHubSpace", g: "autohub", label: "Players line up this far apart (world units)", min: 4, max: 40, step: 1 },
+    { k: "autoHubDemoNear", g: "autohub", label: "A crystal machine plays its demo with you this near (world units; the old shop’s 100)", min: 20, max: 240, step: 5 }
   );
   DEV_GROUPS.push(["autohub", "Auto: hub"]);
   Object.assign(DEV_DEFAULTS, {
@@ -10310,7 +10311,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     paintBody(ctx, ragPose(R), 0, false, null);
   }
   var PIX = { c: null, x: null };
-  function pixelSprite(ctx, x0, y0, w, h3, px, line, paint2) {
+  function pixelSprite(ctx, x0, y0, w, h3, px, line, paint3) {
     const cw = Math.ceil(w / px), ch = Math.ceil(h3 / px);
     if (!PIX.c) {
       PIX.c = document.createElement("canvas");
@@ -10326,7 +10327,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     t.clearRect(0, 0, c.width, c.height);
     t.setTransform(1 / px, 0, 0, 1 / px, -x0 / px, -y0 / px);
     t.save();
-    paint2(t);
+    paint3(t);
     t.restore();
     t.setTransform(1, 0, 0, 1, 0, 0);
     const im = t.getImageData(0, 0, cw, ch), d = im.data, n = cw * ch;
@@ -10354,16 +10355,16 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ctx.imageSmoothingEnabled = sm;
   }
   var HOLD_PAD = 26;
-  function pixelHeld(ctx, x, y, px, line, paint2) {
+  function pixelHeld(ctx, x, y, px, line, paint3) {
     if (!(px > 0)) {
-      paint2(ctx);
+      paint3(ctx);
       return;
     }
     const e = Math.ceil(HOLD_PAD / px) * px;
-    pixelSprite(ctx, x - 14 - e, y - 8 - e, PW + 28 + 2 * e, PH + 16 + 2 * e, px, line, paint2);
+    pixelSprite(ctx, x - 14 - e, y - 8 - e, PW + 28 + 2 * e, PH + 16 + 2 * e, px, line, paint3);
   }
   var PIX2 = { c: null, x: null };
-  function pixelSoft(ctx, x0, y0, w, h3, px, paint2) {
+  function pixelSoft(ctx, x0, y0, w, h3, px, paint3) {
     const cw = Math.ceil(w / px), ch = Math.ceil(h3 / px);
     if (!PIX2.c) {
       PIX2.c = document.createElement("canvas");
@@ -10378,7 +10379,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     t.setTransform(1, 0, 0, 1, 0, 0);
     t.clearRect(0, 0, cw + 1, ch + 1);
     t.setTransform(1 / px, 0, 0, 1 / px, -x0 / px, -y0 / px);
-    paint2(t);
+    paint3(t);
     t.setTransform(1, 0, 0, 1, 0, 0);
     const sm = ctx.imageSmoothingEnabled;
     ctx.imageSmoothingEnabled = false;
@@ -14403,10 +14404,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
 
   // src/auto/hub.js
-  var HUB_EDGE = 56;
-  var HUB_GAP = 100;
-  var HUB_ROOM = 104;
-  var HUB_WALL = 4;
+  var HUB_EDGE = ARRIVAL_X;
+  var HUB_GAP = SHOP_SLOT;
+  var HUB_ROOM = SHOP_H * CELL;
+  var HUB_WALL = 3;
   var HUB_ARRIVE = 1;
   var HUB_LEAVE = 0.7;
   var HUB_FLASH = 0.4;
@@ -14448,7 +14449,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       paid,
       back: [],
       vend: {},
-      paidV: 0
+      paidV: 0,
+      demo: {}
     };
     const S2 = titleScene(vh, seed, fy - HUB_ROOM, fy, { runners: n, hub: { w: HUB_W / TCELL, cell: hubCell(fy), step: hubStep, data: H } });
     S2.runners.forEach((r, i) => {
@@ -14503,9 +14505,26 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     hubMove(S2, H, dt);
     stepThrown(S2, H, dt);
     stepPay(S2, H);
+    stepHubDemo(H, S2.runners[0] && H.arrived[0] ? S2.runners[0].x + PW / 2 : -999, dt);
     for (let i = 0; i < H.on.length; i++) {
       const at = LIGHT_WAIT + i * LIGHT_RUN * 1.6;
       if (H.on[i] < 0 && S2.t >= at) H.on[i] = at;
+    }
+  }
+  function stepHubDemo(H, lx, dt) {
+    let near = "";
+    const sx = (k) => (HUB_STOPS.find((s) => s.id === k) || HUB_STOPS[0]).x;
+    for (const k in HUB_MACHINES) if (HUB_MACHINES[k].takes && (!near || Math.abs(lx - sx(k)) < Math.abs(lx - sx(near)))) near = k;
+    for (const k in HUB_MACHINES) {
+      if (!HUB_MACHINES[k].takes) continue;
+      const mx = sx(k);
+      const fed = (H.paid[k] || 0) > 0 || H.vend[k] !== void 0 && H.vend[k] >= 0;
+      if (k !== near || fed || H.exitT >= 0 || Math.abs(lx - mx) > DEV.autoHubDemoNear) {
+        delete H.demo[k];
+        continue;
+      }
+      const D = H.demo[k] || (H.demo[k] = { t: 0, side: lx < mx ? -1 : 1 });
+      D.t += dt;
     }
   }
   function hubTube(S2, i) {
@@ -21045,8 +21064,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           ctx.scale(1, -1);
         }
         const base = st === "obsidian" ? [44, 28, 48] : st === "salt" ? [226, 220, 198] : [222, 212, 188];
-        const hs3 = [[-4, 7], [0, 10], [4, 6]];
-        for (const [dx, hgt] of hs3) {
+        const hs5 = [[-4, 7], [0, 10], [4, 6]];
+        for (const [dx, hgt] of hs5) {
           ctx.fillStyle = rgbA(base);
           tri(x + dx - 2.4, y, x + dx + 2.4, y, x + dx, y - hgt);
           ctx.fillStyle = st === "obsidian" ? "rgba(200,110,255,0.55)" : "rgba(255,255,255,0.45)";
@@ -25667,10 +25686,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       let dmgLog = [];
       let graph = [];
       let graphT = 0, dpsNow = 0;
-      const DL = document.createElement("canvas"), dlx = DL.getContext("2d", { willReadFrequently: true }), DLP = 3;
+      const DL2 = document.createElement("canvas"), dlx = DL2.getContext("2d", { willReadFrequently: true }), DLP = 3;
       const DLW = Math.ceil((DW + 8) * DLP), DLH = Math.ceil((DH + 6) * DLP);
-      DL.width = DLW;
-      DL.height = DLH;
+      DL2.width = DLW;
+      DL2.height = DLH;
       const launch = (sh, x, y, base, sub) => {
         const n = Math.max(1, sh.count || 1);
         for (let i = 0; i < n; i++) {
@@ -25909,7 +25928,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           ctx.save();
           ctx.globalAlpha = 0.85 * (hurt2 && Math.floor(dummy.hitT * 30) % 2 ? 0.45 : 1);
           ctx.imageSmoothingEnabled = false;
-          ctx.drawImage(DL, dummy.x - 4, dummy.y - 3, DLW / DLP, DLH / DLP);
+          ctx.drawImage(DL2, dummy.x - 4, dummy.y - 3, DLW / DLP, DLH / DLP);
           ctx.restore();
         }
         const dps = dpsNow = dmgLog.reduce((t, e) => t + e[1], 0) / GF_DPS_S;
@@ -26713,7 +26732,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 
   // src/creatures/classic.js
   function drawDrone(ctx, x, y, r, lx, ly, time, phase, flash, col) {
-    const shell = flash ? "#f4f0ff" : col.b;
+    const shell2 = flash ? "#f4f0ff" : col.b;
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(lx * 0.22);
@@ -26731,7 +26750,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ctx.fill();
     rr(ctx, -r * 0.34, r * 0.5, r * 0.68, r * 0.5, r * 0.18);
     ctx.fill();
-    ctx.fillStyle = shell;
+    ctx.fillStyle = shell2;
     rr(ctx, -r * 1.05, -r * 0.78, r * 2.1, r * 1.5, r * 0.62);
     ctx.fill();
     ctx.strokeStyle = flash ? "#ffffff" : col.a;
@@ -26923,13 +26942,422 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
   }
 
+  // src/art/sign.js
+  var hs2 = (n) => {
+    const v = Math.sin(n * 12.9898 + 78.233) * 43758.5453;
+    return v - Math.floor(v);
+  };
+  var LETTERS = {
+    T: { w: 0.8, s: [[0, 0.02, 0.8, 0], [0.4, 0, 0.42, 1]] },
+    E: { w: 0.62, s: [[0.62, 0, 0.02, 0.02, 0, 1, 0.64, 0.98], [0.02, 0.5, 0.5, 0.48]] },
+    L: { w: 0.58, s: [[0.02, 0, 0, 1, 0.6, 0.98]] },
+    P: { w: 0.64, s: [[0.02, 1, 0, 0, 0.5, 0.02, 0.66, 0.22, 0.6, 0.44, 0.38, 0.52, 0.02, 0.52]] },
+    O: { w: 0.78, s: [[0.4, 0, 0.12, 0.1, 0, 0.5, 0.12, 0.9, 0.4, 1, 0.68, 0.9, 0.8, 0.5, 0.68, 0.1, 0.38, 0.02]] },
+    R: { w: 0.66, s: [[0.02, 1, 0, 0, 0.5, 0.02, 0.66, 0.22, 0.6, 0.44, 0.38, 0.52, 0.02, 0.52], [0.3, 0.52, 0.68, 1]] }
+  };
+  function paint2(ctx, text, x, y, h3, gap) {
+    let at = x, n = 0;
+    for (const ch of text) {
+      const L = LETTERS[ch];
+      if (!L) {
+        at += h3 * 0.5;
+        continue;
+      }
+      for (const st of L.s) {
+        ctx.beginPath();
+        for (let i = 0; i < st.length; i += 2, n++) {
+          const px = at + st[i] * h3 + (hs2(n * 3.1 + 1) - 0.5) * h3 * 0.14, py = y + st[i + 1] * h3 + (hs2(n * 5.7 + 2) - 0.5) * h3 * 0.14;
+          if (i) ctx.lineTo(px, py);
+          else ctx.moveTo(px, py);
+        }
+        ctx.stroke();
+      }
+      at += (L.w + gap) * h3 * (0.94 + 0.12 * hs2(n + 0.5));
+    }
+    return at - x;
+  }
+  function paintW(text, h3, gap) {
+    let w = 0, n = 0;
+    for (const ch of text) {
+      const L = LETTERS[ch];
+      if (!L) {
+        w += h3 * 0.5;
+        continue;
+      }
+      for (const st of L.s) n += st.length / 2;
+      w += (L.w + gap) * h3 * (0.94 + 0.12 * hs2(n + 0.5));
+    }
+    return w;
+  }
+  function drawTeleSign(ctx, cx, cy) {
+    ctx.save();
+    const pw = 78, ph = 20, px = cx - pw / 2 + 6, py = cy - ph / 2 - 2;
+    ctx.fillStyle = "#4a4740";
+    ctx.fillRect(px - 1, py - 1, pw + 2, ph + 2);
+    ctx.fillStyle = "#d8d0b6";
+    ctx.fillRect(px, py, pw, ph);
+    ctx.fillStyle = "#ebe4cc";
+    ctx.fillRect(px, py, pw, 2);
+    ctx.fillStyle = "#b5ab8f";
+    ctx.fillRect(px, py + ph - 2, pw, 2);
+    ctx.fillStyle = "#2a2f3a";
+    ctx.font = '900 15px "Arial Black", Impact, system-ui, sans-serif';
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("PRINTER", px + pw / 2, py + ph / 2 + 1, pw - 6);
+    ctx.fillStyle = "#7a7465";
+    ctx.fillRect(px + 2, py + ph / 2 - 1, 2, 2);
+    ctx.fillRect(px + pw - 4, py + ph / 2 - 1, 2, 2);
+    const bw = 72, bh = 17;
+    ctx.translate(cx - 13, cy + 7);
+    ctx.rotate(-0.11);
+    ctx.fillStyle = "rgba(0,0,0,0.35)";
+    ctx.fillRect(-bw / 2 + 1.5, -bh / 2 + 2, bw, bh);
+    ctx.fillStyle = "#7b5532";
+    ctx.fillRect(-bw / 2, -bh / 2, bw, bh);
+    for (let i = 0; i < 9; i++) {
+      const gy = -bh / 2 + 1 + hs2(i * 4.3) * (bh - 2), gx = -bw / 2 + hs2(i * 7.9) * 20, gl = 30 + hs2(i * 2.2) * 45;
+      ctx.fillStyle = i % 3 ? "rgba(60,36,18,0.45)" : "rgba(160,118,74,0.35)";
+      ctx.fillRect(gx, gy, Math.min(gl, bw / 2 - gx), 0.8);
+    }
+    ctx.fillStyle = "rgba(55,32,15,0.6)";
+    ctx.beginPath();
+    ctx.ellipse(bw / 2 - 16, 4, 3, 1.4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#9a6d43";
+    ctx.fillRect(-bw / 2, -bh / 2, bw, 1.2);
+    ctx.fillStyle = "#4e3420";
+    ctx.fillRect(-bw / 2, bh / 2 - 1.2, bw, 1.2);
+    ctx.fillStyle = "#5d3f24";
+    ctx.fillRect(-bw / 2, -bh / 2, 1.2, bh);
+    ctx.fillRect(bw / 2 - 1.2, -bh / 2, 1.2, bh);
+    for (const nx of [-bw / 2 + 4, bw / 2 - 4]) {
+      ctx.fillStyle = "#3b3b40";
+      ctx.beginPath();
+      ctx.arc(nx, 0.5, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#a9adb5";
+      ctx.fillRect(nx - 0.9, -0.4, 1, 1);
+    }
+    const lh = 10, gap = 0.18, tw = paintW("TELEPORTER", lh, gap), s = Math.min(1, (bw - 10) / tw);
+    ctx.scale(s, 1);
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.strokeStyle = "rgba(30,18,8,0.5)";
+    ctx.lineWidth = 2.6;
+    paint2(ctx, "TELEPORTER", -tw / 2 + 0.6, -lh / 2 + 0.8, lh, gap);
+    ctx.strokeStyle = "#f1ead8";
+    ctx.lineWidth = 2;
+    paint2(ctx, "TELEPORTER", -tw / 2, -lh / 2, lh, gap);
+    ctx.restore();
+  }
+
+  // src/game/render/shoplights.js
+  var TUBE_W = 40;
+  var hs3 = (n) => {
+    const v = Math.sin(n * 12.9898 + 78.233) * 43758.5453;
+    return v - Math.floor(v);
+  };
+  var DUST_N = 14;
+  var DUST_COL = "226,214,188";
+  function coneDust(ctx, x, y0, fy, lv, t, i) {
+    const H = fy - y0 - 3;
+    ctx.fillStyle = "rgb(" + DUST_COL + ")";
+    for (let k = 0; k < DUST_N; k++) {
+      const s = i * 31 + k * 7.3, sp = 0.025 + 0.035 * hs3(s + 2);
+      const v = (hs3(s + 3) + t * sp) % 1;
+      const u = Math.max(-0.95, Math.min(0.95, (hs3(s + 1) * 2 - 1) * 0.85 + 0.12 * Math.sin(t * (0.3 + 0.4 * hs3(s + 4)) + s)));
+      const half = TUBE_W / 2 + 26 * v, px = x + u * half, py = y0 + v * H;
+      const a = lv * (1 - u * u) * Math.min(1, v * 6, (1 - v) * 6) * (0.35 + 0.5 * hs3(s + 5)) * (0.75 + 0.25 * Math.sin(t * 2 + s));
+      if (a <= 0.02) continue;
+      const sz = 0.6 + 0.6 * hs3(s + 6);
+      ctx.globalAlpha = a;
+      ctx.fillRect(px - sz / 2, py - sz / 2, sz, sz);
+    }
+    ctx.globalAlpha = 1;
+  }
+  function drawTubes(W, G, F2) {
+    const { vw, vh } = F2, ctx = G.ctx, fy = SHOP_FLOOR * CELL, L = G.RPV ? null : W.shopLit;
+    if (SHOP_Y > W.camY + vh || fy < W.camY) return;
+    ctx.save();
+    for (let i = 0; i < LIGHT_X.length; i++) {
+      const x = LIGHT_X[i];
+      if (x + 80 < W.camX || x - 80 > W.camX + vw) continue;
+      const lv = L ? sectionLevel(L, i, W.time) : 1, seen = L ? 1 - shopDark(L, x, W.time) : 1;
+      const y = SHOP_Y + 1;
+      ctx.globalCompositeOperation = "source-over";
+      ctx.globalAlpha = Math.max(0.15, seen);
+      ctx.fillStyle = "#20242c";
+      ctx.fillRect(x - TUBE_W / 2 - 3, y, TUBE_W + 6, 3);
+      ctx.fillStyle = "#3a404c";
+      ctx.fillRect(x - TUBE_W / 2 - 3, y + 3, 2, 2);
+      ctx.fillRect(x + TUBE_W / 2 + 1, y + 3, 2, 2);
+      const on = L ? L.on[i] >= 0 : true;
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = lv > 0.2 ? `rgb(${Math.round(150 + 105 * lv)},${Math.round(165 + 90 * lv)},${Math.round(180 + 75 * lv)})` : "#363b44";
+      ctx.globalAlpha = lv > 0.2 ? 1 : Math.max(0.15, seen);
+      ctx.fillRect(x - TUBE_W / 2, y + 3, TUBE_W, 2);
+      if (on && lv <= 0.2) {
+        ctx.fillStyle = "rgba(255,170,190,0.8)";
+        ctx.fillRect(x - TUBE_W / 2, y + 3, 3, 2);
+        ctx.fillRect(x + TUBE_W / 2 - 3, y + 3, 3, 2);
+      }
+      if (lv <= 0.2) continue;
+      ctx.globalCompositeOperation = "lighter";
+      const halo = ctx.createRadialGradient(x, y + 4, 2, x, y + 4, 34);
+      halo.addColorStop(0, `rgba(210,235,255,${0.32 * lv})`);
+      halo.addColorStop(1, "rgba(210,235,255,0)");
+      ctx.fillStyle = halo;
+      ctx.fillRect(x - 36, y - 2, 72, 40);
+      const cone = ctx.createLinearGradient(0, y + 5, 0, fy);
+      cone.addColorStop(0, `rgba(200,230,255,${0.2 * lv})`);
+      cone.addColorStop(1, `rgba(200,230,255,${0.04 * lv})`);
+      ctx.fillStyle = cone;
+      ctx.beginPath();
+      ctx.moveTo(x - TUBE_W / 2, y + 5);
+      ctx.lineTo(x + TUBE_W / 2, y + 5);
+      ctx.lineTo(x + TUBE_W / 2 + 26, fy);
+      ctx.lineTo(x - TUBE_W / 2 - 26, fy);
+      ctx.closePath();
+      ctx.fill();
+      const pool = ctx.createRadialGradient(x, fy, 2, x, fy, TUBE_W / 2 + 26);
+      pool.addColorStop(0, `rgba(210,235,255,${0.22 * lv})`);
+      pool.addColorStop(1, "rgba(210,235,255,0)");
+      ctx.fillStyle = pool;
+      ctx.beginPath();
+      ctx.ellipse(x, fy, TUBE_W / 2 + 26, 7, 0, 0, Math.PI * 2);
+      ctx.fill();
+      coneDust(ctx, x, y + 5, fy, lv, W.time, i);
+    }
+    if (L) {
+      const ax = W.arrival.x, ay = fy - 20, fl = 0.75 + 0.25 * hs3(Math.floor(W.time * 20));
+      ctx.globalCompositeOperation = "lighter";
+      ctx.globalAlpha = 1;
+      const g = ctx.createRadialGradient(ax, ay, 4, ax, ay, 70);
+      g.addColorStop(0, `rgba(90,170,255,${0.4 * fl})`);
+      g.addColorStop(1, "rgba(90,170,255,0)");
+      ctx.fillStyle = g;
+      ctx.fillRect(ax - 70, ay - 70, 140, 140);
+    }
+    ctx.restore();
+  }
+
+  // src/game/systems/shops.js
+  var MACHINE_W = 56, MACHINE_H = 84;
+  var MACHINE_TOP = SHOP_FLOOR * CELL - MACHINE_H;
+  var CHUTE_Y = SHOP_FLOOR * CELL - 14;
+  var SHOPS = {
+    // left to right: guns, mods, perks (owner, v0.0.142: guns and mods swapped)
+    mods: { x: SHOP_MACHINE_X[1], icon: "⚙️", hue: "#ff3a4a", label: "Tap R to shop", takes: "red" },
+    guns: { x: SHOP_MACHINE_X[0], icon: "gun", hue: "#ffd95a", label: "Tap R to shop" },
+    perks: { x: SHOP_MACHINE_X[2], icon: "✦", hue: "#3dff7a", label: "Tap R to shop", takes: "green" }
+  };
+  function shopNear(W, pcx, pcy) {
+    if (W.warp || W.repo || W.p.dead || pcy < SHOP_Y || pcy > SHOP_FLOOR * CELL) return null;
+    for (const k in SHOPS) if (!SHOPS[k].takes && Math.abs(pcx - SHOPS[k].x) < MACHINE_W / 2 + 2) return k;
+    return null;
+  }
+  function shopUse(G, kind) {
+    G.input.current.shopOpen = kind;
+    SFX.ui("mod");
+  }
+  function stepShops(W, G, F2) {
+    const d = G.input.current.dispense;
+    if (d) {
+      G.input.current.dispense = null;
+      const m = SHOPS[d.shop];
+      if (m) {
+        const side = F2.pcx < m.x ? -1 : 1;
+        const fly = { x: m.x, y: CHUTE_Y, t: 0, vx: side * (95 + Math.random() * 30), vy: -200 - Math.random() * 40, cool: 1 };
+        W.pickups.push(d.gun ? { kind: "gun", gun: d.gun, ...fly } : d.perk ? { kind: "perk", id: d.perk, ...fly } : { kind: "mod", id: d.id, ...fly });
+        SFX.fx("prompt");
+      }
+    }
+    stepCrystals(W, G, F2);
+    for (const q of W.pickups) {
+      if (q.vy === void 0 || q.kind === "crystal") continue;
+      q.vy = Math.min(600, q.vy + 900 * F2.dt);
+      const nx = q.x + (q.vx || 0) * F2.dt;
+      if (!solidAt(W, nx, q.y)) q.x = nx;
+      else q.vx = 0;
+      q.y += q.vy * F2.dt;
+      q.cool = 0.2;
+      if (q.vy > 0 && solidAt(W, q.x, q.y + 9)) {
+        for (let k = 0; k < 20 && solidAt(W, q.x, q.y + 8); k++) q.y -= 1;
+        if (q.vy > 120) {
+          q.vy *= -0.35;
+          q.vx = (q.vx || 0) * 0.6;
+        } else {
+          delete q.vy;
+          delete q.vx;
+          q.cool = 0;
+          q.t = W.time;
+        }
+      }
+    }
+  }
+  var CRYS_R = 8;
+  var CYCLE = 2.4;
+  var SLOT_Y = MACHINE_TOP + 52;
+  var INTAKE_X = MACHINE_W / 2 + 26, INTAKE_TOP = MACHINE_TOP - 26;
+  var SHAKE_F02 = 3, SHAKE_F12 = 30;
+  var shakePhase = (t) => SHAKE_F02 * t + SHAKE_F12 * CYCLE * Math.pow(Math.min(1, t / CYCLE), 3) / 3;
+  function intakeOf(q) {
+    if (q.y < INTAKE_TOP || q.y > SHOP_FLOOR * CELL + 4) return null;
+    for (const k in SHOPS) {
+      const m = SHOPS[k];
+      if (m.takes && m.takes === "green" === !!q.green && Math.abs(q.x - m.x) < INTAKE_X) return k;
+    }
+    return null;
+  }
+  function machineRoll(W, G, k) {
+    const inp = G.input.current;
+    if (SHOPS[k].takes === "green") {
+      const id2 = perkRoll(Math.random, inp.perkCollection);
+      if (!id2) return null;
+      inp.perkCollection.push(id2);
+      savePerkCollection(inp.perkCollection);
+      return { kind: "perk", id: id2, fresh: true };
+    }
+    const id = rollMod(Math.random, W.floor);
+    if (!id) return null;
+    const fresh = !inp.collection.includes(id);
+    if (fresh) {
+      inp.collection.push(id);
+      saveCollection(inp.collection);
+    }
+    return { kind: "mod", id, fresh };
+  }
+  function stepCrystals(W, G, F2) {
+    const dt = F2.dt;
+    stepDemo(W, G, F2);
+    const solid = (x, y) => solidAt(W, x, y);
+    const free = [];
+    for (const q of W.pickups) {
+      if (q.kind !== "crystal" || q.taken) continue;
+      if (q.into) {
+        const m = SHOPS[q.into], dx = m.x - q.x, dy = SLOT_Y - q.y, d = Math.hypot(dx, dy) || 1;
+        const grab = 400 + 900 * Math.max(0, 1 - d / 80);
+        q.vx = (q.vx || 0) + dx / d * grab * dt * 6;
+        q.fvy = (q.fvy || 0) + dy / d * grab * dt * 6;
+        q.vx *= 0.86;
+        q.fvy *= 0.86;
+        const ox = q.x, oy = q.y;
+        q.x += q.vx * dt;
+        q.y += q.fvy * dt;
+        crystalMotes(W, q.x, q.y, !!q.green, dt, Math.hypot(q.x - ox, q.y - oy), ox, oy);
+        if (d < 7) {
+          q.taken = true;
+          const LO = G.input.current.loadout;
+          if (!LO.fed) LO.fed = [];
+          if (!LO.fed.includes(q.into)) LO.fed.push(q.into);
+          const M = W.machines[q.into] || (W.machines[q.into] = { n: 0, t: -1 });
+          M.n++;
+          burst2(W, m.x, SLOT_Y, 8, q.green ? "#3dff7a" : "#ff4a5a");
+          SFX.ui(q.green ? "perk" : "mod");
+        }
+        continue;
+      }
+      if (q.nopull > 0) q.nopull -= dt;
+      if (q.hold > 0) {
+        q.hold -= dt;
+        q.vy = (q.vy || 0) - NUG_GRAV * dt;
+      }
+      stepNugget(q, dt, solid, CRYS_R);
+      if (!W.p.dead) shoveNugget(q, CRYS_R, { x: W.p.x, y: W.p.y, w: PW, h: PH }, W.p.vx, W.p.vy, solid);
+      const k = !(q.nopull > 0) && !W.warp ? intakeOf(q) : null;
+      if (k) {
+        q.into = k;
+        q.fvy = q.vy || 0;
+        delete q.vy;
+        q.hold = 0;
+        SFX.fx("prompt");
+        continue;
+      }
+      crystalMotes(W, q.x, q.y, !!q.green, dt, 0);
+      free.push(q);
+    }
+    collideNuggets(free, solid, () => CRYS_R);
+    for (const k in SHOPS) {
+      const m = SHOPS[k], M = W.machines[k];
+      if (!m.takes || !M) continue;
+      if (M.t < 0 && M.n > 0) {
+        M.n--;
+        M.t = 0;
+      }
+      if (M.t < 0) continue;
+      const t0 = M.t;
+      M.t += dt;
+      if (Math.floor(shakePhase(M.t)) !== Math.floor(shakePhase(t0))) SFX.fx("reelTick");
+      if (M.t < CYCLE) continue;
+      M.t = -1;
+      const got = machineRoll(W, G, k);
+      if (!got) {
+        toast(W, "No perks left");
+        continue;
+      }
+      const side = F2.pcx < m.x ? -1 : 1;
+      W.pickups.push({
+        kind: got.kind,
+        id: got.id,
+        x: m.x,
+        y: CHUTE_Y,
+        t: 0,
+        vx: side * (95 + Math.random() * 30),
+        vy: -200 - Math.random() * 40,
+        cool: 1
+      });
+      toast(W, (got.fresh ? "Unlocked " : "") + (got.kind === "perk" ? PERKS[got.id].name : MODS[got.id].name));
+      burst2(W, m.x, CHUTE_Y, 14, m.hue);
+      SFX.fx("reelThud");
+      SFX.fx("prompt");
+      G.input.current.notify();
+    }
+  }
+  var DEMO_NEAR = 100;
+  var DEMO_SIDE = MACHINE_W / 2 + 18;
+  var DEMO_IN = 0.45, DEMO_SIT = 0.9, DEMO_SUCK = 0.55, DEMO_FLASH = 0.3, DEMO_GAP = 2;
+  var DEMO_LOOP = DEMO_IN + DEMO_SIT + DEMO_SUCK + DEMO_FLASH + DEMO_GAP;
+  function demoAt(t) {
+    let r = (t % DEMO_LOOP + DEMO_LOOP) % DEMO_LOOP;
+    const parts = [["in", DEMO_IN], ["sit", DEMO_SIT], ["suck", DEMO_SUCK], ["flash", DEMO_FLASH]];
+    for (const [ph, len] of parts) {
+      if (r < len) return { ph, u: r / len };
+      r -= len;
+    }
+    return { ph: "gap", u: r / DEMO_GAP };
+  }
+  function demoPos(mx, side, u) {
+    const k = u * u, x0 = mx + side * DEMO_SIDE, y0 = SHOP_FLOOR * CELL - CRYS_R - 1;
+    return { x: x0 + (mx - x0) * k, y: y0 + (SLOT_Y - y0) * Math.sqrt(k) - Math.sin(k * Math.PI) * 6, s: 1 - 0.55 * k };
+  }
+  function stepDemo(W, G, F2) {
+    const fed = G.input.current.loadout.fed || [];
+    const here = !W.p.dead && !W.warp && W.p.y + PH > SHOP_Y;
+    let near = "";
+    for (const k in SHOPS) if (SHOPS[k].takes && (!near || Math.abs(F2.pcx - SHOPS[k].x) < Math.abs(F2.pcx - SHOPS[near].x))) near = k;
+    for (const k in SHOPS) {
+      const m = SHOPS[k];
+      if (!m.takes) continue;
+      if (!here || k !== near || fed.includes(k) || Math.abs(F2.pcx - m.x) > DEMO_NEAR) {
+        delete W.demo[k];
+        continue;
+      }
+      const side = F2.pcx < m.x ? -1 : 1;
+      const D = W.demo[k] || (W.demo[k] = { t: 0, side });
+      const t0 = D.t;
+      D.t += F2.dt;
+      if (Math.floor(D.t / DEMO_LOOP) !== Math.floor(t0 / DEMO_LOOP)) D.side = side;
+    }
+  }
+
   // src/game/render/hubdraw.js
   var MW = 56, MH = 84;
   var PAD_W = 30, BEAM_H = 64;
-  var TUBE_W = 40;
+  var TUBE_W2 = 40;
   var ICON = 30, GLOW = 8, RES = 4;
   var SHOP_GUN_ART = "blueraider";
-  var hs2 = (n) => {
+  var hs4 = (n) => {
     const v = Math.sin(n * 12.9898 + 78.233) * 43758.5453;
     return v - Math.floor(v);
   };
@@ -27018,8 +27446,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ctx.globalAlpha = 1;
     const icon = m.icon === "exo" ? HUB_EXO_GLYPHS[Math.floor(t / HUB_EXO_T) % HUB_EXO_GLYPHS.length] : m.icon;
     const f = Math.floor(t * 14) + cx;
-    const drop = hs2(f) < 0.07, jit = hs2(f * 1.3) < 0.1 ? (hs2(f * 2.1) - 0.5) * 3 : 0;
-    const alpha = drop ? 0.25 : 0.82 + 0.15 * hs2(f * 0.7);
+    const drop = hs4(f) < 0.07, jit = hs4(f * 1.3) < 0.1 ? (hs4(f * 2.1) - 0.5) * 3 : 0;
+    const alpha = drop ? 0.25 : 0.82 + 0.15 * hs4(f * 0.7);
     const ix = cx - ICON / 2, iy = gy + (gh - ICON) / 2 - 2;
     ctx.globalAlpha = alpha * 0.12;
     ctx.fillStyle = m.hue;
@@ -27123,19 +27551,22 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const H = hubState(S2);
     if (!H) return;
     const t = S2.t;
+    backWall(ctx, H.roof, H.fy, H.tier);
+    ctx.drawImage(shell(H.fy, S2.rows), 0, 0, HUB_W / TCELL, S2.rows, 0, 0, HUB_W, S2.rows * TCELL);
     HUB_STOPS.forEach((st, i) => {
       const lv = hubTube(S2, i), y = H.roof;
+      if (st.id === "enter" || st.id === "exit") drawTeleSign(ctx, st.x - 6, H.fy - 64);
       ctx.fillStyle = "#20242c";
-      ctx.fillRect(st.x - TUBE_W / 2 - 3, y, TUBE_W + 6, 3);
+      ctx.fillRect(st.x - TUBE_W2 / 2 - 3, y, TUBE_W2 + 6, 3);
       ctx.fillStyle = "#3a404c";
-      ctx.fillRect(st.x - TUBE_W / 2 - 3, y + 3, 2, 2);
-      ctx.fillRect(st.x + TUBE_W / 2 + 1, y + 3, 2, 2);
+      ctx.fillRect(st.x - TUBE_W2 / 2 - 3, y + 3, 2, 2);
+      ctx.fillRect(st.x + TUBE_W2 / 2 + 1, y + 3, 2, 2);
       ctx.fillStyle = lv > 0.2 ? `rgb(${Math.round(150 + 105 * lv)},${Math.round(165 + 90 * lv)},${Math.round(180 + 75 * lv)})` : "#363b44";
-      ctx.fillRect(st.x - TUBE_W / 2, y + 3, TUBE_W, 2);
+      ctx.fillRect(st.x - TUBE_W2 / 2, y + 3, TUBE_W2, 2);
       if (H.on[i] >= 0 && lv <= 0.2) {
         ctx.fillStyle = "rgba(255,170,190,0.8)";
-        ctx.fillRect(st.x - TUBE_W / 2, y + 3, 3, 2);
-        ctx.fillRect(st.x + TUBE_W / 2 - 3, y + 3, 3, 2);
+        ctx.fillRect(st.x - TUBE_W2 / 2, y + 3, 3, 2);
+        ctx.fillRect(st.x + TUBE_W2 / 2 - 3, y + 3, 3, 2);
       }
       if (st.id === "enter" || st.id === "exit") drawHubPad(ctx, st.x, H.fy, t + i);
       else {
@@ -27181,23 +27612,25 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         cone.addColorStop(1, `rgba(200,230,255,${0.04 * lv})`);
         ctx.fillStyle = cone;
         ctx.beginPath();
-        ctx.moveTo(x - TUBE_W / 2, y + 5);
-        ctx.lineTo(x + TUBE_W / 2, y + 5);
-        ctx.lineTo(x + TUBE_W / 2 + 26, fy);
-        ctx.lineTo(x - TUBE_W / 2 - 26, fy);
+        ctx.moveTo(x - TUBE_W2 / 2, y + 5);
+        ctx.lineTo(x + TUBE_W2 / 2, y + 5);
+        ctx.lineTo(x + TUBE_W2 / 2 + 26, fy);
+        ctx.lineTo(x - TUBE_W2 / 2 - 26, fy);
         ctx.closePath();
         ctx.fill();
-        const pl = ctx.createRadialGradient(x, fy, 2, x, fy, TUBE_W / 2 + 26);
+        const pl = ctx.createRadialGradient(x, fy, 2, x, fy, TUBE_W2 / 2 + 26);
         pl.addColorStop(0, `rgba(210,235,255,${0.22 * lv})`);
         pl.addColorStop(1, "rgba(210,235,255,0)");
         ctx.fillStyle = pl;
         ctx.beginPath();
-        ctx.ellipse(x, fy, TUBE_W / 2 + 26, 7, 0, 0, Math.PI * 2);
+        ctx.ellipse(x, fy, TUBE_W2 / 2 + 26, 7, 0, 0, Math.PI * 2);
         ctx.fill();
+        coneDust(ctx, x, y + 5, fy, lv, t, i);
       }
       if (st.id === "enter" || st.id === "exit") padGlow(ctx, S2, x, fy, i, st.id === "enter" ? hubCharge(S2) : { ch: 0, fl: hubExitFlash(S2) }, st.id === "enter" ? H.zap : H.exitT);
     });
     ctx.restore();
+    hubDemo(ctx, S2);
     if (hubAtExit(S2) && hubExitFlash(S2) <= 0) drawHint(ctx, HUB_STOPS[HUB_STOPS.length - 1].x, fy - PH - 8, "Tap A to exit", t);
   }
   function padGlow(ctx, S2, x, y, seed, c, zapAt) {
@@ -27205,10 +27638,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const pulse = (0.85 + 0.15 * Math.sin(t * (2.4 + 30 * ch * ch) + seed)) * (1 + 2.2 * ch * ch);
     if (ch > 0) {
       for (let i = 0; i < 18; i++) {
-        const u = (hs2(i * 5.1) + t * (0.8 + 2.2 * ch)) % 1, ang = hs2(i * 2.3) * 6.283 + u * 3;
-        const r = (1 - u) * (26 + 30 * hs2(i * 9.7)), sx = x + Math.cos(ang) * r, sy = y - 14 + Math.sin(ang) * r * 0.75;
+        const u = (hs4(i * 5.1) + t * (0.8 + 2.2 * ch)) % 1, ang = hs4(i * 2.3) * 6.283 + u * 3;
+        const r = (1 - u) * (26 + 30 * hs4(i * 9.7)), sx = x + Math.cos(ang) * r, sy = y - 14 + Math.sin(ang) * r * 0.75;
         ctx.globalAlpha = Math.min(1, u * 3) * (0.4 + 0.6 * ch);
-        ctx.fillStyle = hs2(i * 1.7) < 0.4 ? "#e6f6ff" : "#6cc4ff";
+        ctx.fillStyle = hs4(i * 1.7) < 0.4 ? "#e6f6ff" : "#6cc4ff";
         ctx.fillRect(sx - 0.7, sy - 0.7, 1.4, 1.4);
       }
       ctx.globalAlpha = 1;
@@ -27242,10 +27675,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ctx.fillStyle = fg;
     ctx.fillRect(x - PAD_W, y - PAD_W, PAD_W * 2, PAD_W * 2);
     for (let i = 0; i < 10; i++) {
-      const sp = 14 + hs2(i * 3 + seed) * 22, u = (t * sp / BEAM_H + hs2(i * 7 + seed * 13)) % 1;
-      const sx = x + (hs2(i * 11 + seed) - 0.5) * PAD_W * 0.8 + Math.sin(t * 2 + i) * 1.2;
+      const sp = 14 + hs4(i * 3 + seed) * 22, u = (t * sp / BEAM_H + hs4(i * 7 + seed * 13)) % 1;
+      const sx = x + (hs4(i * 11 + seed) - 0.5) * PAD_W * 0.8 + Math.sin(t * 2 + i) * 1.2;
       ctx.globalAlpha = (1 - u) * 0.8;
-      ctx.fillStyle = hs2(i + seed * 5) < 0.4 ? "#e6f6ff" : "#6cc4ff";
+      ctx.fillStyle = hs4(i + seed * 5) < 0.4 ? "#e6f6ff" : "#6cc4ff";
       ctx.fillRect(sx - 0.6, y - 2 - u * BEAM_H * 0.9, 1.2, 1.2);
     }
     ctx.globalAlpha = 1;
@@ -27255,13 +27688,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const BT = 0.09, n0 = Math.floor(t / BT), z = zap;
     for (let n = n0 - 2; n <= n0; n++) {
       const s = n * 7.13 + seed * 101;
-      if (hs2(s) > (0.35 + 0.65 * z) * 0.8 * (fl > 0 ? 1.25 : 1)) continue;
+      if (hs4(s) > (0.35 + 0.65 * z) * 0.8 * (fl > 0 ? 1.25 : 1)) continue;
       const age = (t - n * BT) / (BT * 3);
-      let bx = x + (hs2(s + 1) - 0.5) * (PAD_W - 6), by = y - 1;
-      const up = BEAM_H * (0.3 + 0.5 * hs2(s + 2)), steps = 6;
+      let bx = x + (hs4(s + 1) - 0.5) * (PAD_W - 6), by = y - 1;
+      const up = BEAM_H * (0.3 + 0.5 * hs4(s + 2)), steps = 6;
       const pts = [{ x: bx, y: by }];
       for (let k = 1; k <= steps; k++) {
-        bx += (hs2(s + 3 + k) - 0.5) * 7;
+        bx += (hs4(s + 3 + k) - 0.5) * 7;
         by -= up / steps;
         bx = Math.max(x - PAD_W / 2, Math.min(x + PAD_W / 2, bx));
         pts.push({ x: bx, y: by });
@@ -27333,6 +27766,156 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ctx.font = "700 6px system-ui, sans-serif";
     ctx.fillText(text, l + 7 + kr2 * 2, ky + 0.3);
     ctx.restore();
+  }
+  function backWall(ctx, top, wb, floor) {
+    const WW2 = HUB_W, wh = wb - top, rail = top + Math.round(wh * 0.64);
+    ctx.save();
+    ctx.fillStyle = "#161b24";
+    ctx.fillRect(0, top, WW2, wh);
+    ctx.fillStyle = "#1b212c";
+    ctx.fillRect(0, top, WW2, 10);
+    ctx.fillStyle = "#10141b";
+    ctx.fillRect(0, wb - 10, WW2, 10);
+    for (let bx = 0; bx < WW2; bx += 64) {
+      ctx.fillStyle = "#0c1016";
+      ctx.fillRect(bx, top, 1.5, wh);
+      ctx.fillStyle = "rgba(255,255,255,0.035)";
+      ctx.fillRect(bx + 1.5, top, 1, wh);
+      ctx.fillStyle = "#262e3a";
+      for (const ry of [top + 14, rail - 6, rail + 8, wb - 14]) {
+        ctx.fillRect(bx + 5, ry, 1.5, 1.5);
+        ctx.fillRect(bx + 57.5, ry, 1.5, 1.5);
+      }
+    }
+    ctx.fillStyle = "#222a36";
+    ctx.fillRect(0, rail, WW2, 3);
+    ctx.fillStyle = "rgba(90,200,255,0.28)";
+    ctx.fillRect(0, rail + 1, WW2, 0.8);
+    ctx.fillStyle = "rgba(233,236,242,0.30)";
+    ctx.font = "600 11px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("SHOP", WW2 / 2, top + 14);
+    const label = "FLOOR " + floor;
+    ctx.fillStyle = "rgba(255,255,255,0.07)";
+    ctx.font = "800 " + Math.round(wh * 0.62) + "px system-ui, sans-serif";
+    ctx.textBaseline = "middle";
+    const margin = WW2 * 0.05, span = WW2 - margin * 2, cy = top + wh / 2 + 4;
+    for (let i = 0; i < label.length; i++) ctx.fillText(label[i], margin + span * (i + 0.5) / label.length, cy);
+    ctx.restore();
+  }
+  var SHELL = { key: "", cv: null };
+  function shell(fy, rows) {
+    const nc = HUB_W / TCELL, key = fy + "," + rows + "," + nc;
+    if (SHELL.cv && SHELL.key === key) return SHELL.cv;
+    const cv = SHELL.cv || document.createElement("canvas");
+    cv.width = nc;
+    cv.height = rows;
+    const cx = cv.getContext("2d");
+    if (!cx) return cv;
+    const img = cx.createImageData(nc, rows), D = img.data, fr = Math.round(fy / TCELL), rr2 = fr - HUB_ROOM / TCELL;
+    for (let r = 0; r < rows; r++) for (let c = 0; c < nc; c++) {
+      const wall = c < HUB_WALL || c >= nc - HUB_WALL, sx = c < HUB_WALL ? c - HUB_WALL + 3 : wall ? CW - (nc - c) : c;
+      let col = null;
+      if (r >= fr) col = shopPanel(sx, SHOP_FLOOR + (r - fr));
+      else if (r >= rr2 - SHOP_ROOF) {
+        if (r < rr2 || wall) col = shopPanel(sx, SHOP_TOP - (rr2 - r));
+      } else col = [11, 12, 16];
+      if (!col) continue;
+      const o = (r * nc + c) * 4;
+      D[o] = col[0];
+      D[o + 1] = col[1];
+      D[o + 2] = col[2];
+      D[o + 3] = 255;
+    }
+    cx.putImageData(img, 0, 0);
+    SHELL.key = key;
+    SHELL.cv = cv;
+    return cv;
+  }
+  var DL = { c: null, x: null };
+  var DEMO_BOX = 30, DEMO_SIDE2 = MW / 2 + 18, DEMO_R = 8;
+  var DEMO_PAL = ["#56687a", "#a9bccc", "#e4f0f8", "#ffffff"], DEMO_TINT = 0.72;
+  var demoPos2 = (mx, side, u, fy) => {
+    const k = u * u, x0 = mx + side * DEMO_SIDE2, y0 = fy - DEMO_R - 1, sy = fy - MH + 52;
+    return { x: x0 + (mx - x0) * k, y: y0 + (sy - y0) * Math.sqrt(k) - Math.sin(k * Math.PI) * 6, s: 1 - 0.55 * k };
+  };
+  function hubDemo(ctx, S2) {
+    const H = hubState(S2);
+    if (!H || !H.demo) return;
+    const t = S2.t, fy = H.fy, slotY = fy - MH + 52;
+    for (const k in H.demo) {
+      const m = HUB_MACHINES[k], st = HUB_STOPS.find((q) => q.id === k), d = H.demo[k];
+      if (!m || !st) continue;
+      const mx = st.x, { ph, u } = demoAt(d.t);
+      if (ph === "gap") continue;
+      ctx.save();
+      if (ph === "flash") {
+        ctx.globalCompositeOperation = "lighter";
+        ctx.globalAlpha = 1 - u;
+        const r = 5 + 12 * u, g = ctx.createRadialGradient(mx, slotY, 0, mx, slotY, r);
+        g.addColorStop(0, "rgba(190,235,255,0.9)");
+        g.addColorStop(1, "rgba(90,180,255,0)");
+        ctx.fillStyle = g;
+        ctx.fillRect(mx - r, slotY - r, r * 2, r * 2);
+        ctx.restore();
+        continue;
+      }
+      const p = demoPos2(mx, d.side, ph === "suck" ? u : 0, fy);
+      const gl = ph === "in" ? 1 - u : hs4(Math.floor(t * 6) + mx) < 0.06 ? 0.35 : 0;
+      const a = ph === "in" ? hs4(Math.floor(t * 40) + mx) < u + 0.2 ? 1 : 0.15 : 1;
+      const bx = mx + d.side * 8;
+      ctx.globalCompositeOperation = "lighter";
+      ctx.globalAlpha = 0.1 * a;
+      ctx.fillStyle = "#6ec8ff";
+      ctx.beginPath();
+      ctx.moveTo(bx, slotY - 1);
+      ctx.lineTo(p.x, p.y - 8 * p.s);
+      ctx.lineTo(p.x, p.y + 8 * p.s);
+      ctx.lineTo(bx, slotY + 1);
+      ctx.closePath();
+      ctx.fill();
+      holoLight(ctx, p.x, p.y, fy, a * (ph === "suck" ? 1 - u : 1), 0.7);
+      if (ph === "suck") {
+        ctx.fillStyle = "#9fe0ff";
+        for (let i = 1; i <= 5; i++) {
+          const q = demoPos2(mx, d.side, Math.max(0, u - i * 0.07), fy);
+          ctx.globalAlpha = 0.5 * (1 - i / 6);
+          ctx.fillRect(q.x - 0.7 + Math.sin(t * 30 + i) * 1.5, q.y - 0.7 + Math.cos(t * 23 + i) * 1.5, 1.4, 1.4);
+        }
+      }
+      const px = DEV.runnerPx > 0 ? DEV.runnerPx : 1;
+      const x0 = Math.round(p.x - DEMO_BOX / 2), y0 = Math.round(p.y - DEMO_BOX / 2), cw = Math.ceil(DEMO_BOX / px);
+      if (!DL.c) {
+        DL.c = document.createElement("canvas");
+        DL.x = DL.c.getContext("2d", { willReadFrequently: true });
+      }
+      const c = DL.c, x = DL.x;
+      if (!x) {
+        ctx.restore();
+        continue;
+      }
+      if (c.width !== cw || c.height !== cw) {
+        c.width = cw;
+        c.height = cw;
+      }
+      x.setTransform(1, 0, 0, 1, 0, 0);
+      x.clearRect(0, 0, cw, cw);
+      x.setTransform(1 / px, 0, 0, 1 / px, -x0 / px, -y0 / px);
+      drawNugget(x, p.x, p.y, CRYSTAL_R * p.s, 2.7, ph === "suck" ? u * u * 5 : 0, DEMO_PAL);
+      x.setTransform(1, 0, 0, 1, 0, 0);
+      holoPass(x, cw, cw, t + mx, gl);
+      x.globalCompositeOperation = "source-atop";
+      x.globalAlpha = DEMO_TINT;
+      x.fillStyle = m.takes === "green" ? "#2dff6a" : "#ff3048";
+      x.fillRect(0, 0, cw, cw);
+      x.globalCompositeOperation = "source-over";
+      x.globalAlpha = 1;
+      ctx.globalCompositeOperation = "source-over";
+      ctx.globalAlpha = 0.85 * a;
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(c, 0, 0, cw, cw, x0, y0, cw * px, cw * px);
+      ctx.restore();
+    }
   }
 
   // src/game/render/leveldraw.js
@@ -27464,7 +28047,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       CACHE.set(S2, C);
     }
     const D = C.img.data, N = S2.ncol;
-    const paint2 = (c, r) => {
+    const paint3 = (c, r) => {
       const x = (c % N + N) % N, col = x * S2.rows, m = S2.cells[col + r];
       const up = r > 1 && (!TITLE_SOLID[S2.cells[col + r - 1]] || !TITLE_SOLID[S2.cells[col + r - 2]]);
       const [cr, cg, cb] = cellRGB(m, c, r, up), o = (r * N + x) * 4;
@@ -27481,11 +28064,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     C.painted = Math.max(C.painted, S2.gen - N);
     for (; C.painted < S2.gen; C.painted++) {
-      for (let r = 0; r < S2.rows; r++) paint2(C.painted, r);
+      for (let r = 0; r < S2.rows; r++) paint3(C.painted, r);
       ch = true;
     }
     for (const [c0, c1, r0, r1] of S2.dirty) {
-      for (let c = Math.max(c0, S2.gen - N); c <= Math.min(c1, S2.gen - 1); c++) for (let r = r0; r <= r1; r++) paint2(c, r);
+      for (let c = Math.max(c0, S2.gen - N); c <= Math.min(c1, S2.gen - 1); c++) for (let r = r0; r <= r1; r++) paint3(c, r);
       ch = true;
     }
     S2.dirty.length = 0;

@@ -124,5 +124,24 @@ check('mod machine: 1 red, perk machine: 1 green, pads: none', G.hubPrice('mod',
   && G.hubPrice('perk', 2).kind === 'green' && G.hubPrice('perk', 2).n === 1 && G.hubPrice('exit', 1) === null);
 check('the scene carries the run tier', G.hubState(G.hubScene(vh, 1, 1, 3)).tier === 3 && TH.tier === 1);
 
+// feedback round 2: the old shop's layout (core/consts.js) and its crystal machines' demo (stepHubDemo)
+check('the old shop\'s spacing, room height and way-in margin', G.HUB_GAP === G.SHOP_SLOT && G.HUB_GAP === 120
+  && G.HUB_ROOM === G.SHOP_H * G.CELL && G.HUB_EDGE === G.ARRIVAL_X && G.HUB_WALL === 3, [G.HUB_GAP, G.HUB_ROOM, G.HUB_EDGE]);
+{
+  const D = G.hubState(G.hubScene(vh, 1, 1)), mod = G.hubStopX('mod'), perk = G.hubStopX('perk');
+  G.stepHubDemo(D, mod - 40, 0.5);
+  check('near the mod machine: its demo plays, on his side; the perk machine\'s does not', D.demo.mod && D.demo.mod.t === 0.5 && D.demo.mod.side === -1 && !D.demo.perk, D.demo);
+  G.stepHubDemo(D, mod - 40, 0.25);
+  check('and runs on', D.demo.mod.t === 0.75);
+  G.stepHubDemo(D, perk + 30, 0.1);
+  check('by the perk machine: the mod\'s stops, the perk\'s starts on the right', !D.demo.mod && D.demo.perk && D.demo.perk.side === 1, D.demo);
+  G.stepHubDemo(D, mod - G.DEV.autoHubDemoNear - 5, 0.1);
+  check('too far off: none', !D.demo.mod && !D.demo.perk, D.demo);
+  D.paid.mod = 1; G.stepHubDemo(D, mod, 0.1);
+  check('once something is paid in: no demo there', !D.demo.mod, D.demo);
+  const L = G.demoAt(0.1), M = G.demoAt(G.DEMO_IN + 0.1);
+  check('the old demo timing (in, then sit)', L.ph === 'in' && M.ph === 'sit', [L, M]);
+}
+
 console.log(fails ? fails + ' FAILED' : 'all passed');
 process.exit(fails ? 1 : 0);

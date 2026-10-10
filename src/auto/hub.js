@@ -9,7 +9,7 @@
 // the room (hubStick, hubMove), the others line up behind him on the floor; the exit (hubAtExit, hubExit: A at the exit pad flashes it) and the asking
 // price on each machine (hubPrice, at the run's tier). Its numbers are Dev knobs (dev/knobs.js, 'Auto: hub').
 
-import { AIR_ACC, DEAD, GRAVITY, GROUND_ACC, JET, JET_ACC, PH, PW, WALK } from '../core/consts.js';
+import { AIR_ACC, ARRIVAL_X, CELL, DEAD, GRAVITY, GROUND_ACC, JET, JET_ACC, PH, PW, SHOP_H, SHOP_SLOT, WALK } from '../core/consts.js';
 import { approach } from '../core/util.js';
 import { DEV } from '../dev/knobs.js';
 import { STAT_PERKS } from '../data/perks.js';
@@ -19,10 +19,12 @@ import { EXO_CATS, EXO_GLYPH, autoExoPrice, autoGunPrice } from './run.js';
 import { stepThrown } from './throw.js';
 import { stepPay } from './payout.js';
 
-export const HUB_EDGE = 56;           // the first and last stop's distance from the strip's ends (world units)
-export const HUB_GAP = 100;           // stop to stop (a machine is 56 wide)
-export const HUB_ROOM = 104;          // the room's height, floor to roof (world units; a machine is 84 tall)
-export const HUB_WALL = 4;            // the end walls' thickness (cells)
+// (owner, feedback round 2: the old shop's room) the old layout's numbers: the way in's pad as far from the end wall as
+// the old one (ARRIVAL_X), the stops the old shop's SHOP_SLOT apart, the old room's height and its 3-cell side walls
+export const HUB_EDGE = ARRIVAL_X;    // the first and last stop's distance from the strip's ends (world units)
+export const HUB_GAP = SHOP_SLOT;     // stop to stop (a machine is 56 wide): 120
+export const HUB_ROOM = SHOP_H * CELL; // the room's height, floor to roof (world units; a machine is 84 tall): 96
+export const HUB_WALL = 3;            // the end walls' thickness (cells)
 export const HUB_ARRIVE = 1;          // the enter pad charges this long before the player comes through (s)
 export const HUB_LEAVE = 0.7;         // from A at the exit pad to the level (s)
 export const HUB_FLASH = 0.4;         // the flash as he comes through (s)
@@ -73,7 +75,9 @@ const hubCell = fy => (c, r) => {
 /** @typedef {{ fy: number, roof: number, on: number[], zap: number, arrived: boolean[], tier: number,
  *   lx: number, dir: number, exitT: number, stick: HubStick, thrown: import('./throw.js').HubThrow[],
  *   paid: Record<string, number>, back: { kind: import('./throw.js').Cash, n: number }[],
- *   vend: Record<string, number>, paidV: number }} HubState */
+ *   vend: Record<string, number>, paidV: number, demo: Record<string, HubDemo> }} HubState */
+// a crystal machine's hologram demo (the old shop's stepDemo): t s into it, the side of the machine it plays on
+/** @typedef {{ t: number, side: number }} HubDemo */
 /** @param {import('../art/titlescene.js').TitleScene} S @returns {HubState} */
 export const hubState = S => (S.hub && S.hub.data);
 
@@ -85,7 +89,7 @@ export function hubScene(vh, seed, n, tier = 1, paid = {}) {
   /** @type {HubState} */
   const H = { fy, roof: fy - HUB_ROOM, on: HUB_STOPS.map(() => -1), zap: -99, arrived: [], tier,
     lx: hubStopX('enter'), dir: 1, exitT: -99, stick: { active: false, nx: 0, ny: 0, mag: 0, dy: 0 },
-    thrown: [], paid, back: [], vend: {}, paidV: 0 };
+    thrown: [], paid, back: [], vend: {}, paidV: 0, demo: {} };
   const S = titleScene(vh, seed, fy - HUB_ROOM, fy, { runners: n, hub: { w: HUB_W / TCELL, cell: hubCell(fy), step: hubStep, data: H } });
   S.runners.forEach((r, i) => {
     r.x = hubStopX('enter') - PW / 2 - i * 18; r.y = fy - PH; r.vx = r.vy = 0;
@@ -121,10 +125,31 @@ export function hubStep(S, dt) {
   hubMove(S, H, dt);
   stepThrown(S, H, dt);
   stepPay(S, H);
+  stepHubDemo(H, S.runners[0] && H.arrived[0] ? S.runners[0].x + PW / 2 : -999, dt);
   // the tubes: the enter pad's LIGHT_WAIT after the start, then the next along every LIGHT_RUN × 1.6
   for (let i = 0; i < H.on.length; i++) {
     const at = LIGHT_WAIT + i * LIGHT_RUN * 1.6;
     if (H.on[i] < 0 && S.t >= at) H.on[i] = at;
+  }
+}
+
+// ---- the crystal machines' demo (the old shop's stepDemo, game/systems/shops.js) ----
+// While the leader stands within DEV.autoHubDemoNear of a crystal machine (the nearer of the two) that has had nothing
+// paid into it this run and isn't paying out, it plays its demo of a gem going in, on his side; walk off and it stops
+// (the next time starts over). game/render/hubdraw.js draws it (the old drawDemo, with the old demoAt timing)
+/** @param {HubState} H @param {number} lx the leader's middle (world x; far off: none) @param {number} dt */
+export function stepHubDemo(H, lx, dt) {
+  let near = '';
+  /** @param {string} k */
+  const sx = k => (HUB_STOPS.find(s => s.id === k) || HUB_STOPS[0]).x;
+  for (const k in HUB_MACHINES) if (HUB_MACHINES[k].takes && (!near || Math.abs(lx - sx(k)) < Math.abs(lx - sx(near)))) near = k;
+  for (const k in HUB_MACHINES) {
+    if (!HUB_MACHINES[k].takes) continue;
+    const mx = sx(k);
+    const fed = (H.paid[k] || 0) > 0 || (H.vend[k] !== undefined && H.vend[k] >= 0);
+    if (k !== near || fed || H.exitT >= 0 || Math.abs(lx - mx) > DEV.autoHubDemoNear) { delete H.demo[k]; continue; }
+    const D = H.demo[k] || (H.demo[k] = { t: 0, side: lx < mx ? -1 : 1 });
+    D.t += dt;
   }
 }
 

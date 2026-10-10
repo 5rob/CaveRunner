@@ -18,7 +18,7 @@ const DUST_COL = '226,214,188';            // dust: a pale grey-beige
 // a fixed share of the way across the cone at its height, so it never leaves the cone, sinking slowly
 // and wandering a little, catching the light more in the middle and less near the cone's edges, top and floor
 /** @param {CanvasRenderingContext2D} ctx @param {number} x @param {number} y0 @param {number} fy @param {number} lv @param {number} t @param {number} i */
-function coneDust(ctx, x, y0, fy, lv, t, i) {
+export function coneDust(ctx, x, y0, fy, lv, t, i) {
   const H = fy - y0 - 3;
   ctx.fillStyle = 'rgb(' + DUST_COL + ')';
   for (let k = 0; k < DUST_N; k++) {
