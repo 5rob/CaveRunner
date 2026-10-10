@@ -900,7 +900,9 @@ interface RunPlayer {
   hp: number; alive: boolean;
 }
 /** the run: newRun */
-interface AutoRun { tier: number; players: RunPlayer[]; bag: (BagItem | null)[]; seed?: number }
+interface AutoRun { tier: number; players: RunPlayer[]; bag: (BagItem | null)[]; seed?: number;
+  /** what's been thrown into each hub machine, not yet paid out (auto/payout.js; the change after a payout) */
+  paid?: Record<string, number> }
 /** a stats meter's record (auto/meters.js): n buckets of dt s in a ring, i the one now, t the time into it */
 interface Meter { dt: number; n: number; buf: number[]; i: number; t: number }
 /** a player's records in a level (auto/level.js L.meters): damage dealt, health; dealt the scene's total at the last tick */

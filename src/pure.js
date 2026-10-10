@@ -62,6 +62,8 @@ export * from './art/titlescene.js';
 export * from './art/cleared.js';
 export * from './auto/run.js';
 export * from './auto/hub.js';
+export * from './auto/throw.js';
+export * from './auto/payout.js';
 export * from './auto/save.js';
 export * from './auto/pilot.js';
 export * from './auto/level.js';

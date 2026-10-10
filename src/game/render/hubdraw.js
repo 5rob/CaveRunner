@@ -15,6 +15,7 @@ import { PH } from '../../core/consts.js';
 import { pixText, pixWidth } from '../../art/pixfont.js';
 import { HUB_EXO_GLYPHS, HUB_EXO_T, HUB_MACHINES, HUB_STOPS, HUB_ZAP, hubAtExit, hubCharge, hubExitFlash, hubPrice, hubState, hubTube } from '../../auto/hub.js';
 import { drawBolt } from './looks.js';
+import { PAY_CYCLE, machinePay, payPhase } from '../../auto/payout.js';
 
 const MW = 56, MH = 84;                     // a machine's cabinet (render/shops.js: MACHINE_W, MACHINE_H)
 const PAD_W = 30, BEAM_H = 64;              // the pads (render/pads.js)
@@ -58,15 +59,19 @@ function holoIcon(icon, hue) {
   return B;
 }
 
-// One machine at cx on the floor fy (render/shops.js drawShops, idle)
-/** @param {CanvasRenderingContext2D} ctx @param {number} cx @param {number} fy @param {{ hue: string, icon: string, takes?: string }} m @param {number} t */
-export function drawMachine(ctx, cx, fy, m, t) {
+// One machine at cx on the floor fy (render/shops.js drawShops). Stage 10b: pay, how much of its price has been thrown in
+// (0-1: the ring round the hologram); vt, how long it has been paying out (-1 idle): it shakes faster and faster, the
+// glass flashes and the lights on its cap race (the old crystal machine), PAY_CYCLE s, then the item pops out
+/** @param {CanvasRenderingContext2D} ctx @param {number} cx @param {number} fy @param {{ hue: string, icon: string, takes?: string }} m @param {number} t @param {number} [pay] @param {number} [vt] */
+export function drawMachine(ctx, cx, fy, m, t, pay = 0, vt = -1) {
   const x = cx - MW / 2, y = fy - MH;
+  const busy = vt >= 0, u = busy ? Math.min(1, vt / PAY_CYCLE) : 0, ph = busy ? payPhase(vt) : 0;
   ctx.save();
+  if (busy) ctx.translate(Math.sin(ph * 6.283) * (0.4 + 1.8 * u), Math.sin(ph * 4.1) * 0.5 * u);
   ctx.fillStyle = '#171a21'; ctx.fillRect(x, y, MW, MH);
   ctx.fillStyle = '#252a35'; ctx.fillRect(x, y, 5, MH); ctx.fillRect(x + MW - 5, y, 5, MH);
   ctx.fillStyle = '#323948'; ctx.fillRect(x - 2, y - 1, MW + 4, 5); ctx.fillRect(x - 3, fy - 5, MW + 6, 5);
-  ctx.fillStyle = m.hue; ctx.globalAlpha = 0.5 + 0.2 * Math.sin(t * 3 + cx);
+  ctx.fillStyle = m.hue; ctx.globalAlpha = busy ? 0.45 + 0.5 * (Math.sin(ph * 6.283) > 0 ? 1 : 0) : 0.5 + 0.2 * Math.sin(t * 3 + cx);
   ctx.fillRect(x + 5, y + 6, 1, MH - 14); ctx.fillRect(x + MW - 6, y + 6, 1, MH - 14);
   ctx.globalAlpha = 1;
   const gx = x + 8, gy = y + 7, gw = MW - 16, gh = 42;
@@ -94,16 +99,40 @@ export function drawMachine(ctx, cx, fy, m, t) {
   ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = alpha * 0.2;
   ctx.fillRect(ix, Math.max(iy, band), ICON, Math.max(0, Math.min(5, iy + ICON - band)));
   ctx.globalCompositeOperation = 'source-over';
+  if (busy) { ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.15 + 0.35 * u; ctx.fillStyle = m.hue; ctx.fillRect(gx, gy, gw, gh); ctx.globalCompositeOperation = 'source-over'; }
+  payRing(ctx, cx, iy + ICON / 2, m.hue, busy ? 1 : pay, busy ? (Math.floor(ph * 2) % 2 === 0 ? 1 : 0.35) : 1);
   if (m.takes) {
     const col = m.takes === 'green' ? '#3dff7a' : '#ff3a4a', sy = y + 52;
     ctx.globalAlpha = 1; ctx.fillStyle = '#05070a'; ctx.fillRect(cx - 7, sy - 2, 14, 4);
     ctx.fillStyle = col; ctx.globalAlpha = 0.55 + 0.3 * Math.sin(t * 4 + cx); ctx.fillRect(cx - 8, sy - 3, 16, 1); ctx.fillRect(cx - 8, sy + 2, 16, 1);
-    const N = 8, pos = t * 1.5;
+  }
+  // the chase lights on the cap (a crystal machine's always; the gun and exo machines' while paying out), racing as it pays
+  if (m.takes || busy) {
+    const col = m.takes === 'green' ? '#3dff7a' : m.takes ? '#ff3a4a' : m.hue;
+    const N = 8, pos = busy ? ph * 2 : t * 1.5;
     for (let i = 0; i < N; i++) {
-      const lit = Math.max(0.15, 1 - ((pos - i) % N + N) % N * 0.45);
+      const lit = busy && u > 0.8 ? (Math.floor(ph * 2) % 2 === 0 ? 1 : 0.15) : Math.max(0.15, 1 - ((pos - i) % N + N) % N * 0.45);
       ctx.globalAlpha = lit; ctx.fillStyle = lit > 0.5 ? '#ffffff' : col;
       ctx.fillRect(x + 4 + i * (MW - 8) / N + 1, y, 3, 2);
     }
+  }
+  ctx.restore();
+}
+
+// The payment ring (stage 10b): a loading bar round the hologram, from the top clockwise, f of the price paid: a dim
+// track, the paid part in the machine's hue with a glow and a bright head
+/** @param {CanvasRenderingContext2D} ctx @param {number} x @param {number} y @param {string} hue @param {number} f 0-1 @param {number} a */
+function payRing(ctx, x, y, hue, f, a) {
+  const R = ICON / 2 + 3.5, a0 = -Math.PI / 2, a1 = a0 + Math.PI * 2 * Math.max(0, Math.min(1, f));
+  ctx.save();
+  ctx.lineCap = 'round';
+  ctx.globalAlpha = 0.5; ctx.strokeStyle = '#1c2230'; ctx.lineWidth = 2.2;
+  ctx.beginPath(); ctx.arc(x, y, R, 0, Math.PI * 2); ctx.stroke();
+  if (f > 0) {
+    ctx.globalAlpha = a; ctx.strokeStyle = hue; ctx.lineWidth = 1.6; ctx.shadowColor = hue; ctx.shadowBlur = 4;
+    ctx.beginPath(); ctx.arc(x, y, R, a0, a1); ctx.stroke();
+    ctx.shadowBlur = 0; ctx.fillStyle = '#ffffff';
+    ctx.beginPath(); ctx.arc(x + Math.cos(a1) * R, y + Math.sin(a1) * R, 1, 0, Math.PI * 2); ctx.fill();
   }
   ctx.restore();
 }
@@ -144,7 +173,11 @@ export function hubBack(ctx, S) {
       ctx.fillRect(st.x - TUBE_W / 2, y + 3, 3, 2); ctx.fillRect(st.x + TUBE_W / 2 - 3, y + 3, 3, 2);
     }
     if (st.id === 'enter' || st.id === 'exit') drawHubPad(ctx, st.x, H.fy, t + i);
-    else { drawMachine(ctx, st.x, H.fy, HUB_MACHINES[st.id], t); drawPrice(ctx, st.x, H.fy, hubPrice(st.id, H.tier), t); }
+    else {
+      const pr = machinePay({ paid: H.paid }, st.id, H.tier), vs = H.vend[st.id];
+      drawMachine(ctx, st.x, H.fy, HUB_MACHINES[st.id], t, pr.price ? ((H.paid[st.id] || 0) / pr.price) : 0, vs !== undefined && vs >= 0 ? t - vs : -1);
+      drawPrice(ctx, st.x, H.fy, hubPrice(st.id, H.tier), t);
+    }
   });
 }
 
@@ -278,7 +311,7 @@ const PRICE_COL = { gold: '#ffc93c', red: '#ff4f5e', green: '#5ee05a' };
 /** @param {CanvasRenderingContext2D} ctx @param {number} cx @param {number} fy @param {{ n: number, kind: 'gold' | 'red' | 'green' } | null} p @param {number} t */
 export function drawPrice(ctx, cx, fy, p, t) {
   if (!p) return;
-  const s = p.kind === 'gold' ? String(p.n).replace(/B(?=(d{3})+(?!d))/g, ',') + ' G.' : String(p.n);
+  const s = p.kind === 'gold' ? String(p.n).replace(/\B(?=(\d{3})+(?!\d))/g, ',') + ' G.' : String(p.n);
   const gem = p.kind === 'gold' ? 0 : 5, B = 0.5, room = MW - 26;
   const px = Math.min(0.9, (room - gem) / Math.max(1, pixWidth(s, 1, B))), ph = px * 1.3;
   const w = pixWidth(s, px, B) + gem, x0 = cx - w / 2, base = fy - 22 + 6 + 3.5 * ph;

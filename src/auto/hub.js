@@ -15,6 +15,8 @@ import { STAT_PERKS } from '../data/perks.js';
 import { LIGHT_RUN, LIGHT_WAIT, tubeLevel } from '../world/shoplights.js';
 import { TCELL, TM, titleScene } from '../art/titlescene.js';
 import { EXO_CATS, EXO_GLYPH, autoExoPrice, autoGunPrice } from './run.js';
+import { stepThrown } from './throw.js';
+import { stepPay } from './payout.js';
 
 export const HUB_EDGE = 56;           // the first and last stop's distance from the strip's ends (world units)
 export const HUB_GAP = 100;           // stop to stop (a machine is 56 wide)
@@ -61,24 +63,28 @@ const hubCell = fy => (c, r) => {
   return r >= fr - 14 ? TM.SWALL : TM.BWALL;
 };
 
-// HubState: fy, roof (world y); on: when each tube came on (-1 not yet); zap: when someone last came through
+// HubState (thrown, paid, back: stage 10a, auto/throw.js; paid is the run's run.paid, vend: when each machine began paying out
+// (-1 idle), paidV: + 1 each payout (the screen saves): stage 10b, auto/payout.js): fy, roof (world y); on: when each tube came on (-1 not yet); zap: when someone last came through
 // the enter pad; arrived: each player's through; tier: the run's (the prices); lx: the leader's middle (world x);
 // dir: the way he last ran (1 right, -1 left: the others line up behind); exitT: when A was tapped at the exit pad
 // (-99 never); stick: the pill stick's push (hubStick)
 /** @typedef {{ active: boolean, nx: number, ny: number, mag: number, dy: number }} HubStick */
 /** @typedef {{ fy: number, roof: number, on: number[], zap: number, arrived: boolean[], tier: number,
- *   lx: number, dir: number, exitT: number, stick: HubStick }} HubState */
+ *   lx: number, dir: number, exitT: number, stick: HubStick, thrown: import('./throw.js').HubThrow[],
+ *   paid: Record<string, number>, back: { kind: import('./throw.js').Cash, n: number }[],
+ *   vend: Record<string, number>, paidV: number }} HubState */
 /** @param {import('../art/titlescene.js').TitleScene} S @returns {HubState} */
 export const hubState = S => (S.hub && S.hub.data);
 
 // The hub's scene: titleScene with the strip, n players. They wait (hidden) until the enter pad has charged,
 // then each comes through it in turn (HUB_ARRIVE, then 0.5 s apart) and stands on the floor
-/** @param {number} vh @param {number} seed @param {number} n players @param {number} [tier] the run's (the prices) @returns {import('../art/titlescene.js').TitleScene} */
-export function hubScene(vh, seed, n, tier = 1) {
+/** @param {number} vh @param {number} seed @param {number} n players @param {number} [tier] the run's (the prices) @param {Record<string, number>} [paid] the run's run.paid (kept: what's been thrown in) @returns {import('../art/titlescene.js').TitleScene} */
+export function hubScene(vh, seed, n, tier = 1, paid = {}) {
   const fy = hubFloor(vh);
   /** @type {HubState} */
   const H = { fy, roof: fy - HUB_ROOM, on: HUB_STOPS.map(() => -1), zap: -99, arrived: [], tier,
-    lx: hubStopX('enter'), dir: 1, exitT: -99, stick: { active: false, nx: 0, ny: 0, mag: 0, dy: 0 } };
+    lx: hubStopX('enter'), dir: 1, exitT: -99, stick: { active: false, nx: 0, ny: 0, mag: 0, dy: 0 },
+    thrown: [], paid, back: [], vend: {}, paidV: 0 };
   const S = titleScene(vh, seed, fy - HUB_ROOM, fy, { runners: n, hub: { w: HUB_W / TCELL, cell: hubCell(fy), step: hubStep, data: H } });
   S.runners.forEach((r, i) => {
     r.x = hubStopX('enter') - PW / 2 - i * 18; r.y = fy - PH; r.vx = r.vy = 0;
@@ -112,6 +118,8 @@ export function hubStep(S, dt) {
     if (!H.arrived[i]) { r.y = H.fy - PH; r.vy = 0; r.ground = true; r.mode = 'run'; }
   });
   hubMove(S, H, dt);
+  stepThrown(S, H, dt);
+  stepPay(S, H);
   // the tubes: the enter pad's LIGHT_WAIT after the start, then the next along every LIGHT_RUN × 1.6
   for (let i = 0; i < H.on.length; i++) {
     const at = LIGHT_WAIT + i * LIGHT_RUN * 1.6;

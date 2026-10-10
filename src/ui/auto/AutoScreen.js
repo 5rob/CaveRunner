@@ -11,11 +11,14 @@
 // can clear (auto/clear.js, stage 5b) stops the team and pulses a "Path blocked" hint over the play area. The arena's boss
 // (auto/enemies.js, stage 6) shows its health bar over the top of the play area; every player fallen takes the team home.
 // The boss's loot vacuumed, LEVEL CLEARED drops in over the play area (stage 7, art/cleared.js, runScene's over).
+// Stage 10a (throwPress): in the hub, gold and gems from the bag thrown up into the play area at the machines (auto/throw.js):
+// a flick throws one, moved away and held streams them, held still on the stack lifts it all as one lump.
 
 import { SFX } from '../../audio/sfx.js';
-import { TITLE_VW, titleCam } from '../../art/titlescene.js';
+import { TITLE_VW, camAt, titleCam } from '../../art/titlescene.js';
 import { DEAD } from '../../core/consts.js';
-import { HUB_W, hubExit, hubLeft, hubScene, hubStick, hubStopX } from '../../auto/hub.js';
+import { HUB_W, hubExit, hubLeft, hubScene, hubState, hubStick, hubStopX } from '../../auto/hub.js';
+import { hubThrow, screenToWorldVel, throwable } from '../../auto/throw.js';
 import { levelClearedAge, levelDone, levelHold, levelLost, levelScene, levelState } from '../../auto/level.js';
 import { clearedText } from '../../art/cleared.js';
 import { DEV } from '../../dev/knobs.js';
@@ -23,8 +26,8 @@ import { levelBoss } from '../../auto/enemies.js';
 import { MODS, famCol } from '../../spells/mods.js';
 import { HUB_MACHINES } from '../../auto/hub.js';
 import { PERKS, STAT_PERKS } from '../../data/perks.js';
-import { BAG_SLOTS, EXO_STATS, MAX_PLAYERS, fitExo, fitGun, fitMod, fitPerk, healRun, levelCleared, levelFailed, levelSeed, newRun,
-  scrapAt, setActive, unfitExo, unfitMod, unfitPerk } from '../../auto/run.js';
+import { BAG_SLOTS, EXO_STATS, MAX_PLAYERS, bagAdd, fitExo, fitGun, fitMod, fitPerk, healRun, levelCleared, levelFailed, levelSeed, newRun,
+  scrapAt, setActive, spend, unfitExo, unfitMod, unfitPerk } from '../../auto/run.js';
 import { loadAutoRun, saveAutoRun } from '../../auto/save.js';
 import { EXO_NAMES, arcPick, gunArc, navBack, navOpen, navRow, navStart } from '../../auto/nav.js';
 import { meterTail, nextSpan } from '../../auto/meters.js';
@@ -34,7 +37,7 @@ import { GlyphIcon, HelmetIcon, PixIcon } from './icons.js';
 import { PauseMenu } from '../pause.js';
 import { runScene } from '../scenecanvas.js';
 import { leaveItem } from '../../art/titlescene.js';
-import { lootCol } from '../../auto/loot.js';
+import { bagFits, lootCol } from '../../auto/loot.js';
 import { h, useEffect, useRef, useState } from '../h.js';
 
 const ROMAN = ['I', 'II', 'III', 'IV', 'V'];
@@ -57,6 +60,8 @@ export function AutoScreen() {
   const cvs = useRef(null);
   /** @type {{ current: import('../../art/titlescene.js').TitleScene | null }} */
   const scene = useRef(null);
+  /** @type {{ current: import('../../art/titlescene.js').TitleCam | null }} */
+  const cam = useRef(null);
   const input = useRef({ saveRun: () => saveAutoRun(run) });
   // where the team is: the hub, or the run's level (A at the exit pad; the level's exit pad brings it home)
   const where = useRef(window.__AUTO_LEVEL ? 'level' : 'hub');
@@ -90,10 +95,16 @@ export function AutoScreen() {
   const noBurst = null;
   const [burst, setBurst] = useState(noBurst);
   useEffect(() => {
+    const paidV = { current: 0 };
     const id = setInterval(() => {
       const L = scene.current && levelState(scene.current);
       setBlocked(!!(L && L.blocked));
       if (L) setBagV(L.bagV);   // drops went into the bag: redraw it
+      // stage 10a: thrown things the machines didn't take, home: back into the bag
+      const H = scene.current && !scene.current.lvl ? hubState(scene.current) : null;
+      if (H && H.back.length) { for (const b of H.back.splice(0)) bagAdd(run, { kind: b.kind, n: b.n }); saveAutoRun(run); setV(v => v + 1); }
+      // stage 10b: something went into a machine or a machine paid out: the run's run.paid changed, save it
+      if (H && H.paidV !== paidV.current) { paidV.current = H.paidV; saveAutoRun(run); }
 
       const b = scene.current ? levelBoss(scene.current) : null;
       setBoss(o => (!b && !o) || (b && o && b.hp === o.hp && b.max === o.max) ? o : b);
@@ -114,13 +125,18 @@ export function AutoScreen() {
           const S = levelScene(vh, window.__AUTO_LEVEL || levelSeed(run), run.players.length, undefined, run.players, run.tier, run);
           scene.current = S;
           if (window.__TEST_TITLE) window.__autoScene = S;   // the shot scripts (tools/clearshots.js) reach the level here
-          return { S, C: titleCam(vh / 2, vh), warm: 0 };
+          const C = titleCam(vh / 2, vh);
+          cam.current = C;
+          return { S, C, warm: 0 };
         }
         // the hub: the strip, the players teleporting in, the camera on player 1
-        const S = hubScene(vh, seed, run.players.length, run.tier);
+        const S = hubScene(vh, seed, run.players.length, run.tier, run.paid || (run.paid = {}));
         scene.current = S;
+        // stage 10b: the machines' payouts fly into the bag (titlescene.js stepLoot); the bag full, they wait on the floor
+        if (S.hub) { S.hub.fits = (_S, it) => bagFits(run, it); S.hub.take = (_S, it) => { if (bagAdd(run, it)) return false; saveAutoRun(run); setV(v => v + 1); return true; }; }
         const C = titleCam(vh / 2, vh);
         C.w = HUB_W; C.zmin = TITLE_VW / HUB_W; C.x = hubStopX('enter') + 40; C.lock = 0;
+        cam.current = C;
         return { S, C, warm: 0 };
       },
       paused: () => pausedRef.current,
@@ -128,7 +144,14 @@ export function AutoScreen() {
       over: (ctx, S, w, hh) => { const a = levelClearedAge(S); if (a >= 0) clearedText(ctx, a, DEV.autoClearT, w, hh * 0.14); },
       // through the exit pad: to the level; the level's exit pad: home, tier + 1, healed (saved); everyone fallen: home, same tier
       next: S => {
-        if (where.current === 'hub' && hubLeft(S)) { where.current = 'level'; return true; }
+        if (where.current === 'hub' && hubLeft(S)) {
+          // anything still thrown (not taken) goes back into the bag
+          const H = hubState(S);
+          if (H) { for (const g of H.thrown) bagAdd(run, { kind: g.kind, n: g.n }); for (const b of H.back) bagAdd(run, { kind: b.kind, n: b.n }); H.thrown = []; H.back = []; saveAutoRun(run); }
+          // a machine's payout still on its way (or waiting for room): into the bag if it fits
+          if (S.loot) { for (const g of S.loot.splice(0)) bagAdd(run, g.it); saveAutoRun(run); }
+          where.current = 'level'; return true;
+        }
         if (where.current === 'level' && levelDone(S)) {
           where.current = 'hub';
           window.__AUTO_LEVEL = 0;
@@ -171,6 +194,8 @@ export function AutoScreen() {
   const down = (e, src) => {
     if (press.current || !srcItem(src)) return;
     const grab = !!(e.target && e.target.closest && e.target.closest('.agrab'));
+    const S0 = scene.current;
+    if (grab && src.from === 'bag' && throwable(srcItem(src)) && S0 && S0.hub && !S0.lvl && cvs.current && cam.current) { throwPress(e, src); return; }
     if (grab) e.preventDefault();
     /** @type {Press} */
     const p = { id: e.pointerId, x0: e.clientX, y0: e.clientY, src, grab, drag: false };
@@ -199,6 +224,95 @@ export function AutoScreen() {
     /** @param {any} ev */
     const cancel = ev => { if (ev.pointerId === p.id) { finish(); setDrag(null); } };
     addEventListener('pointermove', move, { passive: false }); addEventListener('pointerup', up); addEventListener('pointercancel', cancel);
+  };
+  // stage 10a: a press on a gold or gem stack in the hub (auto/throw.js). Moved past MOVE it's a swipe: let go fast (DEV.autoFlickMin
+  // px / s) it flicks one out on the finger's velocity; held still (DEV.autoStreamWait) away from the stack it streams them in
+  // the direction moved, speed × the distance (autoStreamK), the rate ramping up (autoStreamRate0 → 1 over autoStreamRamp).
+  // Held still on the stack (DEV.autoLumpMs) the whole stack lifts as one lump to the finger, dropped where let go. Each one
+  // thrown leaves the bag (spend) and is saved
+  /** @param {any} e @param {DragSrc} src */
+  const throwPress = (e, src) => {
+    e.preventDefault();
+    const it = run.bag[src.i], c = cvs.current, S = scene.current;
+    if (!it || !c || !S) return;
+    /** @type {'gold' | 'red' | 'green'} */
+    const kind = it.kind === 'red' ? 'red' : it.kind === 'green' ? 'green' : 'gold';
+    const id = e.pointerId, x0 = e.clientX, y0 = e.clientY;
+    /** @type {Press} */
+    const p = { id, x0, y0, src, grab: true, drag: false };
+    press.current = p;
+    let mode = 'press', fx = x0, fy = y0, stillAt = performance.now(), sx = x0, sy = y0, t0 = 0, acc = 0, last = performance.now();
+    /** @type {import('../../auto/throw.js').HubThrow | null} */
+    let lump = null;
+    /** @type {{ x: number, y: number, t: number }[]} */
+    const trail = [{ x: x0, y: y0, t: performance.now() }];
+    // a finger point (css px) → the world, clamped into the play area (from below it: its bottom edge)
+    /** @param {number} x @param {number} y */
+    const world = (x, y) => {
+      const r = c.getBoundingClientRect(), k = r.width / TITLE_VW, C = cam.current;
+      const cx = Math.max(r.left + 4, Math.min(r.right - 4, x)), cy = Math.max(r.top + 4, Math.min(r.bottom - 6, y));
+      return C ? camAt(C, (cx - r.left) / k, (cy - r.top) / k) : { x: 0, y: 0 };
+    };
+    /** one out of the bag at the finger, at (vx, vy) css px / s @param {number} vx @param {number} vy */
+    const one = (vx, vy) => {
+      if (!spend(run, kind, 1)) return false;
+      const r = c.getBoundingClientRect(), C = cam.current, w = world(fx, fy), v = screenToWorldVel(vx, vy, r.width / TITLE_VW, C ? C.z : 1);
+      hubThrow(S, kind, 1, w.x, w.y, v.vx, v.vy);
+      SFX.ui('tap');
+      saveAutoRun(run); setV(n => n + 1);
+      return true;
+    };
+    const lift = setTimeout(() => {
+      if (mode !== 'press') return;
+      const n = it.n;
+      if (!spend(run, kind, n)) return;
+      mode = 'lump';
+      const w = world(fx, fy);
+      lump = hubThrow(S, kind, n, w.x, w.y, 0, 0, { held: true });
+      if (lump) lump.lump = true;
+      SFX.unlock(); SFX.fx('open');
+      saveAutoRun(run); setV(v => v + 1);
+    }, DEV.autoLumpMs);
+    const tick = setInterval(() => {
+      const now = performance.now(), dt = (now - last) / 1000;
+      last = now;
+      if (mode === 'swipe' && now - stillAt > DEV.autoStreamWait && Math.hypot(fx - x0, fy - y0) > MOVE * 2) { mode = 'stream'; t0 = now; acc = 1; }
+      if (mode !== 'stream') return;
+      const ramp = Math.min(1, (now - t0) / 1000 / DEV.autoStreamRamp);
+      acc += (DEV.autoStreamRate0 + (DEV.autoStreamRate1 - DEV.autoStreamRate0) * ramp) * dt;
+      const dx = fx - x0, dy = fy - y0, d = Math.hypot(dx, dy) || 1, r = c.getBoundingClientRect(), C = cam.current;
+      // the speed in world units, back to css px / s for one()
+      const sp = d * DEV.autoStreamK * (r.width / TITLE_VW) * (C ? C.z : 1);
+      while (acc >= 1) { acc -= 1; if (!one(dx / d * sp, dy / d * sp)) { acc = 0; break; } }
+    }, 33);
+    const finish = () => {
+      press.current = null; clearTimeout(lift); clearInterval(tick);
+      removeEventListener('pointermove', move); removeEventListener('pointerup', up); removeEventListener('pointercancel', up);
+    };
+    /** @param {any} ev */
+    const move = ev => {
+      if (ev.pointerId !== id) return;
+      ev.preventDefault();
+      fx = ev.clientX; fy = ev.clientY;
+      const now = performance.now();
+      trail.push({ x: fx, y: fy, t: now });
+      while (trail.length > 2 && now - trail[0].t > 100) trail.shift();
+      if (Math.hypot(fx - sx, fy - sy) > 6) { sx = fx; sy = fy; stillAt = now; }
+      if (mode === 'press' && Math.hypot(fx - x0, fy - y0) > MOVE) { mode = 'swipe'; SFX.unlock(); }
+      if (lump) { const w = world(fx, fy); lump.x = w.x; lump.y = w.y; }
+    };
+    /** @param {any} ev */
+    const up = ev => {
+      if (ev.pointerId !== id) return;
+      finish();
+      if (lump) { const w = world(ev.clientX, ev.clientY); lump.x = w.x; lump.y = w.y; lump.held = false; lump.vx = 0; lump.vy = 0; return; }
+      if (mode === 'swipe') {
+        fx = ev.clientX; fy = ev.clientY;
+        const a = trail[0], dt = Math.max(0.016, (performance.now() - a.t) / 1000), vx = (fx - a.x) / dt, vy = (fy - a.y) / dt;
+        if (Math.hypot(vx, vy) >= DEV.autoFlickMin) one(vx * DEV.autoFlickK, vy * DEV.autoFlickK);
+      }
+    };
+    addEventListener('pointermove', move, { passive: false }); addEventListener('pointerup', up); addEventListener('pointercancel', up);
   };
   /** the drop target under a point, and whether this item fits there @param {DragSrc} src @param {number} x @param {number} y @returns {DropAt | null} */
   const dropAt = (src, x, y) => {
