@@ -6,7 +6,7 @@ this folder only shows them and takes the taps.
 ## Files
 
 - `AutoScreen.js` — (stage 2) the play screen, top to bottom (`.auto`, a flex column, CSS in `style.css`):
-  - **play area** `.aplay` (55% of the height): the hub (stage 3a: `auto/hub.js` `hubScene`, opening on the teleport-in, `warm: 0`; the camera follows player 1, `C.w = HUB_W`, pinch out to the whole row) on `.aplaycvs` through `ui/scenecanvas.js`; `hubScene(..., run.tier)` for the prices; the scene kept in a ref for the buttons: the pill stick calls `hubStick` (free roam), A calls `hubExit`
+  - **play area** `.aplay` (55% of the height): the hub (stage 3a: `auto/hub.js` `hubScene`, opening on the teleport-in, `warm: 0`; the camera follows player 1, `C.w = HUB_W`, pinch out to the whole row) on `.aplaycvs` through `ui/scenecanvas.js` (with `keep`: a resize, e.g. the phone's app switcher, only resizes the canvas; it used to remake the scene and restart the level, feedback round 1); `hubScene(..., run.tier)` for the prices; the scene kept in a ref for the buttons: the pill stick calls `hubStick` (free roam), A calls `hubExit`
     `runScene` (pinch, drag, tap a player to follow), `titleScene(…, { runners: run.players.length })`;
     ⏸ (`.pausebtn`) opens `ui/pause.js` `PauseMenu` (label `Tier n`; Save / Exit write the run) and holds the scene.
     **Stage 4a (test only, till 4b wires it):** `window.__AUTO_LEVEL = seed` makes `make` open a level instead (`auto/level.js levelScene`, default camera); in a level the pill stick's sideways push (past `DEAD`) goes to `levelHold` (right hurries, left slows, never stops; up does nothing). `tools/levelshots.js` uses it.

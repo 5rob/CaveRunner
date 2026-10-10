@@ -20,6 +20,7 @@ import { titleSound, titleSoundStop } from './titlesound.js';
  *   over?: (ctx: CanvasRenderingContext2D, S: TitleScene, w: number, hh: number) => void,
  *   paused?: () => boolean,
  *   next?: (S: TitleScene) => boolean,
+ *   keep?: boolean,
  * }} SceneOpts
  */
 
@@ -27,7 +28,8 @@ import { titleSound, titleSoundStop } from './titlesound.js';
 // size: the canvas's css size now; make: a new scene and camera for that size (called again on a resize; warm: how
 // many 1/30 s steps it opens on, default 40; the hub's teleport-in opens on 0);
 // over: paints on top (the title's words); paused: true holds the scene (still painted); next: true after a step
-// throws the scene away and calls make again (the auto screen's hub to level and back).
+// throws the scene away and calls make again (the auto screen's hub to level and back); keep: a resize only resizes
+// the canvas and the scene runs on (the auto screen: a remake restarted the level whenever the play area's height shifted).
 /** @param {HTMLCanvasElement} c @param {SceneOpts} o @returns {() => void} */
 export function runScene(c, o) {
   const ctx = c.getContext('2d');
@@ -43,9 +45,10 @@ export function runScene(c, o) {
     raf = requestAnimationFrame(frame);
     const dpr = Math.min(3, window.devicePixelRatio || 1), { w, hh } = o.size();
     if (w < 1 || hh < 1) return;
-    if (w !== cw || hh !== chh || !S || !C) {
-      cw = w; chh = hh;
-      c.width = Math.round(w * dpr); c.height = Math.round(hh * dpr);
+    const resized = w !== cw || hh !== chh;
+    if (resized) { cw = w; chh = hh; c.width = Math.round(w * dpr); c.height = Math.round(hh * dpr); }
+    // keep: a resize only resizes the canvas, the scene runs on (else make again for the new size)
+    if (!S || !C || (resized && !o.keep)) {
       const m = o.make(w, hh, seed);
       S = m.S; C = m.C;
       if (window.__TEST) window.__title = { S, C };    // the browser suites' reach

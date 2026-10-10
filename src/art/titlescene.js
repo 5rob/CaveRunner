@@ -139,7 +139,7 @@ export const TITLE_HOME = {
 // blockCell, blockCol, blockKind (CaveRunner Auto stage 6b, auto/blocked.js): a blocked zone's cells and web lines, and what a dig goes into
 // loot (CaveRunner Auto, auto/level.js): what a kill drops (its gold spills as nuggets, the rest as TLoot pickups); fits: would it go in the bag;
 // take: put it in the bag (false: it didn't fit). A pickup: the item, its colour, nopull (s before it can fly), wait (the bag is full)
-/** @typedef {{ x: number, y: number, vx: number, vy: number, it: BagItem, col: string, t: number, nopull: number, wait?: boolean, fly?: boolean, amount?: number, left?: boolean }} TLoot */
+/** @typedef {{ x: number, y: number, vx: number, vy: number, it: BagItem, col: string, t: number, nopull?: number, land?: number, ground?: number, wait?: boolean, fly?: boolean, amount?: number, left?: boolean }} TLoot */
 // a sound the scene asks for this frame (v0.0.174): ui/titlesound.js plays it with the game's own voice. k its name, x, y where (screen
 // units), a what it needs (a creature's kind, a shot, a radius)
 /** @typedef {{ k: string, x: number, y: number, a?: any }} TSnd */
@@ -1664,8 +1664,10 @@ function stepLoot(S, dt) {
     const dx = pcx - g.x, dy = pcy - g.y, d = Math.hypot(dx, dy) || 1;
     g.t += dt;
     if (g.nopull > 0) g.nopull -= dt;
+    // (a hub machine's item, feedback round 1: g.land) it falls and lands first, rests g.land s on the floor, then the pull
+    if (g.land > 0 && (g.ground || g.t > 3)) g.land -= dt;
     g.wait = !!(L && L.fits && !L.fits(S, g.it));
-    g.fly = !g.left && !(g.nopull > 0) && !g.wait && !ru.out;
+    g.fly = !g.left && !(g.nopull > 0) && !(g.land > 0) && !g.wait && !ru.out;
     if (g.fly) {
       const grab = 260 + 900 * Math.max(0, 1 - d / COIN_PULL);
       g.vx += (dx / d) * grab * dt * 6; g.vy += (dy / d) * grab * dt * 6;

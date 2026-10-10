@@ -9,7 +9,8 @@ Planned with the owner (brief + quiz answers + 16 stages + the PM's kick-start p
 mock-up `docs/autobattler-mockup.png`). Progress: AUTOBATTLER.md's Log. `main` keeps the old game.
 
 **Where it stands (2026-10-10, v1.0.22 live at /auto/): all stages 0–14 built; feedback round 1 released.** Round 1
-(v1.0.23: drags go where they're put, bag → bag and slot → slot too; the gold lump removed. v1.0.22: the pill stick as the old thumbstick, its knob free past the pill; creatures start as a trickle, `levelSpawn`;
+(v1.0.24: the level no longer restarts on a resize, e.g. the app switcher; guns face left in the hub; machine items
+land before the pull. v1.0.23: drags go where they're put, bag → bag and slot → slot too; the gold lump removed. v1.0.22: the pill stick as the old thumbstick, its knob free past the pill; creatures start as a trickle, `levelSpawn`;
 jet-over fix. v1.0.21, the PM alone): hub movement now the old game's exactly; old saves get the starter kit (`kitMissing`); the
 boss is finished (aimed at by its edge and from behind, `autoBossHp` 12); one of the level's blocked zones is made full
 past a random 20 s+ (`plantWall`, `levelFree`, knobs `autoWallMin/Max`). Waiting on the owner: try it on the phone and OK it.

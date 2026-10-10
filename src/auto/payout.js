@@ -2,7 +2,8 @@
 // CaveRunner Auto stage 10b: the hub's machines pay out. What's been thrown into a machine (auto/throw.js) is the run's
 // (run.paid: { gun, exo, mod, perk }, saved with it, so it survives leaving the hub and a reload). Paid in full
 // (machinePay), the machine shakes and its lights race for PAY_CYCLE s (stepPay; the painter: game/render/hubdraw.js),
-// then spits the item out (machineItem): it flies into the bag as the level's loot does (S.loot, art/titlescene.js
+// then spits the item out (machineItem): it lands on the floor, lies PAY_REST s (feedback round 1: the old shop's spit and
+// land), then flies into the bag as the level's loot does (S.loot, art/titlescene.js
 // stepLoot through S.hub's fits/take); the bag full, it waits on the floor. The change carries over.
 
 import { PERKS } from '../data/perks.js';
@@ -13,6 +14,7 @@ import { hubPrice, hubStopX } from './hub.js';
 import { lootCol } from './loot.js';
 
 export const PAY_CYCLE = 1.6;        // a paid machine shakes this long before it spits the item out (s)
+const PAY_REST = 0.45;               // the item lands on the floor and lies this long before the player pulls it in (s)
 /** @type {import('./hub.js').HubStopId[]} */
 const PAY_IDS = ['gun', 'exo', 'mod', 'perk'];
 const SHAKE_F0 = 3, SHAKE_F1 = 30;   // the shake's frequency (Hz): F0 at the start, F0 + F1 at the pop (game/systems/shops.js)
@@ -66,7 +68,7 @@ export function stepPay(S, H) {
       const it = machineItem(id, H.tier, S.rnd);
       if (!it) continue;
       const vx = (x < 300 ? 1 : -1) * (30 + 40 * S.rnd());
-      (S.loot || (S.loot = [])).push({ x, y: H.fy - 14, vx, vy: -150 - 40 * S.rnd(), it, col: lootCol(it), t: 0, nopull: 0.7 + 0.15 * k });
+      (S.loot || (S.loot = [])).push({ x, y: H.fy - 14, vx, vy: -150 - 40 * S.rnd(), it, col: lootCol(it), t: 0, land: PAY_REST + 0.15 * k });
     }
     S.flash = Math.max(S.flash, 0.25);
     S.snd.push({ k: 'coin', x, y: H.fy - 14 });

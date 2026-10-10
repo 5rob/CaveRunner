@@ -5,6 +5,15 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.24 — CaveRunner Auto: feedback round 1, fourth batch (branch `autobattler`)
+Released 2026-10-10 on the branch (owner OK'd; shots `tools/vendshots.js`).
+- Fix: the level restarted whenever the play area changed size (the owner found it: the phone's app switcher shrinks the
+  page into a card). `ui/scenecanvas.js` `runScene` remade the scene on every resize; with `keep` (the auto screen) a
+  resize only resizes the canvas and the scene runs on. New suite `auto-keep` (fails on the old code).
+- Hub: the gun is held the way each player faces (`HUB_GUN_ANG`, mirrored facing left).
+- Hub machines: the item pops out, falls, lands and lies on the floor `PAY_REST` (0.45 s) before the pull (`TLoot.land`).
+- `auto-loot`'s "a slot frees" check accepts any drop kind (it expected a mod and flaked about 1 in 6).
+
 ## v1.0.23 — CaveRunner Auto: feedback round 1, third batch (branch `autobattler`)
 Released 2026-10-10 on the branch.
 - Things go where you put them (owner: "auto arranging … makes setting up a gun impossible"): drag bag → bag (moves, swaps,

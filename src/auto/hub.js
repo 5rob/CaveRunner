@@ -89,7 +89,7 @@ export function hubScene(vh, seed, n, tier = 1, paid = {}) {
   const S = titleScene(vh, seed, fy - HUB_ROOM, fy, { runners: n, hub: { w: HUB_W / TCELL, cell: hubCell(fy), step: hubStep, data: H } });
   S.runners.forEach((r, i) => {
     r.x = hubStopX('enter') - PW / 2 - i * 18; r.y = fy - PH; r.vx = r.vy = 0;
-    r.mode = 'run'; r.ground = true; r.stand = true; r.hide = true; r.face = 1; r.ang = 0.35; r.flame = 0;
+    r.mode = 'run'; r.ground = true; r.stand = true; r.hide = true; r.face = 1; r.ang = HUB_GUN_ANG; r.flame = 0;
     H.arrived[i] = false;
   });
   return S;
@@ -209,7 +209,10 @@ function hubMove(S, H, dt) {
     if (moving) { r.face = Math.sign(mv); r.gait += Math.abs(mv) * 0.3; }
     r.stand = !moving;
   });
+  // (owner, feedback round 1) the gun held the way each faces: the resting angle, mirrored facing left
+  for (const r of S.runners) r.ang = r.face < 0 ? Math.PI - HUB_GUN_ANG : HUB_GUN_ANG;
 }
+const HUB_GUN_ANG = 0.35;              // the gun's resting angle in the hub (a little down, facing right)
 
 // is the leader standing on the exit pad (within HUB_PAD of its middle, feet on the floor)?
 /** @param {import('../art/titlescene.js').TitleScene} S */

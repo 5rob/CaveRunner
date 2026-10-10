@@ -151,6 +151,7 @@ export function AutoScreen() {
         return { S, C, warm: 0 };
       },
       paused: () => pausedRef.current,
+      keep: true,   // (feedback round 1) the play area's height shifting (the boss bar, a card) must not restart the level
       // LEVEL CLEARED (stage 7), in the upper part of the play area
       over: (ctx, S, w, hh) => { const a = levelClearedAge(S); if (a >= 0) clearedText(ctx, a, DEV.autoClearT, w, hh * 0.14); },
       // through the exit pad: to the level; the level's exit pad: home, tier + 1, healed (saved); everyone fallen: home, same tier

@@ -54,7 +54,9 @@ const n2 = (S.loot || []).length;
 until(S, () => false, 45);
 check('the bag full: the drop waits on the ground', n2 >= 1 && (S.loot || []).length === n2 && S.loot.every(g => g.wait), [n2, (S.loot || []).length]);
 run.bag[3] = null;
-check('a slot frees: it comes in', until(S, s => !(s.loot || []).length, 300) >= 0 && run.bag[3] && run.bag[3].kind === 'mod');
+// (any kind: the drop is random, a mod, a gem or an exo mod; it was 'mod' only and flaked)
+const came = until(S, s => !(s.loot || []).length, 300);
+check('a slot frees: it comes in', came >= 0 && !!run.bag[3] && run.bag[3].kind !== 'perk', [came, run.bag[3] && run.bag[3].kind]);
 
 // ---- the menu is unchanged: no loot ----
 const Sm = G.titleScene(190, 21);
