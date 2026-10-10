@@ -722,7 +722,7 @@ DEV_META.push(
   { k: 'autoStreamRamp',  g: 'autothrow', label: 'Stream: ramps up over (s)', min: 0.1, max: 6, step: 0.1 });
 DEV_GROUPS.push(['autothrow', 'Auto: throw']);
 // before the last tab: that one also takes any group in no tab
-DEV_TABS.splice(DEV_TABS.length - 1, 0, ['auto', 'Auto', ['auto', 'autohub', 'autolevel', 'autoblocks', 'autoguns', 'autofoes', 'autoloot', 'autochests', 'autobag', 'autothrow']]);
+DEV_TABS.splice(DEV_TABS.length - 1, 0, ['auto', 'Auto', ['auto', 'autohub', 'autolevel', 'autoblocks', 'autoguns', 'autofoes', 'autodeath', 'autoloot', 'autochests', 'autobag', 'autothrow']]);
 export const DEV_KEY = 'caverunner-dev';
 /** @type {DevKnobs} */
 export const DEV = Object.assign({}, DEV_DEFAULTS);

@@ -4,7 +4,7 @@
 // teleports in on the start pad). Screen x (the cave scrolls under them).
 
 import { hubCharge } from '../../auto/hub.js';
-import { levelDeathPrompt, levelPads, levelState } from '../../auto/level.js';
+import { levelPads, levelState } from '../../auto/level.js';
 import { deathHelmet } from '../../auto/death.js';
 import { drawRagdoll, glowAt, pixelSprite } from '../../art/sprites.js';
 import { drawHint, drawHubPad, padGlow } from './hubdraw.js';
@@ -80,6 +80,8 @@ export function levelLight(S, pool) {
     const x = c.x - S.scroll;
     if (x > -30 && x < TITLE_VW + 30 && c.y != null) pool(x, c.y - 6, c.open ? 16 : 22, c.open ? 0.25 : 0.4, 0.2);
   }
+  // (feedback round 2) a soft light on each fallen body (no gun light any more), so the ragdoll is seen
+  for (const r of S.runners) if (r.out && r.rag) { const hp = r.rag.joints[2]; pool(hp.x - S.scroll, hp.y - 4, 30, 0.45, 0.2); }
 }
 
 // Added light, after the dark: the pads' beams, the charge, the flash, the lightning
@@ -98,10 +100,6 @@ export function levelGlow(ctx, S) {
   for (const r of S.runners) if (r.out && r.lamp) {
     const h = deathHelmet(S, r);
     if (h) { glowAt(ctx, h.x, h.y - 1, 10, 0.7, '255,40,30'); ctx.fillStyle = '#ff3a2a'; ctx.fillRect(Math.round(h.x - 1), Math.round(h.y - 4), 2, 2); }
-  }
-  if (levelDeathPrompt(S)) {
-    const r = S.runners[L.lastI || 0], h = deathHelmet(S, r);
-    if (h) drawHint(ctx, Math.max(50, Math.min(TITLE_VW - 50, h.x)), Math.max(S.top + 20, h.y - 14), 'Tap A to Teleport back to Hub', S.t);
   }
   // stage 11: a player in range of a shut chest: "Tap A to open" over it (the hub exit's hint)
   const c = chestInRange(S);

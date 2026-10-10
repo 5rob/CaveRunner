@@ -21,8 +21,9 @@ import { DEAD } from '../../core/consts.js';
 import { chestOpen } from '../../auto/chests.js';
 import { HUB_W, hubExit, hubLeft, hubScene, hubState, hubStick, hubStopX } from '../../auto/hub.js';
 import { THROW_TAKES, hubPayAt, hubPayOne, payVel } from '../../auto/throw.js';
-import { levelClearedAge, levelControl, levelDone, levelHold, levelLost, levelScene, levelState, levelTeleportHome } from '../../auto/level.js';
+import { levelClearedAge, levelControl, levelDeathPrompt, levelDone, levelHold, levelLost, levelScene, levelState, levelTeleportHome } from '../../auto/level.js';
 import { clearedText } from '../../art/cleared.js';
+import { drawHint } from '../../game/render/hubdraw.js';
 import { DEV } from '../../dev/knobs.js';
 import { levelBoss } from '../../auto/enemies.js';
 import { MODS, famCol } from '../../spells/mods.js';
@@ -163,7 +164,11 @@ export function AutoScreen() {
       paused: () => pausedRef.current,
       keep: true,   // (feedback round 1) the play area's height shifting (the boss bar, a card) must not restart the level
       // LEVEL CLEARED (stage 7), in the upper part of the play area
-      over: (ctx, S, w, hh) => { const a = levelClearedAge(S); if (a >= 0) clearedText(ctx, a, DEV.autoClearT, w, hh * 0.14); },
+      // (feedback round 2) everyone down: "Tap A to Teleport back to Hub" (the hub's hint look), on the screen whatever the zoom
+      over: (ctx, S, w, hh) => {
+        const a = levelClearedAge(S); if (a >= 0) clearedText(ctx, a, DEV.autoClearT, w, hh * 0.14);
+        if (levelDeathPrompt(S)) { const k = w / 150; ctx.save(); ctx.scale(k, k); drawHint(ctx, w / 2 / k, hh * 0.3 / k, 'Tap A to Teleport back to Hub', S.t); ctx.restore(); }
+      },
       // through the exit pad: to the level; the level's exit pad: home, tier + 1, healed (saved); everyone fallen: home, same tier
       next: S => {
         if (where.current === 'hub' && hubLeft(S)) {

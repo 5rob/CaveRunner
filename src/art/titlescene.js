@@ -105,7 +105,7 @@ export const TITLE_HOME = {
  *   bursty: number, burst: boolean, jet: boolean, jetT: number, jetCd: number, pace: number, spd: number,
  *   nav: { F: any, fx: number, fy: number, t: number }, stepT?: number, sawS?: number, rst?: { t?: number }, rub?: string, rubWas?: boolean,
  *   hide?: boolean, out?: boolean, outT?: number, stand?: boolean, dealt?: number, clr?: { p: number, g: number } | null, clrT?: number,
- *   ctl?: RunnerCtl | null, cvx?: number, jx?: number, jy?: number, smokeAcc?: number, rag?: import('../world/ragdoll.js').Ragdoll | null, lamp?: boolean }} TRunner */
+ *   ctl?: RunnerCtl | null, cvx?: number, jx?: number, jy?: number, smokeAcc?: number, smokeN?: number, rag?: import('../world/ragdoll.js').Ragdoll | null, lamp?: boolean }} TRunner */
 /** a player steered by hand (CaveRunner Auto, feedback round 2: the selected player in a level): the pill stick's push
  * @typedef {{ active: boolean, nx: number, ny: number, mag: number }} RunnerCtl */
 // a fixed strip in place of the scrolling ring (CaveRunner Auto's hub, auto/hub.js): w columns, each cell's material from
@@ -1138,7 +1138,8 @@ function jetStep(S, r, dt) {
   r.jx = (r.jx == null ? jx : r.jx) + (jx - (r.jx == null ? jx : r.jx)) * k;
   r.jy = (r.jy == null ? jy : r.jy) + (jy - (r.jy == null ? jy : r.jy)) * k;
   if (!(r.flame > 0) || r.mode !== 'fly' || r.dig) { r.smokeAcc = 0; return; }
-  const { fx, fy } = titleFlameDir(r), R = S.rnd;
+  // (its own hashed random, not S.rnd: the smoke must not shift the scene's seeded stream: the title's runs stay as they were)
+  const { fx, fy } = titleFlameDir(r), R = () => { const v = Math.sin((r.smokeN = (r.smokeN || 0) + 1) * 12.9898 + r.id * 78.233) * 43758.5453; return v - Math.floor(v); };
   r.smokeAcc = (r.smokeAcc || 0) + dt * (25 + 35 * r.flame) * DEV.autoJetSmoke;
   while (r.smokeAcc >= 1) {
     r.smokeAcc--;
