@@ -105,8 +105,10 @@ export const TITLE_HOME = {
  *   nav: { F: any, fx: number, fy: number, t: number }, stepT?: number, sawS?: number, rst?: { t?: number }, rub?: string, rubWas?: boolean,
  *   hide?: boolean, out?: boolean, outT?: number, stand?: boolean, dealt?: number, clr?: { p: number, g: number } | null, clrT?: number }} TRunner */
 // a fixed strip in place of the scrolling ring (CaveRunner Auto's hub, auto/hub.js): w columns, each cell's material from
-// cell(c, r, rows); step runs after titleStep's own (the runners are its: S.still); data is the strip's own state
-/** @typedef {{ w: number, cell: (c: number, r: number, rows: number) => number, step?: (S: TitleScene, dt: number) => void, data?: any }} TitleHub */
+// cell(c, r, rows); step runs after titleStep's own (the runners are its: S.still); data is the strip's own state;
+// fits / take: as the level's, for the machines' payouts (S.loot) going into the bag (CaveRunner Auto stage 10b)
+/** @typedef {{ w: number, cell: (c: number, r: number, rows: number) => number, step?: (S: TitleScene, dt: number) => void, data?: any,
+ *   fits?: (S: TitleScene, it: BagItem) => boolean, take?: (S: TitleScene, it: BagItem) => boolean }} TitleHub */
 /** @typedef {{ x: number, y: number, vx: number, vy: number, size: number, col: string, look: string, life: number, foe: boolean, spin: number,
  *   grav: number, drag: number, explode: number, pit: number, fire: number, bounce: number, bounceE: number, pierce: number, dmg: number,
  *   homing?: number, accel?: number, vmax?: number, chain?: number, hitFoe?: boolean,
@@ -1629,7 +1631,7 @@ const LOOT_WAIT = 0.6;   // a drop flies to the team after this long (s), once i
 /** @param {TitleScene} S @param {number} dt */
 function stepLoot(S, dt) {
   if (!S.loot || !S.loot.length) return;
-  const solid = wsolid(S), L = S.lvl;
+  const solid = wsolid(S), L = S.lvl || S.hub;
   for (let i = S.loot.length - 1; i >= 0; i--) {
     const g = S.loot[i], ru = nearestRunner(S, g.x - S.scroll, g.y), pcx = S.scroll + ru.x + PW / 2, pcy = ru.y + PH / 2;
     const dx = pcx - g.x, dy = pcy - g.y, d = Math.hypot(dx, dy) || 1;

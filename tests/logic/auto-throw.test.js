@@ -41,7 +41,7 @@ check('the gun machine doesn\'t take red: still out, not paid', H.thrown.include
 check('knocked off the cabinet', Math.abs(g.x - G.hubStopX('gun')) >= G.MACH_HALF - 2, g.x - G.hubStopX('gun'));
 run(S, G.DEV.autoThrowBack + 3);
 check('then home: into H.back, one red', H.thrown.length === 0 && H.back.length === 1 && H.back[0].kind === 'red' && H.back[0].n === 1, H.back);
-check('the mod machine never took it', H.paid.mod === 1, H.paid);
+check('the mod machine never took it (its one gem paid out since: stage 10b)', H.paid.mod === 0, H.paid);
 
 // a held lump doesn't move or count
 const L = G.hubThrow(S, 'gold', 9, G.hubStopX('gun'), H.fy - 30, 0, 0, { held: true });

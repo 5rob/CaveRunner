@@ -12988,7 +12988,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var LOOT_WAIT = 0.6;
   function stepLoot(S2, dt) {
     if (!S2.loot || !S2.loot.length) return;
-    const solid = wsolid(S2), L3 = S2.lvl;
+    const solid = wsolid(S2), L3 = S2.lvl || S2.hub;
     for (let i = S2.loot.length - 1; i >= 0; i--) {
       const g = S2.loot[i], ru = nearestRunner(S2, g.x - S2.scroll, g.y), pcx = S2.scroll + ru.x + PW / 2, pcy = ru.y + PH / 2;
       const dx = pcx - g.x, dy = pcy - g.y, d = Math.hypot(dx, dy) || 1;
@@ -35636,6 +35636,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         g.pull = id;
         if (pullStep(g, hubStopX(id), H.fy - MOUTH_UP, DEV.autoThrowPull, dt) < 6) {
           H.paid[id] = (H.paid[id] || 0) + g.n;
+          H.paidV++;
           H.thrown.splice(i, 1);
           S2.snd.push({ k: "coin", x: g.x, y: g.y });
         }
@@ -35650,6 +35651,86 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
       if (stepNugget(g, dt, solid, g.kind === "gold" ? g.lump ? 8.4 : 4 : 5)) S2.snd.push({ k: "coinland", x: g.x, y: g.y });
       if (g.t > DEV.autoThrowBack) g.home = true;
+    }
+  }
+
+  // src/auto/loot.js
+  function killLoot(kind, tier, rnd2, gold) {
+    const sc = goldScale(tier), base = gold == null ? sc : gold;
+    const mul = kind === "boss" ? DEV.autoLootBossGold : kind === "elite" ? DEV.autoLootEliteGold : 1;
+    const out = [{ kind: "gold", n: Math.max(1, Math.round((base + Math.floor(rnd2() * 3) * sc) * mul)) }];
+    if (rnd2() * 100 < DEV.autoLootMod) out.push({ kind: "mod", id: rollMod(rnd2, Math.max(1, tier)), n: 1 });
+    const exo = () => exoMod(EXO_CATS[Math.floor(rnd2() * EXO_CATS.length) % EXO_CATS.length], tier);
+    if (kind === "elite") {
+      if (DEV.autoLootRed > 0) out.push({ kind: "red", n: DEV.autoLootRed });
+      if (rnd2() * 100 < DEV.autoLootExo) out.push(exo());
+    }
+    if (kind === "boss") out.push({ kind: "green", n: 1 }, exo());
+    return out;
+  }
+  function bagFits(run, it) {
+    const key = itemKey(it);
+    return !!key && run.bag.some((s) => s && itemKey(s) === key) || run.bag.indexOf(null) >= 0;
+  }
+  function lootCol(it) {
+    if (it.kind === "mod") {
+      const m = MODS[it.id || ""];
+      return m ? m.col : "#cccccc";
+    }
+    if (it.kind === "exo") return STAT_PERKS[EXO_STATS[it.cat || "hp"][0]].tint;
+    if (it.kind === "red") return "#ff4f5e";
+    if (it.kind === "green") return "#5ee05a";
+    return "#ffc93c";
+  }
+
+  // src/auto/payout.js
+  var PAY_CYCLE = 1.6;
+  var PAY_IDS = ["gun", "exo", "mod", "perk"];
+  var SHAKE_F02 = 3, SHAKE_F12 = 30;
+  var payPhase = (t) => SHAKE_F02 * t + SHAKE_F12 * PAY_CYCLE * Math.pow(Math.min(1, t / PAY_CYCLE), 3) / 3;
+  function machinePay(run, id, tier) {
+    const p = hubPrice(id, tier), paid = run.paid && run.paid[id] || 0;
+    if (!p || p.n <= 0) return { n: 0, left: paid, price: 0 };
+    const n = Math.floor(paid / p.n);
+    return { n, left: paid - n * p.n, price: p.n };
+  }
+  var GIFT_PERKS = Object.keys(PERKS).filter((id) => !PERKS[id].stat);
+  function machineItem(id, tier, rnd2) {
+    const t = Math.max(1, tier | 0);
+    if (id === "gun") return { kind: "gun", gun: shopGun(rnd2, t, false), n: 1 };
+    if (id === "exo") return exoMod(EXO_CATS[Math.floor(rnd2() * EXO_CATS.length) % EXO_CATS.length], t);
+    if (id === "mod") {
+      const m = crystalRoll(rnd2, t, []);
+      return m ? { kind: "mod", id: m, n: 1 } : null;
+    }
+    if (id === "perk") return { kind: "perk", id: GIFT_PERKS[Math.floor(rnd2() * GIFT_PERKS.length) % GIFT_PERKS.length], n: 1 };
+    return null;
+  }
+  function stepPay(S2, H) {
+    for (const id of PAY_IDS) {
+      const at = H.vend[id];
+      if (at === void 0 || at < 0) {
+        if (machinePay({ paid: H.paid }, id, H.tier).n > 0) {
+          H.vend[id] = S2.t;
+          S2.snd.push({ k: "arc", x: hubStopX(id), y: H.fy - 40 });
+        }
+        continue;
+      }
+      if (S2.t - at < PAY_CYCLE) continue;
+      H.vend[id] = -1;
+      const due = machinePay({ paid: H.paid }, id, H.tier);
+      if (due.n <= 0) continue;
+      H.paid[id] = due.left;
+      H.paidV++;
+      const x = hubStopX(id);
+      for (let k = 0; k < due.n; k++) {
+        const it = machineItem(id, H.tier, S2.rnd);
+        if (!it) continue;
+        const vx = (x < 300 ? 1 : -1) * (30 + 40 * S2.rnd());
+        (S2.loot || (S2.loot = [])).push({ x, y: H.fy - 14, vx, vy: -150 - 40 * S2.rnd(), it, col: lootCol(it), t: 0, nopull: 0.7 + 0.15 * k });
+      }
+      S2.flash = Math.max(S2.flash, 0.25);
+      S2.snd.push({ k: "coin", x, y: H.fy - 14 });
     }
   }
 
@@ -35682,7 +35763,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return r >= fr - 14 ? TM.SWALL : TM.BWALL;
   };
   var hubState = (S2) => S2.hub && S2.hub.data;
-  function hubScene(vh, seed, n, tier = 1) {
+  function hubScene(vh, seed, n, tier = 1, paid = {}) {
     const fy = hubFloor(vh);
     const H = {
       fy,
@@ -35696,8 +35777,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       exitT: -99,
       stick: { active: false, nx: 0, ny: 0, mag: 0, dy: 0 },
       thrown: [],
-      paid: {},
-      back: []
+      paid,
+      back: [],
+      vend: {},
+      paidV: 0
     };
     const S2 = titleScene(vh, seed, fy - HUB_ROOM, fy, { runners: n, hub: { w: HUB_W / TCELL, cell: hubCell(fy), step: hubStep, data: H } });
     S2.runners.forEach((r, i) => {
@@ -35751,6 +35834,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     });
     hubMove(S2, H, dt);
     stepThrown(S2, H, dt);
+    stepPay(S2, H);
     for (let i = 0; i < H.on.length; i++) {
       const at = LIGHT_WAIT + i * LIGHT_RUN * 1.6;
       if (H.on[i] < 0 && S2.t >= at) H.on[i] = at;
@@ -36239,35 +36323,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const B = L3 && L3.boss;
     if (!B || L3.bossDead) return null;
     return { hp: Math.max(0, B.hp), max: B.hpMax, name: B.k.name };
-  }
-
-  // src/auto/loot.js
-  function killLoot(kind, tier, rnd2, gold) {
-    const sc = goldScale(tier), base = gold == null ? sc : gold;
-    const mul = kind === "boss" ? DEV.autoLootBossGold : kind === "elite" ? DEV.autoLootEliteGold : 1;
-    const out = [{ kind: "gold", n: Math.max(1, Math.round((base + Math.floor(rnd2() * 3) * sc) * mul)) }];
-    if (rnd2() * 100 < DEV.autoLootMod) out.push({ kind: "mod", id: rollMod(rnd2, Math.max(1, tier)), n: 1 });
-    const exo = () => exoMod(EXO_CATS[Math.floor(rnd2() * EXO_CATS.length) % EXO_CATS.length], tier);
-    if (kind === "elite") {
-      if (DEV.autoLootRed > 0) out.push({ kind: "red", n: DEV.autoLootRed });
-      if (rnd2() * 100 < DEV.autoLootExo) out.push(exo());
-    }
-    if (kind === "boss") out.push({ kind: "green", n: 1 }, exo());
-    return out;
-  }
-  function bagFits(run, it) {
-    const key = itemKey(it);
-    return !!key && run.bag.some((s) => s && itemKey(s) === key) || run.bag.indexOf(null) >= 0;
-  }
-  function lootCol(it) {
-    if (it.kind === "mod") {
-      const m = MODS[it.id || ""];
-      return m ? m.col : "#cccccc";
-    }
-    if (it.kind === "exo") return STAT_PERKS[EXO_STATS[it.cat || "hp"][0]].tint;
-    if (it.kind === "red") return "#ff4f5e";
-    if (it.kind === "green") return "#5ee05a";
-    return "#ffc93c";
   }
 
   // src/art/cleared.js
@@ -36956,9 +37011,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     cache4.set(key, B);
     return B;
   }
-  function drawMachine(ctx, cx, fy, m, t) {
+  function drawMachine(ctx, cx, fy, m, t, pay = 0, vt = -1) {
     const x = cx - MW / 2, y = fy - MH;
+    const busy = vt >= 0, u = busy ? Math.min(1, vt / PAY_CYCLE) : 0, ph = busy ? payPhase(vt) : 0;
     ctx.save();
+    if (busy) ctx.translate(Math.sin(ph * 6.283) * (0.4 + 1.8 * u), Math.sin(ph * 4.1) * 0.5 * u);
     ctx.fillStyle = "#171a21";
     ctx.fillRect(x, y, MW, MH);
     ctx.fillStyle = "#252a35";
@@ -36968,7 +37025,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ctx.fillRect(x - 2, y - 1, MW + 4, 5);
     ctx.fillRect(x - 3, fy - 5, MW + 6, 5);
     ctx.fillStyle = m.hue;
-    ctx.globalAlpha = 0.5 + 0.2 * Math.sin(t * 3 + cx);
+    ctx.globalAlpha = busy ? 0.45 + 0.5 * (Math.sin(ph * 6.283) > 0 ? 1 : 0) : 0.5 + 0.2 * Math.sin(t * 3 + cx);
     ctx.fillRect(x + 5, y + 6, 1, MH - 14);
     ctx.fillRect(x + MW - 6, y + 6, 1, MH - 14);
     ctx.globalAlpha = 1;
@@ -37019,6 +37076,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ctx.globalAlpha = alpha * 0.2;
     ctx.fillRect(ix, Math.max(iy, band), ICON2, Math.max(0, Math.min(5, iy + ICON2 - band)));
     ctx.globalCompositeOperation = "source-over";
+    if (busy) {
+      ctx.globalCompositeOperation = "lighter";
+      ctx.globalAlpha = 0.15 + 0.35 * u;
+      ctx.fillStyle = m.hue;
+      ctx.fillRect(gx, gy, gw, gh);
+      ctx.globalCompositeOperation = "source-over";
+    }
+    payRing(ctx, cx, iy + ICON2 / 2, m.hue, busy ? 1 : pay, busy ? Math.floor(ph * 2) % 2 === 0 ? 1 : 0.35 : 1);
     if (m.takes) {
       const col = m.takes === "green" ? "#3dff7a" : "#ff3a4a", sy = y + 52;
       ctx.globalAlpha = 1;
@@ -37028,13 +37093,43 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       ctx.globalAlpha = 0.55 + 0.3 * Math.sin(t * 4 + cx);
       ctx.fillRect(cx - 8, sy - 3, 16, 1);
       ctx.fillRect(cx - 8, sy + 2, 16, 1);
-      const N = 8, pos = t * 1.5;
+    }
+    if (m.takes || busy) {
+      const col = m.takes === "green" ? "#3dff7a" : m.takes ? "#ff3a4a" : m.hue;
+      const N = 8, pos = busy ? ph * 2 : t * 1.5;
       for (let i = 0; i < N; i++) {
-        const lit = Math.max(0.15, 1 - ((pos - i) % N + N) % N * 0.45);
+        const lit = busy && u > 0.8 ? Math.floor(ph * 2) % 2 === 0 ? 1 : 0.15 : Math.max(0.15, 1 - ((pos - i) % N + N) % N * 0.45);
         ctx.globalAlpha = lit;
         ctx.fillStyle = lit > 0.5 ? "#ffffff" : col;
         ctx.fillRect(x + 4 + i * (MW - 8) / N + 1, y, 3, 2);
       }
+    }
+    ctx.restore();
+  }
+  function payRing(ctx, x, y, hue, f, a) {
+    const R = ICON2 / 2 + 3.5, a0 = -Math.PI / 2, a1 = a0 + Math.PI * 2 * Math.max(0, Math.min(1, f));
+    ctx.save();
+    ctx.lineCap = "round";
+    ctx.globalAlpha = 0.5;
+    ctx.strokeStyle = "#1c2230";
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.arc(x, y, R, 0, Math.PI * 2);
+    ctx.stroke();
+    if (f > 0) {
+      ctx.globalAlpha = a;
+      ctx.strokeStyle = hue;
+      ctx.lineWidth = 1.6;
+      ctx.shadowColor = hue;
+      ctx.shadowBlur = 4;
+      ctx.beginPath();
+      ctx.arc(x, y, R, a0, a1);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = "#ffffff";
+      ctx.beginPath();
+      ctx.arc(x + Math.cos(a1) * R, y + Math.sin(a1) * R, 1, 0, Math.PI * 2);
+      ctx.fill();
     }
     ctx.restore();
   }
@@ -37083,7 +37178,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
       if (st.id === "enter" || st.id === "exit") drawHubPad(ctx, st.x, H.fy, t + i);
       else {
-        drawMachine(ctx, st.x, H.fy, HUB_MACHINES[st.id], t);
+        const pr = machinePay({ paid: H.paid }, st.id, H.tier), vs = H.vend[st.id];
+        drawMachine(ctx, st.x, H.fy, HUB_MACHINES[st.id], t, pr.price ? (H.paid[st.id] || 0) / pr.price : 0, vs !== void 0 && vs >= 0 ? t - vs : -1);
         drawPrice(ctx, st.x, H.fy, hubPrice(st.id, H.tier), t);
       }
     });
@@ -38620,6 +38716,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const noBurst = null;
     const [burst3, setBurst] = useState(noBurst);
     useEffect(() => {
+      const paidV = { current: 0 };
       const id = setInterval(() => {
         const L3 = scene.current && levelState(scene.current);
         setBlocked(!!(L3 && L3.blocked));
@@ -38629,6 +38726,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           for (const b2 of H.back.splice(0)) bagAdd(run, { kind: b2.kind, n: b2.n });
           saveAutoRun(run);
           setV((v) => v + 1);
+        }
+        if (H && H.paidV !== paidV.current) {
+          paidV.current = H.paidV;
+          saveAutoRun(run);
         }
         const b = scene.current ? levelBoss(scene.current) : null;
         setBoss((o) => !b && !o || b && o && b.hp === o.hp && b.max === o.max ? o : b);
@@ -38652,8 +38753,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             cam.current = C2;
             return { S: S3, C: C2, warm: 0 };
           }
-          const S2 = hubScene(vh, seed, run.players.length, run.tier);
+          const S2 = hubScene(vh, seed, run.players.length, run.tier, run.paid || (run.paid = {}));
           scene.current = S2;
+          if (S2.hub) {
+            S2.hub.fits = (_S, it) => bagFits(run, it);
+            S2.hub.take = (_S, it) => {
+              if (bagAdd(run, it)) return false;
+              saveAutoRun(run);
+              setV((v) => v + 1);
+              return true;
+            };
+          }
           const C = titleCam(vh / 2, vh);
           C.w = HUB_W;
           C.zmin = TITLE_VW / HUB_W;
@@ -38677,6 +38787,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               for (const b of H.back) bagAdd(run, { kind: b.kind, n: b.n });
               H.thrown = [];
               H.back = [];
+              saveAutoRun(run);
+            }
+            if (S2.loot) {
+              for (const g of S2.loot.splice(0)) bagAdd(run, g.it);
               saveAutoRun(run);
             }
             where.current = "level";

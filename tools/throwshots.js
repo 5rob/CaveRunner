@@ -1,12 +1,14 @@
 // Screenshots for the owner (CaveRunner Auto stage 10a), phone size (412 x 880 @2.625), the real page through the test
 // page in the hub: a flicked nugget mid-air on its way to the gun machine; a stream of nuggets; a lump (the whole gold
-// stack) held at the finger.
+// stack) held at the finger. Stage 10b: d, the gun machine half paid (its ring); e, paid in full: shaking, then the gun
+// flying out to player 1 and the bag; f, the moment it pops (the machine at the end of its shake).
 //   node tools/throwshots.js [outdir]      (default tests/build/autoshots; ONLY=ab: just shots a, b)
 // Not a test: it takes the pictures and prints what each shows.
 const { launch } = require('../tests/chromium');
 const path = require('path');
 const fs = require('fs');
 
+const PAY_CYCLE_MS = 1600;   // auto/payout.js PAY_CYCLE
 const ONLY = process.env.ONLY || '';
 const OUT = path.resolve(process.argv[2] || path.join(__dirname, '..', 'tests', 'build', 'autoshots'));
 fs.mkdirSync(OUT, { recursive: true });
@@ -57,6 +59,18 @@ require('../tests/build')();
     await page.waitForTimeout(700);
     await page.mouse.move(m.x - 50, m.y - 10, { steps: 8 });
     await page.waitForTimeout(200);
+  });
+  await shot('d-ring', 'the gun machine half paid: the ring round its hologram half full (the exo machine a quarter)', async page => {
+    await page.evaluate(() => { const H = hubState(window.__title.S); H.paid.gun = Math.round(hubPrice('gun', 1).n / 2); H.paid.exo = Math.round(hubPrice('exo', 1).n / 4); });
+    await page.waitForTimeout(300);
+  });
+  await shot('e-shake', 'paid in full: the gun machine shaking, its glass and cap lights flashing, the ring full', async page => {
+    await page.evaluate(() => { const H = hubState(window.__title.S); H.paid.gun = hubPrice('gun', 1).n; });
+    await page.waitForTimeout(PAY_CYCLE_MS - 200);
+  });
+  await shot('f-fly', 'the gun popped out, flying to player 1 and into the bag', async page => {
+    await page.evaluate(() => { const H = hubState(window.__title.S); H.paid.gun = hubPrice('gun', 1).n; });
+    await page.waitForTimeout(PAY_CYCLE_MS + 700);
   });
   await browser.close();
   console.log(said.join('\n'));

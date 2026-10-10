@@ -100,7 +100,7 @@ export function stepThrown(S, H, dt) {
     if (id) {
       g.pull = id;
       if (pullStep(g, hubStopX(id), H.fy - MOUTH_UP, DEV.autoThrowPull, dt) < 6) {
-        H.paid[id] = (H.paid[id] || 0) + g.n;
+        H.paid[id] = (H.paid[id] || 0) + g.n; H.paidV++;
         H.thrown.splice(i, 1);
         S.snd.push({ k: 'coin', x: g.x, y: g.y });
       }

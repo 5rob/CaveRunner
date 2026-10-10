@@ -37,7 +37,7 @@ import { GlyphIcon, HelmetIcon, PixIcon } from './icons.js';
 import { PauseMenu } from '../pause.js';
 import { runScene } from '../scenecanvas.js';
 import { leaveItem } from '../../art/titlescene.js';
-import { lootCol } from '../../auto/loot.js';
+import { bagFits, lootCol } from '../../auto/loot.js';
 import { h, useEffect, useRef, useState } from '../h.js';
 
 const ROMAN = ['I', 'II', 'III', 'IV', 'V'];
@@ -95,6 +95,7 @@ export function AutoScreen() {
   const noBurst = null;
   const [burst, setBurst] = useState(noBurst);
   useEffect(() => {
+    const paidV = { current: 0 };
     const id = setInterval(() => {
       const L = scene.current && levelState(scene.current);
       setBlocked(!!(L && L.blocked));
@@ -102,6 +103,8 @@ export function AutoScreen() {
       // stage 10a: thrown things the machines didn't take, home: back into the bag
       const H = scene.current && !scene.current.lvl ? hubState(scene.current) : null;
       if (H && H.back.length) { for (const b of H.back.splice(0)) bagAdd(run, { kind: b.kind, n: b.n }); saveAutoRun(run); setV(v => v + 1); }
+      // stage 10b: something went into a machine or a machine paid out: the run's run.paid changed, save it
+      if (H && H.paidV !== paidV.current) { paidV.current = H.paidV; saveAutoRun(run); }
 
       const b = scene.current ? levelBoss(scene.current) : null;
       setBoss(o => (!b && !o) || (b && o && b.hp === o.hp && b.max === o.max) ? o : b);
@@ -127,8 +130,10 @@ export function AutoScreen() {
           return { S, C, warm: 0 };
         }
         // the hub: the strip, the players teleporting in, the camera on player 1
-        const S = hubScene(vh, seed, run.players.length, run.tier);
+        const S = hubScene(vh, seed, run.players.length, run.tier, run.paid || (run.paid = {}));
         scene.current = S;
+        // stage 10b: the machines' payouts fly into the bag (titlescene.js stepLoot); the bag full, they wait on the floor
+        if (S.hub) { S.hub.fits = (_S, it) => bagFits(run, it); S.hub.take = (_S, it) => { if (bagAdd(run, it)) return false; saveAutoRun(run); setV(v => v + 1); return true; }; }
         const C = titleCam(vh / 2, vh);
         C.w = HUB_W; C.zmin = TITLE_VW / HUB_W; C.x = hubStopX('enter') + 40; C.lock = 0;
         cam.current = C;
@@ -143,6 +148,8 @@ export function AutoScreen() {
           // anything still thrown (not taken) goes back into the bag
           const H = hubState(S);
           if (H) { for (const g of H.thrown) bagAdd(run, { kind: g.kind, n: g.n }); for (const b of H.back) bagAdd(run, { kind: b.kind, n: b.n }); H.thrown = []; H.back = []; saveAutoRun(run); }
+          // a machine's payout still on its way (or waiting for room): into the bag if it fits
+          if (S.loot) { for (const g of S.loot.splice(0)) bagAdd(run, g.it); saveAutoRun(run); }
           where.current = 'level'; return true;
         }
         if (where.current === 'level' && levelDone(S)) {
