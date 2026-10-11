@@ -27,6 +27,7 @@ import { levelBack, levelGlow, levelLight } from './leveldraw.js';
 import { hubState, hubStopX } from '../../auto/hub.js';
 import { MACH_H, hubPayAt, throwR } from '../../auto/throw.js';
 import { drawItemTile, tileItem } from '../../auto/itemtile.js';
+import { perkFront, perkGlow } from './perkdraw.js';
 // a pickup drawn as its bag tile: this many world units across
 export const LOOT_TILE = 13;
 
@@ -228,6 +229,7 @@ export function titleDraw(ctx, S, cw, ch, cam) {
   for (const r of S.runners) if (!r.hide) titleBeam(ctx, S, r, DK.vis[r.id]);
   if (S.hub) hubGlow(ctx, S);
   if (S.lvl) levelGlow(ctx, S);
+  perkGlow(ctx, S);   // CaveRunner Auto's perks: the shield, the laser, the ghost's halo (perkdraw.js)
   // the shots and lightning in the pixel look too (owner, v0.0.171): one layer on the world's grid, added as before
   if (S.shots.length || S.zaps.length) pixelSprite(ctx, gx, 0, TITLE_VW + 100, S.vh, 1, false, c => {
     /** @type {any} */
@@ -286,6 +288,7 @@ export function titleDraw(ctx, S, cw, ch, cam) {
   }
   ctx.globalAlpha = 1;
   ctx.globalCompositeOperation = 'source-over';
+  perkFront(ctx, S);   // the Angry Ghost over the dark
   if (S.hub) drawPayHint(ctx, S);
   ctx.restore();
   // a white flash on a big kill, and a vignette

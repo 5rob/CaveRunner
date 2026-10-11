@@ -11,6 +11,7 @@ import { PH, PW } from '../core/consts.js';
 import { DEV } from '../dev/knobs.js';
 import { eliteOf, enemyFor } from '../data/creatures.js';
 import { deathFall } from './death.js';
+import { shieldSoak } from './perks.js';
 import { TCELL, TITLE_HOME, TITLE_KINDS, TITLE_VW, titleFoeAt, titleZone } from '../art/titlescene.js';
 
 export const FALL_FLICKER = 0.6;      // (retired, feedback round 2: a fallen player is a ragdoll now, auto/death.js)
@@ -53,6 +54,7 @@ export function bossKind(id, tier) {
 export function levelHurt(S, i, dmg) {
   const pl = S.team && S.team[i], r = S.runners[i];
   if (!pl || pl.alive === false || !r || r.out) return;
+  if (dmg > 0 && shieldSoak(r, pl, S.t)) return;   // Permanent Shield: a ready one soaks the hit whole (auto/perks.js)
   pl.hp = Math.max(0, pl.hp - dmg * DEV.autoFoeDmg);
   if (pl.hp <= 0) levelFall(S, i);
 }

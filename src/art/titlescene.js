@@ -31,6 +31,7 @@ import { GUN_HELD, gunMuzzle } from './sprites.js';
 import { GUN_ART } from './gunart.js';
 import { gunPull, gunTick, perkDmg, planShots, shotsOf } from './scenegun.js';
 import { teamClearer } from '../auto/clear.js';
+import { ghostHome, ghostTarget, perkOn, shieldTick } from '../auto/perks.js';
 
 export const TITLE_VW = 220;          // world units across the screen
 export const TITLE_FOES = 24;         // at most this many creatures at once (a rat swarm counts each rat; v0.0.165: ×2)
@@ -104,7 +105,7 @@ export const TITLE_HOME = {
  *   dig: number, clearT: number, keep: TKit | null, dx: number, dy: number, digY: number, sawT: number, switches: number[],
  *   bursty: number, burst: boolean, jet: boolean, jetT: number, jetCd: number, pace: number, spd: number,
  *   nav: { F: any, fx: number, fy: number, t: number }, stepT?: number, sawS?: number, rst?: { t?: number }, rub?: string, rubWas?: boolean,
- *   hide?: boolean, out?: boolean, outT?: number, stand?: boolean, dealt?: number, clr?: { p: number, g: number } | null, clrT?: number,
+ *   hide?: boolean, out?: boolean, outT?: number, stand?: boolean, dealt?: number, shieldT?: number, shieldHit?: number, ghost?: { x: number, y: number, cd: number, fired: number } | null, clr?: { p: number, g: number } | null, clrT?: number,
  *   ctl?: RunnerCtl | null, ctlWas?: boolean, cvx?: number, jetIn?: { nx: number, ny: number } | null, jx?: number, jy?: number, smokeAcc?: number, smokeN?: number, rag?: import('../world/ragdoll.js').Ragdoll | null, lamp?: boolean }} TRunner */
 /** a player steered by hand (CaveRunner Auto, feedback round 2: the selected player in a level): the pill stick's push
  * @typedef {{ active: boolean, nx: number, ny: number, mag: number }} RunnerCtl */
@@ -1124,6 +1125,28 @@ function stepRunner(S, r, dt) {
   r.wvx += (Math.max(-250, Math.min(250, (r.x - x0) / Math.max(dt, 1e-3) + sv(S))) - r.wvx) * k;
   r.wvy += (Math.max(-250, Math.min(250, (r.y - y0) / Math.max(dt, 1e-3))) - r.wvy) * k;
   stepRunnerGun(S, r, dt);
+  stepRunnerPerks(S, r, dt);
+}
+// CaveRunner Auto's perks in a level (auto/perks.js): the shield's recharge, the Angry Ghost trailing him and firing
+/** @param {TitleScene} S @param {TRunner} r @param {number} dt */
+function stepRunnerPerks(S, r, dt) {
+  const pl = S.team && S.team[r.id];
+  if (!pl) return;
+  shieldTick(r, dt);
+  if (r.out || pl.alive === false || !perkOn(pl, 'ghost')) { r.ghost = null; return; }
+  const h = ghostHome(r, PW);
+  if (!r.ghost) r.ghost = { x: h.x, y: h.y, cd: DEV.autoGhostCd, fired: -9 };
+  const g = r.ghost, lp = Math.min(1, dt * 4);
+  g.x += (h.x - g.x) * lp; g.y += (h.y - g.y) * lp;
+  if ((g.cd -= dt) > 0) return;
+  const f = ghostTarget(g, S.foes, S.scroll, DEV.autoGhostRange);
+  if (!f) { g.cd = 0; return; }
+  g.cd = DEV.autoGhostCd; g.fired = S.t;
+  const a = Math.atan2(f.ty - g.y, f.x - S.scroll - g.x), v = 300;
+  S.shots.push({ x: g.x, y: g.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, size: 2, col: '#c9a6ff', look: '', life: 1.2, foe: false, spin: 0,
+    grav: 0, drag: 0, explode: 0, pit: 0, fire: 0, bounce: 0, bounceE: 0.92, pierce: 0, dmg: DEV.autoGhostDmg, homing: 2, accel: 0, vmax: 0, chain: 0,
+    real: true, by: r.id, trig: null, timer: 0, pay: null, age: 0 });
+  burst(S, g.x, g.y, 3, '#c9a6ff', 30, 'spark', 0.15);
 }
 // The jetpack as the old game's (game/systems/player.js, particles.js, render/actors.js drawJetFlame): the thrust's way
 // (r.jx, r.jy: a hand-steered player's stick; the autopilot's mostly up, tilted by how fast he's going across), the

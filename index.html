@@ -1986,6 +1986,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "autoClearGap", g: "autoguns", label: "Digging: the tunnel is cut while the clearing gun fired within (s)", min: 0.05, max: 3, step: 0.05 }
   );
   DEV_GROUPS.push(["autoguns", "Auto: guns"]);
+  Object.assign(DEV_DEFAULTS, { autoShieldT: 2.5, autoGhostDmg: 1, autoGhostCd: 1.4, autoGhostRange: 150 });
+  DEV_META.push(
+    { k: "autoShieldT", g: "autoperks", label: "Permanent Shield: back after a hit (s)", min: 0.2, max: 20, step: 0.1 },
+    { k: "autoGhostDmg", g: "autoperks", label: "Angry Ghost: damage a shot", min: 0, max: 20, step: 0.1 },
+    { k: "autoGhostCd", g: "autoperks", label: "Angry Ghost: a shot every (s)", min: 0.1, max: 5, step: 0.05 },
+    { k: "autoGhostRange", g: "autoperks", label: "Angry Ghost: range (units)", min: 20, max: 400, step: 5 }
+  );
+  DEV_GROUPS.push(["autoperks", "Auto: perks"]);
   Object.assign(DEV_DEFAULTS, { autoFoeGap0: 4, autoFoeGap1: 1.5, autoFoeCap0: 3, autoFoeCap1: 10, autoFoeDmg: 0.5, autoFoeElites: 2, autoBossSize: 4, autoBossHp: 12, autoBossDmg: 3 });
   DEV_META.push(
     { k: "autoFoeGap0", g: "autofoes", label: "A new creature every … s, at the level’s start (a trickle)", min: 0.2, max: 20, step: 0.1 },
@@ -7193,8 +7201,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ctx.translate(x, y);
     ctx.rotate(Math.atan2(nx, -ny));
     ctx.scale(f, 1);
-    const run = moving ? Math.sin(time * 38 + phase) : 0, bob = moving ? Math.abs(run) * 0.4 : 0;
-    ctx.translate(0, r * 0.35 - bob);
+    const run = moving ? Math.sin(time * 38 + phase) : 0, bob2 = moving ? Math.abs(run) * 0.4 : 0;
+    ctx.translate(0, r * 0.35 - bob2);
     ctx.strokeStyle = flash ? "#fff" : "#d9a0a0";
     ctx.lineWidth = 0.7;
     ctx.lineCap = "round";
@@ -7206,9 +7214,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ctx.lineWidth = 0.8;
     ctx.beginPath();
     ctx.moveTo(-r * 0.6, r * 0.2);
-    ctx.lineTo(-r * 0.6 - run * r * 0.4, r * 0.6 + bob);
+    ctx.lineTo(-r * 0.6 - run * r * 0.4, r * 0.6 + bob2);
     ctx.moveTo(r * 0.5, r * 0.2);
-    ctx.lineTo(r * 0.5 + run * r * 0.4, r * 0.6 + bob);
+    ctx.lineTo(r * 0.5 + run * r * 0.4, r * 0.6 + bob2);
     ctx.stroke();
     ctx.fillStyle = flash ? "#fff" : col.a;
     ctx.beginPath();
@@ -11160,9 +11168,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       glyph: "⊙",
       tint: "#5ee0a0",
       pinpointer: 1,
-      speed: 1.2,
-      spread: 0.6,
-      info: "You aim at the nearest creature instead of by hand, with a sightline to it."
+      info: "A red laser pointer shows where you are aiming. Just for looks."
     },
     repel: {
       name: "Projectile Repulsion Field",
@@ -11570,6 +11576,32 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (g >= 0) return { p, g };
     }
     return null;
+  }
+
+  // src/auto/perks.js
+  var perksOf = (pl) => perkBag([...new Set((pl && pl.perks || []).map((it) => it && it.id).filter(Boolean))].map(String));
+  var perkOn = (pl, flag) => !!pl && !!perksOf(pl)[flag];
+  var shieldUp = (r, pl) => perkOn(pl, "shield") && !((r.shieldT || 0) > 0);
+  function shieldSoak(r, pl, t) {
+    if (!shieldUp(r, pl)) return false;
+    r.shieldT = DEV.autoShieldT;
+    r.shieldHit = t;
+    return true;
+  }
+  function shieldTick(r, dt) {
+    if ((r.shieldT || 0) > 0) r.shieldT = Math.max(0, (r.shieldT || 0) - dt);
+  }
+  var ghostHome = (r, pw) => ({ x: r.x + pw / 2 - r.face * 14, y: r.y - 6 });
+  function ghostTarget(g, foes, scroll, range) {
+    let best = null, bd = range;
+    for (const f of foes) {
+      const d = Math.hypot(f.x - scroll - g.x, f.ty - g.y);
+      if (f.hp > 0 && d < bd) {
+        bd = d;
+        best = f;
+      }
+    }
+    return best;
   }
 
   // src/art/titlescene.js
@@ -12831,6 +12863,62 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     r.wvx += (Math.max(-250, Math.min(250, (r.x - x0) / Math.max(dt, 1e-3) + sv(S2))) - r.wvx) * k;
     r.wvy += (Math.max(-250, Math.min(250, (r.y - y0) / Math.max(dt, 1e-3))) - r.wvy) * k;
     stepRunnerGun(S2, r, dt);
+    stepRunnerPerks(S2, r, dt);
+  }
+  function stepRunnerPerks(S2, r, dt) {
+    const pl = S2.team && S2.team[r.id];
+    if (!pl) return;
+    shieldTick(r, dt);
+    if (r.out || pl.alive === false || !perkOn(pl, "ghost")) {
+      r.ghost = null;
+      return;
+    }
+    const h3 = ghostHome(r, PW);
+    if (!r.ghost) r.ghost = { x: h3.x, y: h3.y, cd: DEV.autoGhostCd, fired: -9 };
+    const g = r.ghost, lp = Math.min(1, dt * 4);
+    g.x += (h3.x - g.x) * lp;
+    g.y += (h3.y - g.y) * lp;
+    if ((g.cd -= dt) > 0) return;
+    const f = ghostTarget(g, S2.foes, S2.scroll, DEV.autoGhostRange);
+    if (!f) {
+      g.cd = 0;
+      return;
+    }
+    g.cd = DEV.autoGhostCd;
+    g.fired = S2.t;
+    const a = Math.atan2(f.ty - g.y, f.x - S2.scroll - g.x), v = 300;
+    S2.shots.push({
+      x: g.x,
+      y: g.y,
+      vx: Math.cos(a) * v,
+      vy: Math.sin(a) * v,
+      size: 2,
+      col: "#c9a6ff",
+      look: "",
+      life: 1.2,
+      foe: false,
+      spin: 0,
+      grav: 0,
+      drag: 0,
+      explode: 0,
+      pit: 0,
+      fire: 0,
+      bounce: 0,
+      bounceE: 0.92,
+      pierce: 0,
+      dmg: DEV.autoGhostDmg,
+      homing: 2,
+      accel: 0,
+      vmax: 0,
+      chain: 0,
+      real: true,
+      by: r.id,
+      trig: null,
+      timer: 0,
+      pay: null,
+      age: 0
+    });
+    burst(S2, g.x, g.y, 3, "#c9a6ff", 30, "spark", 0.15);
   }
   var TITLE_NOZZLE_X = 4.4, TITLE_NOZZLE_Y = 17.6;
   var titleNozzle = (r) => ({ x: r.x + PW / 2 - TITLE_NOZZLE_X * (r.face || 1), y: r.y + TITLE_NOZZLE_Y });
@@ -13991,7 +14079,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       let x = (cw - w) / 2;
       [...s].forEach((c, i) => {
         const n = li * 4 + i;
-        const bob = Math.sin(t * 3.2 + n * 0.7) * px * 0.45, cx = x, cy = y + bob;
+        const bob2 = Math.sin(t * 3.2 + n * 0.7) * px * 0.45, cx = x, cy = y + bob2;
         const lx = (cx + pixWidth(c, px, 1) / 2) / cw;
         titleLetter(ctx, c, cx, cy, px, 1 - Math.abs(lx - shine) * 5);
         x += pixWidth(c, px, 1) + 1 * px;
@@ -15610,6 +15698,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function levelHurt(S2, i, dmg) {
     const pl = S2.team && S2.team[i], r = S2.runners[i];
     if (!pl || pl.alive === false || !r || r.out) return;
+    if (dmg > 0 && shieldSoak(r, pl, S2.t)) return;
     pl.hp = Math.max(0, pl.hp - dmg * DEV.autoFoeDmg);
     if (pl.hp <= 0) levelFall(S2, i);
   }
@@ -15708,8 +15797,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         const u = (a - n * STAGGER) / FALL;
         if (u > 0) {
           const settle = Math.max(0, a - clearedShine());
-          const bob = Math.sin(settle * 3.2 + n * 0.7) * px * 0.45 * Math.min(1, settle * 2);
-          const cy = y - dropAt(u) * (y + px * 4) + bob;
+          const bob2 = Math.sin(settle * 3.2 + n * 0.7) * px * 0.45 * Math.min(1, settle * 2);
+          const cy = y - dropAt(u) * (y + px * 4) + bob2;
           const lx = (x + pixWidth(c, px, 1) / 2) / cw;
           titleLetter(ctx, c, x, cy, px, 1 - Math.abs(lx - shine) * 5);
           const lt = a - clearedLand(n);
@@ -24431,8 +24520,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const t = W.time, m = guideMid(W, g);
     if (m.x < W.camX - 40 || m.x > W.camX + F2.vw + 40) return;
     const px = DEV.runnerPx > 0 ? DEV.runnerPx : 1;
-    const bob = Math.sin(t * 2.2) * 1.5;
-    const feet = SHOP_FLOOR * CELL - GUIDE_FEET + bob, bx = m.x - PW / 2, by = feet - 21;
+    const bob2 = Math.sin(t * 2.2) * 1.5;
+    const feet = SHOP_FLOOR * CELL - GUIDE_FEET + bob2, bx = m.x - PW / 2, by = feet - 21;
     const x0 = Math.round(m.x - BOX_W / 2), y0 = Math.round(by - 8);
     const cw = Math.ceil(BOX_W / px), ch = Math.ceil(BOX_H / px);
     if (!S.c) {
@@ -29709,6 +29798,104 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     c.restore();
   }
 
+  // src/game/render/perkdraw.js
+  var SHIELD_FLASH = 0.45;
+  var SHIELD_POP = 0.3;
+  var LASER_MAX = 260;
+  function laserEnd(S2, x, y, a) {
+    const dx = Math.cos(a), dy = Math.sin(a);
+    for (let d = 0; d < LASER_MAX; d += 2) {
+      const px = x + dx * d, py = y + dy * d;
+      if (titleSolid(S2, px, py)) return { x: px, y: py, hit: true };
+      for (const f of S2.foes) if (f.hp > 0 && Math.hypot(f.x - S2.scroll - px, f.ty - py) < f.r) return { x: px, y: py, hit: true };
+    }
+    return { x: x + dx * LASER_MAX, y: y + dy * LASER_MAX, hit: false };
+  }
+  var muzzle = (S2, r) => gunMuzzle(r.x + PW / 2 + Math.cos(r.ang) * 2.5, r.y + PH * 0.45, r.ang, GUN_HELD, r.kit.art);
+  function perkGlow(ctx, S2) {
+    if (!S2.team) return;
+    for (const r of S2.runners) {
+      const pl = S2.team[r.id];
+      if (!pl || r.hide || r.out || pl.alive === false) continue;
+      const cx = r.x + PW / 2, cy = r.y + PH / 2, R = PH * 0.95;
+      if (perkOn(pl, "shield")) {
+        const since = S2.t - (r.shieldHit ?? -99), up = !((r.shieldT || 0) > 0);
+        if (since < SHIELD_FLASH) {
+          const q = since / SHIELD_FLASH, rr2 = R * (1 + q * 0.8);
+          ctx.globalAlpha = 1 - q;
+          const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, rr2);
+          g.addColorStop(0, "rgba(200,240,255,0.5)");
+          g.addColorStop(0.75, "rgba(122,215,255,0.35)");
+          g.addColorStop(1, "rgba(230,250,255,0.9)");
+          ctx.fillStyle = g;
+          ctx.beginPath();
+          ctx.arc(cx, cy, rr2, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = "#e6faff";
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.arc(cx, cy, rr2, 0, Math.PI * 2);
+          ctx.stroke();
+        } else if (up) {
+          const back = Math.min(1, (since - DEV.autoShieldT) / SHIELD_POP);
+          const k = Math.max(0, back), pulse = 0.85 + 0.15 * Math.sin(S2.t * 4 + r.id), rr2 = R * (0.7 + 0.3 * k);
+          ctx.globalAlpha = k * pulse;
+          const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, rr2);
+          g.addColorStop(0, "rgba(122,215,255,0)");
+          g.addColorStop(0.55, "rgba(122,215,255,0.06)");
+          g.addColorStop(0.88, "rgba(122,215,255,0.32)");
+          g.addColorStop(1, "rgba(200,240,255,0.55)");
+          ctx.fillStyle = g;
+          ctx.beginPath();
+          ctx.arc(cx, cy, rr2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+      }
+      if (perkOn(pl, "pinpointer")) {
+        const m = muzzle(S2, r), e = laserEnd(S2, m.x, m.y, r.ang);
+        ctx.globalAlpha = 0.55;
+        ctx.strokeStyle = "#ff2a2a";
+        ctx.lineWidth = 0.7;
+        ctx.beginPath();
+        ctx.moveTo(m.x, m.y);
+        ctx.lineTo(e.x, e.y);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+        if (e.hit) {
+          glowAt(ctx, e.x, e.y, 5, 0.6, "255,40,40");
+          ctx.fillStyle = "#ff6a6a";
+          ctx.fillRect(e.x - 0.8, e.y - 0.8, 1.6, 1.6);
+        }
+      }
+      if (r.ghost) {
+        const g = r.ghost, fresh = Math.max(0, 1 - (S2.t - g.fired) / 0.25);
+        glowAt(ctx, g.x, g.y + bob(S2, r), 10 + fresh * 6, 0.22 + fresh * 0.3, "201,166,255");
+      }
+    }
+  }
+  var bob = (S2, r) => Math.sin(S2.t * 3 + r.id) * 2;
+  function perkFront(ctx, S2) {
+    for (const r of S2.runners) {
+      if (!r.ghost || r.hide) continue;
+      const x = r.ghost.x, y = r.ghost.y + bob(S2, r), w = r.face;
+      ctx.globalAlpha = 0.7;
+      ctx.fillStyle = "#c9a6ff";
+      ctx.beginPath();
+      ctx.arc(x, y, 4.5, Math.PI, 0);
+      ctx.lineTo(x + 4.5, y + 5);
+      ctx.lineTo(x + 1.5, y + 3.5);
+      ctx.lineTo(x - 1.5, y + 5);
+      ctx.lineTo(x - 4.5, y + 3.5);
+      ctx.closePath();
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = "#3a2f52";
+      ctx.fillRect(x - 2.4 + w * 0.6, y - 1, 1.2, 1.8);
+      ctx.fillRect(x + 1 + w * 0.6, y - 1, 1.2, 1.8);
+    }
+  }
+
   // src/game/render/titledraw.js
   var LOOT_TILE = 13;
   var T = THEMES[0];
@@ -29917,6 +30104,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     for (const r of S2.runners) if (!r.hide) titleBeam(ctx, S2, r, DK.vis[r.id]);
     if (S2.hub) hubGlow(ctx, S2);
     if (S2.lvl) levelGlow(ctx, S2);
+    perkGlow(ctx, S2);
     if (S2.shots.length || S2.zaps.length) pixelSprite(ctx, gx, 0, TITLE_VW + 100, S2.vh, 1, false, (c) => {
       const G2 = { ctx: c };
       c.globalCompositeOperation = "lighter";
@@ -29982,6 +30170,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = "source-over";
+    perkFront(ctx, S2);
     if (S2.hub) drawPayHint(ctx, S2);
     ctx.restore();
     if (S2.flash > 0) {

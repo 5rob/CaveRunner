@@ -658,6 +658,14 @@ DEV_META.push(
   { k: 'autoClearFire', g: 'autoguns', label: 'Fire counts this much against webs and timber (score)', min: 0, max: 100, step: 1 },
   { k: 'autoClearGap',  g: 'autoguns', label: 'Digging: the tunnel is cut while the clearing gun fired within (s)', min: 0.05, max: 3, step: 0.05 });
 DEV_GROUPS.push(['autoguns', 'Auto: guns']);
+// the perks that act in a level (auto/perks.js): Permanent Shield's recharge, the Angry Ghost (weaker than the old game's 2 every 0.7 s)
+Object.assign(DEV_DEFAULTS, { autoShieldT: 2.5, autoGhostDmg: 1, autoGhostCd: 1.4, autoGhostRange: 150 });
+DEV_META.push(
+  { k: 'autoShieldT',    g: 'autoperks', label: 'Permanent Shield: back after a hit (s)', min: 0.2, max: 20, step: 0.1 },
+  { k: 'autoGhostDmg',   g: 'autoperks', label: 'Angry Ghost: damage a shot', min: 0, max: 20, step: 0.1 },
+  { k: 'autoGhostCd',    g: 'autoperks', label: 'Angry Ghost: a shot every (s)', min: 0.1, max: 5, step: 0.05 },
+  { k: 'autoGhostRange', g: 'autoperks', label: 'Angry Ghost: range (units)', min: 20, max: 400, step: 5 });
+DEV_GROUPS.push(['autoperks', 'Auto: perks']);
 // the level's enemies (auto/enemies.js, stage 6): how hard they hit, the elites, the boss
 Object.assign(DEV_DEFAULTS, { autoFoeGap0: 4, autoFoeGap1: 1.5, autoFoeCap0: 3, autoFoeCap1: 10, autoFoeDmg: 0.5, autoFoeElites: 2, autoBossSize: 4, autoBossHp: 12, autoBossDmg: 3 });
 DEV_META.push(
