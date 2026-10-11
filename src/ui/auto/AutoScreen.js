@@ -20,7 +20,7 @@ import { TITLE_VW, camAt, camTo, titleCam } from '../../art/titlescene.js';
 import { DEAD } from '../../core/consts.js';
 import { chestOpen } from '../../auto/chests.js';
 import { HUB_W, hubExit, hubLeft, hubMapA, hubMapPick, hubScene, hubState, hubStick, hubStopX } from '../../auto/hub.js';
-import { mapLabel } from '../../auto/maps.js';
+import { MAP_NAMES, mapLabel, mapsOf } from '../../auto/maps.js';
 import { THROW_TAKES, hubPayAt, hubPayOne, payVel } from '../../auto/throw.js';
 import { levelClearedAge, levelControl, levelDeathPrompt, levelDone, levelHold, levelLost, levelPicked, levelScene, levelState, levelTeleportHome } from '../../auto/level.js';
 import { clearedText } from '../../art/cleared.js';
@@ -1011,7 +1011,8 @@ function CoinBurst({ burst }) {
 // the active map and its level, top left of the play area (owner)
 /** @param {AutoRun} run @returns {{ name: string, level: number }} */
 function mapInfo(run) {
-  return { name: 'Mossy Caves', level: run.tier };
+  const i = run.map || 0;
+  return { name: MAP_NAMES[i], level: mapsOf(run)[i].level };
 }
 // (owner) the journey box: the whole level at its own width-to-height shape, across the play area; each player's helmet
 // (the scene's sprite, pixelated) where he is in it; the fallen and the hidden left out

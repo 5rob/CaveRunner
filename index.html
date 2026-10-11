@@ -33711,7 +33711,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     );
   }
   function mapInfo(run) {
-    return { name: "Mossy Caves", level: run.tier };
+    const i = run.map || 0;
+    return { name: MAP_NAMES[i], level: mapsOf(run)[i].level };
   }
   var HELM_PX = 12;
   var helmCache = {};
