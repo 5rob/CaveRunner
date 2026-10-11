@@ -5,6 +5,17 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.41 — CaveRunner Auto: hanging on vines and web lines (branch `autobattler`)
+Released 2026-10-11 on the branch (owner OK'd `tools/hangshots.js`). Agent ~30 min (worktree `cr-hang`, past its box).
+- The owner: "port the ability to hang on vines and webs, same mechanics". The hand-steered player only (the autopilot
+  never grabs): touching a vine, chain, root, arched vine or web line without jetting he hangs on, the tank refills; the
+  stick climbs (up = jet, as the old game); no push across = the old pendulum swing about the root, the vine swinging
+  with him; along arched vines and web lines hands on the line, pushing across or past an end lets go (0.35 s no
+  re-grab); web lines dip under him and slow him. A hanging player stays steered with the stick released.
+- `auto/hang.js`; `lineLetGo`/`LINE_OFF` moved to `world/sway.js` (player.js re-exports). Suite `auto-hang` (sandbox,
+  16 checks); `auto-fuel` clears a cave's vines (a dry player now hangs on one, by the old rule). Not done: a hanging pose
+  (the old game had none), burning vines lighting him.
+
 ## v1.0.40 — CaveRunner Auto: shot looks, part 2; Black Hole pulls, White Hole works (branch `autobattler`)
 Released 2026-10-11 on the branch (owner OK'd `tools/shotlookshots.js` sheets s5–s8). Agent ~10 min (worktree `cr-shots2`) + PM.
 - Energy Orb an undulating energy blob, Energy Sphere the same hollow; Lightning the old v62 jagged bolt (`drawBolt`,
