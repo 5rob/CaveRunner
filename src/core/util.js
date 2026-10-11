@@ -112,3 +112,28 @@ export function bezierAt(u, y0, x1, y1, x2, y2, y3) {
   for (let i = 0; i < 30; i++) { s = (lo + hi) / 2; if (at(s, x1, x2, 0, 1) < u) lo = s; else hi = s; }
   return at(s, y1, y2, y0, y3);
 }
+
+// ---- the jetpack's cough (the game's, shared with CaveRunner Auto: auto/fuel.js) ----
+// Near the bottom of the tank the jet coughs: short random cut-outs, more often and a touch
+// longer the closer the tank is to dry. `st` keeps the cut-out clock and how long the jet
+// has been held on (which bends its pitch). Returns true while it's cut out; `st.start`
+// is true on the frame a cut-out begins.
+export const SPUTTER_FUEL = 0.25;
+/** @param {{ cut: number, onT: number, start: boolean, gap?: number }} st @param {number} dt @param {number} fuel @param {unknown} on @param {() => number} [rnd] */
+export function sputterStep(st, dt, fuel, on, rnd) {
+  rnd = rnd || Math.random;
+  st.start = false;
+  if (!on) { st.cut = 0; st.gap = 0; st.onT = 0; return false; }
+  st.onT = (st.onT || 0) + dt;
+  st.cut = Math.max(0, (st.cut || 0) - dt);
+  st.gap = Math.max(0, (st.gap || 0) - dt);                  // a catch of breath between coughs
+  if (st.gap <= 0 && fuel < SPUTTER_FUEL) {
+    const w = 1 - Math.max(0, fuel) / SPUTTER_FUEL;          // 0 at the line, 1 bone dry
+    if (rnd() < dt * (1 + 7 * w)) {
+      st.cut = 0.04 + rnd() * (0.05 + 0.08 * w);
+      st.gap = st.cut + 0.1 + rnd() * 0.2;
+      st.start = true;
+    }
+  }
+  return st.cut > 0;
+}

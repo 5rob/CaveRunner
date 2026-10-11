@@ -956,6 +956,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .anavc.gun{position:relative}
 .anavc.gun.sel{box-shadow:0 0 10px rgba(255,255,255,0.3)!important}
 .anavc.manual{position:relative}
+/* a player's health (owner): the helmet's ring as a bar, his colour from the top clockwise over a dark track; under a quarter it flashes red, faster toward 0 (--fl) */
+.anavc.on[data-player]{position:relative;border-color:#2a2140}
+.ahp{position:absolute;inset:-3px;border-radius:50%;pointer-events:none;background:conic-gradient(var(--hc,#fff) var(--hp,360deg),transparent 0);-webkit-mask:radial-gradient(circle,transparent 21.5px,#000 22px);mask:radial-gradient(circle,transparent 21.5px,#000 22px)}
+.ahp.ahpf{--hc:#ff2a2a;animation:ahplow var(--fl,.6s) steps(1) infinite}
+@keyframes ahplow{0%{opacity:1}50%{opacity:0}}
 /* (bug round 2) the player in manual mode: the selected gun's crosshair round his helmet */
 .anavc.gun.sel::before,.anavc.manual::before{content:"";position:absolute;inset:-11px;pointer-events:none;background:linear-gradient(45deg,transparent calc(50% - 1.5px),#fff calc(50% - 1.5px),#fff calc(50% + 1.5px),transparent calc(50% + 1.5px)),linear-gradient(-45deg,transparent calc(50% - 1.5px),#fff calc(50% - 1.5px),#fff calc(50% + 1.5px),transparent calc(50% + 1.5px));-webkit-mask:radial-gradient(circle,transparent 31px,#000 32px);mask:radial-gradient(circle,transparent 31px,#000 32px)}
 .anavup .anavc.gun.sel.pick{box-shadow:0 0 0 3px #fff,0 0 12px rgba(255,255,255,0.5)!important}

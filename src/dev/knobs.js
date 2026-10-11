@@ -681,7 +681,7 @@ DEV_META.push(
 DEV_GROUPS.push(['autofoes', 'Auto: enemies']);
 // the jetpack (art/titlescene.js jetStep, feedback round 2: the old game's flame and smoke) and a death (auto/death.js: the ragdoll,
 // the slow stop, Tap A, the helmet light, the blast, home)
-Object.assign(DEV_DEFAULTS, { autoMoveK: 0.55, autoJetTilt: 1, autoJetSmoke: 1, autoDeathStop: 1.5, autoTpBlink: 1, autoTpBoomWait: 0.6, autoTpBoomR: 60 });
+Object.assign(DEV_DEFAULTS, { autoMoveK: 0.55, autoJetTilt: 1, autoJetSmoke: 1, autoDeathStop: 1.5, autoTpBlink: 1, autoTpBoomWait: 0.6, autoTpBoomR: 60, autoFuelDrain: 1, autoFuelRegen: 1 });
 DEV_META.push(
   { k: 'autoMoveK',      g: 'autodeath', label: 'Hand-steered speed (× the old game’s walk, jet, their pushes; hub and steering a player; the hub’s followers too)', min: 0.2, max: 1.5, step: 0.05 },
   { k: 'autoJetTilt',    g: 'autodeath', label: 'Jet flame: the autopilot’s tilt with its speed across (at most)', min: 0, max: 1.5, step: 0.05 },
@@ -689,7 +689,9 @@ DEV_META.push(
   { k: 'autoDeathStop',  g: 'autodeath', label: 'All fallen: the scroll eases to a stop over (s)', min: 0.1, max: 6, step: 0.1 },
   { k: 'autoTpBlink',    g: 'autodeath', label: 'Tap A: the helmet light blinks for (s)', min: 0.1, max: 4, step: 0.05 },
   { k: 'autoTpBoomWait', g: 'autodeath', label: '… then the blast, home after (s)', min: 0.1, max: 4, step: 0.05 },
-  { k: 'autoTpBoomR',    g: 'autodeath', label: 'The blast’s size', min: 10, max: 200, step: 1 });
+  { k: 'autoTpBoomR',    g: 'autodeath', label: 'The blast’s size', min: 10, max: 200, step: 1 },
+  { k: 'autoFuelDrain',  g: 'autodeath', label: 'Jet fuel: drain (× the old game’s; a level only, auto/fuel.js)', min: 0, max: 3, step: 0.05 },
+  { k: 'autoFuelRegen',  g: 'autodeath', label: 'Jet fuel: refill on the ground (× the old game’s)', min: 0.1, max: 3, step: 0.05 });
 DEV_GROUPS.push(['autodeath', 'Auto: jetpack and death']);
 // the level's drops (auto/loot.js, stage 6 part 2): gun mods, gems and exo mods from kills
 Object.assign(DEV_DEFAULTS, { autoLootMod: 6, autoLootRed: 2, autoLootExo: 30, autoLootEliteGold: 3, autoLootBossGold: 10 });

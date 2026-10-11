@@ -8,7 +8,7 @@ import {
   AIR_ACC, CELL, CLIMB, COL, DEAD, FUEL_DRAIN, FUEL_REGEN, FUEL_RESTART, GRAVITY, GROUND_ACC, JET,
   JET_ACC, PH, PW, SHOP_FLOOR, WALK, WEB_HAND, WH
 } from '../../core/consts.js';
-import { approach, clamp } from '../../core/util.js';
+import { SPUTTER_FUEL, approach, clamp, sputterStep } from '../../core/util.js';
 import { activePerks, perkBag } from '../../data/perks.js';
 import { DEV, kr, spr } from '../../dev/knobs.js';
 import { clearSave, saveCollection } from '../../save/save.js';
@@ -99,29 +99,8 @@ export const NOZZLE_X = 4.4, NOZZLE_Y = 17.6;
 export const jetNozzle = W => ({ x: W.p.x + PW / 2 - NOZZLE_X * (W.p.face || 1), y: W.p.y + NOZZLE_Y });
 
 // ---- the jetpack ----
-// Near the bottom of the tank the jet coughs: short random cut-outs, more often and a touch
-// longer the closer the tank is to dry. `st` keeps the cut-out clock and how long the jet
-// has been held on (which bends its pitch). Returns true while it's cut out; `st.start`
-// is true on the frame a cut-out begins.
-export const SPUTTER_FUEL = 0.25;
-/** @param {World['jetSt']} st @param {number} dt @param {number} fuel @param {unknown} on @param {Rnd} [rnd] */
-export function sputterStep(st, dt, fuel, on, rnd) {
-  rnd = rnd || Math.random;
-  st.start = false;
-  if (!on) { st.cut = 0; st.gap = 0; st.onT = 0; return false; }
-  st.onT = (st.onT || 0) + dt;
-  st.cut = Math.max(0, (st.cut || 0) - dt);
-  st.gap = Math.max(0, (st.gap || 0) - dt);                  // a catch of breath between coughs
-  if (st.gap <= 0 && fuel < SPUTTER_FUEL) {
-    const w = 1 - Math.max(0, fuel) / SPUTTER_FUEL;          // 0 at the line, 1 bone dry
-    if (rnd() < dt * (1 + 7 * w)) {
-      st.cut = 0.04 + rnd() * (0.05 + 0.08 * w);
-      st.gap = st.cut + 0.1 + rnd() * 0.2;
-      st.start = true;
-    }
-  }
-  return st.cut > 0;
-}
+// the cough (sputterStep, SPUTTER_FUEL) lives in core/util.js now (CaveRunner Auto shares it)
+export { SPUTTER_FUEL, sputterStep };
 // the stick when nothing is pushing it (step() steers you with this once you are dead)
 export const NO_INPUT = { active: false, nx: 0, ny: 0, mag: 0, dy: 0, on: false };
 
