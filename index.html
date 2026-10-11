@@ -1010,8 +1010,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 @keyframes acoinup{from{transform:translate(-50%,0);opacity:1}to{transform:translate(-50%,-30px);opacity:0}}
 .anavp{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;
   font:900 15px ui-monospace,SFMono-Regular,Menlo,monospace;color:#0b0716;box-shadow:inset 0 -3px 0 rgba(0,0,0,0.3)}
-.abag{flex:1 1 0;min-height:0;overflow-y:auto;overflow-x:hidden;touch-action:pan-y;-webkit-overflow-scrolling:touch;
+.abag{position:relative;flex:1 1 0;min-height:0;transition:margin-top .28s cubic-bezier(.3,.8,.3,1);overflow-y:auto;overflow-x:hidden;touch-action:pan-y;-webkit-overflow-scrolling:touch;
   display:grid;grid-template-columns:repeat(7,1fr);grid-auto-rows:min-content;gap:6px;padding:8px;overscroll-behavior:contain}
+/* (owner, v1.0.46) grown up over the play area: above the nav and the play area's buttons */
+.abag.big{z-index:8;background:rgba(14,9,26,0.98)}
+.abag.big+.abtns{z-index:9}   /* the stick's dome still over it */
 .aslot{position:relative;aspect-ratio:1;border-radius:10px;background:#1d1531;border:2px solid rgba(255,255,255,0.1);
   box-sizing:border-box;display:flex;align-items:center;justify-content:center;overflow:hidden}
 .aslot.full{border-color:var(--ic,rgba(255,179,90,0.45));background:#2c1f45}
@@ -32650,6 +32653,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const [, setBagV] = useState(0);
     const [nav, setNav] = useState(navStart);
     const [navHidden, setNavHidden] = useState(false);
+    const [bigBag, setBigBag] = useState(0);
+    const emptyTap = useRef(0);
     const navRef = useRef(nav);
     navRef.current = nav;
     const [, setV] = useState(0);
@@ -32932,6 +32937,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     };
     const pressB = () => {
       nothing();
+      if (bigBag) {
+        SFX.fx("close");
+        setBigBag(0);
+        return;
+      }
       const S2 = scene.current, C = cam.current, n = navRef.current;
       if (S2 && S2.lvl && S2.runners.some((r) => r.ctl)) {
         if (C) C.lock = -1;
@@ -32953,6 +32963,23 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       e.stopPropagation();
       SFX.ui("tap");
       setJHid((v) => !v);
+    };
+    const emptyDown = (e) => {
+      const now = performance.now();
+      if (now - emptyTap.current > BIG_TAP) {
+        emptyTap.current = now;
+        return;
+      }
+      emptyTap.current = 0;
+      if (bigBag) {
+        SFX.fx("close");
+        setBigBag(0);
+        return;
+      }
+      const bag = e.currentTarget && e.currentTarget.closest(".abag"), play = cvs.current && cvs.current.closest(".aplay");
+      if (!bag || !play) return;
+      SFX.fx("open");
+      setBigBag(Math.max(0, bag.getBoundingClientRect().top - play.getBoundingClientRect().top));
     };
     const playTap = (e) => {
       if (navHidden && !(e.target && e.target.closest && e.target.closest(".pausebtn"))) {
@@ -33252,12 +33279,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       h(NavStack, { nav, run, openAt, down, drag, holdHelm, holdGun, meters, pins, metersOf, pinNav, hidden: navHidden, manual }),
       h(
         "div",
-        { className: "abag" + (drag && drag.over && drag.over.key === "bag" && drag.over.ok ? " drop" : "") },
+        { className: "abag" + (bigBag ? " big" : "") + (drag && drag.over && drag.over.key === "bag" && drag.over.ok ? " drop" : ""), style: { marginTop: -bigBag + "px" } },
         ...Array.from({ length: BAG_SLOTS }, (_, i) => h(BagSlot, {
           key: i,
           i,
           it: flies.some((f) => f.fresh && f.slot === i) ? null : run.bag[i],
           down,
+          empty: emptyDown,
           lift: !!drag && drag.src.from === "bag" && drag.src.i === i,
           drop: !!drag && !!drag.over && drag.over.ok && drag.over.key === "s" + i
         }))
@@ -33503,7 +33531,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       row.shape === "stats" ? h(StatsRow, { meters, pin: pinNav }) : row.cells.map(cell)
     );
   }
-  function BagSlot({ i, it, down, lift, drop }) {
+  function BagSlot({ i, it, down, lift, drop, empty }) {
     const grab = (e) => down(e, { from: "bag", i });
     return h(
       "div",
@@ -33511,7 +33539,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         className: "aslot" + (it ? " full k-" + it.kind : "") + (lift ? " lift" : "") + (drop ? " drop" : ""),
         "data-slot": i,
         style: itemEdge(it),
-        onPointerDown: it ? grab : void 0
+        onPointerDown: it ? grab : empty
       },
       it ? h(ItemIcon, { it }) : null,
       it ? h(Grab) : null,
@@ -33541,6 +33569,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     );
   }
   var MOVE = 6;
+  var BIG_TAP = 350;
   function Grab() {
     const d = (200 * DEV.autoGrab).toFixed(1) + "%";
     return h("i", { className: "agrab", style: { width: d, height: d } });

@@ -104,6 +104,10 @@ export function AutoScreen() {
   const [nav, setNav] = useState(navStart);
   // (feedback round 2) B at the player row hides the nav; a tap on the play area brings it back
   const [navHidden, setNavHidden] = useState(false);
+  // (owner, v1.0.46) the bag grown up over the play area (a double tap on an empty slot; again, or B, back): its top pulled
+  // up by bigBag px (a negative margin: the flex column gives it the room), 0 when it's its own size
+  const [bigBag, setBigBag] = useState(0);
+  const emptyTap = useRef(0);
   const navRef = useRef(nav);
   navRef.current = nav;
   // stage 8b: dragging between the bag and the nav's slots, a tap's card
@@ -322,6 +326,7 @@ export function AutoScreen() {
   // player row: nobody marked); at the player row: hide the nav (a tap on the play area brings it back)
   const pressB = () => {
     nothing();
+    if (bigBag) { SFX.fx('close'); setBigBag(0); return; }
     const S = scene.current, C = cam.current, n = navRef.current;
     if (S && S.lvl && S.runners.some(r => r.ctl)) { if (C) C.lock = -1; levelControl(S, -1, null); SFX.fx('close'); return; }
     if (n.level !== 'players') { const up = navBack(n); setNav(up.level === 'players' ? { ...up, p: -1 } : up); return; }
@@ -329,6 +334,18 @@ export function AutoScreen() {
   };
   /** a tap on the journey box (or its empty place): hide it, show it @param {any} e */
   const jTap = e => { e.stopPropagation(); SFX.ui('tap'); setJHid(v => !v); };
+  // a tap on an empty bag slot: the second within BIG_TAP ms grows the bag up to the play area's top, or puts it back
+  /** @param {any} e */
+  const emptyDown = e => {
+    const now = performance.now();
+    if (now - emptyTap.current > BIG_TAP) { emptyTap.current = now; return; }
+    emptyTap.current = 0;
+    if (bigBag) { SFX.fx('close'); setBigBag(0); return; }
+    const bag = e.currentTarget && e.currentTarget.closest('.abag'), play = cvs.current && cvs.current.closest('.aplay');
+    if (!bag || !play) return;
+    SFX.fx('open');
+    setBigBag(Math.max(0, bag.getBoundingClientRect().top - play.getBoundingClientRect().top));
+  };
   /** a tap on the play area: the nav back if hidden @param {any} e */
   const playTap = e => { if (navHidden && !(e.target && e.target.closest && e.target.closest('.pausebtn'))) { SFX.fx('open'); setNavHidden(false); } };
   // (feedback round 2) everyone down in a level: A sets off the teleport home (the helmet light, the blast: auto/death.js)
@@ -564,8 +581,8 @@ export function AutoScreen() {
       devOn ? h('button', { className: 'adevbtn', title: 'Dev', onPointerDown: tap(() => { SFX.fx('open'); setDevOpen(true); }) }, '⚙️') : null,
       h('button', { className: 'pausebtn', title: 'Pause (hold 5 s: dev mode)', onPointerDown: pauseDown }, '⏸')),
     h(NavStack, { nav, run, openAt, down, drag, holdHelm, holdGun, meters, pins, metersOf, pinNav, hidden: navHidden, manual }),
-    h('div', { className: 'abag' + (drag && drag.over && drag.over.key === 'bag' && drag.over.ok ? ' drop' : '') },
-      ...Array.from({ length: BAG_SLOTS }, (_, i) => h(BagSlot, { key: i, i, it: flies.some(f => f.fresh && f.slot === i) ? null : run.bag[i], down,
+    h('div', { className: 'abag' + (bigBag ? ' big' : '') + (drag && drag.over && drag.over.key === 'bag' && drag.over.ok ? ' drop' : ''), style: { marginTop: -bigBag + 'px' } },
+      ...Array.from({ length: BAG_SLOTS }, (_, i) => h(BagSlot, { key: i, i, it: flies.some(f => f.fresh && f.slot === i) ? null : run.bag[i], down, empty: emptyDown,
         lift: !!drag && drag.src.from === 'bag' && drag.src.i === i,
         drop: !!drag && !!drag.over && drag.over.ok && drag.over.key === 's' + i }))),
     h('div', { className: 'abtns' },
@@ -788,12 +805,12 @@ function NavRow({ row, level, cls, pick, open, down, drag, holdHelm, holdGun, me
 }
 
 // one bag slot: empty, or the item's icon and its count
-/** @param {{ i: number, it: BagItem | null, down: (e: any, src: DragSrc) => void, lift: boolean, drop: boolean }} props */
-function BagSlot({ i, it, down, lift, drop }) {
+/** @param {{ i: number, it: BagItem | null, down: (e: any, src: DragSrc) => void, lift: boolean, drop: boolean, empty: (e: any) => void }} props */
+function BagSlot({ i, it, down, lift, drop, empty }) {
   /** @param {any} e */
   const grab = e => down(e, { from: 'bag', i });
   return h('div', { className: 'aslot' + (it ? ' full k-' + it.kind : '') + (lift ? ' lift' : '') + (drop ? ' drop' : ''), 'data-slot': i, style: itemEdge(it),
-    onPointerDown: it ? grab : undefined },
+    onPointerDown: it ? grab : empty },
     it ? h(ItemIcon, { it }) : null, it ? h(Grab) : null,
     it && (it.n > 1 || it.kind === 'gold' || it.kind === 'red' || it.kind === 'green') ? h('b', { className: 'acount' }, it.n) : null);
 }
@@ -823,6 +840,7 @@ function ItemIcon({ it }) {
 /** @typedef {{ id: number, x0: number, y0: number, src: DragSrc, grab: boolean, drag: boolean }} Press */
 // a press moving this far (px) is a drag (on the handle) or not a tap
 const MOVE = 6;
+const BIG_TAP = 350;   // (owner) two taps on empty bag slots within this (ms): the bag grows over the play area, or back
 
 // the grab handle: a circle round the tile's centre, DEV.autoGrab of the tile's width in radius (touch-action none:
 // only it starts a drag; the rest of the tile scrolls the bag)
