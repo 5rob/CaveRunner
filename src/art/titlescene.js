@@ -24,13 +24,13 @@ import { collideNuggets, spillGold, stepNugget } from '../world/nuggets.js';
 import { losClear } from '../world/vision.js';
 import { archCurve } from '../world/decorate.js';
 import { bendAwake, bendPush, bendStep, swingStep, swings, tailStep, vinePt, webAt } from '../world/sway.js';
-import { MODS } from '../spells/mods.js';
+import { MODS, VAC_PULL } from '../spells/mods.js';
 import { rustleStep } from '../audio/recipes.js';
 import { pixText, pixWidth } from './pixfont.js';
 import { GUN_HELD, gunMuzzle } from './sprites.js';
 import { GUN_ART } from './gunart.js';
 import { gunPull, gunTick, perkDmg, planShots, shotsOf } from './scenegun.js';
-import { FX_ROOM, MISSILE_TURN, MISSILE_WAIT, fireSpray, keepTrail, muzzleFx, nearestFoe, autoTrail, steerTo } from '../auto/shotfx.js';
+import { FX_ROOM, MISSILE_TURN, MISSILE_WAIT, fireSpray, keepTrail, muzzleFx, nearestFoe, autoTrail, steerTo, zapFork, traceBeam, bigBoomFx, boomLook, holePull, vacPull } from '../auto/shotfx.js';
 import { teamClearer } from '../auto/clear.js';
 import { FUEL_TAKEOFF, fuelCan, fuelForClimb, fuelTick } from '../auto/fuel.js';
 import { ghostHome, ghostTarget, perkOn, shieldTick } from '../auto/perks.js';
@@ -120,9 +120,10 @@ export const TITLE_HOME = {
  *   grav: number, drag: number, explode: number, pit: number, fire: number, bounce: number, bounceE: number, pierce: number, dmg: number,
  *   homing?: number, accel?: number, vmax?: number, chain?: number, hitFoe?: boolean,
  *   real?: boolean, by?: number, trig?: string | null, timer?: number, pay?: Shot[] | null, age?: number,
- *   sid?: string, tr?: number[], homeR?: number, light?: string, lightR?: number }} TShot */
+ *   sid?: string, tr?: number[], homeR?: number, light?: string, lightR?: number,
+ *   beam?: number, ang?: number, bx?: number, by2?: number, pull?: number, vac?: number, max?: number, hopT?: number, hx?: number, hy?: number }} TShot */
 /** @typedef {{ x: number, y: number, vx: number, vy: number, life: number, max: number, r: number, col: string, kind: string }} TPart */
-/** @typedef {{ x: number, y: number, r: number, t: number, max: number }} TBoom */
+/** @typedef {{ x: number, y: number, r: number, t: number, max: number, sid?: string }} TBoom */
 /** @typedef {{ pts: { x: number, y: number }[], t: number, col: string }} TZap */
 // a prop: `ox` its world x (not `wx`: art/props.js reads that as an arch's or a vine's sideways bend)
 /** @typedef {{ k: string, st: string, ox: number, x: number, y: number, len: number, seed: number, side: number, burn: number, ac: number, ar: number,
@@ -985,7 +986,9 @@ function shotEnd(S, s) {
   if (s.explode) {
     const r = s.explode * 0.42;
     snd(S, 'boom', s.x, s.y, s.explode);
-    S.booms.push({ x: s.x, y: s.y, r: r * 1.6, t: 0, max: 0.38 });
+    const bl = boomLook(s.sid);   // a nuke's and meteor's blast looks far bigger (looks only: the radius stays r)
+    S.booms.push({ x: s.x, y: s.y, r: r * 1.6 * bl.k, t: 0, max: bl.max, sid: s.sid });
+    if (bl.k > 1) { for (const p of bigBoomFx(s.sid || '', s.x, s.y, r, Math.random)) if (S.parts.length < TITLE_PARTS) S.parts.push(p); S.flash = Math.max(S.flash, 0.5); }
     burst(S, s.x, s.y, 14, '#ffb02e', 90, 'fire', 0.5);
     burst(S, s.x, s.y, 4, '#3a3346', 25, 'smoke', 1.2);
     S.shake = Math.min(7, S.shake + 2);
@@ -1873,11 +1876,32 @@ function stepLoot(S, dt) {
   }
 }
 
+// a beam (Plasma Beam, Luminous Drill: CaveRunner Auto, stage shots 2) fires along its angle the frame it's cast, to
+// its length or the first rock (auto/shotfx.js traceBeam): every creature on the line hit once, Plasma sets alight
+// what it lands on and the creatures it hits, the drill digs where it ends. Then it hangs, drawn, for its short life
+/** @param {TitleScene} S @param {TShot} s */
+function castBeam(S, s) {
+  const e = traceBeam(s, (x, y) => titleSolid(S, x, y)), a = s.ang || 0, cx = Math.cos(a), cy = Math.sin(a);
+  s.bx = e.x; s.by2 = e.y;
+  for (const f of S.foes) {
+    if (f.hp <= 0) continue;
+    const fx = f.x - S.scroll - s.x, fy = f.ty - s.y, along = fx * cx + fy * cy;
+    if (along < 0 || along > e.len || Math.abs(fx * cy - fy * cx) > f.r + s.size) continue;
+    hitFoe(S, f, s.dmg, s.col, s.by);
+    if (s.sid === 'plasma') f.burn = Math.max(f.burn || 0, kr('fireBurn', S.rnd));
+  }
+  if (e.rock) {
+    if (s.sid === 'plasma') titleIgnite(S, e.x, e.y, 7);
+    if (s.pit) titleCarve(S, e.x, e.y, s.pit * 0.7);
+  }
+}
+
 /** @param {TitleScene} S @param {number} dt */
 function stepShots(S, dt) {
   for (const s of S.shots) {
     // homing (pollen, Homing, Seeker): turns onto the nearest creature; accelerating ones speed up to their top speed
     s.age = (s.age || 0) + dt;
+    if (s.beam && s.bx == null) castBeam(S, s);
     // Magic Missile (stage: shots): out at the angle fired, then curving onto the nearest creature
     if (s.sid === 'missile') {
       const tg = s.age > MISSILE_WAIT ? nearestFoe(S.foes, s.x, s.y, S.scroll, s.homeR || 400) : null;
@@ -1900,6 +1924,10 @@ function stepShots(S, dt) {
     keepTrail(s);
     // trails are looks only: their own random numbers (Math.random), so the run plays the same
     if (s.sid) { if (S.parts.length < TITLE_PARTS - FX_ROOM) for (const p of autoTrail(s, dt, Math.random)) S.parts.push(p); }
+    if (s.pull && !s.foe) for (const a of holePull(s, S.foes, S.scroll, S.shots, dt, DEV.bhPull * s.pull / 70)) burst(S, a.x, a.y, 3, '#c58cff', 40, 'spark', 0.25);
+    if (s.vac) { vacPull(s, S.foes, S.scroll, S.shots, dt, VAC_PULL); continue; }   // White Hole: hangs, pulls, hits nothing
+    if (s.sid === 'zap' && S.zaps.length < 24) { const fk = zapFork(s, S.foes, S.scroll, dt, Math.random); if (fk) S.zaps.push({ pts: fk, t: 0.12, col: s.col }); }
+    if (s.hopT) s.hopT = Math.max(0, s.hopT - dt);
     else if (s.look === 'flame' && S.rnd() < dt * 20) burst(S, s.x, s.y, 1, '#ff7a1a', 15, 'fire', 0.3);
     if (s.foe) {
       const hit = S.runners.find(ru => !ru.out && Math.abs(ru.x + PW / 2 - s.x) < 7 && Math.abs(ru.y + PH / 2 - s.y) < 11);
@@ -1924,6 +1952,7 @@ function stepShots(S, dt) {
           for (const g of S.foes) { const d = Math.hypot(g.x - S.scroll - s.x, g.ty - s.y); if (g !== f && g.hp > 0 && d < nd) { nd = d; nx = g; } }
           if (nx) {
             s.chain--; const sp = Math.hypot(s.vx, s.vy) || 1, a = Math.atan2(nx.ty - s.y, nx.x - S.scroll - s.x);
+            s.hopT = 0.14; s.hx = s.x; s.hy = s.y;   // the fast streak it leaves as it leaps (autolooks.js)
             s.vx = Math.cos(a) * sp; s.vy = Math.sin(a) * sp; s.x += s.vx * dt * 2; s.y += s.vy * dt * 2;
             zapArc(S, f.x - S.scroll, f.ty, nx.x - S.scroll, nx.ty, s.col); snd(S, 'chainhop', s.x, s.y); break;
           }

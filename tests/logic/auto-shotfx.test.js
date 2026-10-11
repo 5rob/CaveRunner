@@ -87,5 +87,80 @@ check('… and nothing for the others', G.muzzleFx('bolt', 0, 0, 0, R).length ==
   const b = one('bolt')[0]; G.keepTrail(b);
   check('… only the disc', !b.tr);
 }
+
+// ---- part 2: orbs, lightning, chain, black hole, beams, cross, nuke, meteor ----
+for (const id of ['eorb', 'esph', 'zap', 'chain', 'void', 'cross', 'nuke', 'meteor']) {
+  const s = one(id)[0];
+  check(`${id}: knows its spell, and sheds a trail`, s.sid === id && shed(s, 1).length > 0, s.sid);
+}
+{
+  const v = one('void')[0];
+  check('Black Hole carries its pull (drawn as the game\'s) and sheds its motes about every frame', v.pull > 0 && shed(v, 1).length >= 40, shed(v, 1).length);
+  const pl = one('plasma')[0], ld = one('ldrill')[0];
+  check('beams carry their length (capped) and angle', pl.beam === Math.min(G.SG_BEAM_MAX, G.MODS.plasma.beam) && ld.beam === G.MODS.ldrill.beam && Math.abs(pl.ang) < 0.3, [pl.beam, ld.beam, pl.ang]);
+  pl.ang = 0; ld.ang = 0;
+  const e = G.traceBeam(pl, (x) => x > 150);
+  check('a beam stops at the first rock', e.rock && e.x > 150 && e.x < 154 && e.y === 100, e);
+  const e2 = G.traceBeam(ld, () => false);
+  check('… or ends at its length (the drill is short)', !e2.rock && Math.abs(e2.x - 100 - ld.beam) < 1e-9, e2);
+  check('a beam sheds sparks only once it has landed', shed(pl, 1).length === 0 && (pl.bx = 150, pl.by2 = 100, shed(pl, 1).length > 0));
+}
+{
+  const z = one('zap')[0];
+  for (let i = 0; i < 30; i++) { z.x += 10; G.keepTrail(z); }
+  check('zap: remembers its last stretch for the bolt', z.tr.length === G.TRAIL_N.zap * 2, z.tr.length);
+  const foes = [{ x: 900, ty: 100, hp: 5 }, { x: z.x + 40, ty: 120, hp: 5 }];
+  let fk = null;
+  for (let i = 0; i < 200 && !fk; i++) fk = G.zapFork(z, foes, 0, 1 / 60, R);
+  check('zap: forks at the nearest creature in reach', !!fk && fk[fk.length - 1].x === z.x + 40 && fk[0].x === z.x && fk.length > 2, fk && fk.length);
+  check('… only a lightning bolt forks', G.zapFork(one('bolt')[0], foes, 0, 1, () => 0) === null);
+  const j = G.jagPts(0, 0, 80, 0, 3, R);
+  check('a jagged line keeps its ends, kinks within amp', j[0].x === 0 && j[j.length - 1].x === 80 && j.every(q => Math.abs(q.y) <= 3), j.length);
+}
+{
+  const nb = G.bigBoomFx('nuke', 0, 0, 16, R), mb = G.bigBoomFx('meteor', 0, 0, 16, R);
+  check('nuke and meteor blasts throw a capped burst of fire, smoke, debris', nb.length > 30 && nb.length <= G.BIG_BOOM_PARTS && mb.length > 30, [nb.length, mb.length]);
+  check('… other blasts none', G.bigBoomFx('blast', 0, 0, 16, R).length === 0);
+  check('nuke boom looks bigger and longer than a plain one', G.boomLook('nuke').k > 1 && G.boomLook('nuke').max > G.boomLook('blast').max && G.boomLook().k === 1);
+}
+// ---- in a level: a Plasma Beam hits the creature in front and sets it burning ----
+{
+  const run = G.newRun(3);
+  const g = run.players[0].guns[run.players[0].active];
+  g.slots = ['plasma', null, null]; G.resetGun(g);
+  const S = G.levelScene(200, 3, 1, undefined, run.players);
+  for (let t = 0; t < 2; t += 1 / 60) G.titleStep(S, 1 / 60);
+  const r = S.runners[0];
+  S.lvl.step = null; S.pace = 0; S.spawn = 1e9; S.still = false; S.foes.length = 0;
+  const k = G.enemyFor('rotta', 1), fy = r.y + G.PH - k.r - 1;
+  const foe = { x: S.scroll + r.x + 50, y: fy, ty: fy, r: k.r, phase: 0, hp: 9999, hpMax: 9999, cd: 99, flash: 0, lx: 0, ly: 1,
+    hx: S.scroll + r.x + 50, hy: fy, tgt: null, rest: 99, k, touch: 0, charge: 0 };
+  S.foes.push(foe);
+  let beams = 0, burn = 0;
+  for (let t = 0; t < 3; t += 1 / 60) {
+    G.titleStep(S, 1 / 60); foe.x = foe.hx; foe.y = foe.ty = fy; foe.hp = Math.max(foe.hp, 1);
+    beams += S.shots.filter(s => s.sid === 'plasma' && s.bx != null).length; burn = Math.max(burn, foe.burn || 0);
+  }
+  check('level: Plasma Beam fires as a beam and hits (and burns) the creature ahead', beams > 0 && foe.hp < 9999 && burn > 0, { beams, hp: foe.hp, burn });
+}
+// Black Hole's pull and the White Hole (owner, v1.0.40)
+{
+  const mk = (x, y) => ({ x, y, ty: y, hp: 5 });
+  const hole = { x: 100, y: 50, size: 12, pull: 70 }, near = mk(140, 50), far = mk(400, 50), dead = mk(130, 50); dead.hp = 0;
+  const es = { x: 117, y: 50, vx: 0, vy: 0, life: 1, foe: true }, mine = { x: 110, y: 50, vx: 0, vy: 0, life: 1, foe: false };
+  /** @type {any} */ const h = hole;
+  const ate = G.holePull(h, [near, far, dead], 0, /** @type {any} */ ([es, mine]), 1 / 60, 65);
+  check('Black Hole: a creature in reach is hauled toward it, one out of reach and a dead one stay', near.x < 140 && far.x === 400 && dead.x === 130, [near.x, far.x, dead.x]);
+  check('Black Hole: an enemy shot at its edge is swallowed, ours is left alone', es.life === 0 && ate.length === 1 && mine.life === 1);
+  const c = mk(101, 50); for (let i = 0; i < 120; i++) G.holePull(h, [c], 0, [], 1 / 60, 65);
+  check('Black Hole: never past the centre', Math.abs(c.x - 100) < 1.01, c.x);
+  const wh = G.whiteHole({ sid: 'vacfield', life: 1.2, r: 64, col: '#9fd8ff' }, 0, 10, 20, 0);
+  check('White Hole: cast still, WH_AHEAD along the aim, harmless, pulling over its r', wh.vx === 0 && wh.vy === 0 && wh.x === 10 + G.WH_AHEAD && wh.dmg === 0 && wh.vac === 64, wh);
+  const plan = { shots: [{ sid: 'vacfield', still: 1, life: 1.2, r: 64 }] };
+  check('White Hole: planShots casts it (no longer GUN_TODO)', G.planShots(plan, 0, 0, 0, Math.random, 0).length === 1 && !G.GUN_TODO.includes('vacfield'));
+  const a = mk(wh.x + 40, 20), b = mk(wh.x + 100, 20);
+  for (let i = 0; i < 30; i++) G.vacPull(wh, [a, b], 0, [], 1 / 60, G.VAC_PULL);
+  check('White Hole: a creature within its reach is pulled in, one outside is not', Math.abs(a.x - wh.x) < 40 && b.x === wh.x + 100, [a.x - wh.x, b.x - wh.x]);
+}
 console.log(fails ? `${fails} FAILED` : 'all passed');
 process.exit(fails ? 1 : 0);

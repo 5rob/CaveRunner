@@ -17,6 +17,7 @@ export const SG_LIFE_MAX = 4;
 export const SG_SIZE_MAX = 8;         // the biggest a shot draws (world units)
 export const SG_EXPLODE_MAX = 40;     // the biggest blast (the title's cap)
 export const SG_PIT_MAX = 10;
+export const SG_BEAM_MAX = 200;      // the longest beam (Plasma Beam's 320 is most of the screen)
 export const SG_PELLETS = 12;         // at most this many of one shot at once
 
 // Mods the bridge can't do yet: each fires (or is carried) as nothing, or as if it weren't there. Kept honest
@@ -25,7 +26,7 @@ export const SG_PELLETS = 12;         // at most this many of one shot at once
 /** @type {string[]} */
 export const GUN_TODO = [
   // statics and fields (they don't fly: planShots leaves them out)
-  'boom', 'brim', 'crystal', 'dormant', 'stillc', 'shieldc', 'vigour', 'storm', 'vacfield', 'glitter',
+  'boom', 'brim', 'crystal', 'dormant', 'stillc', 'shieldc', 'vigour', 'storm', 'glitter',
   // modifiers whose effect the scene's shot model has no field for yet
   'knock', 'damper', 'crit', 'spiral', 'follow', 'autoaim', 'discrim', 'gpower', 'cluster',
   // a passive with no meaning here (the scene always fires on its own)
@@ -82,7 +83,8 @@ export function shotsOf(sh, ang, x, y, R, by) {
       fire: sh.fire || 0, bounce: sh.bounce || 0, bounceE: sh.bounceE || 0.92, pierce: sh.pierce || 0, dmg: sh.dmg || 0,
       homing: sh.sid === 'missile' ? Math.max(1, sh.homing || 0) : sh.homing || 0, homeR: sh.sid === 'missile' ? 400 : 0, accel: sh.accel || 0, vmax: (sh.vmax || 0) * SP, chain: sh.chain || 0,
       real: true, by: by == null ? -1 : by, trig: sh.trig || null, timer: sh.timer || 0, pay: sh.payload && sh.payload.length ? sh.payload : null, age: 0,
-      sid: sh.sid || '', light: sh.light || '', lightR: sh.lightR || 0 });
+      sid: sh.sid || '', light: sh.light || '', lightR: sh.lightR || 0,
+      beam: Math.min(SG_BEAM_MAX, sh.beam || 0), ang: a, pull: sh.pull || 0 });
   }
   return out;
 }
@@ -94,6 +96,21 @@ export const perkDmg = pl => perkBag([...new Set((pl.perks || []).map(it => it &
 export function planShots(plan, ang, x, y, R, by) {
   /** @type {SceneShot[]} */
   const out = [];
-  for (const sh of plan.shots) if (!sh.still) for (const s of shotsOf(sh, ang, x, y, R, by)) out.push(s);
+  for (const sh of plan.shots) {
+    if (sh.sid === 'vacfield') { out.push(whiteHole(sh, ang, x, y, by)); continue; }
+    if (!sh.still) for (const s of shotsOf(sh, ang, x, y, R, by)) out.push(s);
+  }
   return out;
+}
+
+// White Hole (owner, v1.0.40): the one static Auto casts. It hangs still WH_AHEAD units along the aim for its life,
+// pulling (auto/shotfx.js vacPull), harmless; nothing stops it (titlescene.js stepShots skips its hits).
+export const WH_AHEAD = 50;
+/** @param {Shot} sh @param {number} ang @param {number} x @param {number} y @param {number} [by] @returns {SceneShot} */
+export function whiteHole(sh, ang, x, y, by) {
+  const life = Math.max(0.3, sh.life || 1.2);
+  return { x: x + Math.cos(ang) * WH_AHEAD, y: y + Math.sin(ang) * WH_AHEAD, vx: 0, vy: 0, size: 2, col: sh.col || '#9fd8ff', look: '', life, max: life,
+    foe: false, spin: 0, grav: 0, drag: 0, explode: 0, pit: 0, fire: 0, bounce: 0, bounceE: 0, pierce: 0, dmg: 0, homing: 0, accel: 0, vmax: 0, chain: 0,
+    real: true, by: by == null ? -1 : by, trig: null, timer: 0, pay: null, age: 0, sid: 'vacfield', light: '159,216,255', lightR: 30,
+    beam: 0, ang, pull: 0, vac: sh.r || 64 };
 }
