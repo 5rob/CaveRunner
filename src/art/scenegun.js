@@ -8,6 +8,7 @@ import { effRecharge, gunPassives, planCast } from '../spells/cast.js';
 import { shuffleOrder } from '../spells/guns.js';
 import { MODS } from '../spells/mods.js';
 import { perkBag } from '../data/perks.js';
+import { LIFE_K } from '../auto/shotfx.js';
 /** @typedef {import('./titlescene.js').TShot} SceneShot */
 
 const SP = 0.5;                       // the scene's speed scale (titlescene.js SP: the game's speeds at the title's screen)
@@ -71,7 +72,7 @@ export function gunPull(g, others) {
 export function shotsOf(sh, ang, x, y, R, by) {
   const out = [], n = Math.min(SG_PELLETS, Math.max(1, Math.round(sh.count || 1)));
   const off = (sh.ang || 0) * Math.PI / 180;
-  const life = Math.min(SG_LIFE_MAX, (sh.fuse ? Math.min(sh.life, sh.fuse + 0.5) : sh.life) * SG_LIFE);
+  const life = Math.min(SG_LIFE_MAX, (sh.fuse ? Math.min(sh.life, sh.fuse + 0.5) : sh.life) * SG_LIFE) * (LIFE_K[sh.sid] || 1);
   for (let i = 0; i < n; i++) {
     const a = ang + off + (R() - 0.5) * (sh.spread || 0) * Math.PI / 180;
     const v = (sh.speed || 0) * SP;
@@ -79,8 +80,9 @@ export function shotsOf(sh, ang, x, y, R, by) {
       col: sh.col || MODS.bolt.col || '#fff', look: sh.look || '', life, foe: false, spin: R() * 6, grav: (sh.grav || 0) * SP,
       drag: sh.drag || 0, explode: Math.min(SG_EXPLODE_MAX, sh.explode || 0), pit: Math.min(SG_PIT_MAX, Math.max(sh.pit || 0, sh.bore || 0)),
       fire: sh.fire || 0, bounce: sh.bounce || 0, bounceE: sh.bounceE || 0.92, pierce: sh.pierce || 0, dmg: sh.dmg || 0,
-      homing: sh.homing || 0, accel: sh.accel || 0, vmax: (sh.vmax || 0) * SP, chain: sh.chain || 0,
-      real: true, by: by == null ? -1 : by, trig: sh.trig || null, timer: sh.timer || 0, pay: sh.payload && sh.payload.length ? sh.payload : null, age: 0 });
+      homing: sh.sid === 'missile' ? Math.max(1, sh.homing || 0) : sh.homing || 0, homeR: sh.sid === 'missile' ? 400 : 0, accel: sh.accel || 0, vmax: (sh.vmax || 0) * SP, chain: sh.chain || 0,
+      real: true, by: by == null ? -1 : by, trig: sh.trig || null, timer: sh.timer || 0, pay: sh.payload && sh.payload.length ? sh.payload : null, age: 0,
+      sid: sh.sid || '', light: sh.light || '', lightR: sh.lightR || 0 });
   }
   return out;
 }

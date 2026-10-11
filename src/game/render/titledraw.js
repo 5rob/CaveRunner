@@ -28,6 +28,7 @@ import { hubState, hubStopX } from '../../auto/hub.js';
 import { MACH_H, hubPayAt, throwR } from '../../auto/throw.js';
 import { drawItemTile, tileItem } from '../../auto/itemtile.js';
 import { perkFront, perkGlow } from './perkdraw.js';
+import { drawGlowShot, drawSolidShot, shotLights } from './autolooks.js';
 // a pickup drawn as its bag tile: this many world units across
 export const LOOT_TILE = 13;
 
@@ -222,6 +223,8 @@ export function titleDraw(ctx, S, cw, ch, cam) {
   drawThrown(ctx, S);   // stage 10a: over the machines
   // the game's dark over it all, the players' gun lights, the lanterns, fire and the jellyfish cutting through it (v0.0.171)
   titleDark(ctx, S);
+  // the solid shots (a bullet, pellets, the bomb, the rocket, the disc), painted over the dark (autolooks.js)
+  if (S.shots.some(s => s.sid)) pixelSprite(ctx, gx, 0, TITLE_VW + 100, S.vh, 1, false, c => { for (const s of S.shots) if (s.sid) drawSolidShot(c, s, W); });
   // the bright stuff, added light
   ctx.globalCompositeOperation = 'lighter';
   // each jellyfish's green glow on the plants and moss round it, as the game's (systems/plantglow.js, plantGlowFill)
@@ -230,6 +233,7 @@ export function titleDraw(ctx, S, cw, ch, cam) {
   if (S.hub) hubGlow(ctx, S);
   if (S.lvl) levelGlow(ctx, S);
   perkGlow(ctx, S);   // CaveRunner Auto's perks: the shield, the laser, the ghost's halo (perkdraw.js)
+  shotLights(ctx, S.shots);   // the light the shots throw (the bubble's blue, pollen's glow)
   // the shots and lightning in the pixel look too (owner, v0.0.171): one layer on the world's grid, added as before
   if (S.shots.length || S.zaps.length) pixelSprite(ctx, gx, 0, TITLE_VW + 100, S.vh, 1, false, c => {
     /** @type {any} */
@@ -239,6 +243,7 @@ export function titleDraw(ctx, S, cw, ch, cam) {
     for (const s of S.shots) {
       /** @type {any} */
       const b = s;
+      if (s.sid && drawGlowShot(c, s, W)) continue;
       if (!drawLook(W, G2, b)) {
         const sp = Math.hypot(s.vx, s.vy) || 1, tl = Math.min(10, sp * 0.025);
         c.globalAlpha = 1; c.strokeStyle = s.col; c.lineWidth = s.size; c.lineCap = 'round';
