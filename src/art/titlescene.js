@@ -30,6 +30,7 @@ import { pixText, pixWidth } from './pixfont.js';
 import { GUN_HELD, gunMuzzle } from './sprites.js';
 import { GUN_ART } from './gunart.js';
 import { gunPull, gunTick, perkDmg, planShots, shotsOf } from './scenegun.js';
+import { FX_ROOM, MISSILE_TURN, MISSILE_WAIT, fireSpray, keepTrail, muzzleFx, nearestFoe, autoTrail, steerTo } from '../auto/shotfx.js';
 import { teamClearer } from '../auto/clear.js';
 import { FUEL_TAKEOFF, fuelCan, fuelForClimb, fuelTick } from '../auto/fuel.js';
 import { ghostHome, ghostTarget, perkOn, shieldTick } from '../auto/perks.js';
@@ -118,7 +119,8 @@ export const TITLE_HOME = {
 /** @typedef {{ x: number, y: number, vx: number, vy: number, size: number, col: string, look: string, life: number, foe: boolean, spin: number,
  *   grav: number, drag: number, explode: number, pit: number, fire: number, bounce: number, bounceE: number, pierce: number, dmg: number,
  *   homing?: number, accel?: number, vmax?: number, chain?: number, hitFoe?: boolean,
- *   real?: boolean, by?: number, trig?: string | null, timer?: number, pay?: Shot[] | null, age?: number }} TShot */
+ *   real?: boolean, by?: number, trig?: string | null, timer?: number, pay?: Shot[] | null, age?: number,
+ *   sid?: string, tr?: number[], homeR?: number, light?: string, lightR?: number }} TShot */
 /** @typedef {{ x: number, y: number, vx: number, vy: number, life: number, max: number, r: number, col: string, kind: string }} TPart */
 /** @typedef {{ x: number, y: number, r: number, t: number, max: number }} TBoom */
 /** @typedef {{ pts: { x: number, y: number }[], t: number, col: string }} TZap */
@@ -995,6 +997,8 @@ function shotEnd(S, s) {
   // fire reaches past a blast's charred rim, into the moss, timber and plants round it
   if (s.fire || s.explode) titleIgnite(S, s.x, s.y, (s.fire ? 7 : 0) + (s.explode ? s.explode * 0.42 + 5 : 0));
   burst(S, s.x, s.y, 3, s.col, 50, 'spark', 0.25);
+  // a fireball throws a spread of burning drops where it lands (auto/shotfx.js fireSpray)
+  if (S.shots.length < 400) for (const d of fireSpray(s, S.rnd)) S.shots.push(d);
   release(S, s);
 }
 // a trigger's payload out where its carrier is (a real gun's, art/scenegun.js), the way it was going; once
@@ -1065,6 +1069,7 @@ export function titleStep(S, dt) {
     p.vx -= p.vx * drag * dt; p.vy -= p.vy * drag * dt;
     if (p.kind === 'chunk') p.vy += GRAV * 0.6 * dt;
     if (p.kind === 'fire') p.vy -= 30 * dt;
+    if (p.kind === 'fall') p.vy += GRAV * 0.5 * dt + p.vy * drag * dt;   // a shot's falling specks: the drag undone downward, and falling
     p.x -= (p.kind === 'smoke' || p.kind === 'chunk' ? sv(S) * 0.5 : 0) * dt;
   }
   S.parts = S.parts.filter(p => p.life > 0);
@@ -1580,7 +1585,10 @@ function stepRunnerGun(S, r, dt) {
     if (!plan) return;
     const mz = gunMuzzle(gx0 + Math.cos(r.ang) * 2.5, gy0, r.ang, GUN_HELD, r.kit.art), out = planShots(plan, r.ang, mz.x, mz.y, R, r.id), dm = perkDmg(pl);
     for (const s of out) { s.dmg *= dm; S.shots.push(s); }
-    if (out.length) { burst(S, mz.x, mz.y, 3, out[0].col, 40, 'spark', 0.12); snd(S, 'cast', mz.x, mz.y, r.kit); }
+    if (out.length) {
+      burst(S, mz.x, mz.y, 3, out[0].col, 40, 'spark', 0.12); snd(S, 'cast', mz.x, mz.y, r.kit);
+      for (const p of muzzleFx(out[0].sid || '', mz.x, mz.y, r.ang, R)) if (S.parts.length < TITLE_PARTS) S.parts.push(p);   // Slug's puff of smoke
+    }
     return;
   }
   // every few seconds: another gun
@@ -1869,7 +1877,12 @@ function stepLoot(S, dt) {
 function stepShots(S, dt) {
   for (const s of S.shots) {
     // homing (pollen, Homing, Seeker): turns onto the nearest creature; accelerating ones speed up to their top speed
-    if (s.homing && !s.foe) {
+    s.age = (s.age || 0) + dt;
+    // Magic Missile (stage: shots): out at the angle fired, then curving onto the nearest creature
+    if (s.sid === 'missile') {
+      const tg = s.age > MISSILE_WAIT ? nearestFoe(S.foes, s.x, s.y, S.scroll, s.homeR || 400) : null;
+      if (tg) steerTo(s, tg.x - S.scroll, tg.ty, MISSILE_TURN * dt);
+    } else if (s.homing && !s.foe) {
       let tg = null, td = 90;
       for (const f of S.foes) { const d = Math.hypot(f.x - S.scroll - s.x, f.ty - s.y); if (f.hp > 0 && d < td) { td = d; tg = f; } }
       if (tg) {
@@ -1882,8 +1895,12 @@ function stepShots(S, dt) {
     s.vy += s.grav * dt;
     if (s.drag) { const k = Math.exp(-s.drag * dt); s.vx *= k; s.vy *= k; }
     s.x += s.vx * dt; s.y += s.vy * dt; s.life -= dt; s.spin += dt * 10;
-    if (s.pay && s.trig === 'timer' && (s.age = (s.age || 0) + dt) >= (s.timer || 0)) release(S, s);
-    if (s.look === 'flame' && S.rnd() < dt * 20) burst(S, s.x, s.y, 1, '#ff7a1a', 15, 'fire', 0.3);
+    if (s.pay && s.trig === 'timer' && s.age >= (s.timer || 0)) release(S, s);
+    // each shot's own trail (auto/shotfx.js); the old flame specks for the shots it doesn't know
+    keepTrail(s);
+    // trails are looks only: their own random numbers (Math.random), so the run plays the same
+    if (s.sid) { if (S.parts.length < TITLE_PARTS - FX_ROOM) for (const p of autoTrail(s, dt, Math.random)) S.parts.push(p); }
+    else if (s.look === 'flame' && S.rnd() < dt * 20) burst(S, s.x, s.y, 1, '#ff7a1a', 15, 'fire', 0.3);
     if (s.foe) {
       const hit = S.runners.find(ru => !ru.out && Math.abs(ru.x + PW / 2 - s.x) < 7 && Math.abs(ru.y + PH / 2 - s.y) < 11);
       if (hit) { s.life = 0; burst(S, s.x, s.y, 6, s.col, 60, 'spark', 0.25); snd(S, 'hit', s.x, s.y); if (S.lvl && S.lvl.hurt) S.lvl.hurt(S, hit.id, s.dmg); }
