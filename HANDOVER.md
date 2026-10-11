@@ -10,8 +10,18 @@ mock-up `docs/autobattler-mockup.png`). Progress: AUTOBATTLER.md's Log. `main` k
 
 **Where it stands (2026-10-11, v1.0.50 live at /auto/; v1.0.50: levels twice as tall with a following camera, zones curving by noise (looks; shapes still by x: `autoZoneOpen` stalls the autopilot, to fix), vines burn faster (`autoVineFire`); v1.0.49: the bag grows, 3 empty rows past its last item, up to 100 rows (`bagFit`); v1.0.48: the camera stays on the players after the grown play area (a scene is made at the normal height); v1.0.47: double tap the play area grows it over the nav and bag (B or again: back; the scene keeps its height, owner to say whether to fill it); v1.0.46: double tap an empty bag slot grows the bag over the play area (B or again: back); v1.0.45: the A gold stream steps up to medium then big, doubling nuggets (`hubOwed`); v1.0.44: maps with their own levels (the end teleporter +1, a wipe back to 1), the map machine in the hub (1,000,000G unlocks the next map), creature health bars, top bar with map, level and journey box (`auto/maps.js`); v1.0.43: guns drag out of the Guns row into the bag (`gunToBag`); v1.0.42: manual mode holds 3 s after the stick rests (`autoCtlWait`); v1.0.41: the steered player hangs on vines and web lines (old mechanics; autopilot never grabs); v1.0.40: shot looks part 2, Black Hole pulls, White Hole cast; v1.0.39: shot looks part 1 (13 shots, missile homing, fire spray); v1.0.35: the item audit part 1 — bins, triggers common, Wand Refresh and Glass Cannon fixed, colour sweep; v1.0.36: pickups as bag tiles flying into the bag; v1.0.37: Shield, Pinpointer, Ghost; v1.0.38: jetpack fuel, the old cough, the meter on the jetpack, health rings round the helmets) (other perks still do nothing in Auto: only max health, Glass Cannon's damage and these three): all stages 0–14 built; feedback rounds 1 and 2 released.**
 
-**Next session (bug fixing, 2026-10-11):** the owner is playing v1.0.32 on the phone and sends notes; the PM fixes them
-in small rounds itself (no agents unless a note is a big new feature). Known rough edges, not yet reported by the owner:
+**Next session (2026-10-11, after v1.0.50):** the owner plays the live build on the phone and sends notes; the PM does small
+ones itself and runs one agent at a time for big ones. **Open, in order:**
+1. **Burning vines:** the owner asked to follow up after v1.0.50 (`autoVineFire` 1: a lit vine burns away in about 3 s) and
+   hasn't said what they saw yet. Ask.
+2. **Zones by noise, part 2:** the zones' looks curve with height (`titleZoneLook`), but the caves' shapes still change by x;
+   `autoZoneOpen` 1 carves the other zones' air too and stalls the autopilot (`auto-level` 3 s stuck window, `auto-tall`
+   seeds 11/23). Find the stall, then turn it on. Props (vines, webs, pads) still use the x zone.
+3. **"Path blocked" with only the starter gun:** some seeds stop partway (seen on v1.0.49 too; probe: `levelScene(200, 3, …)`
+   with `newRun`'s players, `autoBlockN` 0). Check whether it's the cave sealing the route or `auto/clear.js`.
+4. **Perks stage (6)** from the item audit (below): every perk left working in Auto with fancy looks, likely two agent stages.
+5. Smaller: the hub doesn't fill the grown play area (dark space under its floor; levels do since v1.0.50); the LEVEL CLEARED
+   thuds sound at `S.top + 30`; mine works' extra tunnels aren't covered by a blocked zone's blockage. Known rough edges, not yet reported by the owner:
 the view doesn't follow a hand-steered player inside the boss arena; ~~followers may trail on the wrong side when he backs
 up~~ (fixed v1.0.34); after a wipe the camera doesn't move onto the last ragdoll by itself. The owner may paste a Dev-panel report
 ("Copy Dev settings", panel via ⏸ held 5 s then ⚙️): it becomes the new defaults (`src/dev/knobs.js`). Leftover worktree
