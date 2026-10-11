@@ -36,6 +36,21 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   await tap(); await page.waitForTimeout(120); await tap(); await page.waitForTimeout(500);
   await page.locator('.abtn.ab').dispatchEvent('pointerdown'); await page.waitForTimeout(500);
   check('grown, then B: back', Math.abs(await top('.abag') - bag0) < 1);
+  // (v1.0.47) a double tap on the play area grows it down to the bag's bottom edge; again, or B, back
+  const bot = sel => page.evaluate(s => document.querySelector(s).getBoundingClientRect().bottom, sel);
+  const ptap = () => page.locator('.aplaycvs').dispatchEvent('pointerdown');
+  const play0 = await bot('.aplay'), bagB = await bot('.abag');
+  await page.waitForTimeout(400);
+  await ptap(); await page.waitForTimeout(120); await ptap(); await page.waitForTimeout(600);
+  const pb = await bot('.aplay');
+  check('a double tap on the play area: it grows down to the bag\'s bottom edge', Math.abs(pb - bagB) < 2, { pb, bagB, play0 });
+  check('…the bag and nav stay where they were (under it)', Math.abs(await bot('.abag') - bagB) < 1);
+  await page.screenshot({ path: path.join(__dirname, '..', 'build', 'bigplay.png') });
+  await ptap(); await page.waitForTimeout(120); await ptap(); await page.waitForTimeout(600);
+  check('a double tap again: back', Math.abs(await bot('.aplay') - play0) < 1);
+  await ptap(); await page.waitForTimeout(120); await ptap(); await page.waitForTimeout(600);
+  await page.locator('.abtn.ab').dispatchEvent('pointerdown'); await page.waitForTimeout(600);
+  check('grown, then B: back', Math.abs(await bot('.aplay') - play0) < 1);
   await browser.close();
   console.log(fails ? `\n${fails} FAILED` : '\nall ok');
   process.exit(fails ? 1 : 0);

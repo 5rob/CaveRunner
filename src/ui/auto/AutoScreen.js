@@ -108,6 +108,10 @@ export function AutoScreen() {
   // up by bigBag px (a negative margin: the flex column gives it the room), 0 when it's its own size
   const [bigBag, setBigBag] = useState(0);
   const emptyTap = useRef(0);
+  // (owner, v1.0.47) the play area grown down over the nav and the bag to the bag's bottom edge (a double tap on it; again,
+  // or B, back): bigPlay px added to its height, taken back by a negative bottom margin, so the rest stays where it is under it
+  const [bigPlay, setBigPlay] = useState(0);
+  const playTapT = useRef(0);
   const navRef = useRef(nav);
   navRef.current = nav;
   // stage 8b: dragging between the bag and the nav's slots, a tap's card
@@ -327,6 +331,7 @@ export function AutoScreen() {
   const pressB = () => {
     nothing();
     if (bigBag) { SFX.fx('close'); setBigBag(0); return; }
+    if (bigPlay) { SFX.fx('close'); setBigPlay(0); return; }
     const S = scene.current, C = cam.current, n = navRef.current;
     if (S && S.lvl && S.runners.some(r => r.ctl)) { if (C) C.lock = -1; levelControl(S, -1, null); SFX.fx('close'); return; }
     if (n.level !== 'players') { const up = navBack(n); setNav(up.level === 'players' ? { ...up, p: -1 } : up); return; }
@@ -347,7 +352,19 @@ export function AutoScreen() {
     setBigBag(Math.max(0, bag.getBoundingClientRect().top - play.getBoundingClientRect().top));
   };
   /** a tap on the play area: the nav back if hidden @param {any} e */
-  const playTap = e => { if (navHidden && !(e.target && e.target.closest && e.target.closest('.pausebtn'))) { SFX.fx('open'); setNavHidden(false); } };
+  const playTap = e => {
+    if (e.target && e.target.closest && e.target.closest('.pausebtn, .adevbtn')) return;
+    const now = performance.now();
+    if (now - playTapT.current <= BIG_TAP) {
+      playTapT.current = 0;
+      if (bigPlay) { SFX.fx('close'); setBigPlay(0); return; }
+      const play = e.currentTarget, bag = play && play.parentElement && play.parentElement.querySelector('.abag');
+      if (play && bag) { SFX.fx('open'); setBigPlay(Math.max(0, bag.getBoundingClientRect().bottom - play.getBoundingClientRect().bottom)); }
+      return;
+    }
+    playTapT.current = now;
+    if (navHidden) { SFX.fx('open'); setNavHidden(false); }
+  };
   // (feedback round 2) everyone down in a level: A sets off the teleport home (the helmet light, the blast: auto/death.js)
   const pressA = () => { SFX.ui('tap'); if (scene.current && scene.current.lvl && levelTeleportHome(scene.current)) { SFX.fx('open'); return; } if (scene.current && (hubExit(scene.current) || (!!scene.current.lvl && chestOpen(scene.current)))) SFX.fx('open'); };
   /** what the source item is: a bag slot's, or a nav slot's at the nav's level @param {DragSrc} src @returns {BagItem | null} */
@@ -570,7 +587,8 @@ export function AutoScreen() {
   /** @param {'dmg' | 'hp'} kind @param {number} span */
   const pinNav = (kind, span) => togglePin(navRef.current.p, kind, span);
   return h('div', { className: 'auto' },
-    h('div', { className: 'aplay' + (drag && drag.over && drag.over.key === 'play' && drag.over.ok ? ' drop' : ''), onPointerDown: playTap },
+    h('div', { className: 'aplay' + (bigPlay ? ' big' : '') + (drag && drag.over && drag.over.key === 'play' && drag.over.ok ? ' drop' : ''), onPointerDown: playTap,
+      style: { flexBasis: 'calc(55% + ' + bigPlay + 'px)', marginBottom: -bigPlay + 'px' } },
       h('canvas', { ref: cvs, className: 'aplaycvs' }),
       blocked ? h('div', { className: 'ablocked' }, 'Path blocked') : null,
       h('div', { className: 'atop' + (devOn ? ' dev' : '') },

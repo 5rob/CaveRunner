@@ -905,8 +905,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .auto{position:fixed;inset:0;display:flex;flex-direction:column;gap:6px;box-sizing:border-box;
   padding:max(6px,env(safe-area-inset-top)) 8px calc(8px + env(safe-area-inset-bottom));
   background:#08040f;color:#f1ecff;touch-action:none;user-select:none;-webkit-user-select:none;overflow:hidden}
-.aplay{position:relative;flex:0 0 55%;border-radius:18px;overflow:hidden;border:2px solid #ff8a1f;
+.aplay{position:relative;flex:0 0 55%;transition:flex-basis .28s cubic-bezier(.3,.8,.3,1),margin-bottom .28s cubic-bezier(.3,.8,.3,1);border-radius:18px;overflow:hidden;border:2px solid #ff8a1f;
   box-shadow:0 0 18px rgba(255,120,30,0.35);background:#000}
+/* (owner, v1.0.47) grown down over the nav and the bag (a double tap); the stick and buttons stay on top */
+.aplay.big{z-index:8}
+.aplay.big~.abtns{z-index:9}
 .aplaycvs{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
 /* a level's "Path blocked" (stage 5b): no gun in play can clear the rock ahead; pulses over the play area */
 .ablocked{position:absolute;left:50%;top:22%;transform:translateX(-50%);pointer-events:none;padding:5px 12px;border-radius:10px;

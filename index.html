@@ -914,8 +914,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .auto{position:fixed;inset:0;display:flex;flex-direction:column;gap:6px;box-sizing:border-box;
   padding:max(6px,env(safe-area-inset-top)) 8px calc(8px + env(safe-area-inset-bottom));
   background:#08040f;color:#f1ecff;touch-action:none;user-select:none;-webkit-user-select:none;overflow:hidden}
-.aplay{position:relative;flex:0 0 55%;border-radius:18px;overflow:hidden;border:2px solid #ff8a1f;
+.aplay{position:relative;flex:0 0 55%;transition:flex-basis .28s cubic-bezier(.3,.8,.3,1),margin-bottom .28s cubic-bezier(.3,.8,.3,1);border-radius:18px;overflow:hidden;border:2px solid #ff8a1f;
   box-shadow:0 0 18px rgba(255,120,30,0.35);background:#000}
+/* (owner, v1.0.47) grown down over the nav and the bag (a double tap); the stick and buttons stay on top */
+.aplay.big{z-index:8}
+.aplay.big~.abtns{z-index:9}
 .aplaycvs{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
 /* a level's "Path blocked" (stage 5b): no gun in play can clear the rock ahead; pulses over the play area */
 .ablocked{position:absolute;left:50%;top:22%;transform:translateX(-50%);pointer-events:none;padding:5px 12px;border-radius:10px;
@@ -32655,6 +32658,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const [navHidden, setNavHidden] = useState(false);
     const [bigBag, setBigBag] = useState(0);
     const emptyTap = useRef(0);
+    const [bigPlay, setBigPlay] = useState(0);
+    const playTapT = useRef(0);
     const navRef = useRef(nav);
     navRef.current = nav;
     const [, setV] = useState(0);
@@ -32942,6 +32947,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         setBigBag(0);
         return;
       }
+      if (bigPlay) {
+        SFX.fx("close");
+        setBigPlay(0);
+        return;
+      }
       const S2 = scene.current, C = cam.current, n = navRef.current;
       if (S2 && S2.lvl && S2.runners.some((r) => r.ctl)) {
         if (C) C.lock = -1;
@@ -32982,7 +32992,24 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       setBigBag(Math.max(0, bag.getBoundingClientRect().top - play.getBoundingClientRect().top));
     };
     const playTap = (e) => {
-      if (navHidden && !(e.target && e.target.closest && e.target.closest(".pausebtn"))) {
+      if (e.target && e.target.closest && e.target.closest(".pausebtn, .adevbtn")) return;
+      const now = performance.now();
+      if (now - playTapT.current <= BIG_TAP) {
+        playTapT.current = 0;
+        if (bigPlay) {
+          SFX.fx("close");
+          setBigPlay(0);
+          return;
+        }
+        const play = e.currentTarget, bag = play && play.parentElement && play.parentElement.querySelector(".abag");
+        if (play && bag) {
+          SFX.fx("open");
+          setBigPlay(Math.max(0, bag.getBoundingClientRect().bottom - play.getBoundingClientRect().bottom));
+        }
+        return;
+      }
+      playTapT.current = now;
+      if (navHidden) {
         SFX.fx("open");
         setNavHidden(false);
       }
@@ -33255,7 +33282,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       { className: "auto" },
       h(
         "div",
-        { className: "aplay" + (drag && drag.over && drag.over.key === "play" && drag.over.ok ? " drop" : ""), onPointerDown: playTap },
+        {
+          className: "aplay" + (bigPlay ? " big" : "") + (drag && drag.over && drag.over.key === "play" && drag.over.ok ? " drop" : ""),
+          onPointerDown: playTap,
+          style: { flexBasis: "calc(55% + " + bigPlay + "px)", marginBottom: -bigPlay + "px" }
+        },
         h("canvas", { ref: cvs, className: "aplaycvs" }),
         blocked ? h("div", { className: "ablocked" }, "Path blocked") : null,
         h(
