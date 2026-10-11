@@ -629,13 +629,13 @@ DEV_META.push(
   { k: 'autoClearT',    g: 'autolevel', label: 'LEVEL CLEARED shows for (s; then the team walks to the exit)', min: 1, max: 10, step: 0.1 },
   { k: 'autoClearWait', g: 'autolevel', label: 'LEVEL CLEARED waits for the boss’s loot at most (s; a full bag leaves it lying)', min: 0, max: 20, step: 0.5 });
 // (Auto zones) which zone a point of a tall level looks like: titlescene.js titleZoneLook (the old game's warped noise zones)
-Object.assign(DEV_DEFAULTS, { autoZoneWarp: 170, autoZoneScale: 150, autoZoneRag: 0.8, autoZoneIsle: 0.12, autoZoneOpen: 0 });
+Object.assign(DEV_DEFAULTS, { autoZoneWarp: 170, autoZoneScale: 150, autoZoneRag: 0.8, autoZoneIsle: 0.12, autoZoneOpen: 1 });
 DEV_META.push(
   { k: 'autoZoneWarp',  g: 'autolevel', label: 'Zones: borders curve up to this far either way (world units; 0 straight)', min: 0, max: 400, step: 5 },
   { k: 'autoZoneScale', g: 'autolevel', label: 'Zones: the curves’ size (world units)', min: 30, max: 600, step: 5 },
   { k: 'autoZoneRag',   g: 'autolevel', label: 'Zones: how twisted the borders are (domain warp)', min: 0, max: 3, step: 0.05 },
   { k: 'autoZoneIsle',  g: 'autolevel', label: 'Zones: islands of the next zone (share of the area)', min: 0, max: 0.5, step: 0.01 },
-  { k: 'autoZoneOpen',  g: 'autolevel', label: 'Zones: another zone’s look opens its own caves too (1 on; experimental, the autopilot can stall)', min: 0, max: 1, step: 1 });
+  { k: 'autoZoneOpen',  g: 'autolevel', label: 'Zones: another zone’s look opens its own caves too (1 on; 0: shapes by x)', min: 0, max: 1, step: 1 });
 DEV_GROUPS.push(['autolevel', 'Auto: level']);
 // (feedback round 2) manual mode (a helmet held in a level, auto/level.js roamStep): the view follows the steered player at
 // autoRoamCam × his offset from the middle (world units / s per world unit: slower the nearer he is); he can go back at
@@ -696,7 +696,7 @@ DEV_META.push(
 DEV_GROUPS.push(['autofoes', 'Auto: enemies']);
 // the jetpack (art/titlescene.js jetStep, feedback round 2: the old game's flame and smoke) and a death (auto/death.js: the ragdoll,
 // the slow stop, Tap A, the helmet light, the blast, home)
-Object.assign(DEV_DEFAULTS, { autoMoveK: 0.55, autoJetTilt: 1, autoJetSmoke: 1, autoDeathStop: 1.5, autoTpBlink: 1, autoTpBoomWait: 0.6, autoTpBoomR: 60, autoFuelDrain: 1, autoFuelRegen: 1, autoCtlWait: 3, autoVineFire: 1 });
+Object.assign(DEV_DEFAULTS, { autoMoveK: 0.55, autoJetTilt: 1, autoJetSmoke: 1, autoDeathStop: 1.5, autoTpBlink: 1, autoTpBoomWait: 0.6, autoTpBoomR: 60, autoFuelDrain: 1, autoFuelRegen: 1, autoCtlWait: 3, autoVineFire: 3 });
 DEV_META.push(
   { k: 'autoVineFire',   g: 'autodeath', label: 'Auto levels: vines and silk burn up at this × the old game speed (the title menu: 0.1)', min: 0.1, max: 5, step: 0.1 },
   { k: 'autoCtlWait',    g: 'autodeath', label: 'Manual mode: seconds of the stick at rest before the autopilot takes him back', min: 0, max: 10, step: 0.25 },

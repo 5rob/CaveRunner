@@ -54,5 +54,17 @@ for (const seed of [11, 23, 37]) {
   console.log(`  seed ${seed}: team y ${ys.map(v => v.toFixed(0)).join('..')}`);
 }
 D.autoLvlMin = keep.m; D.autoLvlBossT = keep.b;
+
+// the caves follow the curving zones (DEV.autoZoneOpen): plants hang from rock (titleRoof), not from carved air, and they
+// follow the zone the roof looks like (some stand where the zone by x is another)
+{
+  const S = G.levelScene(VH, 23, 4, G.levelPlan(23, undefined, 0));
+  for (let i = 0; i < 300; i++) { S.scroll += 4; G.titleStep(S, 1 / 30); }
+  const hung = S.props.filter(p => p.k === 'climb' && !p.host && !p.arc && !p.gone && !p.drop && p.ac >= S.gen - S.ncol);
+  const loose = hung.filter(p => !G.TITLE_SOLID[G.titleCell(S, p.ac, p.ar)]);
+  check('every hanging plant hangs from rock', hung.length > 10 && loose.length === 0, [hung.length, loose.length]);
+  const moved = hung.filter(p => G.titleZoneSpan(p.ox, S).z !== G.titleZoneLook(p.ox, p.y + 1, S).z);
+  check('… some where the zone by x is another (they follow the curves)', moved.length > 0, moved.length);
+}
 console.log(fails ? `${fails} FAILED` : 'all passed');
 process.exit(fails ? 1 : 0);

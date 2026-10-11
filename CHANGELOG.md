@@ -5,6 +5,21 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.51 — CaveRunner Auto: caves follow the curving zones, faster vine fire (branch `autobattler`)
+Released 2026-10-12 on the branch. PM alone.
+- `autoZoneOpen` on (1): another zone's look opens its own cave air (`zoneOpenAt`, pure; genCol carves by it). The
+  "stall" didn't reproduce; what showed instead, fixed: a runner sawing below the play area's bottom edge (r.y now kept
+  above `S.vh - PH` in tall levels), and after the boss a flyer drifting to the hall's roof out of the camera
+  (`S.huddle`, set by auto/level.js in cleared/out/exit: flyers keep to the team's middle height).
+- Vines, webs, chains and pads follow the zone they look like (`titleZoneLook` at the roof / floor) and hang from the
+  roof as carved (`titleRoof`).
+- `autoVineFire` 1 → 3 (owner: still too slow).
+- Tests: `auto-tall` checks plants hang from rock and follow the curves; `auto-control` clears plants before its walk
+  check, `auto-shotfx` and `auto-perks` pin the runner in line with the creature (the cave's chance moved him off it).
+- Found: "Path blocked" with only the starter gun is the rules (the sure wall at `wallX`, then any natural rock, web or
+  timber blocks a team that can't clear it); asked the owner. A lone starter player at tier 1 in a tall level dies in
+  ~25–60 s in a probe.
+
 ## v1.0.50 — CaveRunner Auto: tall levels, curving zones, faster vine fire (branch `autobattler`)
 Released 2026-10-11 on the branch. Agents `cr-tall` and `cr-zones` (both a little past the box) + PM.
 - Levels are made at the grown play area's height (about twice as tall); with the UI open the camera follows the pack up

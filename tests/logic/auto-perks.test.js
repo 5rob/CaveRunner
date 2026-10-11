@@ -19,7 +19,7 @@ function sandbox(perks, gun) {
   const r = S.runners[0], k = G.enemyFor('rotta', 1), fy = r.y + G.PH - k.r - 1;
   const foe = { x: S.scroll + r.x + 60, y: fy, ty: fy, r: k.r, phase: 0, hp: 1e6, hpMax: 1e6, cd: 99, flash: 0, lx: 0, ly: 1,
     hx: S.scroll + r.x + 60, hy: fy, tgt: null, rest: 99, k, touch: 0, charge: 0 };
-  return { run, pl, S, r, foe, fy };
+  return { run, pl, S, r, foe, fy, rx: r.x, ry: r.y };
 }
 const hold = (B, secs) => { for (let t = 0; t < secs; t += dt) { G.titleStep(B.S, dt); B.foe.x = B.foe.hx; B.foe.y = B.foe.ty = B.fy; } };
 
@@ -42,11 +42,12 @@ const hold = (B, secs) => { for (let t = 0; t < secs; t += dt) { G.titleStep(B.S
 }
 
 // ---- Angry Ghost ----
-// what he puts out: every new shot's damage over the time (the runner wanders, so hits alone are noisy)
-const fired = (B, secs, pick) => {
+// what he puts out: every new shot's damage over the time (hits alone are noisy)
+const fired = (B, secs, pick, pin) => {
   const seen = new WeakSet(); let sum = 0;
   for (let t = 0; t < secs; t += dt) {
     G.titleStep(B.S, dt); B.foe.x = B.foe.hx; B.foe.y = B.foe.ty = B.fy;
+    if (pin) { B.r.x = B.rx; B.r.y = B.ry; B.r.vx = B.r.vy = 0; }   // (the gun) he stays put, in line with it: left to wander, the cave's chance swung the comparison
     for (const s of B.S.shots) if (!seen.has(s)) { seen.add(s); if (pick(s)) sum += s.dmg; }
   }
   return sum;
@@ -61,7 +62,7 @@ const fired = (B, secs, pick) => {
   check('its shots are his (they count in his damage dealt)', (r.dealt || 0) > 0, r.dealt);
   const N = sandbox([], true);
   N.S.foes.push(N.foe);
-  const gunOut = fired(N, 8, s => s.real && s.by === 0);
+  const gunOut = fired(N, 8, s => s.real && s.by === 0, true);
   check('the ghost puts out less damage than his starter gun', ghostOut > 0 && ghostOut < gunOut, { ghostOut, gunOut });
   check('no ghost without the perk', !N.r.ghost);
   check('the ghost is weaker than the old game\'s (2 every 0.7 s)', D.autoGhostDmg / D.autoGhostCd < 2 / 0.7);

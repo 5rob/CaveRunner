@@ -136,9 +136,10 @@ for (const id of ['eorb', 'esph', 'zap', 'chain', 'void', 'cross', 'nuke', 'mete
   const foe = { x: S.scroll + r.x + 50, y: fy, ty: fy, r: k.r, phase: 0, hp: 9999, hpMax: 9999, cd: 99, flash: 0, lx: 0, ly: 1,
     hx: S.scroll + r.x + 50, hy: fy, tgt: null, rest: 99, k, touch: 0, charge: 0 };
   S.foes.push(foe);
+  const rx = r.x, ry = r.y;   // he stays put, in line with it (left to wander, the cave's chance took him off its line)
   let beams = 0, burn = 0;
   for (let t = 0; t < 3; t += 1 / 60) {
-    G.titleStep(S, 1 / 60); foe.x = foe.hx; foe.y = foe.ty = fy; foe.hp = Math.max(foe.hp, 1);
+    G.titleStep(S, 1 / 60); r.x = rx; r.y = ry; r.vx = r.vy = 0; foe.x = foe.hx; foe.y = foe.ty = fy; foe.hp = Math.max(foe.hp, 1);
     beams += S.shots.filter(s => s.sid === 'plasma' && s.bx != null).length; burn = Math.max(burn, foe.burn || 0);
   }
   check('level: Plasma Beam fires as a beam and hits (and burns) the creature ahead', beams > 0 && foe.hp < 9999 && burn > 0, { beams, hp: foe.hp, burn });

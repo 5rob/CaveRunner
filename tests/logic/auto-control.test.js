@@ -23,6 +23,7 @@ const wx0 = r.x + S.scroll;
 run(1.5);
 check('the stick at rest: on the autopilot (not steered), the level moving on, he with it', !G.ctlOn(r) && !G.levelLead(S) && G.levelPicked(S) === r && S.pace > 0.2 && r.x + S.scroll > wx0 + 10, [S.pace, wx0, r.x + S.scroll]);
 
+S.props.length = 0; S.webs.length = 0;   // (no plants or webs to push through: they slow him)
 r.x = 40;
 G.levelControl(S, r.id, push(1, 0));
 const shots0 = S.shots.length + S.kills;

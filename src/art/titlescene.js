@@ -140,7 +140,7 @@ export const TITLE_HOME = {
  *   fire: TFire[], dirty: number[][], dirtyAll: boolean, carved: number, burnt: number, swaps: number, groundT: number, flyT: number, kinds: Record<string, number>,
  *   webs: WebLine[], cut: number, lineT: number, silk: { x: number, y: number, ax: number, ay: number, vx: number, vy: number, life: number }[],
  *   nav: { F: any, fx: number, fy: number, t: number }, fireAcc: number, fireN: number, burning: Set<number>, gotN: number, pops: number, lampsPopped: number, kitNames: Set<string>,
- *   digT: number, digs: number, digWhy: Record<string, number>, still?: boolean, zp: TitlePlan, snd: TSnd[], hub?: TitleHub, lvl?: TitleLevel, pace?: number, team?: RunPlayer[], blocked?: number, blockedKind?: string, fuelWait?: number, tier?: number, loot?: TLoot[],
+ *   digT: number, digs: number, digWhy: Record<string, number>, still?: boolean, zp: TitlePlan, snd: TSnd[], hub?: TitleHub, lvl?: TitleLevel, pace?: number, team?: RunPlayer[], blocked?: number, blockedKind?: string, huddle?: boolean, fuelWait?: number, tier?: number, loot?: TLoot[],
  *   onTake?: (it: BagItem, x: number, y: number) => void }} TitleScene */
 // a finite level in the scrolling ring (CaveRunner Auto, auto/level.js levelScene): zp its plan (made whole up front); step runs
 // after titleStep's own; data is the level's own state. S.pace (0..) scales the scroll (auto/pilot.js)
@@ -411,6 +411,25 @@ export const titleFloor = (wx, B) => {
   const b = built(wx, B), base = nat * (1 - b) + (B.bot - 20) * b, T = mineNear(wx, B);
   return T ? base + (T.band.f - base) * T.bt : base;
 };
+// (CaveRunner Auto's tall level, DEV.autoZoneOpen) rock at (wx, y) that another zone's look opens: that zone's own cave air
+// (Zn the column's zone by x, Zc the look at y), never in a pad, the arena, a blocked zone or a mine's look, nor under the
+// column's floor. Pure: genCol carves by it, titleRoof finds the real roof with it
+/** @param {number} wx @param {number} y @param {TitleScene} B @param {TZone} [Zn] @param {number} [fy] @param {TZone} [Zc] */
+export function zoneOpenAt(wx, y, B, Zn = titleZoneSpan(wx, B), fy = titleFloor(wx, B), Zc = titleZoneLook(wx, y, B)) {
+  if (!DEV.autoZoneOpen || !B.lvl || B.bot - B.top <= MINE_TALL || Zc === Zn || Zn.blk || Zc.blk || Zn.flat || Zc.z === 'timber' || y <= B.top + 24 || y >= fy) return false;
+  return (y >= zCeil(wx, Zc, B) && y < zFloor(wx, Zc, B)) || (Zc.z === 'winding' && windAir(wx, y, Zc, B));
+}
+// the roof over a column's floor as carved: titleCeil, or higher where another zone opened the rock above it (pure)
+/** @param {number} wx @param {TitleScene} B */
+export function titleRoof(wx, B) {
+  const cy = titleCeil(wx, B);
+  if (!DEV.autoZoneOpen || !B.lvl || B.bot - B.top <= MINE_TALL) return cy;
+  const Zn = titleZoneSpan(wx, B), fy = titleFloor(wx, B);
+  let r = Math.ceil(cy / TCELL - 0.5) - 1;   // the lowest rock row over the roof
+  if (r < 0 || !zoneOpenAt(wx, (r + 0.5) * TCELL, B, Zn, fy)) return cy;
+  while (r > 0 && zoneOpenAt(wx, (r + 0.5) * TCELL, B, Zn, fy)) r--;
+  return (r + 1) * TCELL;
+}
 
 /** @param {TitleScene} S @param {number} c @param {number} r */
 const ci = (S, c, r) => (((c % S.ncol) + S.ncol) % S.ncol) * S.rows + r;
@@ -479,8 +498,6 @@ function genCol(S, c) {
   const bk0 = Zn.blk, bk = bk0 && S.lvl && S.lvl.blockCell ? S.lvl.blockCell : null;
   const by0 = M && bands.length ? bands[Math.min(M.n, bands.length) - 1].c - 14 : cy, by1 = M && bands.length ? bands[0].f + 3 : fy;
   if (bk0 && S.lvl && S.lvl.blockCol) S.lvl.blockCol(S, bk0, c, wx, by0, by1);
-  /** @type {Map<TZone, { c: number, f: number }>} */
-  const shp = new Map();
   let carved = false;
   for (let r = 0; r < S.rows; r++) {
     const y = (r + 0.5) * TCELL, Zc = titleZoneLook(wx, y, S), zc = Zc.z;   // the skin (moss or bricks) frays at a border
@@ -507,11 +524,7 @@ function genCol(S, c) {
     if (m === TM.AIR && y >= fy - tuft * TCELL && y < fy && zc !== 'paved') m = TM.GRASS;
     if (z === 'winding' && TITLE_SOLID[m] && windAir(wx, y, Zn, S)) m = TM.AIR;
     // (Auto's tall level) another zone's look here: its open air opens too, over this column's floor (DEV.autoZoneOpen; off: it upset the autopilot, auto-level and auto-tall)
-    if (Zc !== Zn && TITLE_SOLID[m] && DEV.autoZoneOpen && S.lvl && S.bot - S.top > MINE_TALL && !Zn.blk && !Zc.blk && !Zn.flat && Zc.z !== 'timber' && y > S.top + 24 && y < fy) {
-      let sh = shp.get(Zc);
-      if (!sh) { sh = { c: zCeil(wx, Zc, S), f: zFloor(wx, Zc, S) }; shp.set(Zc, sh); }
-      if ((y >= sh.c && y < sh.f) || (Zc.z === 'winding' && windAir(wx, y, Zc, S))) { m = TM.AIR; carved = true; }
-    }
+    if (TITLE_SOLID[m] && zoneOpenAt(wx, y, S, Zn, fy, Zc)) { m = TM.AIR; carved = true; }
     if (bk) m = bk(bk0, wx, y, by0, by1, m);
     S.cells[base + r] = m;
   }
@@ -526,29 +539,32 @@ function genCol(S, c) {
   // and down long chains from the brick works' high roof
   if (z === 'paved' && b > 0.9 && Math.abs(u - FRAME_GAP / 2) < 1 && R() < 0.8)
     lamp(S, c, wx, cy + 10, 14 + R() * 30);
+  // (Auto's tall level) plants and webs follow the zone the roof (or the floor, for pads) looks like here, the curving
+  // zones, and hang from the roof as carved (titleRoof); outside that zone's own x span it counts as its middle
+  const rcy = titleRoof(wx, S), Zr = S.lvl ? titleZoneLook(wx, rcy + 1, S) : Zn, Zf = S.lvl ? titleZoneLook(wx, fy - 1, S) : Zn, zr = Zr.z;
   // the spiders' zone: web lines everywhere, roof to floor (slanting either way) and roof to roof (sagging)
-  if (z === 'webs' && b === 0 && !(c % 4) && R() < 0.42 * Zn.dens && S.webs.length < TITLE_WEBS) {
+  if (zr === 'webs' && b === 0 && !(c % 4) && R() < 0.42 * Zr.dens && S.webs.length < TITLE_WEBS) {
     const down = R() < 0.55, bx = down ? wx + (R() - 0.35) * 70 : wx + 18 + R() * 44;
-    const by = down ? titleFloor(bx, S) - 0.5 : titleCeil(bx, S) + 0.5;
+    const by = down ? titleFloor(bx, S) - 0.5 : titleRoof(bx, S) + 0.5;
     /** @type {WebLine} */
-    const L = { ax: wx, ay: cy + 0.5, bx, by, a0x: wx, a0y: cy + 0.5, b0x: bx, b0y: by, ain: { x: wx, y: cy - 1 }, bin: { x: bx, y: down ? by + 1.5 : by - 1.5 }, owner: null, sag: 0 };
+    const L = { ax: wx, ay: rcy + 0.5, bx, by, a0x: wx, a0y: rcy + 0.5, b0x: bx, b0y: by, ain: { x: wx, y: rcy - 1 }, bin: { x: bx, y: down ? by + 1.5 : by - 1.5 }, owner: null, sag: 0 };
     L.sag = DEV.webSag * Math.abs(L.b0x - L.a0x) * (down ? 1 : 2.5);
     S.webs.push(L);
   }
   // plants: vines, mycelium and roots under the roof, bouncy mushrooms on the floor
   // the grove: a curtain of long vines, every other column, some down near the floor (thick in its
   // middle, thinning to its ends)
-  const nat = 1 - b, grove = z === 'grove';
+  const nat = 1 - b, grove = zr === 'grove';
   // the grove's vine arches (decorate.js arches, drawn by art/props.js drawArch): roof to roof, sagging,
   // thick with leaves, strands hanging off them
-  const zu = wx - Zn.x0, zl = Zn.x1 - Zn.x0;
+  const zl = Zr.x1 - Zr.x0, zu = wx >= Zr.x0 && wx < Zr.x1 ? wx - Zr.x0 : zl / 2;
   // A cluster every 80: the arch knobs' (ARCH_KNOBS) arches per cluster, span (capped to the screen), sag
   // (slack), stems, strands per 10 px and their length, and open air under each (else it hangs less)
   if (grove && zu > 20 && zu < zl - 90 && ((wx % 80) + 80) % 80 < TCELL) {
     const na = Math.max(1, Math.round(kru('arCluster', R())));
     for (let a = 0; a < na; a++) {
       const ax = wx + (R() - 0.3) * 60, span = kru('arSpan', R()) * TCELL * 0.6, bx = ax + span;   // the knob's spans, scaled to the title's narrow screen
-      const ay = titleCeil(ax, S) + 1, by = titleCeil(bx, S) + 1, n = Math.max(8, Math.min(40, Math.round(span / 6)));
+      const ay = titleRoof(ax, S) + 1, by = titleRoof(bx, S) + 1, n = Math.max(8, Math.min(40, Math.round(span / 6)));
       let slack = kru('arSlack', R()), pts = archCurve(ax, ay, bx, by, slack, n);
       const clear = kru('arClear', R()) * TCELL, low = () => pts.reduce((m, p) => (p.y > m.y ? p : m), pts[0]);
       for (let k = 0; k < 3 && titleFloor(low().x, S) - low().y < clear; k++) { slack = 1 + (slack - 1) * 0.75; pts = archCurve(ax, ay, bx, by, slack, n); }
@@ -569,22 +585,22 @@ function genCol(S, c) {
   }
   if (grove && !(c % 2)) {
     const mid = Math.min(1, Math.min(zu, zl - zu) / 70);
-    if (R() < (0.12 + 0.2 * mid) * Zn.dens) {
-      const room = fy - cy, st = R() < 0.82 ? 'vine' : R() < 0.5 ? 'root' : 'myc';
-      S.props.push({ k: 'climb', st, ox: wx, x: 0, y: cy, len: room * (0.2 + R() * (0.35 + 0.45 * mid)), seed: R(), side: 1, burn: 0,
-        ac: c, ar: Math.floor((cy - 1) / TCELL) });
+    if (R() < (0.12 + 0.2 * mid) * Zr.dens) {
+      const room = fy - rcy, st = R() < 0.82 ? 'vine' : R() < 0.5 ? 'root' : 'myc';
+      S.props.push({ k: 'climb', st, ox: wx, x: 0, y: rcy, len: room * (0.2 + R() * (0.35 + 0.45 * mid)), seed: R(), side: 1, burn: 0,
+        ac: c, ar: Math.floor((rcy - 1) / TCELL) });
       return;
     }
   }
   if (c % 3) return;
   const p = R();
-  if (!grove && p < (z === 'moss' ? 0.2 : 0.04) * Math.max(nat, 0.2) * Zn.dens) {
+  if (!grove && p < (zr === 'moss' ? 0.2 : 0.04) * Math.max(nat, 0.2) * Zr.dens) {
     const st = R() < 0.5 ? 'vine' : R() < 0.5 ? 'myc' : 'root';
-    S.props.push({ k: 'climb', st, ox: wx, x: 0, y: cy, len: 10 + R() * (z === 'moss' ? 40 : 24), seed: R(), side: 1, burn: 0,
-      ac: c, ar: Math.floor((cy - 1) / TCELL) });
-  } else if (z === 'paved' && b > 0.5 && p < 0.08) {
-    S.props.push({ k: 'climb', st: 'chain', ox: wx, x: 0, y: cy, len: 8 + R() * 16, seed: R(), side: 1, burn: 0, ac: c, ar: Math.floor((cy - 1) / TCELL) });
-  } else if (nat > 0.5 && R() < (grove ? 0.09 : 0.04)) {
+    S.props.push({ k: 'climb', st, ox: wx, x: 0, y: rcy, len: 10 + R() * (zr === 'moss' ? 40 : 24), seed: R(), side: 1, burn: 0,
+      ac: c, ar: Math.floor((rcy - 1) / TCELL) });
+  } else if (zr === 'paved' && b > 0.5 && p < 0.08) {
+    S.props.push({ k: 'climb', st: 'chain', ox: wx, x: 0, y: rcy, len: 8 + R() * 16, seed: R(), side: 1, burn: 0, ac: c, ar: Math.floor((rcy - 1) / TCELL) });
+  } else if (nat > 0.5 && R() < (Zf.z === 'grove' ? 0.09 : 0.04)) {
     S.props.push({ k: 'pad', st: '', ox: wx, x: 0, y: fy, len: 0, seed: R(), side: 1, burn: 0, ac: c, ar: Math.floor((fy + 1) / TCELL) });
   }
 }
@@ -1303,11 +1319,11 @@ function pickTarget(S, r) {
   r.ty = Math.max(S.top - 32, Math.min(S.bot + 6, r.ty));
   // (CaveRunner Auto's tall level, owner: "keep them together") a tall level's flyer heads no further than TITLE_PACKY from
   // the others' middle height and a height wandering over the band as they go (so the pack goes up as well as down), in the
-  // open there if there's any
+  // open there if there's any; after the boss (S.huddle, auto/level.js) only the others' middle: they keep together for the camera
   if (bandK(S) > 1.2) {
     const os = S.runners.filter(o => o !== r && !o.hide && !o.out);
     if (os.length) {
-      const m = (os.reduce((a, o) => a + o.y, 0) / os.length + S.top + (S.bot - S.top - PH) * titleNoise(S.scroll / 260 + S.seed % 97, 1.7)) / 2, lo = Math.max(c + 4, m - TITLE_PACKY), hi = Math.min(f - PH - 4, m + TITLE_PACKY);
+      const oy = os.reduce((a, o) => a + o.y, 0) / os.length, m = S.huddle ? oy : (oy + S.top + (S.bot - S.top - PH) * titleNoise(S.scroll / 260 + S.seed % 97, 1.7)) / 2, lo = Math.max(c + 4, m - TITLE_PACKY), hi = Math.min(f - PH - 4, m + TITLE_PACKY);
       r.ty = lo <= hi ? Math.max(lo, Math.min(hi, r.ty)) : Math.max(m - TITLE_PACKY, Math.min(m + TITLE_PACKY, r.ty));
     }
   }
@@ -1380,7 +1396,8 @@ function stepRunnerMove(S, r, dt) {
   else if (r.mode === 'run') runStep(S, r, dt);
   else flyStep(S, r, dt);
   r.x = Math.max(8, Math.min(r.ctl ? TITLE_VW - PW - 8 : TITLE_VW * 0.62, r.x));   // (one steered by hand: the whole screen)
-  r.y = Math.max(S.top - 40, Math.min(S.bot + 10, r.y));
+  // (Auto's tall level) never below the play area's bottom edge: a player sawing down there went out of the level
+  r.y = Math.max(S.top - 40, Math.min(S.bot + 10, S.lvl && S.bot - S.top > MINE_TALL ? S.vh - PH - 1 : Infinity, r.y));
   if (fuelOn(S)) {
     const P = tankOf(S, r);
     fuelTick(r, r.dig || r.mode !== 'fly' ? 0 : r.flame, r.ground || !!r.hang || (!!r.dig && r.mode === 'run'), dt, P.fuel, P.refuel);

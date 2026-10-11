@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v1.0.50</title>
-<!-- VERSION = 'v1000050' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v1.0.51</title>
+<!-- VERSION = 'v1000051' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -1096,7 +1096,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v1.0.50';</script>
+<script>const VERSION = 'v1.0.51';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -2004,13 +2004,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "autoClearT", g: "autolevel", label: "LEVEL CLEARED shows for (s; then the team walks to the exit)", min: 1, max: 10, step: 0.1 },
     { k: "autoClearWait", g: "autolevel", label: "LEVEL CLEARED waits for the boss’s loot at most (s; a full bag leaves it lying)", min: 0, max: 20, step: 0.5 }
   );
-  Object.assign(DEV_DEFAULTS, { autoZoneWarp: 170, autoZoneScale: 150, autoZoneRag: 0.8, autoZoneIsle: 0.12, autoZoneOpen: 0 });
+  Object.assign(DEV_DEFAULTS, { autoZoneWarp: 170, autoZoneScale: 150, autoZoneRag: 0.8, autoZoneIsle: 0.12, autoZoneOpen: 1 });
   DEV_META.push(
     { k: "autoZoneWarp", g: "autolevel", label: "Zones: borders curve up to this far either way (world units; 0 straight)", min: 0, max: 400, step: 5 },
     { k: "autoZoneScale", g: "autolevel", label: "Zones: the curves’ size (world units)", min: 30, max: 600, step: 5 },
     { k: "autoZoneRag", g: "autolevel", label: "Zones: how twisted the borders are (domain warp)", min: 0, max: 3, step: 0.05 },
     { k: "autoZoneIsle", g: "autolevel", label: "Zones: islands of the next zone (share of the area)", min: 0, max: 0.5, step: 0.01 },
-    { k: "autoZoneOpen", g: "autolevel", label: "Zones: another zone’s look opens its own caves too (1 on; experimental, the autopilot can stall)", min: 0, max: 1, step: 1 }
+    { k: "autoZoneOpen", g: "autolevel", label: "Zones: another zone’s look opens its own caves too (1 on; 0: shapes by x)", min: 0, max: 1, step: 1 }
   );
   DEV_GROUPS.push(["autolevel", "Auto: level"]);
   Object.assign(DEV_DEFAULTS, { autoRoamCam: 2.5, autoRoamBack: 1.5 });
@@ -2068,7 +2068,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "autoBossDmg", g: "autofoes", label: "Boss damage (× a normal one)", min: 0.5, max: 10, step: 0.25 }
   );
   DEV_GROUPS.push(["autofoes", "Auto: enemies"]);
-  Object.assign(DEV_DEFAULTS, { autoMoveK: 0.55, autoJetTilt: 1, autoJetSmoke: 1, autoDeathStop: 1.5, autoTpBlink: 1, autoTpBoomWait: 0.6, autoTpBoomR: 60, autoFuelDrain: 1, autoFuelRegen: 1, autoCtlWait: 3, autoVineFire: 1 });
+  Object.assign(DEV_DEFAULTS, { autoMoveK: 0.55, autoJetTilt: 1, autoJetSmoke: 1, autoDeathStop: 1.5, autoTpBlink: 1, autoTpBoomWait: 0.6, autoTpBoomR: 60, autoFuelDrain: 1, autoFuelRegen: 1, autoCtlWait: 3, autoVineFire: 3 });
   DEV_META.push(
     { k: "autoVineFire", g: "autodeath", label: "Auto levels: vines and silk burn up at this × the old game speed (the title menu: 0.1)", min: 0.1, max: 5, step: 0.1 },
     { k: "autoCtlWait", g: "autodeath", label: "Manual mode: seconds of the stick at rest before the autopilot takes him back", min: 0, max: 10, step: 0.25 },
@@ -12501,6 +12501,19 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const b = built(wx, B), base = nat * (1 - b) + (B.bot - 20) * b, T2 = mineNear(wx, B);
     return T2 ? base + (T2.band.f - base) * T2.bt : base;
   };
+  function zoneOpenAt(wx, y, B, Zn = titleZoneSpan(wx, B), fy = titleFloor(wx, B), Zc = titleZoneLook(wx, y, B)) {
+    if (!DEV.autoZoneOpen || !B.lvl || B.bot - B.top <= MINE_TALL || Zc === Zn || Zn.blk || Zc.blk || Zn.flat || Zc.z === "timber" || y <= B.top + 24 || y >= fy) return false;
+    return y >= zCeil(wx, Zc, B) && y < zFloor(wx, Zc, B) || Zc.z === "winding" && windAir(wx, y, Zc, B);
+  }
+  function titleRoof(wx, B) {
+    const cy = titleCeil(wx, B);
+    if (!DEV.autoZoneOpen || !B.lvl || B.bot - B.top <= MINE_TALL) return cy;
+    const Zn = titleZoneSpan(wx, B), fy = titleFloor(wx, B);
+    let r = Math.ceil(cy / TCELL - 0.5) - 1;
+    if (r < 0 || !zoneOpenAt(wx, (r + 0.5) * TCELL, B, Zn, fy)) return cy;
+    while (r > 0 && zoneOpenAt(wx, (r + 0.5) * TCELL, B, Zn, fy)) r--;
+    return (r + 1) * TCELL;
+  }
   var ci = (S2, c, r) => (c % S2.ncol + S2.ncol) % S2.ncol * S2.rows + r;
   function titleCell(S2, c, r) {
     if (r < 0) return TM.ROCK;
@@ -12556,7 +12569,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const bk0 = Zn.blk, bk = bk0 && S2.lvl && S2.lvl.blockCell ? S2.lvl.blockCell : null;
     const by0 = M && bands.length ? bands[Math.min(M.n, bands.length) - 1].c - 14 : cy, by1 = M && bands.length ? bands[0].f + 3 : fy;
     if (bk0 && S2.lvl && S2.lvl.blockCol) S2.lvl.blockCol(S2, bk0, c, wx, by0, by1);
-    const shp = /* @__PURE__ */ new Map();
     let carved = false;
     for (let r = 0; r < S2.rows; r++) {
       const y = (r + 0.5) * TCELL, Zc = titleZoneLook(wx, y, S2), zc = Zc.z;
@@ -12582,16 +12594,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (m === TM.AIR && y >= fy - rub && y < fy) m = y < fy - rub + 2 && h2(c, r) < 0.7 ? TM.RUBM : TM.RUB;
       if (m === TM.AIR && y >= fy - tuft * TCELL && y < fy && zc !== "paved") m = TM.GRASS;
       if (z === "winding" && TITLE_SOLID[m] && windAir(wx, y, Zn, S2)) m = TM.AIR;
-      if (Zc !== Zn && TITLE_SOLID[m] && DEV.autoZoneOpen && S2.lvl && S2.bot - S2.top > MINE_TALL && !Zn.blk && !Zc.blk && !Zn.flat && Zc.z !== "timber" && y > S2.top + 24 && y < fy) {
-        let sh = shp.get(Zc);
-        if (!sh) {
-          sh = { c: zCeil(wx, Zc, S2), f: zFloor(wx, Zc, S2) };
-          shp.set(Zc, sh);
-        }
-        if (y >= sh.c && y < sh.f || Zc.z === "winding" && windAir(wx, y, Zc, S2)) {
-          m = TM.AIR;
-          carved = true;
-        }
+      if (TITLE_SOLID[m] && zoneOpenAt(wx, y, S2, Zn, fy, Zc)) {
+        m = TM.AIR;
+        carved = true;
       }
       if (bk) m = bk(bk0, wx, y, by0, by1, m);
       S2.cells[base + r] = m;
@@ -12608,20 +12613,21 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     if (z === "paved" && b > 0.9 && Math.abs(u - FRAME_GAP / 2) < 1 && R() < 0.8)
       lamp(S2, c, wx, cy + 10, 14 + R() * 30);
-    if (z === "webs" && b === 0 && !(c % 4) && R() < 0.42 * Zn.dens && S2.webs.length < TITLE_WEBS) {
+    const rcy = titleRoof(wx, S2), Zr = S2.lvl ? titleZoneLook(wx, rcy + 1, S2) : Zn, Zf = S2.lvl ? titleZoneLook(wx, fy - 1, S2) : Zn, zr = Zr.z;
+    if (zr === "webs" && b === 0 && !(c % 4) && R() < 0.42 * Zr.dens && S2.webs.length < TITLE_WEBS) {
       const down = R() < 0.55, bx = down ? wx + (R() - 0.35) * 70 : wx + 18 + R() * 44;
-      const by = down ? titleFloor(bx, S2) - 0.5 : titleCeil(bx, S2) + 0.5;
-      const L = { ax: wx, ay: cy + 0.5, bx, by, a0x: wx, a0y: cy + 0.5, b0x: bx, b0y: by, ain: { x: wx, y: cy - 1 }, bin: { x: bx, y: down ? by + 1.5 : by - 1.5 }, owner: null, sag: 0 };
+      const by = down ? titleFloor(bx, S2) - 0.5 : titleRoof(bx, S2) + 0.5;
+      const L = { ax: wx, ay: rcy + 0.5, bx, by, a0x: wx, a0y: rcy + 0.5, b0x: bx, b0y: by, ain: { x: wx, y: rcy - 1 }, bin: { x: bx, y: down ? by + 1.5 : by - 1.5 }, owner: null, sag: 0 };
       L.sag = DEV.webSag * Math.abs(L.b0x - L.a0x) * (down ? 1 : 2.5);
       S2.webs.push(L);
     }
-    const nat = 1 - b, grove = z === "grove";
-    const zu = wx - Zn.x0, zl = Zn.x1 - Zn.x0;
+    const nat = 1 - b, grove = zr === "grove";
+    const zl = Zr.x1 - Zr.x0, zu = wx >= Zr.x0 && wx < Zr.x1 ? wx - Zr.x0 : zl / 2;
     if (grove && zu > 20 && zu < zl - 90 && (wx % 80 + 80) % 80 < TCELL) {
       const na = Math.max(1, Math.round(kru("arCluster", R())));
       for (let a = 0; a < na; a++) {
         const ax = wx + (R() - 0.3) * 60, span = kru("arSpan", R()) * TCELL * 0.6, bx = ax + span;
-        const ay = titleCeil(ax, S2) + 1, by = titleCeil(bx, S2) + 1, n = Math.max(8, Math.min(40, Math.round(span / 6)));
+        const ay = titleRoof(ax, S2) + 1, by = titleRoof(bx, S2) + 1, n = Math.max(8, Math.min(40, Math.round(span / 6)));
         let slack = kru("arSlack", R()), pts = archCurve(ax, ay, bx, by, slack, n);
         const clear = kru("arClear", R()) * TCELL, low = () => pts.reduce((m, p2) => p2.y > m.y ? p2 : m, pts[0]);
         for (let k = 0; k < 3 && titleFloor(low().x, S2) - low().y < clear; k++) {
@@ -12660,44 +12666,44 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     if (grove && !(c % 2)) {
       const mid = Math.min(1, Math.min(zu, zl - zu) / 70);
-      if (R() < (0.12 + 0.2 * mid) * Zn.dens) {
-        const room = fy - cy, st = R() < 0.82 ? "vine" : R() < 0.5 ? "root" : "myc";
+      if (R() < (0.12 + 0.2 * mid) * Zr.dens) {
+        const room = fy - rcy, st = R() < 0.82 ? "vine" : R() < 0.5 ? "root" : "myc";
         S2.props.push({
           k: "climb",
           st,
           ox: wx,
           x: 0,
-          y: cy,
+          y: rcy,
           len: room * (0.2 + R() * (0.35 + 0.45 * mid)),
           seed: R(),
           side: 1,
           burn: 0,
           ac: c,
-          ar: Math.floor((cy - 1) / TCELL)
+          ar: Math.floor((rcy - 1) / TCELL)
         });
         return;
       }
     }
     if (c % 3) return;
     const p = R();
-    if (!grove && p < (z === "moss" ? 0.2 : 0.04) * Math.max(nat, 0.2) * Zn.dens) {
+    if (!grove && p < (zr === "moss" ? 0.2 : 0.04) * Math.max(nat, 0.2) * Zr.dens) {
       const st = R() < 0.5 ? "vine" : R() < 0.5 ? "myc" : "root";
       S2.props.push({
         k: "climb",
         st,
         ox: wx,
         x: 0,
-        y: cy,
-        len: 10 + R() * (z === "moss" ? 40 : 24),
+        y: rcy,
+        len: 10 + R() * (zr === "moss" ? 40 : 24),
         seed: R(),
         side: 1,
         burn: 0,
         ac: c,
-        ar: Math.floor((cy - 1) / TCELL)
+        ar: Math.floor((rcy - 1) / TCELL)
       });
-    } else if (z === "paved" && b > 0.5 && p < 0.08) {
-      S2.props.push({ k: "climb", st: "chain", ox: wx, x: 0, y: cy, len: 8 + R() * 16, seed: R(), side: 1, burn: 0, ac: c, ar: Math.floor((cy - 1) / TCELL) });
-    } else if (nat > 0.5 && R() < (grove ? 0.09 : 0.04)) {
+    } else if (zr === "paved" && b > 0.5 && p < 0.08) {
+      S2.props.push({ k: "climb", st: "chain", ox: wx, x: 0, y: rcy, len: 8 + R() * 16, seed: R(), side: 1, burn: 0, ac: c, ar: Math.floor((rcy - 1) / TCELL) });
+    } else if (nat > 0.5 && R() < (Zf.z === "grove" ? 0.09 : 0.04)) {
       S2.props.push({ k: "pad", st: "", ox: wx, x: 0, y: fy, len: 0, seed: R(), side: 1, burn: 0, ac: c, ar: Math.floor((fy + 1) / TCELL) });
     }
   }
@@ -13654,7 +13660,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (bandK(S2) > 1.2) {
       const os = S2.runners.filter((o) => o !== r && !o.hide && !o.out);
       if (os.length) {
-        const m = (os.reduce((a, o) => a + o.y, 0) / os.length + S2.top + (S2.bot - S2.top - PH) * titleNoise(S2.scroll / 260 + S2.seed % 97, 1.7)) / 2, lo = Math.max(c + 4, m - TITLE_PACKY), hi = Math.min(f - PH - 4, m + TITLE_PACKY);
+        const oy = os.reduce((a, o) => a + o.y, 0) / os.length, m = S2.huddle ? oy : (oy + S2.top + (S2.bot - S2.top - PH) * titleNoise(S2.scroll / 260 + S2.seed % 97, 1.7)) / 2, lo = Math.max(c + 4, m - TITLE_PACKY), hi = Math.min(f - PH - 4, m + TITLE_PACKY);
         r.ty = lo <= hi ? Math.max(lo, Math.min(hi, r.ty)) : Math.max(m - TITLE_PACKY, Math.min(m + TITLE_PACKY, r.ty));
       }
     }
@@ -13748,7 +13754,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     else if (r.mode === "run") runStep(S2, r, dt);
     else flyStep(S2, r, dt);
     r.x = Math.max(8, Math.min(r.ctl ? TITLE_VW - PW - 8 : TITLE_VW * 0.62, r.x));
-    r.y = Math.max(S2.top - 40, Math.min(S2.bot + 10, r.y));
+    r.y = Math.max(S2.top - 40, Math.min(S2.bot + 10, S2.lvl && S2.bot - S2.top > MINE_TALL ? S2.vh - PH - 1 : Infinity, r.y));
     if (fuelOn(S2)) {
       const P2 = tankOf(S2, r);
       fuelTick(r, r.dig || r.mode !== "fly" ? 0 : r.flame, r.ground || !!r.hang || !!r.dig && r.mode === "run", dt, P2.fuel, P2.refuel);
@@ -17019,6 +17025,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       L.lootT = S2.t;
       L.clearT = -1;
     }
+    S2.huddle = L.phase === "cleared" || L.phase === "out" || L.phase === "exit";
     if (L.phase === "cleared") {
       S2.pace = 0;
       cleared(S2, L, dt);

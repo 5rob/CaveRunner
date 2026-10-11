@@ -249,6 +249,7 @@ export function levelStep(S, dt) {
   if (S.scroll < roamMin(L)) S.scroll = roamMin(L);
   if (L.phase === 'run' && levelTeamX(S) >= stop - 0.5) { L.phase = 'arena'; L.arenaT = S.t; }
   if (L.phase === 'arena' && (L.bossDead || S.t - L.arenaT >= DEV.autoLvlBossT)) { L.bossDead = true; L.phase = 'cleared'; L.lootT = S.t; L.clearT = -1; }   // (the timeout: a fallback, a boss out of reach)
+  S.huddle = L.phase === 'cleared' || L.phase === 'out' || L.phase === 'exit';   // the team keeps together after the boss (titlescene.js's pack pick)
   if (L.phase === 'cleared') { S.pace = 0; cleared(S, L, dt); return; }
   if (L.phase === 'out' && levelTeamX(S) >= stop - 0.5) { L.phase = 'exit'; S.still = true; }
   if (L.phase === 'exit') { S.pace = 0; gather(S, L, dt); return; }
