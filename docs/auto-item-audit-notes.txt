@@ -27,7 +27,8 @@ DELETE (16): [done v1.0.35: off, kept for old saves]
 - exo:carrot "Carrot"
 
 NOTES (68):
-[stage: shots] — the shot looks (and the behaviour in them):
+[stage: shots] — the shot looks (and the behaviour in them). Part 1 [done v1.0.39]: bolt, spark, slug, buck, lance,
+blast, arrow, missile, fball, fbolt, flamer, bubble, spit, pollen, disc. Part 2 [next]: the rest.
 - mod:bolt "Bolt": Improve the FX of the shot to be just like the one in Noita. We had it looking great at one point a while back, but it changed somehow. In fact, I want all shooting sprites to be improved in some way.
 - mod:spark "Spark": Spark looks way cooler in Noita. Please replicate.
 - mod:slug "Slug": Could be changed to a large calibur bullet sprite. A puff of smoke fron the tip of the gun when fired.
@@ -53,6 +54,12 @@ NOTES (68):
 - mod:disc "Disc Projectile": Can there be 4 copies of the sprite under the main one that fade off in opacity each and each one is a frame or two behind, so it creates a trail effect?
 - mod:nuke "Nuke": Needs a more exaggerated explosion effect.
 - mod:meteor "Meteor": Same visual notes as nuke. But also emphasise the meteor trail.
+[stage: perk looks] — asked 2026-10-11, after the shots: a sweep of every perk's visuals, brought up to the
+same level of effects as the improved shots (only Shield, Pinpointer, Ghost have a look in Auto so far).
+Owner, same day: the perks that don't fit Auto are already binned (off); EVERY perk left must work in Auto
+and get fancy graphics. Left (src/data/perks.js, not off): ghost, gold, bounce, close, conc, contact, crit,
+health, life, knock, lev, move, proj, wands, glass, greed, homing, invis, trail, shield, pinpoint, repel,
+hearts, and the stat perks hp, walk, fuel, refuel, pull. Carrot: scrapped (owner; already out of Auto since v1.0.35). Likely two agent stages (effects + looks).
 [done v1.0.35]:
 - mod:teleshort "Small Teleport Bolt": Reduce teleport distance x0.75
 - mod:trigger "Hair Trigger": Ensure this actually reduces recharge time. (it does: tests/logic/auto-audit)

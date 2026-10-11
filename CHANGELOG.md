@@ -5,6 +5,17 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.39 — CaveRunner Auto: shot looks, part 1 (branch `autobattler`)
+Released 2026-10-11 on the branch (owner OK'd `tools/shotlookshots.js`, close-ups too). Agent ~11 min (worktree `cr-shots1`) + PM.
+- The owner's audit, [stage: shots] first half, by spell id (`s.sid`): Bolt a pink dart with the old pink trail; Spark a
+  jittering fleck shedding sparks; Slug a copper bullet + muzzle smoke; Buckshot grey pellets, short range; Lance a thin
+  blue saber; Blast a solid bomb, smoke trail, a smoking fuse at rest; Magic Arrow thin with a white streak; Magic Missile
+  straight out then homes on the nearest creature, fire-to-smoke rocket trail; Fireball/Firebolt/Flamethrower one flaming
+  look, fire and smoke trails, Fireball throws 6 burning drops (Firebolt 3) that light the scene's fire; Bubble Spark
+  brighter, twinkling, blue light; Spitter drops falling pink; Pollen glows and leaves specks; Disc 4 fading afterimages.
+- `auto/shotfx.js` (pure), `game/render/autolooks.js`; trails draw `Math.random` (looks only). Capped (trails stop
+  near the particle cap, 40 shot lights). Suite `auto-shotfx`. Found: `auto-throw` flaked once in a full run (passes alone).
+
 ## v1.0.38 — CaveRunner Auto: jetpack fuel, the old cough, health rings (branch `autobattler`)
 Released 2026-10-11 on the branch (owner OK'd `tools/fuelshots.js`, `tools/hpringshots.js`). Agent ~15 min (worktree `cr-fuel`) + PM.
 - Jetpack fuel in a level (exo Jetpack: a longer tank, a faster refill): jetting drains, the ground refills, dry = no

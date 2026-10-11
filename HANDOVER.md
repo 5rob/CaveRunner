@@ -8,7 +8,7 @@ release loop, testing), then the README of the `src/` folder you're working in.
 Planned with the owner (brief + quiz answers + 16 stages + the PM's kick-start prompt, all in `AUTOBATTLER.md`;
 mock-up `docs/autobattler-mockup.png`). Progress: AUTOBATTLER.md's Log. `main` keeps the old game.
 
-**Where it stands (2026-10-11, v1.0.38 live at /auto/; v1.0.35: the item audit part 1 — bins, triggers common, Wand Refresh and Glass Cannon fixed, colour sweep; v1.0.36: pickups as bag tiles flying into the bag; v1.0.37: Shield, Pinpointer, Ghost; v1.0.38: jetpack fuel, the old cough, the meter on the jetpack, health rings round the helmets) (other perks still do nothing in Auto: only max health, Glass Cannon's damage and these three): all stages 0–14 built; feedback rounds 1 and 2 released.**
+**Where it stands (2026-10-11, v1.0.39 live at /auto/; v1.0.39: shot looks part 1 (13 shots, missile homing, fire spray); v1.0.35: the item audit part 1 — bins, triggers common, Wand Refresh and Glass Cannon fixed, colour sweep; v1.0.36: pickups as bag tiles flying into the bag; v1.0.37: Shield, Pinpointer, Ghost; v1.0.38: jetpack fuel, the old cough, the meter on the jetpack, health rings round the helmets) (other perks still do nothing in Auto: only max health, Glass Cannon's damage and these three): all stages 0–14 built; feedback rounds 1 and 2 released.**
 
 **Next session (bug fixing, 2026-10-11):** the owner is playing v1.0.32 on the phone and sends notes; the PM fixes them
 in small rounds itself (no agents unless a note is a big new feature). Known rough edges, not yet reported by the owner:
@@ -22,7 +22,7 @@ Known flake: browser `auto-steer` "stick right… the scroll follows" (timing: f
 stage). v1.0.35 did the small part. **Next, one agent stage at a time** (worktree, AUTOBATTLER.md section 8's limits):
 ~~(1) machine items as bag tiles flying into the bag~~ (done v1.0.36);
 ~~(2) perks: Shield, Pinpointer, Ghost~~ (done v1.0.37); ~~(3) jetpack fuel~~ (done v1.0.38, plus health rings);
-**next: (4)-(5)** the shot looks in two halves (the notes' [stage: shots]: missile homing, fire spreading, etc.).
+~~(4) shot looks part 1~~ (done v1.0.39); **next: (5)** part 2: Energy Orb/Sphere, Lightning (find the old v62 look, commit f0af436), Chain Bolt, Black Hole, Plasma (fire), Luminous Drill, Death Cross, Nuke, Meteor; then **(6)** perks: every perk left (not `off`) working in Auto with fancy looks (owner; Carrot scrapped), likely two stages. Shots tool: `tools/shotlookshots.js` (close-up sheets cut from the canvas).
 Each with screenshots for the owner's OK before release.
 
 **Was waiting on the owner: the item audit** (`docs/auto-item-audit.txt` and the page `docs/auto-item-audit.html`, published at https://claude.ai/artifact/Mh3LkWFHfS2VhKs9R5d4zX: notes and a bin per item, "Copy all edited module notes" gives their edits as text; both made by `node tools/itemaudit.js docs/auto-item-audit.txt docs/auto-item-audit.html` from `tools/itemaudit.html`): every mod, perk and exo mod, works now / could / wouldn't. Most perks do nothing in Auto yet (only max health); the owner will send notes for an overhaul (likely an agent-sized stage: perk effects + a unique look on the player for each, Permanent Shield first: a light-blue radial glow brighter outside, flashing off on a hit, back when ready). Bug round 2 (v1.0.34): manual mode semi-automatic (steered only while the stick is pushed; `ctlOn`), the crosshair on
