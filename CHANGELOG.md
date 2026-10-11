@@ -5,6 +5,19 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.44 — CaveRunner Auto: maps and their levels, the map machine, health bars, the journey box (branch `autobattler`)
+Released 2026-10-11 on the branch. PM (health bars, top bar) + agent `cr-maps` (maps, ~12 min).
+- Maps (`auto/maps.js`): the THEMES in order, Mossy Caves free. Each map keeps its own level: the end teleporter
+  raises it by 1, everyone fallen puts it back to 1. `run.tier` is now worked out from the active map (level + map index ×
+  `autoMapStep`), so enemies, gold, loot and prices follow it. The next map unlocks once the one before is beaten and
+  1,000,000G (`autoMapPrice`, × `autoMapGrow` each after) is paid in. Old saves: map 0 at their tier. Every map still
+  uses today's cave look.
+- The map machine: a new hub stop between the perk machine and the exit (the hallway is longer). Stick up/down browses,
+  A picks an owned map or pays the next one (thrown gold pays too); its front shows the active map and level.
+- Thin red health bars over creatures (`leveldraw.js levelBars`, over the dark). The boss bar is big, its name above it.
+- Top left of the play area: the map's name and level; under it the journey box (the level at its own shape, the
+  players' helmets where they are; a tap hides it, a tap on its place brings it back); the boss bar under that.
+
 ## v1.0.43 — CaveRunner Auto: drag a gun out of the Guns row (branch `autobattler`)
 Released 2026-10-11 on the branch. PM alone (owner's ask).
 - In the nav's Guns row, a gun circle slid off before the hold (equip) becomes a drag: into the bag slot under the finger
