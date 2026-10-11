@@ -1,7 +1,7 @@
 The owner's audit notes, pasted 2026-10-11 (from docs/auto-item-audit.html's "Copy all edited module notes").
 Status per line: [done v1.0.35] / [stage: shots] / [stage: perks] / [stage: jetpack] / [later].
 Also asked the same day: a colour sweep of the mod families [done v1.0.35]; vending-machine items drawn as the real
-bag icon (rounded box and all) and, when vacuumed, a copy flying from the player into its bag slot [stage: icons].
+bag icon (rounded box and all) and, when vacuumed, a copy flying from the player into its bag slot [done v1.0.36].
 
 CAVERUNNER AUTO ITEM AUDIT — owner's notes (list of v1.0.34, 178 items)
 

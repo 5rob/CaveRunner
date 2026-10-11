@@ -37,7 +37,8 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
       const run = loadAutoRun(), cv = document.querySelector('.aplaycvs').getBoundingClientRect();
       return { slot, at: run ? bagSlotOf(run, { kind: 'mod', id: run.bag[slot] && run.bag[slot].id, n: 1 }) : -2, held: run && run.bag[slot] && run.bag[slot].id,
         start: { x: r0.left + r0.width / 2, y: r0.top + r0.height / 2 }, end: { x: r1.left + r1.width / 2, y: r1.top + r1.height / 2 },
-        tile: { x: t.left + t.width / 2, y: t.top + t.height / 2 }, cv: { top: cv.top, bottom: cv.bottom }, icon: !!el.querySelector('.apixg') };
+        tile: { x: t.left + t.width / 2, y: t.top + t.height / 2 }, cv: { top: cv.top, bottom: cv.bottom }, icon: !!el.querySelector('.apixg'),
+        hidden: !document.querySelector('.abag [data-slot="' + slot + '"]').classList.contains('full') };
     });
     if (!fly) await page.waitForTimeout(50);
   }
@@ -49,6 +50,9 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   let gone = false;
   for (let i = 0; i < 30 && !gone; i++) { await page.waitForTimeout(50); gone = !(await page.$('.afly')); }
   check('… then it goes', gone);
+  check('the new slot shows empty while the copy flies (owner)', !!fly && fly.hidden, fly);
+  const shown = await page.evaluate(s => document.querySelector('.abag [data-slot="' + s + '"]').classList.contains('full'), fly ? fly.slot : 0);
+  check('… and full once it has landed', shown);
   await browser.close();
   console.log(fails ? `${fails} FAILED` : 'all ok');
   process.exit(fails ? 1 : 0);

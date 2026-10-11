@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v1.0.35</title>
-<!-- VERSION = 'v1000035' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v1.0.36</title>
+<!-- VERSION = 'v1000036' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -1073,7 +1073,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v1.0.35';</script>
+<script>const VERSION = 'v1.0.36';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -31193,7 +31193,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (br.width < 4 || br.height < 4 || cr.width < 4) return;
       const v = camTo(C, x, y), k = cr.width / TITLE_VW, s = tr.width;
       const tx = Math.max(br.left + s / 2, Math.min(br.right - s / 2, tr.left + s / 2)), ty = Math.max(br.top + s / 2, Math.min(br.bottom - s / 2, tr.top + s / 2));
-      const f = { k: ++flyN.current, it: Object.assign({}, it), slot: i, x0: cr.left + v.x * k, y0: cr.top + v.y * k, x1: tx, y1: ty, s };
+      const fresh = !!run.bag[i] && (run.bag[i].n || 1) <= (it.n || 1);
+      const f = { k: ++flyN.current, it: Object.assign({}, it), slot: i, fresh, x0: cr.left + v.x * k, y0: cr.top + v.y * k, x1: tx, y1: ty, s };
       setFlies((fs) => [...fs, f]);
     };
     useEffect(() => {
@@ -31690,7 +31691,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         ...Array.from({ length: BAG_SLOTS }, (_, i) => h(BagSlot, {
           key: i,
           i,
-          it: run.bag[i],
+          it: flies.some((f) => f.fresh && f.slot === i) ? null : run.bag[i],
           down,
           lift: !!drag && drag.src.from === "bag" && drag.src.i === i,
           drop: !!drag && !!drag.over && drag.over.ok && drag.over.key === "s" + i

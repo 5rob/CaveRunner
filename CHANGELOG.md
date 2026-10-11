@@ -5,6 +5,15 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.36 — CaveRunner Auto: pickups as their bag tile, flying into the bag (branch `autobattler`)
+Released 2026-10-11 on the branch (owner OK'd `tools/vendiconshots.js`). Agent ~9 min (worktree `cr-icons`) + PM.
+- A mod, exo mod or perk from a machine (or dropped in a level) lies on the floor as the bag's tile: rounded box in its
+  outline colour, the same icon (`auto/itemtile.js` `drawItemTile`, `tileItem`, `itemEdgeCol`; icons moved to
+  `art/itemicon.js` so the canvas can draw them).
+- Taken into the bag: a copy flies from the player into the slot it went to (0.5 s; `S.onTake`, `camTo`, `bagSlotOf`,
+  AutoScreen `flyIn`/`FlyTile`, `.afly`). A new slot stays empty till it lands (owner); a stack it joins shows at once.
+- Tests: new `auto-flyin` (logic and browser).
+
 ## v1.0.35 — CaveRunner Auto: the owner's item audit, part 1 (branch `autobattler`)
 Released 2026-10-11 on the branch. The owner's notes: `docs/auto-item-audit-notes.txt` (what's done, what's staged).
 - Binned (kept for old saves, never handed out; `off: 1`): mods Digging Bolt, Glowing Lance, Teleport Bolt, Matter Eater,

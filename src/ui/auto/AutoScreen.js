@@ -159,7 +159,9 @@ export function AutoScreen() {
     if (br.width < 4 || br.height < 4 || cr.width < 4) return;
     const v = camTo(C, x, y), k = cr.width / TITLE_VW, s = tr.width;
     const tx = Math.max(br.left + s / 2, Math.min(br.right - s / 2, tr.left + s / 2)), ty = Math.max(br.top + s / 2, Math.min(br.bottom - s / 2, tr.top + s / 2));
-    const f = { k: ++flyN.current, it: Object.assign({}, it), slot: i, x0: cr.left + v.x * k, y0: cr.top + v.y * k, x1: tx, y1: ty, s };
+    // a new slot (the item's whole stack is this pickup) stays empty till the copy lands (owner); a stack it joined shows at once
+    const fresh = !!run.bag[i] && (run.bag[i].n || 1) <= (it.n || 1);
+    const f = { k: ++flyN.current, it: Object.assign({}, it), slot: i, fresh, x0: cr.left + v.x * k, y0: cr.top + v.y * k, x1: tx, y1: ty, s };
     setFlies(fs => [...fs, f]);
   };
   useEffect(() => {
@@ -526,7 +528,7 @@ export function AutoScreen() {
       h('button', { className: 'pausebtn', title: 'Pause (hold 5 s: dev mode)', onPointerDown: pauseDown }, '⏸')),
     h(NavStack, { nav, run, openAt, down, drag, holdHelm, holdGun, meters, pins, metersOf, pinNav, hidden: navHidden, manual }),
     h('div', { className: 'abag' + (drag && drag.over && drag.over.key === 'bag' && drag.over.ok ? ' drop' : '') },
-      ...Array.from({ length: BAG_SLOTS }, (_, i) => h(BagSlot, { key: i, i, it: run.bag[i], down,
+      ...Array.from({ length: BAG_SLOTS }, (_, i) => h(BagSlot, { key: i, i, it: flies.some(f => f.fresh && f.slot === i) ? null : run.bag[i], down,
         lift: !!drag && drag.src.from === 'bag' && drag.src.i === i,
         drop: !!drag && !!drag.over && drag.over.ok && drag.over.key === 's' + i }))),
     h('div', { className: 'abtns' },
@@ -798,7 +800,7 @@ function Grab() {
 const itemEdge = it => it ? { '--ic': itemEdgeCol(it) } : undefined;
 
 // a pickup's tile flying into its bag slot (owner): FLY_MS, eased, from the player (a little small) to the slot (its size)
-/** @typedef {{ k: number, it: BagItem, slot: number, x0: number, y0: number, x1: number, y1: number, s: number }} Fly */
+/** @typedef {{ k: number, it: BagItem, slot: number, fresh: boolean, x0: number, y0: number, x1: number, y1: number, s: number }} Fly */
 export const FLY_MS = 500;
 /** @param {{ f: Fly, done: () => void }} props */
 function FlyTile({ f, done }) {
