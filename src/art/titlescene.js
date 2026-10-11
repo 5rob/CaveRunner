@@ -9,7 +9,7 @@
 // suite runs it); game/render/titledraw.js paints it (it needs the game's bullet looks, layer 5);
 // titleText paints the big CAVE RUNNER. ui/title.js runs it on one requestAnimationFrame.
 
-import { COL, AIR_ACC, CELL, COIN_PULL, DEAD, GRAVITY, GROUND_ACC, JET as P_JET, JET_ACC, PW, PH, WALK } from '../core/consts.js';
+import { COL, AIR_ACC, CELL, COIN_PULL, DEAD, GRAVITY, GROUND_ACC, JET as P_JET, JET_ACC, PW, PH, WALK, WEB_HAND } from '../core/consts.js';
 import { approach } from '../core/util.js';
 import { ROSTERS, enemyFor } from '../data/creatures.js';
 import { THEMES } from '../data/themes.js';
@@ -22,8 +22,8 @@ import { FIRE_CATCH, FIRE_COLS, FIRE_KNOB, FIRE_TICK, FIRE_UPW, FLAMMABLE } from
 import { navField, navWay } from '../world/nav.js';
 import { collideNuggets, spillGold, stepNugget } from '../world/nuggets.js';
 import { losClear } from '../world/vision.js';
-import { archCurve } from '../world/decorate.js';
-import { bendAwake, bendPush, bendStep, swingStep, swings, tailStep, vinePt, webAt } from '../world/sway.js';
+import { archCurve, archNear } from '../world/decorate.js';
+import { bendPush, swingStep, swings, tailStep, vinePt, webAt, webNearU } from '../world/sway.js';
 import { MODS, VAC_PULL } from '../spells/mods.js';
 import { rustleStep } from '../audio/recipes.js';
 import { pixText, pixWidth } from './pixfont.js';
@@ -33,6 +33,7 @@ import { gunPull, gunTick, perkDmg, planShots, shotsOf } from './scenegun.js';
 import { FX_ROOM, MISSILE_TURN, MISSILE_WAIT, fireSpray, keepTrail, muzzleFx, nearestFoe, autoTrail, steerTo, zapFork, traceBeam, bigBoomFx, boomLook, holePull, vacPull } from '../auto/shotfx.js';
 import { teamClearer } from '../auto/clear.js';
 import { FUEL_TAKEOFF, fuelCan, fuelForClimb, fuelTick } from '../auto/fuel.js';
+import { hangFind, hangSteer, lineHold, vineHeld, archView } from '../auto/hang.js';
 import { ghostHome, ghostTarget, perkOn, shieldTick } from '../auto/perks.js';
 
 export const TITLE_VW = 220;          // world units across the screen
@@ -108,7 +109,8 @@ export const TITLE_HOME = {
  *   bursty: number, burst: boolean, jet: boolean, jetT: number, jetCd: number, pace: number, spd: number,
  *   nav: { F: any, fx: number, fy: number, t: number }, stepT?: number, sawS?: number, rst?: { t?: number }, rub?: string, rubWas?: boolean,
  *   hide?: boolean, out?: boolean, outT?: number, stand?: boolean, dealt?: number, shieldT?: number, fuel?: number, empty?: boolean, jetSt?: { cut: number, onT: number, start: boolean, gap?: number }, sputN?: number, dry?: boolean, shieldHit?: number, ghost?: { x: number, y: number, cd: number, fired: number } | null, clr?: { p: number, g: number } | null, clrT?: number,
- *   ctl?: RunnerCtl | null, ctlWas?: boolean, cvx?: number, jetIn?: { nx: number, ny: number } | null, jx?: number, jy?: number, smokeAcc?: number, smokeN?: number, rag?: import('../world/ragdoll.js').Ragdoll | null, lamp?: boolean }} TRunner */
+ *   ctl?: RunnerCtl | null, ctlWas?: boolean, cvx?: number, jetIn?: { nx: number, ny: number } | null, jx?: number, jy?: number, smokeAcc?: number, smokeN?: number, rag?: import('../world/ragdoll.js').Ragdoll | null, lamp?: boolean,
+ *   hang?: TProp | WebLine | null, hangGo?: number, swing?: number }} TRunner */
 /** a player steered by hand (CaveRunner Auto, feedback round 2: the selected player in a level): the pill stick's push
  * @typedef {{ active: boolean, nx: number, ny: number, mag: number }} RunnerCtl */
 // a fixed strip in place of the scrolling ring (CaveRunner Auto's hub, auto/hub.js): w columns, each cell's material from
@@ -881,16 +883,25 @@ function stepSway(S, dt) {
     if (x + (p.span || 0) < -30 || x > TITLE_VW + 30) continue;
     /** @type {any} */
     const pa = p;
+    // (auto/hang.js) the hand-steered player holding on: an arch or a web line dips under him, a vine he swings on hangs
+    // through his hands (the old game's props.js)
+    const hr = S.runners.find(r => r.hang === p);
     if (p.arc) {
       const n = p.arc.length - 1;
       for (const r of S.runners) {
+        if (r === hr) continue;
         const cx = r.x + PW / 2 + S.scroll, cy = r.y + PH / 2;
         if (cx < p.ox - 8 || cx > p.ox + (p.span || 0) + 8) continue;
         let best = -1, bd = 7;
         for (let k = 0; k <= n; k++) { const d = Math.hypot(p.ox + p.arc[k][0] - cx, p.y + p.arc[k][1] - cy); if (d < bd) { bd = d; best = k; } }
         if (best >= 0) { bendPush(pa, best / n, r.wvx, r.wvy, DEV.bendPush, dt); r.rub = p.st === 'root' ? 'root' : 'vine'; }
       }
-      if (bendAwake(pa)) bendStep(pa, 0, 0, DEV.bendK, DEV.bendDamp, DEV.bendMax, dt);
+      lineHold(pa, !!hr, hr ? archNear(archView(p), hr.x + PW / 2 + S.scroll, hr.y + WEB_HAND).u : 0, hr ? hr.cvx || 0 : 0, hr ? hr.vy : 0, dt);
+      continue;
+    }
+    if (hr && hr.swing && canSwing(p)) {
+      vineHeld(pa, hr.x + PW / 2 + S.scroll, hr.y, hr.cvx || 0);
+      if (p.sw || p.swv || p.tl) tailStep(pa, p.links || DEV.vineLinks, GRAVITY, DEV.vineTailDamp, dt);
       continue;
     }
     if (!canSwing(p) || p.drop || p.host) continue;
@@ -912,14 +923,16 @@ function stepSway(S, dt) {
   // web lines: the game's rest sag, pushed where a player goes through
   for (const L of S.webs) {
     if (Math.max(L.a0x, L.b0x) < S.scroll - 20 || Math.min(L.a0x, L.b0x) > S.scroll + TITLE_VW + 20) continue;
+    const hr = S.runners.find(r => r.hang === L);
     for (const r of S.runners) {
+      if (r === hr) continue;
       const cx = r.x + PW / 2 + S.scroll, cy = r.y + PH / 2;
       if (cx < Math.min(L.a0x, L.b0x) - 6 || cx > Math.max(L.a0x, L.b0x) + 6) continue;
       const vx = L.b0x - L.a0x, vy = L.b0y - L.a0y, u = Math.max(0, Math.min(1, ((cx - L.a0x) * vx + (cy - L.a0y) * vy) / (vx * vx + vy * vy || 1)));
       const w = titleWebAt(L, u);
       if (Math.hypot(w.x - cx, w.y - cy) < 6) { bendPush(L, u, r.wvx, r.wvy, DEV.bendPush, dt); r.rub = 'myc'; }
     }
-    if (bendAwake(L)) bendStep(L, 0, 0, DEV.bendK, DEV.bendDamp, DEV.bendMax, dt);
+    lineHold(L, !!hr, hr ? webNearU(L, hr.x + PW / 2 + S.scroll, hr.y + WEB_HAND).u : 0, hr ? hr.cvx || 0 : 0, hr ? hr.vy : 0, dt);
   }
   for (const r of S.runners) {
     const str = rustleStep(r.rst || (r.rst = {}), dt, r.rub, r.rub && !r.rubWas, Math.hypot(r.wvx, r.wvy) * 2, S.rnd);
@@ -1288,15 +1301,16 @@ function stepRunnerMove(S, r, dt) {
   const on = ctlOn(r);
   if (r.ctlWas && !on) { r.cvx = 0; r.retarget = 0; if (!r.ground) { r.mode = 'fly'; r.modeT = 0; } }
   r.ctlWas = on;
+  if (!on || r.dig) r.hang = null;
   if (r.dig) digStep(S, r, dt);
-  else if (on) ctlStep(S, r, r.ctl, dt);
+  else if (on && r.ctl) ctlStep(S, r, r.ctl, dt);
   else if (r.mode === 'run') runStep(S, r, dt);
   else flyStep(S, r, dt);
   r.x = Math.max(8, Math.min(r.ctl ? TITLE_VW - PW - 8 : TITLE_VW * 0.62, r.x));   // (one steered by hand: the whole screen)
   r.y = Math.max(S.top - 40, Math.min(S.bot + 10, r.y));
   if (fuelOn(S)) {
     const P = tankOf(S, r);
-    fuelTick(r, r.dig || r.mode !== 'fly' ? 0 : r.flame, r.ground || (!!r.dig && r.mode === 'run'), dt, P.fuel, P.refuel);
+    fuelTick(r, r.dig || r.mode !== 'fly' ? 0 : r.flame, r.ground || !!r.hang || (!!r.dig && r.mode === 'run'), dt, P.fuel, P.refuel);
     // the old game's cough: a cut-out dips him a little and spits a grey puff; running dry, the sputter
     if (r.jetSt && r.jetSt.start) {
       r.vy += DEV.sputDip * SP;
@@ -1362,7 +1376,8 @@ export const jetThrottle = (ny, m) => Math.max(0.15, Math.max(0, -ny) * m);
 export const JET_SINK = 110;
 // (bug round 2) is the picked player being steered right now (the stick pushed past the dead zone)? else he's on the autopilot
 /** @param {TRunner} r */
-export const ctlOn = r => !!r.ctl && r.ctl.active && r.ctl.mag > DEAD;
+// (hanging on a vine or a web line, auto/hang.js: he stays steered with the stick at rest, holding on)
+export const ctlOn = r => !!r.ctl && (r.ctl.active && r.ctl.mag > DEAD || !!r.hang);
 // (CaveRunner Auto, feedback round 2) the selected player, steered by the pill stick as the old game's left stick (the
 // hub's steering, auto/hub.js hubMove: walk, jet up, gravity; r.cvx his speed through the world, the screen's is that
 // less the scroll). A step up to 8 he takes; rock in the way he's pushing toward (or the scroll pushes him into) he saws
@@ -1371,12 +1386,20 @@ export const ctlOn = r => !!r.ctl && r.ctl.active && r.ctl.mag > DEAD;
 function ctlStep(S, r, st, dt) {
   const m = st.active && st.mag > DEAD ? (st.mag - DEAD) / (1 - DEAD) : 0, jet = m > 0 && st.ny < 0 && !(fuelOn(S) && !fuelCan(r)), mv = DEV.move;   // (dry, or a cough: no thrust)
   r.cvx = r.cvx || 0;
-  if (jet) {
-    r.cvx = approach(r.cvx, st.nx * m * P_JET * DEV.autoMoveK * mv, JET_ACC * DEV.autoMoveK * dt);
-    const ty = jetLift(st.ny, m) * mv;   // (feedback round 2: lowering the stick lowers the thrust)
+  // (owner: the old game's hanging, auto/hang.js) a vine, chain, root, arch or web line in his hands and no jet: he hangs
+  // on; web lines he touches slow him (tied)
+  r.hangGo = (r.hangGo || 0) - dt;
+  const hold = hangFind(S.props, S.webs, r.x + PW / 2 + S.scroll, r.y, r.hangGo > 0), tied = hold.webMul;
+  r.hang = hold.climb && !jet ? hold.climb : null;
+  if (r.hang) hangSteer(r, hold, st.nx, st.ny, m, r.x + PW / 2 + S.scroll, r.y, DEV.autoMoveK * mv, dt);
+  else if (jet) {
+    r.swing = 0;
+    r.cvx = approach(r.cvx, st.nx * m * P_JET * DEV.autoMoveK * mv * tied, JET_ACC * DEV.autoMoveK * dt);
+    const ty = jetLift(st.ny, m) * mv * tied;   // (feedback round 2: lowering the stick lowers the thrust)
     r.vy = ty < r.vy ? approach(r.vy, ty, JET_ACC * DEV.autoMoveK * 2 * dt) : approach(r.vy, ty, JET_ACC * DEV.autoMoveK * dt);
   } else {
-    r.cvx = approach(r.cvx, m > 0 ? st.nx * m * WALK * DEV.autoMoveK * mv : 0, (r.ground ? GROUND_ACC : AIR_ACC) * DEV.autoMoveK * dt);
+    r.swing = 0;
+    r.cvx = approach(r.cvx, m > 0 ? st.nx * m * WALK * DEV.autoMoveK * mv * tied : 0, (r.ground ? GROUND_ACC : AIR_ACC) * DEV.autoMoveK * dt);
     r.vy = Math.min(r.vy + GRAVITY * dt, 900);
   }
   r.flame = jet ? jetThrottle(st.ny, m) : 0;

@@ -15,7 +15,7 @@ import { clearSave, saveCollection } from '../../save/save.js';
 import { darkDepthAt, torchStep } from '../../world/dark.js';
 import { archNear } from '../../world/decorate.js';
 import { ragHip, ragNew, ragStep } from '../../world/ragdoll.js';
-import { hangRootX, hangRootY, swings } from '../../world/sway.js';
+import { LINE_OFF, hangRootX, hangRootY, lineLetGo, swings } from '../../world/sway.js';
 import { paintFog } from './fog.js';
 import { burst, toast } from './particles.js';
 import { boxHit, solidAt } from './terrain.js';
@@ -117,17 +117,8 @@ export function corpseStep(W, dt) {
 }
 
 // ---- moving you (a part of step) ----
-// Hanging from a web line or an arched vine (direction ux, uy): does a push (nx, ny at strength
-// mag) let go? Any push mostly across the line, in any direction (more than LINE_OFF of it), or
-// one along it past an end you're at (atA: the start, atB: the end). Before v125 only pushing
-// down let go, so pushing sideways off a steep line, or off its end, left you stuck on it.
-export const LINE_OFF = 0.75;
-/** @param {number} nx @param {number} ny @param {number} mag @param {number} ux @param {number} uy @param {boolean} atA @param {boolean} atB */
-export function lineLetGo(nx, ny, mag, ux, uy, atA, atB) {
-  if (mag <= 0.5) return false;
-  const along = nx * ux + ny * uy, across = Math.abs(nx * uy - ny * ux);
-  return across > LINE_OFF || (atB && along > 0.3) || (atA && along < -0.3);
-}
+// lineLetGo, LINE_OFF: world/sway.js (CaveRunner Auto's hand-steered player shares them)
+export { LINE_OFF, lineLetGo };
 
 // letting go of a line: no grabbing one again for a moment, and the push carries you off it
 /** @param {World} W @param {{ nx: number, ny: number }} L @param {number} mag */

@@ -8227,6 +8227,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return { x: ax + (p[2 * i] - ax) * f, y: ay + (p[2 * i + 1] - ay) * f };
   }
   var swings = (pr) => pr.k === "climb" && !pr.arc && !!pr.len && pr.st !== "icefall";
+  var LINE_OFF = 0.75;
+  function lineLetGo(nx, ny, mag, ux, uy, atA, atB) {
+    if (mag <= 0.5) return false;
+    const along = nx * ux + ny * uy, across = Math.abs(nx * uy - ny * ux);
+    return across > LINE_OFF || atB && along > 0.3 || atA && along < -0.3;
+  }
 
   // src/world/strata.js
   function timberFrame(mat, set, R, T2, xa, xb, y, old, fy, maxH) {
@@ -12009,6 +12015,107 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   var fuelForClimb = (h3, tank = 1) => Math.min(0.95, FUEL_RESTART + Math.max(0, h3) / 110 * FUEL_DRAIN * DEV.autoFuelDrain / Math.max(0.1, tank));
 
+  // src/auto/hang.js
+  var LET_GO_T = 0.35;
+  var archView = (p) => ({ x: p.ox, y: p.y, arc: p.arc, wx: p.wx, wy: p.wy, wu: p.wu });
+  function hangFind(props, webs, cx, top, letGo2) {
+    const hy = top + WEB_HAND, cy = top + PH / 2;
+    let climb = null, arch = null;
+    let archD = Infinity, wd = Infinity, webMul = 1;
+    let web = null;
+    for (const p of props) {
+      if (p.k !== "climb" || p.gone || p.drop || p.fall) continue;
+      if (p.arc) {
+        if (cx < p.ox - 40 || cx > p.ox + (p.span || 0) + 40) continue;
+        const R = (p.grab || (p.grab = kr("arGrab"))) + (p.wh ? DEV.bendMax : 0), d = archNear(archView(p), cx, hy).d;
+        if (d <= R && d < archD) {
+          arch = p;
+          archD = d;
+        }
+        continue;
+      }
+      if (!p.len) continue;
+      const ry = hangRootY(p);
+      if (top + PH < p.y + ry || top > p.y + ry + p.len) continue;
+      const q = vinePt(p, clamp(cy - p.y - ry, 0, p.len));
+      if (Math.abs(p.ox + q.x - cx) < PW / 2 + 1) climb = p;
+    }
+    for (const L of webs) {
+      if (L.out) continue;
+      const R = (L.grab || (L.grab = spr("webGrab"))) + (L.wh ? DEV.bendMax : 0), give = (L.sag || 0) + DEV.bendMax;
+      if (cx < Math.min(L.a0x, L.b0x) - R - give || cx > Math.max(L.a0x, L.b0x) + R + give) continue;
+      const a = webNearU(L, cx, hy), d = Math.hypot(a.x - cx, a.y - hy), b = webNearU(L, cx, cy);
+      if (Math.min(d, Math.hypot(b.x - cx, b.y - cy)) > R) continue;
+      webMul *= L.slow || (L.slow = spr("webSlow"));
+      if (d <= R && d < wd) {
+        wd = d;
+        web = L;
+      }
+    }
+    if (letGo2) {
+      arch = null;
+      web = null;
+    }
+    let c = arch || climb;
+    if (web && !c) c = web;
+    else if (c !== web) web = null;
+    return { climb: c, arch, web, webMul };
+  }
+  function hangSteer(r, h3, nx, ny, m, cx, top, k, dt) {
+    const tied = h3.webMul, hy = top + WEB_HAND;
+    const along = (ux, uy, q, speed, atA, atB) => {
+      if (lineLetGo(nx, ny, m, ux, uy, atA, atB)) {
+        r.hangGo = LET_GO_T;
+        r.cvx = nx * m * WALK * k * 0.8;
+        r.vy = Math.max(-90, ny * m * 90);
+        return;
+      }
+      const v = (m > 0 ? (nx * ux + ny * uy) * m : 0) * speed * k * tied;
+      r.cvx = approach(r.cvx || 0, ux * v + (q.x - cx) * 14, 1800 * dt);
+      r.vy = approach(r.vy, uy * v + (q.y - hy) * 14, 1800 * dt);
+    };
+    r.swing = 0;
+    if (h3.arch) {
+      const ar = h3.arch, A = ar.arc || [], av = archView(ar), q = archNear(av, cx, hy);
+      const a = A[q.k], b = A[q.k + 1], ul = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+      const A0 = A[0], A1 = A[A.length - 1];
+      const atA = Math.hypot(q.x - ar.ox - A0[0], q.y - ar.y - A0[1]) < 1.5, atB = Math.hypot(q.x - ar.ox - A1[0], q.y - ar.y - A1[1]) < 1.5;
+      along((b[0] - a[0]) / ul, (b[1] - a[1]) / ul, q, ar.climb || (ar.climb = kr("arClimb")), atA, atB);
+    } else if (h3.web) {
+      const ln = h3.web, wl = Math.hypot(ln.b0x - ln.a0x, ln.b0y - ln.a0y) || 1, q = webNearU(ln, cx, hy);
+      const atA = Math.hypot(q.x - ln.a0x, q.y - ln.a0y) < 1.5, atB = Math.hypot(q.x - ln.b0x, q.y - ln.b0y) < 1.5;
+      along((ln.b0x - ln.a0x) / wl, (ln.b0y - ln.a0y) / wl, q, ln.climb || (ln.climb = spr("webClimb")), atA, atB);
+    } else {
+      const vine = h3.climb;
+      const target = m > 0 ? nx * m * WALK * k * tied : 0;
+      if (vine && swings(vine) && !r.ground && Math.abs(target) < WALK * k * 0.25) {
+        const Lh = clamp(hy - vine.y - hangRootY(vine), 6, vine.len);
+        const s = clamp((cx - vine.ox - hangRootX(vine)) / Lh, -1, 1), a = Math.asin(s);
+        r.cvx = (r.cvx || 0) + (-GRAVITY * DEV.vineGrav * s * Math.sqrt(1 - s * s) - DEV.vineDamp * r.cvx) * dt;
+        if (Math.abs(a) > DEV.vineMax && r.cvx * a > 0) r.cvx = 0;
+        r.swing = 1;
+      } else r.cvx = approach(r.cvx || 0, target, (r.ground ? GROUND_ACC : AIR_ACC) * DEV.autoMoveK * dt);
+      r.vy = approach(r.vy, m > 0 ? ny * m * CLIMB * k * tied : 0, 1800 * dt);
+    }
+  }
+  function vineHeld(p, cx, top, cvx) {
+    const Lh = clamp(top + WEB_HAND - p.y - hangRootY(p), 6, p.len);
+    p.sw = clamp(Math.asin(clamp((cx - p.ox - hangRootX(p)) / Lh, -1, 1)), -DEV.vineMax, DEV.vineMax);
+    p.swv = cvx / Lh;
+    p.sj = Lh;
+  }
+  function lineHold(o, held, u, vx, vy, dt) {
+    if (held) {
+      if (!o.wh) {
+        o.wvx = (o.wvx || 0) + vx * DEV.bendGrab;
+        o.wvy = (o.wvy || 0) + vy * DEV.bendGrab;
+      }
+      o.wu = clamp(u, 0.05, 0.95);
+    }
+    o.wh = held;
+    if (held || bendAwake(o)) bendStep(o, 0, held ? DEV.bendDip : 0, DEV.bendK, DEV.bendDamp, DEV.bendMax, dt);
+  }
+
   // src/auto/perks.js
   var perksOf = (pl) => perkBag([...new Set((pl && pl.perks || []).map((it) => it && it.id).filter(Boolean))].map(String));
   var perkOn = (pl, flag) => !!pl && !!perksOf(pl)[flag];
@@ -12995,9 +13102,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const x = p.ox - S2.scroll;
       if (x + (p.span || 0) < -30 || x > TITLE_VW + 30) continue;
       const pa = p;
+      const hr = S2.runners.find((r) => r.hang === p);
       if (p.arc) {
         const n = p.arc.length - 1;
         for (const r of S2.runners) {
+          if (r === hr) continue;
           const cx = r.x + PW / 2 + S2.scroll, cy = r.y + PH / 2;
           if (cx < p.ox - 8 || cx > p.ox + (p.span || 0) + 8) continue;
           let best = -1, bd = 7;
@@ -13013,7 +13122,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             r.rub = p.st === "root" ? "root" : "vine";
           }
         }
-        if (bendAwake(pa)) bendStep(pa, 0, 0, DEV.bendK, DEV.bendDamp, DEV.bendMax, dt);
+        lineHold(pa, !!hr, hr ? archNear(archView(p), hr.x + PW / 2 + S2.scroll, hr.y + WEB_HAND).u : 0, hr ? hr.cvx || 0 : 0, hr ? hr.vy : 0, dt);
+        continue;
+      }
+      if (hr && hr.swing && canSwing(p)) {
+        vineHeld(pa, hr.x + PW / 2 + S2.scroll, hr.y, hr.cvx || 0);
+        if (p.sw || p.swv || p.tl) tailStep(pa, p.links || DEV.vineLinks, GRAVITY, DEV.vineTailDamp, dt);
         continue;
       }
       if (!canSwing(p) || p.drop || p.host) continue;
@@ -13036,7 +13150,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     for (const L of S2.webs) {
       if (Math.max(L.a0x, L.b0x) < S2.scroll - 20 || Math.min(L.a0x, L.b0x) > S2.scroll + TITLE_VW + 20) continue;
+      const hr = S2.runners.find((r) => r.hang === L);
       for (const r of S2.runners) {
+        if (r === hr) continue;
         const cx = r.x + PW / 2 + S2.scroll, cy = r.y + PH / 2;
         if (cx < Math.min(L.a0x, L.b0x) - 6 || cx > Math.max(L.a0x, L.b0x) + 6) continue;
         const vx = L.b0x - L.a0x, vy = L.b0y - L.a0y, u = Math.max(0, Math.min(1, ((cx - L.a0x) * vx + (cy - L.a0y) * vy) / (vx * vx + vy * vy || 1)));
@@ -13046,7 +13162,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           r.rub = "myc";
         }
       }
-      if (bendAwake(L)) bendStep(L, 0, 0, DEV.bendK, DEV.bendDamp, DEV.bendMax, dt);
+      lineHold(L, !!hr, hr ? webNearU(L, hr.x + PW / 2 + S2.scroll, hr.y + WEB_HAND).u : 0, hr ? hr.cvx || 0 : 0, hr ? hr.vy : 0, dt);
     }
     for (const r of S2.runners) {
       const str = rustleStep(r.rst || (r.rst = {}), dt, r.rub, r.rub && !r.rubWas, Math.hypot(r.wvx, r.wvy) * 2, S2.rnd);
@@ -13519,15 +13635,16 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
     }
     r.ctlWas = on;
+    if (!on || r.dig) r.hang = null;
     if (r.dig) digStep(S2, r, dt);
-    else if (on) ctlStep(S2, r, r.ctl, dt);
+    else if (on && r.ctl) ctlStep(S2, r, r.ctl, dt);
     else if (r.mode === "run") runStep(S2, r, dt);
     else flyStep(S2, r, dt);
     r.x = Math.max(8, Math.min(r.ctl ? TITLE_VW - PW - 8 : TITLE_VW * 0.62, r.x));
     r.y = Math.max(S2.top - 40, Math.min(S2.bot + 10, r.y));
     if (fuelOn(S2)) {
       const P2 = tankOf(S2, r);
-      fuelTick(r, r.dig || r.mode !== "fly" ? 0 : r.flame, r.ground || !!r.dig && r.mode === "run", dt, P2.fuel, P2.refuel);
+      fuelTick(r, r.dig || r.mode !== "fly" ? 0 : r.flame, r.ground || !!r.hang || !!r.dig && r.mode === "run", dt, P2.fuel, P2.refuel);
       if (r.jetSt && r.jetSt.start) {
         r.vy += DEV.sputDip * SP2;
         const nz = titleNozzle(r);
@@ -13592,16 +13709,22 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   };
   var jetThrottle = (ny, m) => Math.max(0.15, Math.max(0, -ny) * m);
   var JET_SINK = 110;
-  var ctlOn = (r) => !!r.ctl && r.ctl.active && r.ctl.mag > DEAD;
+  var ctlOn = (r) => !!r.ctl && (r.ctl.active && r.ctl.mag > DEAD || !!r.hang);
   function ctlStep(S2, r, st, dt) {
     const m = st.active && st.mag > DEAD ? (st.mag - DEAD) / (1 - DEAD) : 0, jet = m > 0 && st.ny < 0 && !(fuelOn(S2) && !fuelCan(r)), mv = DEV.move;
     r.cvx = r.cvx || 0;
-    if (jet) {
-      r.cvx = approach(r.cvx, st.nx * m * JET * DEV.autoMoveK * mv, JET_ACC * DEV.autoMoveK * dt);
-      const ty = jetLift(st.ny, m) * mv;
+    r.hangGo = (r.hangGo || 0) - dt;
+    const hold = hangFind(S2.props, S2.webs, r.x + PW / 2 + S2.scroll, r.y, r.hangGo > 0), tied = hold.webMul;
+    r.hang = hold.climb && !jet ? hold.climb : null;
+    if (r.hang) hangSteer(r, hold, st.nx, st.ny, m, r.x + PW / 2 + S2.scroll, r.y, DEV.autoMoveK * mv, dt);
+    else if (jet) {
+      r.swing = 0;
+      r.cvx = approach(r.cvx, st.nx * m * JET * DEV.autoMoveK * mv * tied, JET_ACC * DEV.autoMoveK * dt);
+      const ty = jetLift(st.ny, m) * mv * tied;
       r.vy = ty < r.vy ? approach(r.vy, ty, JET_ACC * DEV.autoMoveK * 2 * dt) : approach(r.vy, ty, JET_ACC * DEV.autoMoveK * dt);
     } else {
-      r.cvx = approach(r.cvx, m > 0 ? st.nx * m * WALK * DEV.autoMoveK * mv : 0, (r.ground ? GROUND_ACC : AIR_ACC) * DEV.autoMoveK * dt);
+      r.swing = 0;
+      r.cvx = approach(r.cvx, m > 0 ? st.nx * m * WALK * DEV.autoMoveK * mv * tied : 0, (r.ground ? GROUND_ACC : AIR_ACC) * DEV.autoMoveK * dt);
       r.vy = Math.min(r.vy + GRAVITY * dt, 900);
     }
     r.flame = jet ? jetThrottle(st.ny, m) : 0;
@@ -22561,12 +22684,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     p.flame = 0;
     p.jet = 0;
     p.onGround = false;
-  }
-  var LINE_OFF = 0.75;
-  function lineLetGo(nx, ny, mag, ux, uy, atA, atB) {
-    if (mag <= 0.5) return false;
-    const along = nx * ux + ny * uy, across = Math.abs(nx * uy - ny * ux);
-    return across > LINE_OFF || atB && along > 0.3 || atA && along < -0.3;
   }
   function letGo(W, L, mag) {
     W.webLetGo = 0.35;
