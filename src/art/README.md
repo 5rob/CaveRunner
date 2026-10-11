@@ -26,4 +26,5 @@ Creature sprites live with their creature (`creatures/`). Everything draws at wo
 - Ground guns glow (`drawGunGlow`, before the gun sprite) unless `q.old` — set on the gun you swap
   out in `GunSwap`, and kept by the save.
 - A gun's sprite colour is `gunAccent` (its level colour; starter guns keep their family colour).
+- **Zones by noise (Auto, v1.0.50):** `titleZoneLook(wx, y, B)` (used by `titleZoneAt`): in a level x is pushed by a domain-warped fbm field and islands (knobs `autoZoneWarp/Scale/Rag/Isle`), so a zone's skin, moss and bricks curve across the height; pads, arena and exit keep their own. The caves' shapes still follow the x zone (`zCeil`/`zFloor`; `autoZoneOpen` 1 carves other zones' air too but stalls the autopilot: off). Gameplay stays x-based. Tall mines: `mkMine` stacks up to 5 more dead-ended tunnels (`mineBands`, bands over 200).
 - **Tall levels (Auto):** `TitleCam` takes `view` (the screen's height when shorter than `by`; `camClamp` keeps the view inside 0..by) and `pack` (`camPack(C, S, e)`: ease y toward the team's middle height; `camStep` does it when nobody is locked). `bandK`, `TITLE_PACKY`: see src/auto/README.md, Tall levels.
