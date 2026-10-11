@@ -65,6 +65,11 @@ export const TM = { AIR: 0, ROCK: 1, MOSS: 2, BRICK: 3, WOOD: 4, CHAR: 5, BEAM: 
   ROOT: 14, SILT: 15, SILTD: 16, IRON: 17, IROND: 18, CRYS: 19, CRYSL: 20, NEST: 21, NESTD: 22 };   // 14 on: CaveRunner Auto's blocked zones (auto/blocked.js)
 export const TITLE_SOLID = [0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1];
 const SOLID = TITLE_SOLID;
+// (Auto's level, owner v1.0.52: strong guns blasted the cave away down to the bottom edge) a blast bites less toward the
+// play area's bottom (a tall level: the old height's stay as they were): × 1 down to DEV.autoHardDeep above the bottom edge, easing to 0 at autoHardEdge above it (pure)
+/** @param {{ lvl?: unknown, vh: number, top: number, bot: number }} S @param {number} y */
+export const deepK = (S, y) => (!S.lvl || DEV.autoHardDeep <= 0 || S.bot - S.top <= MINE_TALL ? 1
+  : Math.max(0, Math.min(1, (S.vh - DEV.autoHardEdge - y) / DEV.autoHardDeep)));
 const FUEL = [0, 0, 2, 0, 3, 0, 3, 3, 1, 0, 1, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 1, 1];   // the fuel kind each burns as (world/fire.js: 1 grass, 2 moss, 3 timber)
 export const FRAME_GAP = 72;          // the built-up layers: a timber frame every this far (world units)
 export const FRAME_W = 36;            // its width, post to post
@@ -809,8 +814,9 @@ export function titleCarve(S, sx, y, r, rim = true) {
   let n = 0;
   for (let c = Math.max(c0, S.gen - S.ncol); c <= Math.min(c1, S.gen - 1); c++) for (let rr = r0; rr <= r1; rr++) {
     const d = Math.hypot((c + 0.5) * TCELL - wx, (rr + 0.5) * TCELL - y), i = ci(S, c, rr), m = S.cells[i];
-    if (d <= r) { if (m !== TM.AIR) { S.cells[i] = TM.AIR; n++; S.burning.delete(c * S.rows + rr); } }
-    else if (rim && d <= r + 2 && SOLID[m] && m !== TM.CHAR) S.cells[i] = TM.CHAR;
+    const reach = rim ? r * deepK(S, (rr + 0.5) * TCELL) : r;   // (a blast: less toward the bottom edge; the saw: as ever)
+    if (d <= reach) { if (m !== TM.AIR) { S.cells[i] = TM.AIR; n++; S.burning.delete(c * S.rows + rr); } }
+    else if (rim && d <= reach + 2 && SOLID[m] && m !== TM.CHAR) S.cells[i] = TM.CHAR;
   }
   if (n) {
     S.carved += n;

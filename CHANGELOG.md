@@ -5,6 +5,14 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.52 — CaveRunner Auto: the bottom of a level holds against blasts (branch `autobattler`)
+Released 2026-10-12 on the branch. PM alone.
+- Owner: strong guns blasted the cave away and the team ran along the bottom edge. `deepK` (art/titlescene.js): a blast
+  (`titleCarve` with its rim) bites × 1 down to `autoHardDeep` (90) above the play area's bottom, easing to 0 at
+  `autoHardEdge` (8). Tall levels only (at the old height the band was half the level: `auto-level` stalled); the saw's cut as ever.
+- Suite `auto-deep`.
+- Tried and dropped (owner: no): a toughness per material (`TITLE_BITE`: dirt gave, iron held).
+
 ## v1.0.51 — CaveRunner Auto: caves follow the curving zones, faster vine fire (branch `autobattler`)
 Released 2026-10-12 on the branch. PM alone.
 - `autoZoneOpen` on (1): another zone's look opens its own cave air (`zoneOpenAt`, pure; genCol carves by it). The

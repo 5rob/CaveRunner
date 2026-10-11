@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v1.0.51</title>
-<!-- VERSION = 'v1000051' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v1.0.52</title>
+<!-- VERSION = 'v1000052' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -1096,7 +1096,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v1.0.51';</script>
+<script>const VERSION = 'v1.0.52';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -2004,13 +2004,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "autoClearT", g: "autolevel", label: "LEVEL CLEARED shows for (s; then the team walks to the exit)", min: 1, max: 10, step: 0.1 },
     { k: "autoClearWait", g: "autolevel", label: "LEVEL CLEARED waits for the boss’s loot at most (s; a full bag leaves it lying)", min: 0, max: 20, step: 0.5 }
   );
-  Object.assign(DEV_DEFAULTS, { autoZoneWarp: 170, autoZoneScale: 150, autoZoneRag: 0.8, autoZoneIsle: 0.12, autoZoneOpen: 1 });
+  Object.assign(DEV_DEFAULTS, { autoZoneWarp: 170, autoZoneScale: 150, autoZoneRag: 0.8, autoZoneIsle: 0.12, autoZoneOpen: 1, autoHardDeep: 90, autoHardEdge: 8 });
   DEV_META.push(
     { k: "autoZoneWarp", g: "autolevel", label: "Zones: borders curve up to this far either way (world units; 0 straight)", min: 0, max: 400, step: 5 },
     { k: "autoZoneScale", g: "autolevel", label: "Zones: the curves’ size (world units)", min: 30, max: 600, step: 5 },
     { k: "autoZoneRag", g: "autolevel", label: "Zones: how twisted the borders are (domain warp)", min: 0, max: 3, step: 0.05 },
     { k: "autoZoneIsle", g: "autolevel", label: "Zones: islands of the next zone (share of the area)", min: 0, max: 0.5, step: 0.01 },
-    { k: "autoZoneOpen", g: "autolevel", label: "Zones: another zone’s look opens its own caves too (1 on; 0: shapes by x)", min: 0, max: 1, step: 1 }
+    { k: "autoZoneOpen", g: "autolevel", label: "Zones: another zone’s look opens its own caves too (1 on; 0: shapes by x)", min: 0, max: 1, step: 1 },
+    { k: "autoHardDeep", g: "autolevel", label: "Blasts bite less over this many units above the level’s bottom edge (0: off)", min: 0, max: 300, step: 5 },
+    { k: "autoHardEdge", g: "autolevel", label: "… and not at all in this many units at the very bottom", min: 0, max: 60, step: 1 }
   );
   DEV_GROUPS.push(["autolevel", "Auto: level"]);
   Object.assign(DEV_DEFAULTS, { autoRoamCam: 2.5, autoRoamBack: 1.5 });
@@ -12234,6 +12236,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   };
   var TITLE_SOLID = [0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1];
   var SOLID = TITLE_SOLID;
+  var deepK = (S2, y) => !S2.lvl || DEV.autoHardDeep <= 0 || S2.bot - S2.top <= MINE_TALL ? 1 : Math.max(0, Math.min(1, (S2.vh - DEV.autoHardEdge - y) / DEV.autoHardDeep));
   var FUEL = [0, 0, 2, 0, 3, 0, 3, 3, 1, 0, 1, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 1, 1];
   var FRAME_GAP = 72;
   var FRAME_W = 36;
@@ -13043,13 +13046,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     let n = 0;
     for (let c = Math.max(c0, S2.gen - S2.ncol); c <= Math.min(c1, S2.gen - 1); c++) for (let rr2 = r0; rr2 <= r1; rr2++) {
       const d = Math.hypot((c + 0.5) * TCELL - wx, (rr2 + 0.5) * TCELL - y), i = ci(S2, c, rr2), m = S2.cells[i];
-      if (d <= r) {
+      const reach2 = rim ? r * deepK(S2, (rr2 + 0.5) * TCELL) : r;
+      if (d <= reach2) {
         if (m !== TM.AIR) {
           S2.cells[i] = TM.AIR;
           n++;
           S2.burning.delete(c * S2.rows + rr2);
         }
-      } else if (rim && d <= r + 2 && SOLID[m] && m !== TM.CHAR) S2.cells[i] = TM.CHAR;
+      } else if (rim && d <= reach2 + 2 && SOLID[m] && m !== TM.CHAR) S2.cells[i] = TM.CHAR;
     }
     if (n) {
       S2.carved += n;
