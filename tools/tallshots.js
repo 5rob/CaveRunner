@@ -2,7 +2,7 @@
 // following the pack up and down it with the UI open. Phone size (412 x 880 @2.625).
 //   t-a-open.png    a level, UI open, the camera on the pack        t-b-grown.png   the same, the play area grown: the whole height
 //   t-c-*.png       further along the level (other zones), grown
-//   node tools/tallshots.js [outdir]      (default tests/build/tall)
+//   node tools/tallshots.js [outdir]      (default tests/build/tall; the zones stage: tests/build/zones)
 // It also prints the checks: the scene's height = the grown play area's, the leader on screen with the UI open.
 const { launch } = require('../tests/chromium');
 const path = require('path');
@@ -47,8 +47,15 @@ require('../tests/build')();
   console.log((Math.abs(b.view - b.vh) < 2 ? 'ok  ' : 'FAIL') + ' grown, the view shows the whole height');
   await page.screenshot({ path: path.join(OUT, 't-b-grown.png') });
   // further along: the scene stepped on (the zones go by), grown
-  for (const [n, steps] of [['t-c-1.png', 900], ['t-c-2.png', 900], ['t-c-3.png', 900]]) {
-    const z = await page.evaluate(s => { const S = window.__autoScene; for (let i = 0; i < s; i++) titleStep(S, 1 / 30); return titleZone(levelTeamX(S), S); }, steps);
+  // (the zones stage) stepped at 3× pace so each shot is a zone or so further on (900 frames at normal pace stayed in the first)
+  for (const [n, steps] of [['t-c-1.png', 500], ['t-c-2.png', 500], ['t-c-3.png', 500], ['t-c-4.png', 500]]) {
+    const z = await page.evaluate(s => {
+      const S = window.__autoScene, p = DEV.autoLvlPace;
+      DEV.autoLvlPace = p * 3;
+      for (let i = 0; i < s; i++) titleStep(S, 1 / 30);
+      DEV.autoLvlPace = p;
+      return titleZone(levelTeamX(S), S) + ' x ' + Math.round(levelTeamX(S));
+    }, steps);
     await page.waitForTimeout(800);
     await page.screenshot({ path: path.join(OUT, n) });
     console.log(n + '  zone ' + z);

@@ -2004,6 +2004,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "autoClearT", g: "autolevel", label: "LEVEL CLEARED shows for (s; then the team walks to the exit)", min: 1, max: 10, step: 0.1 },
     { k: "autoClearWait", g: "autolevel", label: "LEVEL CLEARED waits for the boss’s loot at most (s; a full bag leaves it lying)", min: 0, max: 20, step: 0.5 }
   );
+  Object.assign(DEV_DEFAULTS, { autoZoneWarp: 170, autoZoneScale: 150, autoZoneRag: 0.8, autoZoneIsle: 0.12, autoZoneOpen: 0 });
+  DEV_META.push(
+    { k: "autoZoneWarp", g: "autolevel", label: "Zones: borders curve up to this far either way (world units; 0 straight)", min: 0, max: 400, step: 5 },
+    { k: "autoZoneScale", g: "autolevel", label: "Zones: the curves’ size (world units)", min: 30, max: 600, step: 5 },
+    { k: "autoZoneRag", g: "autolevel", label: "Zones: how twisted the borders are (domain warp)", min: 0, max: 3, step: 0.05 },
+    { k: "autoZoneIsle", g: "autolevel", label: "Zones: islands of the next zone (share of the area)", min: 0, max: 0.5, step: 0.01 },
+    { k: "autoZoneOpen", g: "autolevel", label: "Zones: another zone’s look opens its own caves too (1 on; experimental, the autopilot can stall)", min: 0, max: 1, step: 1 }
+  );
   DEV_GROUPS.push(["autolevel", "Auto: level"]);
   Object.assign(DEV_DEFAULTS, { autoRoamCam: 2.5, autoRoamBack: 1.5 });
   DEV_META.push(
@@ -8338,7 +8346,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return true;
   }
   function strataCave(mat, rnd2, N, shopExit) {
-    const { vn, fbm: fbm2 } = N, ok = N.ok || (() => true);
+    const { vn, fbm: fbm3 } = N, ok = N.ok || (() => true);
     const K = (k) => kr(k, rnd2);
     const cnt = (k) => {
       const v = Math.max(0, K(k));
@@ -8558,7 +8566,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       for (let y = ya; y <= yb; y++) for (let x = xa; x <= xb; x++) {
         const i = y * CW + x;
         if (!mat[i]) continue;
-        const d = ((x - q.cx) / q.rx) ** 2 + ((y - q.cy) / q.ry) ** 2 + (fbm2(x / 40 + q.k * 13, y / 40) - 0.5) * 0.6;
+        const d = ((x - q.cx) / q.rx) ** 2 + ((y - q.cy) / q.ry) ** 2 + (fbm3(x / 40 + q.k * 13, y / 40) - 0.5) * 0.6;
         if (d >= 1) continue;
         if (vn(x / 30 + 300 + q.k * 7, y / 7 + 300) > 0.8 - 0.14 * d) continue;
         mat[i] = 0;
@@ -8584,7 +8592,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     for (let y = 8; y < yBase - 2; y += 1) for (let x = X0; x <= X1; x++) {
       const i = y * CW + x;
       if (!mat[i] || (x | y) & 1) continue;
-      if (fbm2(x / 26 + 900, y / 18 + 900) >= 0.24 || inKeep(x, y, 6)) continue;
+      if (fbm3(x / 26 + 900, y / 18 + 900) >= 0.24 || inKeep(x, y, 6)) continue;
       mat[i] = mat[i + 1] = mat[i + CW] = mat[i + CW + 1] = 0;
     }
     const routePath = [], points = [{ x: shopExit, y: SHOP_TOP - 30 }];
@@ -12357,13 +12365,29 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const a0 = Math.max(L[k], L[k + 1], x0 + 50) + 12, a1 = Math.min(Rx[k], Rx[k + 1], x1 - 50) - 12;
       if (a1 > a0) holes.push({ k, x: a0 + R() * (a1 - a0), w: 12 + R() * 10 });
     }
+    const R2 = titleRng(Math.floor(x0) * 31 + 7 >>> 0);
+    for (let e = 0; e < MINE_MORE; e++) {
+      const k = n + e;
+      L.push(x0 + 44 + R2() * 60);
+      Rx.push(x1 - 44 - R2() * 60);
+      sh.push(12 + R2() * 8);
+      const a0 = Math.max(L[k - 1], L[k], x0 + 50) + 12, a1 = Math.min(Rx[k - 1], Rx[k], x1 - 50) - 12;
+      if (a1 > a0 && R2() < 0.8) holes.push({ k: k - 1, x: a0 + R2() * (a1 - a0), w: 12 + R2() * 10 });
+    }
     return { n, ein, eout, lf: R() * 0.6, sh, L, Rx, holes, steps };
   }
+  var MINE_TALL = 200;
+  var MINE_MORE = 5;
   function mineBands(M, B) {
-    const lo = B.bot - 10, hi = B.top - 2, total = M.n * TIMBER_H + M.sh.reduce((a, v) => a + v, 0);
-    let f = lo - M.lf * Math.max(0, lo - hi - total - 10) - (M.n < 3 ? 10 : 0);
+    const lo = B.bot - 10, hi = B.top - 2;
+    let total = M.n * TIMBER_H + M.sh.slice(0, M.n - 1).reduce((a, v) => a + v, 0), nk = M.n;
+    while (lo - hi > MINE_TALL && nk < M.L.length && total + M.sh[nk - 1] + TIMBER_H + 30 <= lo - hi) {
+      total += M.sh[nk - 1] + TIMBER_H;
+      nk++;
+    }
+    let f = lo - M.lf * Math.max(0, lo - hi - total - 10) - (nk < 3 ? 10 : 0);
     const out = [];
-    for (let k = 0; k < M.n; k++) {
+    for (let k = 0; k < nk; k++) {
       out.push({ c: f - TIMBER_H, f });
       f = f - TIMBER_H - (M.sh[k] || 0);
     }
@@ -12411,7 +12435,23 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const a = h2(xi, yi), b = h2(xi + 1, yi), c = h2(xi, yi + 1), d = h2(xi + 1, yi + 1);
     return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
   }
-  var titleZoneAt = (wx, y, B) => titleZone(wx + (titleNoise(wx / 24, y / 14) - 0.5) * 2 * ZBLEND + (titleNoise(wx / 4, y / 4) - 0.5) * 12, B);
+  var titleZoneAt = (wx, y, B) => titleZoneLook(wx, y, B).z;
+  function titleZoneLook(wx, y, B) {
+    const fray = (titleNoise(wx / 24, y / 14) - 0.5) * 2 * ZBLEND + (titleNoise(wx / 4, y / 4) - 0.5) * 12;
+    if (!B || !B.lvl) return titleZoneSpan(wx + fray, B);
+    const Zs = titleZoneSpan(wx, B);
+    if (Zs.flat) return Zs;
+    const sc = DEV.autoZoneScale, g = DEV.autoZoneRag, h3 = sc * 0.45;
+    const qx = wx / sc + (fbm(wx / h3 + 5.2, y / h3 + 1.3) - 0.5) * 2 * g, qy = y / sc + (fbm(wx / h3 + 9.7, y / h3 + 4.1) - 0.5) * 2 * g;
+    let x2 = wx + (fbm(qx, qy) - 0.5) * 2 * DEV.autoZoneWarp + fray;
+    if (titleNoise(wx / 46 + 3.3, y / 46 + 7.7) > 1 - DEV.autoZoneIsle) {
+      const Zw = titleZoneSpan(x2, B);
+      x2 = x2 - Zw.x0 < Zw.x1 - x2 ? Zw.x0 - 1 : Zw.x1 + 1;
+    }
+    const Z = titleZoneSpan(x2, B);
+    return Z.flat ? Zs : Z;
+  }
+  var fbm = (x, y) => Math.max(0, Math.min(1, ((titleNoise(x, y) + 0.5 * titleNoise(x * 2.03 + 17, y * 2.03 + 31) + 0.25 * titleNoise(x * 4.1 + 41, y * 4.1 + 7)) / 1.75 - 0.5) * 1.7 + 0.5));
   var windMid = (x, Z, B) => Math.max(B.top + 26, Math.min(B.bot - 32, (B.top + B.bot) / 2 + 4 + (titleNoise(x / 70 + Z.ph[0], 3.7) - 0.5) * 80 * bandK(B) + (titleNoise(x / 23 + Z.ph[1], 5.1) - 0.5) * 16));
   var bandK = (B) => B.lvl ? Math.max(1, (B.bot - B.top) / 150) : 1;
   var windHalf = (x, Z) => 15 + titleNoise(x / 28 + Z.ph[2], 7.3) * 11;
@@ -12427,8 +12467,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const m2 = mid + side * (half + 14 + titleNoise(x / 30 + Z.ph[0], 13) * 16);
     return Math.abs(y - m2) < (on - 0.5) * 2 * 11;
   }
+  var zCeil = (x, Z, B) => Z.z === "winding" ? windMid(x, Z, B) - windHalf(x, Z) : B.top - 4 + Z.co + (Math.sin(x * 0.018 * Z.cf + Z.ph[0]) * 10 + Math.sin(x * 0.049 * Z.cf + Z.ph[1]) * 6) * Z.ca * bandK(B) + (bandK(B) - 1) * 45 * titleNoise(x / 90 + Z.ph[2], 9.1);
+  var zFloor = (x, Z, B) => Z.z === "winding" ? windMid(x, Z, B) + windHalf(x, Z) : B.bot - 22 + Z.fo + (Math.sin(x * 0.021 * Z.ff + Z.ph[2]) * 7 + Math.sin(x * 0.057 * Z.ff + Z.ph[3]) * 4) * Z.fa * bandK(B) - (bandK(B) - 1) * 30 * titleNoise(x / 80 + Z.ph[3], 4.3);
   var titleCeil = (wx, B) => {
-    const nat = zoneMix(wx, B, (x, Z) => Z.z === "winding" ? windMid(x, Z, B) - windHalf(x, Z) : B.top - 4 + Z.co + (Math.sin(x * 0.018 * Z.cf + Z.ph[0]) * 10 + Math.sin(x * 0.049 * Z.cf + Z.ph[1]) * 6) * Z.ca * bandK(B) + (bandK(B) - 1) * 45 * titleNoise(x / 90 + Z.ph[2], 9.1)) + Math.sin(wx * 0.11) * 2;
+    const nat = zoneMix(wx, B, (x, Z) => zCeil(x, Z, B)) + Math.sin(wx * 0.11) * 2;
     const T2 = mineNear(wx, B);
     if (!T2) return nat;
     const lump = Math.sin(Math.PI * T2.bt) * ((titleNoise(wx / 16, 47) - 0.5) * 22 + (titleNoise(wx / 6, 40) - 0.5) * 9 + (titleNoise(wx / 2.5, 43) - 0.5) * 3);
@@ -12455,7 +12497,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   };
   var titleWebAt = webAt;
   var titleFloor = (wx, B) => {
-    const nat = zoneMix(wx, B, (x, Z) => Z.z === "winding" ? windMid(x, Z, B) + windHalf(x, Z) : B.bot - 22 + Z.fo + (Math.sin(x * 0.021 * Z.ff + Z.ph[2]) * 7 + Math.sin(x * 0.057 * Z.ff + Z.ph[3]) * 4) * Z.fa * bandK(B) - (bandK(B) - 1) * 30 * titleNoise(x / 80 + Z.ph[3], 4.3)) + Math.sin(wx * 0.13) * 1.5;
+    const nat = zoneMix(wx, B, (x, Z) => zFloor(x, Z, B)) + Math.sin(wx * 0.13) * 1.5;
     const b = built(wx, B), base = nat * (1 - b) + (B.bot - 20) * b, T2 = mineNear(wx, B);
     return T2 ? base + (T2.band.f - base) * T2.bt : base;
   };
@@ -12502,7 +12544,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       };
     });
     const inside = (t, y) => !!M && wx > M.L[t.k] + (titleNoise(y / 9, 71 + t.k * 3) - 0.5) * 18 + (titleNoise(y / 3, 73 + t.k * 3) - 0.5) * 6 && wx < M.Rx[t.k] + (titleNoise(y / 9, 79 + t.k * 3) - 0.5) * 18 + (titleNoise(y / 3, 83 + t.k * 3) - 0.5) * 6;
-    const near = M ? M.holes.filter((h3) => Math.abs(wx - h3.x) < h3.w / 2 + 4) : [];
+    const near = M ? M.holes.filter((h3) => h3.k + 1 < bands.length && Math.abs(wx - h3.x) < h3.w / 2 + 4) : [];
     const inHole = (y) => near.some((h3) => y >= bands[h3.k + 1].f - 0.5 && y < bands[h3.k].c + 0.5 && Math.abs(wx - h3.x) < h3.w / 2 + (titleNoise(y / 5, h3.x) - 0.5) * 8);
     const patch = titleNoise(wx / 14, 11) > 0.52, tuft = patch && h2(c, 5) < 0.4 ? h2(c, 6) < 0.4 ? 2 : 1 : 0;
     const mossDeep = 2 + (patch ? 1 + Math.floor(h2(c, 7) * 3) : 0);
@@ -12512,10 +12554,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const lmid = lx0 + lw / 2, lc = titleCeil(lmid, S2), lf = titleFloor(lmid, S2), ly = lc + 14 + h2(lk, 10) * Math.max(0, lf - lc - 52);
     const ledge = !Zn.flat && (z === "moss" || z === "grove" || z === "webs") && built(lmid, S2) === 0 && h2(lk, 11) < 0.5 && wx >= lx0 && wx < lx0 + lw && lf - lc > 60;
     const bk0 = Zn.blk, bk = bk0 && S2.lvl && S2.lvl.blockCell ? S2.lvl.blockCell : null;
-    const by0 = M && bands.length ? bands[bands.length - 1].c - 14 : cy, by1 = M && bands.length ? bands[0].f + 3 : fy;
+    const by0 = M && bands.length ? bands[Math.min(M.n, bands.length) - 1].c - 14 : cy, by1 = M && bands.length ? bands[0].f + 3 : fy;
     if (bk0 && S2.lvl && S2.lvl.blockCol) S2.lvl.blockCol(S2, bk0, c, wx, by0, by1);
+    const shp = /* @__PURE__ */ new Map();
+    let carved = false;
     for (let r = 0; r < S2.rows; r++) {
-      const y = (r + 0.5) * TCELL, zc = titleZoneAt(wx, y, S2);
+      const y = (r + 0.5) * TCELL, Zc = titleZoneLook(wx, y, S2), zc = Zc.z;
       let m = TM.AIR;
       const t = tun.find((t2) => t2.open && y >= t2.rc && y < t2.rf && inside(t2, y));
       if (M && !t && y < cy && !inHole(y)) m = TM.ROCK;
@@ -12538,8 +12582,25 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (m === TM.AIR && y >= fy - rub && y < fy) m = y < fy - rub + 2 && h2(c, r) < 0.7 ? TM.RUBM : TM.RUB;
       if (m === TM.AIR && y >= fy - tuft * TCELL && y < fy && zc !== "paved") m = TM.GRASS;
       if (z === "winding" && TITLE_SOLID[m] && windAir(wx, y, Zn, S2)) m = TM.AIR;
+      if (Zc !== Zn && TITLE_SOLID[m] && DEV.autoZoneOpen && S2.lvl && S2.bot - S2.top > MINE_TALL && !Zn.blk && !Zc.blk && !Zn.flat && Zc.z !== "timber" && y > S2.top + 24 && y < fy) {
+        let sh = shp.get(Zc);
+        if (!sh) {
+          sh = { c: zCeil(wx, Zc, S2), f: zFloor(wx, Zc, S2) };
+          shp.set(Zc, sh);
+        }
+        if (y >= sh.c && y < sh.f || Zc.z === "winding" && windAir(wx, y, Zc, S2)) {
+          m = TM.AIR;
+          carved = true;
+        }
+      }
       if (bk) m = bk(bk0, wx, y, by0, by1, m);
       S2.cells[base + r] = m;
+    }
+    if (carved) {
+      for (let r = 0; r < S2.rows - 1; r++) if (S2.cells[base + r] === TM.AIR && S2.cells[base + r + 1] === TM.ROCK) {
+        const brick = titleZoneAt(wx, (r + 1.5) * TCELL, S2) === "paved";
+        for (let k = 1; k <= 2 && r + k < S2.rows && S2.cells[base + r + k] === TM.ROCK; k++) S2.cells[base + r + k] = brick ? TM.BRICK : TM.MOSS;
+      }
     }
     if (b > 0.95) {
       for (const t of tun) if (t.open && inside(t, t.c + 4) && (Math.abs(t.v - (FRAME_W + FRAME_GAP) / 2) < 1 || Math.abs(t.v - FRAME_W / 2) < 1) && R() < 0.7)
@@ -19905,7 +19966,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const a = hash4(xi, yi), b = hash4(xi + 1, yi), c = hash4(xi, yi + 1), d2 = hash4(xi + 1, yi + 1);
       return a + (b - a) * u + (c - a) * v + (a - b - c + d2) * u * v;
     };
-    const fbm2 = (x, y) => 0.55 * vn(x, y) + 0.3 * vn(x * 2 + 17, y * 2 + 31) + 0.15 * vn(x * 4 + 53, y * 4 + 7);
+    const fbm3 = (x, y) => 0.55 * vn(x, y) + 0.3 * vn(x * 2 + 17, y * 2 + 31) + 0.15 * vn(x * 4 + 53, y * 4 + 7);
     let rs = seed % 2147483646 + 1;
     const rnd2 = () => (rs = rs * 16807 % 2147483647) / 2147483647;
     for (let i = 0; i < 12; i++) rnd2();
@@ -19937,9 +19998,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const ledgeN = tomb ? 0 : 120, frameN = tomb ? 0 : 36, floatN = tomb ? 0 : 40;
     if (tomb) mat.fill(ROCK);
     else {
-      const openL = lattice(8, (x, y) => fbm2(x / (160 * sc) + 500, y / (160 * sc) + 500));
-      const pocketL = lattice(4, (x, y) => fbm2(x / (60 * sc), y / (60 * sc)));
-      const tunnelL = lattice(4, (x, y) => fbm2(x / (90 * sc) + 200, y / (90 * sc) + 200));
+      const openL = lattice(8, (x, y) => fbm3(x / (160 * sc) + 500, y / (160 * sc) + 500));
+      const pocketL = lattice(4, (x, y) => fbm3(x / (60 * sc), y / (60 * sc)));
+      const tunnelL = lattice(4, (x, y) => fbm3(x / (90 * sc) + 200, y / (90 * sc) + 200));
       for (let cy = 0; cy < CH; cy++) {
         for (let cx = 0; cx < CW; cx++) {
           const open = Math.min(1, Math.max(0, (at(openL, cx, cy) - openT) / 0.16));
@@ -19952,7 +20013,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     let zone = null;
     if (layered) {
       const zs = kr("lvZoneSize", rnd2), share = kr("lvZoneShare", rnd2), rag = kr("lvZoneRag", rnd2), ph = rnd2() * 100;
-      const zoneL = lattice(8, (x, y) => fbm2(x / zs + 1300 + ph, y / zs + 1300));
+      const zoneL = lattice(8, (x, y) => fbm3(x / zs + 1300 + ph, y / zs + 1300));
       const warpX = lattice(4, (x, y) => vn(x / 14 + 1700, y / 14 + 1700));
       const warpY = lattice(4, (x, y) => vn(x / 14 + 1900, y / 14 + 1900));
       const vals = [];
@@ -19975,7 +20036,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     rnd2();
     const shopExit = Math.round(VEND_BUY_X / CELL);
     const lay = layered ? new Uint8Array(CW * CH) : null;
-    const strata = layered ? strataCave(lay, rnd2, { vn, fbm: fbm2, ok: built2 }, shopExit) : null;
+    const strata = layered ? strataCave(lay, rnd2, { vn, fbm: fbm3, ok: built2 }, shopExit) : null;
     const points = [{ x: shopExit, y: SHOP_TOP - 30 }];
     const hops = hopsN;
     for (let i = 1; i <= hops; i++) {
@@ -20249,7 +20310,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       for (let cx = 0; cx < CW; cx++)
         if (cx < 3 || cx >= CW - 3 || cy < 3 || cy >= CH - 3) mat[cy * CW + cx] = BED;
     const T2 = themeFor(floor);
-    const tintL = lattice(4, (x, y) => fbm2(x / 6 + 100, y / 6 + 100));
+    const tintL = lattice(4, (x, y) => fbm3(x / 6 + 100, y / 6 + 100));
     const img = new ImageData(CW, CH);
     const d = img.data;
     for (let cy = 0; cy < CH; cy++) {
@@ -20301,9 +20362,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const bgImg = new ImageData(BW, BH);
     for (let y = 0; y < BH; y++)
       for (let x = 0; x < BW; x++) {
-        const t = Math.pow(fbm2(x / 10 + 300, y / 10 + 300), 1.6);
+        const t = Math.pow(fbm3(x / 10 + 300, y / 10 + 300), 1.6);
         const c = mix(T2.bg, T2.bg2, Math.min(1, t * 1.3));
-        const big = fbm2(x / 34 + 700, y / 34 + 500);
+        const big = fbm3(x / 34 + 700, y / 34 + 500);
         let shade = 1 - 0.55 * Math.max(0, Math.min(1, (big - 0.35) / 0.3));
         const j = (hash4(x + 900, y + 900) - 0.5) * 4, k = (y * BW + x) * 4;
         bgImg.data[k] = c[0] * shade + j;
@@ -20312,7 +20373,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         bgImg.data[k + 3] = 255;
       }
     const bgHi = tomb ? new ImageData(CW, CH) : null;
-    if (bgHi) paintTombWall(bgHi, bgImg, seed, fbm2);
+    if (bgHi) paintTombWall(bgHi, bgImg, seed, fbm3);
     const start = { x: ARRIVAL_X - 6, y: SHOP_FLOOR * CELL - PH };
     const arrival = { x: ARRIVAL_X, y: (SHOP_FLOOR - 13) * CELL };
     const stock = [];
@@ -31262,11 +31323,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   };
   var mixc = (a, b, t, k = 1) => [(a[0] + (b[0] - a[0]) * t) * k, (a[1] + (b[1] - a[1]) * t) * k, (a[2] + (b[2] - a[2]) * t) * k];
   var TIMBER = [112, 80, 50];
-  var fbm = (x, y) => titleNoise(x, y) * 0.65 + titleNoise(x * 2.1 + 17, y * 2.1 + 5) * 0.35;
+  var fbm2 = (x, y) => titleNoise(x, y) * 0.65 + titleNoise(x * 2.1 + 17, y * 2.1 + 5) * 0.35;
   function cellRGB(m, c, r, up) {
     const h3 = hash3(c, r), j = (h3 - 0.5) * 10;
     const J = (q) => [q[0] + j, q[1] + j, q[2] + j];
-    if (m === TM.ROCK) return J(up ? mixc(T.moss[0], T.moss[1], h3) : mixc(T.rock[0], T.rock[1], fbm(c / 6 + 100, r / 6 + 100)));
+    if (m === TM.ROCK) return J(up ? mixc(T.moss[0], T.moss[1], h3) : mixc(T.rock[0], T.rock[1], fbm2(c / 6 + 100, r / 6 + 100)));
     if (m === TM.MOSS) return J(mixc(T.moss[0], T.moss[1], h3));
     if (m === TM.BRICK) {
       const k = c + r % 2 * 3;
@@ -31294,8 +31355,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       return k % 6 === 0 || r % 3 === 0 ? [22, 20, 22] : mixc(T.brick[0], T.brick[1], hash3(Math.floor(k / 6), r), 0.5);
     }
     if (m === TM.SWALL) return c % 10 === 0 ? [20, 23, 28] : r % 14 === 0 ? [58, 64, 76] : mixc([36, 40, 48], [42, 46, 54], h3);
-    const bx = c / 4, by = r / 4, t = Math.pow(fbm(bx / 10 + 300, by / 10 + 300), 1.6);
-    const big = fbm(bx / 34 + 700, by / 34 + 500), shade = 1 - 0.55 * Math.max(0, Math.min(1, (big - 0.35) / 0.3));
+    const bx = c / 4, by = r / 4, t = Math.pow(fbm2(bx / 10 + 300, by / 10 + 300), 1.6);
+    const big = fbm2(bx / 34 + 700, by / 34 + 500), shade = 1 - 0.55 * Math.max(0, Math.min(1, (big - 0.35) / 0.3));
     return mixc(T.bg, T.bg2, Math.min(1, t * 1.3), shade).map((v) => v + (h3 - 0.5) * 4);
   }
   function terrain(S2) {

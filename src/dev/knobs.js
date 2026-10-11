@@ -628,6 +628,14 @@ DEV_META.push(
   { k: 'autoLvlEase',   g: 'autolevel', label: 'Pace changes by at most (× pace / s)', min: 0.2, max: 10, step: 0.1 },
   { k: 'autoClearT',    g: 'autolevel', label: 'LEVEL CLEARED shows for (s; then the team walks to the exit)', min: 1, max: 10, step: 0.1 },
   { k: 'autoClearWait', g: 'autolevel', label: 'LEVEL CLEARED waits for the boss’s loot at most (s; a full bag leaves it lying)', min: 0, max: 20, step: 0.5 });
+// (Auto zones) which zone a point of a tall level looks like: titlescene.js titleZoneLook (the old game's warped noise zones)
+Object.assign(DEV_DEFAULTS, { autoZoneWarp: 170, autoZoneScale: 150, autoZoneRag: 0.8, autoZoneIsle: 0.12, autoZoneOpen: 0 });
+DEV_META.push(
+  { k: 'autoZoneWarp',  g: 'autolevel', label: 'Zones: borders curve up to this far either way (world units; 0 straight)', min: 0, max: 400, step: 5 },
+  { k: 'autoZoneScale', g: 'autolevel', label: 'Zones: the curves’ size (world units)', min: 30, max: 600, step: 5 },
+  { k: 'autoZoneRag',   g: 'autolevel', label: 'Zones: how twisted the borders are (domain warp)', min: 0, max: 3, step: 0.05 },
+  { k: 'autoZoneIsle',  g: 'autolevel', label: 'Zones: islands of the next zone (share of the area)', min: 0, max: 0.5, step: 0.01 },
+  { k: 'autoZoneOpen',  g: 'autolevel', label: 'Zones: another zone’s look opens its own caves too (1 on; experimental, the autopilot can stall)', min: 0, max: 1, step: 1 });
 DEV_GROUPS.push(['autolevel', 'Auto: level']);
 // (feedback round 2) manual mode (a helmet held in a level, auto/level.js roamStep): the view follows the steered player at
 // autoRoamCam × his offset from the middle (world units / s per world unit: slower the nearer he is); he can go back at
