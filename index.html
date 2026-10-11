@@ -965,11 +965,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .anavc.gun{position:relative}
 .anavc.gun.sel{box-shadow:0 0 10px rgba(255,255,255,0.3)!important}
 .anavc.manual{position:relative}
-/* a player's health (owner): the helmet's ring as a bar, his colour from the top clockwise over a dark track; low: red, pulsing */
+/* a player's health (owner): the helmet's ring as a bar, his colour from the top clockwise over a dark track; under a quarter it flashes red, faster toward 0 (--fl) */
 .anavc.on[data-player]{position:relative;border-color:#2a2140}
 .ahp{position:absolute;inset:-3px;border-radius:50%;pointer-events:none;background:conic-gradient(var(--hc,#fff) var(--hp,360deg),transparent 0);-webkit-mask:radial-gradient(circle,transparent 21.5px,#000 22px);mask:radial-gradient(circle,transparent 21.5px,#000 22px)}
-.ahp.low{animation:ahplow .6s ease-in-out infinite alternate}
-@keyframes ahplow{from{opacity:1}to{opacity:.45}}
+.ahp.ahpf{--hc:#ff2a2a;animation:ahplow var(--fl,.6s) steps(1) infinite}
+@keyframes ahplow{0%{opacity:1}50%{opacity:0}}
 /* (bug round 2) the player in manual mode: the selected gun's crosshair round his helmet */
 .anavc.gun.sel::before,.anavc.manual::before{content:"";position:absolute;inset:-11px;pointer-events:none;background:linear-gradient(45deg,transparent calc(50% - 1.5px),#fff calc(50% - 1.5px),#fff calc(50% + 1.5px),transparent calc(50% + 1.5px)),linear-gradient(-45deg,transparent calc(50% - 1.5px),#fff calc(50% - 1.5px),#fff calc(50% + 1.5px),transparent calc(50% + 1.5px));-webkit-mask:radial-gradient(circle,transparent 31px,#000 32px);mask:radial-gradient(circle,transparent 31px,#000 32px)}
 .anavup .anavc.gun.sel.pick{box-shadow:0 0 0 3px #fff,0 0 12px rgba(255,255,255,0.5)!important}
@@ -32184,10 +32184,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
       const cls2 = "anavc" + (c.dim ? " locked" : " on") + (c.sel ? " sel" : "") + (c.gun ? " gun" : "") + (c.helm && level === "players" && i === manual ? " manual" : "") + (over === "g" + i || over === "p" + i ? " drop" : "") + (pick !== void 0 && to === pick ? " pick" : "");
       const ring = c.helm && c.hp != null;
-      const style = c.col && !c.dim ? { borderColor: ring ? void 0 : c.col, boxShadow: "0 0 10px " + (c.glow || c.col + "66"), ...ring ? { "--hp": (c.hp * 360).toFixed(1) + "deg", "--hc": c.hp < 0.25 ? "#ff4a3a" : c.col } : {} } : void 0;
+      const style = c.col && !c.dim ? { borderColor: ring ? void 0 : c.col, boxShadow: "0 0 10px " + (c.glow || c.col + "66"), ...ring ? { "--hp": (c.hp * 360).toFixed(1) + "deg", "--hc": c.col, "--fl": (0.12 + c.hp * 2.4).toFixed(2) + "s" } : {} } : void 0;
       let inner = null;
       if (c.gun) inner = h(GunIcon, { gun: c.gun });
-      else if (c.helm && c.col) inner = [h(HelmetIcon, { key: "h", col: c.col, size: 35 }), ring ? h("i", { key: "r", className: "ahp" + (c.hp < 0.25 ? " low" : "") }) : null];
+      else if (c.helm && c.col) inner = [h(HelmetIcon, { key: "h", col: c.col, size: 35 }), ring ? h("i", { key: "r", className: "ahp" }) : null, ring && c.hp < 0.25 ? h("i", { key: "f", className: "ahp ahpf" }) : null];
       else if (c.icon) inner = h(PixIcon, { id: c.icon, size: 20, tint: level === "exo" ? HUB_MACHINES.exo.hue : void 0 });
       else if (c.glyph) inner = h("span", { className: "anavg" }, c.glyph);
       else if (c.label) inner = h("span", { className: "anavp", style: { background: c.col } }, c.label);

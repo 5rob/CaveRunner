@@ -26,6 +26,12 @@ fs.mkdirSync(OUT, { recursive: true });
   await page.screenshot({ path: path.join(OUT, 'h-a-level.png') });
   const row = await page.locator('.anavrow.l-players').first().boundingBox();
   if (row) await page.screenshot({ path: path.join(OUT, 'h-b-row.png'), clip: { x: row.x, y: row.y, width: row.width, height: row.height } });
+  // the low ring flashing: a few row shots a beat apart (some red, some his colour)
+  // the low ring's two beats: red on, then off (his colour; the flash held off so the shot can't miss it)
+  await page.addStyleTag({ content: '.ahpf{animation:none!important;opacity:1}' });
+  if (row) await page.screenshot({ path: path.join(OUT, 'h-c-flash-on.png'), clip: { x: row.x, y: row.y, width: row.width, height: row.height } });
+  await page.addStyleTag({ content: '.ahpf{animation:none!important;opacity:0}' });
+  if (row) await page.screenshot({ path: path.join(OUT, 'h-c-flash-off.png'), clip: { x: row.x, y: row.y, width: row.width, height: row.height } });
   const rings = await page.evaluate(() => [...document.querySelectorAll('.anavc[data-player] .ahp')].map(e => getComputedStyle(e.parentElement).getPropertyValue('--hp')));
   console.log('rings', rings);
   await browser.close();

@@ -736,10 +736,10 @@ function NavRow({ row, level, cls, pick, open, down, drag, holdHelm, holdGun, me
     const cls2 = 'anavc' + (c.dim ? ' locked' : ' on') + (c.sel ? ' sel' : '') + (c.gun ? ' gun' : '') + (c.helm && level === 'players' && i === manual ? ' manual' : '') + (over === 'g' + i || over === 'p' + i ? ' drop' : '') +
       (pick !== undefined && to === pick ? ' pick' : '');
     const ring = c.helm && c.hp != null;   // a player: the ring round his helmet is his health (owner), in his colour, from the top clockwise
-    const style = c.col && !c.dim ? { borderColor: ring ? undefined : c.col, boxShadow: '0 0 10px ' + (c.glow || c.col + '66'), ...(ring ? { '--hp': (c.hp * 360).toFixed(1) + 'deg', '--hc': c.hp < 0.25 ? '#ff4a3a' : c.col } : {}) } : undefined;
+    const style = c.col && !c.dim ? { borderColor: ring ? undefined : c.col, boxShadow: '0 0 10px ' + (c.glow || c.col + '66'), ...(ring ? { '--hp': (c.hp * 360).toFixed(1) + 'deg', '--hc': c.col, '--fl': (0.12 + c.hp * 2.4).toFixed(2) + 's' } : {}) } : undefined;   // low: flashes red, faster toward 0 (0.72 s at a quarter, 0.12 s at none)
     let inner = null;
     if (c.gun) inner = h(GunIcon, { gun: c.gun });
-    else if (c.helm && c.col) inner = [h(HelmetIcon, { key: 'h', col: c.col, size: 35 }), ring ? h('i', { key: 'r', className: 'ahp' + (c.hp < 0.25 ? ' low' : '') }) : null];     // a player: his helmet (owner)
+    else if (c.helm && c.col) inner = [h(HelmetIcon, { key: 'h', col: c.col, size: 35 }), ring ? h('i', { key: 'r', className: 'ahp' }) : null, ring && c.hp < 0.25 ? h('i', { key: 'f', className: 'ahp ahpf' }) : null];     // a player: his helmet (owner)
     else if (c.icon) inner = h(PixIcon, { id: c.icon, size: 20, tint: level === 'exo' ? HUB_MACHINES.exo.hue : undefined });      // themed pixel icons, not emoji (owner)
     else if (c.glyph) inner = h('span', { className: 'anavg' }, c.glyph);
     else if (c.label) inner = h('span', { className: 'anavp', style: { background: c.col } }, c.label);
