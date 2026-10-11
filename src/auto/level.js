@@ -163,7 +163,7 @@ export function levelControl(S, id, st) {
   for (const r of S.runners) {
     if (r.id === id && !r.out) { r.ctl = st ? { active: st.active, nx: st.nx, ny: st.ny, mag: st.mag } : r.ctl || LEVEL_CTL_REST; continue; }
     if (!r.ctl) continue;
-    r.ctl = null; r.cvx = 0; r.retarget = 0;
+    r.ctl = null; r.cvx = 0; r.retarget = 0; r.ctlIdle = undefined;
     if (!r.ground) { r.mode = 'fly'; r.modeT = 0; }
   }
 }

@@ -61,7 +61,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   check('stick left: he walks (or saws) back, the scroll goes back (down)', sL.cvx < -10 && sL.scroll < sR.scroll - 30 && sL.pace < 0, { sR, sL });
   await page.mouse.move(px, py, { steps: 2 }); await page.mouse.up();
   await page.waitForTimeout(300);
-  await page.waitForTimeout(1200);
+  await page.waitForTimeout(1200 + 1000 * await page.evaluate(() => DEV.autoCtlWait));   // (v1.0.42) the stick rests autoCtlWait s first
   const sC = await st();
   const auto = await page.evaluate(() => !ctlOn(window.__autoScene.runners[0]) && !levelLead(window.__autoScene));
   check('the stick let go: still picked, but on the autopilot, the pilot\'s pace coming back', sC.ctl && auto && sC.pace > sL.pace + 0.5, { sL, sC });

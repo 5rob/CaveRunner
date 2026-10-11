@@ -110,7 +110,7 @@ export const TITLE_HOME = {
  *   nav: { F: any, fx: number, fy: number, t: number }, stepT?: number, sawS?: number, rst?: { t?: number }, rub?: string, rubWas?: boolean,
  *   hide?: boolean, out?: boolean, outT?: number, stand?: boolean, dealt?: number, shieldT?: number, fuel?: number, empty?: boolean, jetSt?: { cut: number, onT: number, start: boolean, gap?: number }, sputN?: number, dry?: boolean, shieldHit?: number, ghost?: { x: number, y: number, cd: number, fired: number } | null, clr?: { p: number, g: number } | null, clrT?: number,
  *   ctl?: RunnerCtl | null, ctlWas?: boolean, cvx?: number, jetIn?: { nx: number, ny: number } | null, jx?: number, jy?: number, smokeAcc?: number, smokeN?: number, rag?: import('../world/ragdoll.js').Ragdoll | null, lamp?: boolean,
- *   hang?: TProp | WebLine | null, hangGo?: number, swing?: number }} TRunner */
+ *   hang?: TProp | WebLine | null, hangGo?: number, swing?: number, ctlIdle?: number }} TRunner */
 /** a player steered by hand (CaveRunner Auto, feedback round 2: the selected player in a level): the pill stick's push
  * @typedef {{ active: boolean, nx: number, ny: number, mag: number }} RunnerCtl */
 // a fixed strip in place of the scrolling ring (CaveRunner Auto's hub, auto/hub.js): w columns, each cell's material from
@@ -1377,7 +1377,9 @@ export const JET_SINK = 110;
 // (bug round 2) is the picked player being steered right now (the stick pushed past the dead zone)? else he's on the autopilot
 /** @param {TRunner} r */
 // (hanging on a vine or a web line, auto/hang.js: he stays steered with the stick at rest, holding on)
-export const ctlOn = r => !!r.ctl && (r.ctl.active && r.ctl.mag > DEAD || !!r.hang);
+// (owner, v1.0.42) and stays steered till the stick has rested DEV.autoCtlWait s (ctlIdle, counted in ctlStep), so letting
+// go of the jet drops him rather than the autopilot flying him on up
+export const ctlOn = r => !!r.ctl && (r.ctl.active && r.ctl.mag > DEAD || !!r.hang || (r.ctlIdle ?? 1e9) < DEV.autoCtlWait);
 // (CaveRunner Auto, feedback round 2) the selected player, steered by the pill stick as the old game's left stick (the
 // hub's steering, auto/hub.js hubMove: walk, jet up, gravity; r.cvx his speed through the world, the screen's is that
 // less the scroll). A step up to 8 he takes; rock in the way he's pushing toward (or the scroll pushes him into) he saws
@@ -1388,6 +1390,7 @@ function ctlStep(S, r, st, dt) {
   r.cvx = r.cvx || 0;
   // (owner: the old game's hanging, auto/hang.js) a vine, chain, root, arch or web line in his hands and no jet: he hangs
   // on; web lines he touches slow him (tied)
+  r.ctlIdle = m > 0 ? 0 : (r.ctlIdle || 0) + dt;   // the stick's rest (ctlOn)
   r.hangGo = (r.hangGo || 0) - dt;
   const hold = hangFind(S.props, S.webs, r.x + PW / 2 + S.scroll, r.y, r.hangGo > 0), tied = hold.webMul;
   r.hang = hold.climb && !jet ? hold.climb : null;

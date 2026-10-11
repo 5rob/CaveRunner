@@ -681,8 +681,9 @@ DEV_META.push(
 DEV_GROUPS.push(['autofoes', 'Auto: enemies']);
 // the jetpack (art/titlescene.js jetStep, feedback round 2: the old game's flame and smoke) and a death (auto/death.js: the ragdoll,
 // the slow stop, Tap A, the helmet light, the blast, home)
-Object.assign(DEV_DEFAULTS, { autoMoveK: 0.55, autoJetTilt: 1, autoJetSmoke: 1, autoDeathStop: 1.5, autoTpBlink: 1, autoTpBoomWait: 0.6, autoTpBoomR: 60, autoFuelDrain: 1, autoFuelRegen: 1 });
+Object.assign(DEV_DEFAULTS, { autoMoveK: 0.55, autoJetTilt: 1, autoJetSmoke: 1, autoDeathStop: 1.5, autoTpBlink: 1, autoTpBoomWait: 0.6, autoTpBoomR: 60, autoFuelDrain: 1, autoFuelRegen: 1, autoCtlWait: 3 });
 DEV_META.push(
+  { k: 'autoCtlWait',    g: 'autodeath', label: 'Manual mode: seconds of the stick at rest before the autopilot takes him back', min: 0, max: 10, step: 0.25 },
   { k: 'autoMoveK',      g: 'autodeath', label: 'Hand-steered speed (× the old game’s walk, jet, their pushes; hub and steering a player; the hub’s followers too)', min: 0.2, max: 1.5, step: 0.05 },
   { k: 'autoJetTilt',    g: 'autodeath', label: 'Jet flame: the autopilot’s tilt with its speed across (at most)', min: 0, max: 1.5, step: 0.05 },
   { k: 'autoJetSmoke',   g: 'autodeath', label: 'Jet smoke (× the old game’s rate)', min: 0, max: 3, step: 0.05 },

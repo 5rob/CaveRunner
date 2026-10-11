@@ -9,6 +9,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
 const D = G.DEV;
 Object.assign(D, { autoFoeDmg: 0, autoWallMin: 0, autoWallMax: 0 });
 
+G.DEV.autoCtlWait = 0;   // the hand-back at once for the checks below; the wait (v1.0.42) is checked at the end
 const S = G.levelScene(200, 7, 2);
 const run = s => { for (let i = 0; i < s * 30; i++) G.titleStep(S, 1 / 30); };
 run(3);
@@ -70,6 +71,17 @@ r.out = true;
 G.levelControl(S, r.id, push(1, 0));
 check('a fallen player is not steered', !r.ctl);
 r.out = false;
+
+// (owner, v1.0.42) after the stick is let go he stays steered for DEV.autoCtlWait s (drops off the jet), then the autopilot
+G.DEV.autoCtlWait = 3;
+G.levelControl(S, r.id, push(0, -1));
+for (let i = 0; i < 15; i++) G.titleStep(S, 1 / 30);
+G.levelControl(S, r.id, { active: true, nx: 0, ny: 0, mag: 0 });
+const yLet = r.y, up = r.ground ? 0 : 1;
+for (let i = 0; i < 30; i++) { G.titleStep(S, 1 / 30); G.levelControl(S, r.id, null); }
+check('stick let go after jetting: still steered 1 s on, dropping (not flown up)', up && G.ctlOn(r) && r.y > yLet + 2, [up, yLet, r.y]);
+for (let i = 0; i < 70; i++) { G.titleStep(S, 1 / 30); G.levelControl(S, r.id, null); }
+check('… and back on the autopilot after 3 s of rest', !G.ctlOn(r), r.ctlIdle);
 
 console.log(fails ? `${fails} FAILED` : 'all ok');
 process.exit(fails ? 1 : 0);

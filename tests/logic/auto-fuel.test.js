@@ -66,8 +66,8 @@ const dt = 1 / 60;
   check('… down to the ground', r.ground);
   G.levelControl(S, r.id, { active: false, nx: 0, ny: 0, mag: 0 });
   const f0 = r.fuel;
-  for (let i = 0; i < 60 && r.ground; i++) G.titleStep(S, dt);
-  check('standing: it refills', r.fuel > f0 + 0.1, [f0, r.fuel]);
+  for (let i = 0; i < 60; i++) G.titleStep(S, dt);   // (v1.0.42: still steered at rest, he settles onto the floor a frame later)
+  check('standing: it refills', r.fuel > f0 + 0.1, [f0, r.fuel, r.ground]);
 }
 // ---- the autopilot gets over a low wall (blocks.js 'brickwall', auto-blocked's case) ----
 function wall(tank0) {

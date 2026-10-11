@@ -5,6 +5,12 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.42 — CaveRunner Auto: manual mode holds 3 s after the stick is let go (branch `autobattler`)
+Released 2026-10-11 on the branch. PM alone (owner's ask: back off the jet and have him drop, not flown up by the autopilot).
+- `ctlOn` stays true till the stick has rested `DEV.autoCtlWait` s (3; Dev "Auto: death & feel"): `r.ctlIdle`, counted
+  in `ctlStep`, cleared when he's let go. Tests: `auto-control` checks the drop and the hand-back; `auto-fuel` and
+  browser `auto-steer` wait it out.
+
 ## v1.0.41 — CaveRunner Auto: hanging on vines and web lines (branch `autobattler`)
 Released 2026-10-11 on the branch (owner OK'd `tools/hangshots.js`). Agent ~30 min (worktree `cr-hang`, past its box).
 - The owner: "port the ability to hang on vines and webs, same mechanics". The hand-steered player only (the autopilot
