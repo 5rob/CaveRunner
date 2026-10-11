@@ -5,6 +5,13 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.45 — CaveRunner Auto: the gold stream steps up to bigger nuggets (branch `autobattler`)
+Released 2026-10-11 on the branch. PM alone (owner's ask: "a way of getting the gold out faster").
+- A held at a machine, gold: after `autoStreamMedT` s at full speed the stream throws medium nuggets worth `autoStreamMedN`
+  (25), then after `autoStreamBigT` s big ones worth `autoStreamBigN` (250) doubling every `autoStreamGrow` s; each no more
+  than the bag holds and the machine still wants (`payout.js hubOwed`, gold on its way counted). `hubPayOne` takes a worth
+  and a size (`HubThrow.sz`, `throwR`). Browser `auto-throw` checks it.
+
 ## v1.0.44 — CaveRunner Auto: maps and their levels, the map machine, health bars, the journey box (branch `autobattler`)
 Released 2026-10-11 on the branch. PM (health bars, top bar) + agent `cr-maps` (maps, ~12 min).
 - Maps (`auto/maps.js`): the THEMES in order, Mossy Caves free. Each map keeps its own level: the end teleporter

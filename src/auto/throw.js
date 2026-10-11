@@ -18,13 +18,14 @@ import { TCELL } from '../art/titlescene.js';
 import { HUB_W, HUB_WALL, hubState, hubStopX } from './hub.js';
 
 // a thrown thing's radius (world units): one gold, the game's smallest nugget; a gem, the game's crystal
-/** @param {{ kind: string, lump?: boolean }} g */
-export const throwR = g => (g.kind === 'gold' ? (g.lump ? NUGGETS[0].r : NUGGETS[2].r) : CRYSTAL_R);
+// (owner, v1.0.45) a streamed gold piece worth more is the game's medium (sz 1) or big (sz 0) nugget
+/** @param {{ kind: string, lump?: boolean, sz?: number }} g */
+export const throwR = g => (g.kind === 'gold' ? (g.sz != null ? NUGGETS[g.sz].r : g.lump ? NUGGETS[0].r : NUGGETS[2].r) : CRYSTAL_R);
 
 /** @typedef {'gold' | 'red' | 'green'} Cash */
 /** @typedef {{ x: number, y: number, vx: number, vy: number, kind: Cash, n: number, t: number, a: number,
  *   held?: boolean, lump?: boolean, home?: boolean, pull?: import('./hub.js').HubStopId, ground?: number, landed?: boolean, fly?: boolean,
- *   to?: import('./hub.js').HubStopId, rest?: number }} HubThrow */
+ *   to?: import('./hub.js').HubStopId, rest?: number, sz?: number }} HubThrow */
 
 // what each machine takes
 /** @type {Record<string, Cash>} */
@@ -112,13 +113,14 @@ export function payVel(face, dx, dy) {
   const sp = Math.min(d, PAY_MAX) * DEV.autoPayK;
   return { vx: dx / d * sp, vy: dy / d * sp };
 }
-/** one out of player 1's chest at (vx, vy), paid to machine `to` @param {import('../art/titlescene.js').TitleScene} S @param {Cash} kind @param {number} vx @param {number} vy @param {import('./hub.js').HubStopId} [to] */
-export function hubPayOne(S, kind, vx, vy, to) {
+/** one out of player 1's chest at (vx, vy), paid to machine `to` @param {import('../art/titlescene.js').TitleScene} S @param {Cash} kind @param {number} vx @param {number} vy @param {import('./hub.js').HubStopId} [to] @param {number} [n] its worth (the stream's bigger nuggets) @param {number} [sz] their size (NUGGETS index) */
+export function hubPayOne(S, kind, vx, vy, to, n = 1, sz) {
   const L = S.runners[0];
   if (!L) return null;
   S.snd.push({ k: 'coin', x: L.x + PW / 2, y: L.y + PH * 0.4 });
-  const g = hubThrow(S, kind, 1, L.x + PW / 2, L.y + PH * 0.4, vx, vy);
+  const g = hubThrow(S, kind, n, L.x + PW / 2, L.y + PH * 0.4, vx, vy);
   if (g && to) g.to = to;
+  if (g && n > 1) { g.lump = false; g.sz = sz ?? 0; }
   return g;
 }
 

@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v1.0.44</title>
-<!-- VERSION = 'v1000044' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v1.0.45</title>
+<!-- VERSION = 'v1000045' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -1090,7 +1090,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v1.0.44';</script>
+<script>const VERSION = 'v1.0.45';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -2111,7 +2111,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     autoPayK: 2,
     autoStreamRate0: 2,
     autoStreamRate1: 14,
-    autoStreamRamp: 1.5
+    autoStreamRamp: 1.5,
+    autoStreamMedT: 1,
+    autoStreamMedN: 25,
+    autoStreamBigT: 1,
+    autoStreamBigN: 250,
+    autoStreamGrow: 1
   });
   DEV_META.push(
     { k: "autoThrowPull", g: "autothrow", label: "A machine pulls in what it takes within (world units of its coin slot)", min: 5, max: 200, step: 1 },
@@ -2124,7 +2129,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "autoPayK", g: "autothrow", label: "Pay with A: throw speed (world units / s) per px dragged from the press", min: 0.5, max: 12, step: 0.1 },
     { k: "autoStreamRate0", g: "autothrow", label: "Stream: nuggets a second at first", min: 0.5, max: 20, step: 0.5 },
     { k: "autoStreamRate1", g: "autothrow", label: "Stream: nuggets a second, ramped up", min: 1, max: 60, step: 1 },
-    { k: "autoStreamRamp", g: "autothrow", label: "Stream: ramps up over (s)", min: 0.1, max: 6, step: 0.1 }
+    { k: "autoStreamRamp", g: "autothrow", label: "Stream: ramps up over (s)", min: 0.1, max: 6, step: 0.1 },
+    { k: "autoStreamMedT", g: "autothrow", label: "Gold stream: at full speed this long, then medium nuggets (s)", min: 0, max: 6, step: 0.1 },
+    { k: "autoStreamMedN", g: "autothrow", label: "Gold stream: a medium nugget is worth", min: 2, max: 500, step: 1 },
+    { k: "autoStreamBigT", g: "autothrow", label: "Gold stream: medium this long, then big nuggets (s)", min: 0, max: 6, step: 0.1 },
+    { k: "autoStreamBigN", g: "autothrow", label: "Gold stream: a big nugget is worth at first", min: 10, max: 1e4, step: 10 },
+    { k: "autoStreamGrow", g: "autothrow", label: "Gold stream: big nuggets double in worth every (s)", min: 0.2, max: 10, step: 0.1 }
   );
   DEV_GROUPS.push(["autothrow", "Auto: throw"]);
   DEV_TABS.splice(DEV_TABS.length - 1, 0, ["auto", "Auto", ["auto", "autohub", "automaps", "autolevel", "autoblocks", "autoguns", "autoperks", "autofoes", "autodeath", "autoloot", "autochests", "autobag", "autothrow"]]);
@@ -15364,7 +15374,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
 
   // src/auto/throw.js
-  var throwR = (g) => g.kind === "gold" ? g.lump ? NUGGETS[0].r : NUGGETS[2].r : CRYSTAL_R;
+  var throwR = (g) => g.kind === "gold" ? g.sz != null ? NUGGETS[g.sz].r : g.lump ? NUGGETS[0].r : NUGGETS[2].r : CRYSTAL_R;
   var THROW_TAKES = { gun: "gold", exo: "gold", mod: "red", perk: "green", map: "gold" };
   var MACHINES = ["gun", "exo", "mod", "perk", "map"];
   var MOUTH_UP = 30;
@@ -15425,12 +15435,16 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const sp = Math.min(d, PAY_MAX) * DEV.autoPayK;
     return { vx: dx / d * sp, vy: dy / d * sp };
   }
-  function hubPayOne(S2, kind, vx, vy, to) {
+  function hubPayOne(S2, kind, vx, vy, to, n = 1, sz) {
     const L = S2.runners[0];
     if (!L) return null;
     S2.snd.push({ k: "coin", x: L.x + PW / 2, y: L.y + PH * 0.4 });
-    const g = hubThrow(S2, kind, 1, L.x + PW / 2, L.y + PH * 0.4, vx, vy);
+    const g = hubThrow(S2, kind, n, L.x + PW / 2, L.y + PH * 0.4, vx, vy);
     if (g && to) g.to = to;
+    if (g && n > 1) {
+      g.lump = false;
+      g.sz = sz ?? 0;
+    }
     return g;
   }
   function stepThrown(S2, H, dt) {
@@ -15829,6 +15843,22 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var PAY_IDS = ["gun", "exo", "mod", "perk"];
   var SHAKE_F0 = 3, SHAKE_F1 = 30;
   var payPhase = (t) => SHAKE_F0 * t + SHAKE_F1 * PAY_CYCLE * Math.pow(Math.min(1, t / PAY_CYCLE), 3) / 3;
+  function hubOwed(S2, id) {
+    const H = hubState(S2);
+    if (!H) return Infinity;
+    let p;
+    if (id === "map") {
+      const run = H.run, i = run ? nextLocked(run) : -1;
+      if (!run || i < 0) return 0;
+      p = mapPrice(i) - (mapsOf(run)[i].paid || 0) - (H.paid.map || 0);
+    } else {
+      const m = machinePay({ paid: H.paid }, id, H.tier);
+      if (!m.price) return Infinity;
+      p = m.price - m.left;
+    }
+    for (const g of H.thrown) if (g.to === id || g.pull === id) p -= g.n;
+    return Math.max(0, p);
+  }
   function machinePay(run, id, tier) {
     const p = hubPrice(id, tier), paid = run.paid && run.paid[id] || 0;
     if (!p || p.n <= 0) return { n: 0, left: paid, price: 0 };
@@ -32820,12 +32850,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
       const kind = THROW_TAKES[at], id = e.pointerId, x0 = e.clientX, y0 = e.clientY;
       let dx = 0, dy = 0, stream = false, acc = 0, t0 = 0, last = performance.now();
-      const one = () => {
-        if (!spend(run, kind, 1)) return false;
+      const one = (want = 1, sz) => {
+        const n = Math.max(1, Math.min(want, bagCount(run, kind), hubOwed(S2, at)));
+        if (!spend(run, kind, n)) return false;
         const L = S2.runners[0], v = payVel(L ? L.face : 1, dx, dy);
-        hubPayOne(S2, kind, v.vx, v.vy, at);
+        hubPayOne(S2, kind, v.vx, v.vy, at, n, n > 1 ? sz : void 0);
         saveAutoRun(run);
-        setV((n) => n + 1);
+        setV((n2) => n2 + 1);
         return true;
       };
       const hold = setTimeout(() => {
@@ -32839,9 +32870,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         if (!stream) return;
         const ramp = Math.min(1, (now - t0) / 1e3 / DEV.autoStreamRamp);
         acc += (DEV.autoStreamRate0 + (DEV.autoStreamRate1 - DEV.autoStreamRate0) * ramp) * dt;
+        const top = (now - t0) / 1e3 - DEV.autoStreamRamp, big = top - DEV.autoStreamMedT - DEV.autoStreamBigT;
+        const want = kind !== "gold" || top < DEV.autoStreamMedT ? 1 : big < 0 ? DEV.autoStreamMedN : DEV.autoStreamBigN * Math.pow(2, big / DEV.autoStreamGrow);
         while (acc >= 1) {
           acc -= 1;
-          if (!one()) {
+          if (!one(Math.round(want), big < 0 ? 1 : 0)) {
             acc = 0;
             break;
           }

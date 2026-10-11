@@ -735,7 +735,8 @@ DEV_META.push(
 DEV_GROUPS.push(['autobag', 'Auto: bag']);
 // stage 10a: throwing gold and gems into the hub's machines (auto/throw.js, ui/auto/AutoScreen.js)
 Object.assign(DEV_DEFAULTS, { autoThrowPull: 45, autoThrowSuck: 500, autoThrowBack: 3, autoPayReach: 30, autoPickReach: 22, autoPickMin: 1, autoPayHold: 300, autoPayK: 2,
-  autoStreamRate0: 2, autoStreamRate1: 14, autoStreamRamp: 1.5 });
+  autoStreamRate0: 2, autoStreamRate1: 14, autoStreamRamp: 1.5,
+  autoStreamMedT: 1, autoStreamMedN: 25, autoStreamBigT: 1, autoStreamBigN: 250, autoStreamGrow: 1 });
 DEV_META.push(
   { k: 'autoThrowPull',   g: 'autothrow', label: 'A machine pulls in what it takes within (world units of its coin slot)', min: 5, max: 200, step: 1 },
   { k: 'autoThrowSuck',   g: 'autothrow', label: 'Its pull’s strength', min: 50, max: 3000, step: 10 },
@@ -747,7 +748,12 @@ DEV_META.push(
   { k: 'autoPayK',        g: 'autothrow', label: 'Pay with A: throw speed (world units / s) per px dragged from the press', min: 0.5, max: 12, step: 0.1 },
   { k: 'autoStreamRate0', g: 'autothrow', label: 'Stream: nuggets a second at first', min: 0.5, max: 20, step: 0.5 },
   { k: 'autoStreamRate1', g: 'autothrow', label: 'Stream: nuggets a second, ramped up', min: 1, max: 60, step: 1 },
-  { k: 'autoStreamRamp',  g: 'autothrow', label: 'Stream: ramps up over (s)', min: 0.1, max: 6, step: 0.1 });
+  { k: 'autoStreamRamp',  g: 'autothrow', label: 'Stream: ramps up over (s)', min: 0.1, max: 6, step: 0.1 },
+  { k: 'autoStreamMedT',  g: 'autothrow', label: 'Gold stream: at full speed this long, then medium nuggets (s)', min: 0, max: 6, step: 0.1 },
+  { k: 'autoStreamMedN',  g: 'autothrow', label: 'Gold stream: a medium nugget is worth', min: 2, max: 500, step: 1 },
+  { k: 'autoStreamBigT',  g: 'autothrow', label: 'Gold stream: medium this long, then big nuggets (s)', min: 0, max: 6, step: 0.1 },
+  { k: 'autoStreamBigN',  g: 'autothrow', label: 'Gold stream: a big nugget is worth at first', min: 10, max: 10000, step: 10 },
+  { k: 'autoStreamGrow',  g: 'autothrow', label: 'Gold stream: big nuggets double in worth every (s)', min: 0.2, max: 10, step: 0.1 });
 DEV_GROUPS.push(['autothrow', 'Auto: throw']);
 // before the last tab: that one also takes any group in no tab
 DEV_TABS.splice(DEV_TABS.length - 1, 0, ['auto', 'Auto', ['auto', 'autohub', 'automaps', 'autolevel', 'autoblocks', 'autoguns', 'autoperks', 'autofoes', 'autodeath', 'autoloot', 'autochests', 'autobag', 'autothrow']]);

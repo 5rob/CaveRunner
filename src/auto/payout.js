@@ -12,7 +12,8 @@ import { PERKS } from '../data/perks.js';
 import { shopGun } from '../spells/gunshop.js';
 import { crystalRoll } from '../spells/collection.js';
 import { EXO_CATS, exoMod } from './run.js';
-import { hubPrice, hubStopX } from './hub.js';
+import { hubPrice, hubState, hubStopX } from './hub.js';
+import { mapPrice, mapsOf, nextLocked } from './maps.js';
 import { lootCol } from './loot.js';
 
 export const PAY_CYCLE = 1.6;        // a paid machine shakes this long before it spits the item out (s)
@@ -25,6 +26,25 @@ const SHAKE_F0 = 3, SHAKE_F1 = 30;   // the shake's frequency (Hz): F0 at the st
 /** @param {number} t */
 export const payPhase = t => SHAKE_F0 * t + SHAKE_F1 * PAY_CYCLE * Math.pow(Math.min(1, t / PAY_CYCLE), 3) / 3;
 
+// (owner, v1.0.45) what machine id still wants before its next payout, gold already on its way to it counted: the A
+// stream's bigger nuggets stop at it (none wanted: 0; no price: Infinity)
+/** @param {import('../art/titlescene.js').TitleScene} S @param {string} id @returns {number} */
+export function hubOwed(S, id) {
+  const H = hubState(S);
+  if (!H) return Infinity;
+  let p;
+  if (id === 'map') {
+    const run = H.run, i = run ? nextLocked(run) : -1;
+    if (!run || i < 0) return 0;
+    p = mapPrice(i) - (mapsOf(run)[i].paid || 0) - (H.paid.map || 0);
+  } else {
+    const m = machinePay({ paid: H.paid }, id, H.tier);
+    if (!m.price) return Infinity;
+    p = m.price - m.left;
+  }
+  for (const g of H.thrown) if (g.to === id || g.pull === id) p -= g.n;
+  return Math.max(0, p);
+}
 // what machine id owes at a tier: n items (whole prices paid) and the change left (paid − price × n)
 /** @param {{ paid?: Record<string, number> }} run @param {string} id @param {number} tier @returns {{ n: number, left: number, price: number }} */
 export function machinePay(run, id, tier) {

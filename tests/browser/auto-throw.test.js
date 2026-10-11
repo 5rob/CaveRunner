@@ -125,6 +125,26 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     check('the change (7) stays in run.paid.gun', s.paid === 7, s);
     await ctx.close();
   }
+  // (owner, v1.0.45) held at full speed the gold stream steps up to medium, then big nuggets worth more, none past what
+  // the machine still wants: a big stack goes in fast
+  {
+    const { ctx, page } = await open(20000, 0);
+    await page.evaluate(() => Object.assign(DEV, { autoPayHold: 100, autoStreamRate0: 14, autoStreamRate1: 14, autoStreamRamp: 0.1, autoStreamMedT: 0.3, autoStreamBigT: 0.3, autoStreamGrow: 0.5 }));
+    await stand(page, 'gun');
+    const a = await btnA(page), owed0 = await page.evaluate(() => hubOwed(window.__title.S, 'gun'));
+    await page.mouse.move(a.x, a.y); await page.mouse.down();
+    let seen = { med: 0, big: 0, over: 0, maxN: 0 };
+    for (let i = 0; i < 40; i++) {
+      await page.waitForTimeout(100);
+      seen = await page.evaluate(o => { const H = hubState(window.__title.S); for (const g of H.thrown) { if (g.sz === 1) o.med++; if (g.sz === 0 && !g.lump) o.big++; o.maxN = Math.max(o.maxN, g.n); } return o; }, seen);
+    }
+    await page.mouse.up();
+    const gold = await page.evaluate(() => bagCount(loadAutoRun(), 'gold'));
+    check('held: medium nuggets, then big ones worth more than one gold', seen.med > 0 && seen.big > 0 && seen.maxN > 25, seen);
+    check('…none worth more than the gun machine still wanted', seen.maxN <= owed0, { maxN: seen.maxN, owed0 });
+    check('…so 4 s pays far more than 14 a second would', 20000 - gold > 14 * 4 * 3, { left: gold });
+    await ctx.close();
+  }
   // a partial payment survives a reload
   {
     const { ctx, page } = await open(20, 0);

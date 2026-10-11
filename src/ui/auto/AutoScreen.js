@@ -22,6 +22,7 @@ import { chestOpen } from '../../auto/chests.js';
 import { HUB_W, hubExit, hubLeft, hubMapA, hubMapPick, hubScene, hubState, hubStick, hubStopX } from '../../auto/hub.js';
 import { MAP_NAMES, mapLabel, mapsOf } from '../../auto/maps.js';
 import { THROW_TAKES, hubPayAt, hubPayOne, payVel } from '../../auto/throw.js';
+import { hubOwed } from '../../auto/payout.js';
 import { levelClearedAge, levelControl, levelDeathPrompt, levelDone, levelHold, levelLost, levelPicked, levelScene, levelState, levelTeleportHome } from '../../auto/level.js';
 import { clearedText } from '../../art/cleared.js';
 import { drawHint } from '../../game/render/hubdraw.js';
@@ -31,7 +32,7 @@ import { MODS, famCol } from '../../spells/mods.js';
 import { HUB_MACHINES } from '../../auto/hub.js';
 import { PERKS, STAT_PERKS } from '../../data/perks.js';
 import { BAG_SLOTS, EXO_STATS, MAX_PLAYERS, addPlayer, bagAdd, bagSlotOf, fitExo, fitGun, fitMod, fitPerk, healRun, levelCleared, levelFailed, levelSeed, kitMissing, newRun, bagMove, rowMove, rowToBag, gunToBag, gunMove, unfitGun,
-  scrapAt, setActive, spend, unfitExo, unfitMod, unfitPerk } from '../../auto/run.js';
+  bagCount, scrapAt, setActive, spend, unfitExo, unfitMod, unfitPerk } from '../../auto/run.js';
 import { loadAutoRun, saveAutoRun } from '../../auto/save.js';
 import { EXO_NAMES, arcPick, gunArc, navBack, navOpen, navPath, navPick, navRow, navStart, hpFrac } from '../../auto/nav.js';
 import { meterTail, nextSpan, spanLabel } from '../../auto/meters.js';
@@ -271,10 +272,14 @@ export function AutoScreen() {
     if (at === 'map') { const a = hubMapA(S); if (a === 'pick') { if (hubMapPick(S)) { SFX.fx('open'); saveAutoRun(run); setV(n => n + 1); } return; } if (a === 'no') { SFX.ui('tap'); return; } }
     const kind = THROW_TAKES[at], id = e.pointerId, x0 = e.clientX, y0 = e.clientY;
     let dx = 0, dy = 0, stream = false, acc = 0, t0 = 0, last = performance.now();
-    const one = () => {
-      if (!spend(run, kind, 1)) return false;
+    // (owner, v1.0.45) gold held at full speed steps up: medium nuggets worth autoStreamMedN, then big ones from
+    // autoStreamBigN doubling every autoStreamGrow s; each no more than the bag has and the machine still wants
+    /** @param {number} [want] @param {number} [sz] */
+    const one = (want = 1, sz) => {
+      const n = Math.max(1, Math.min(want, bagCount(run, kind), hubOwed(S, at)));
+      if (!spend(run, kind, n)) return false;
       const L = S.runners[0], v = payVel(L ? L.face : 1, dx, dy);
-      hubPayOne(S, kind, v.vx, v.vy, at);
+      hubPayOne(S, kind, v.vx, v.vy, at, n, n > 1 ? sz : undefined);
       saveAutoRun(run); setV(n => n + 1);
       return true;
     };
@@ -285,7 +290,9 @@ export function AutoScreen() {
       if (!stream) return;
       const ramp = Math.min(1, (now - t0) / 1000 / DEV.autoStreamRamp);
       acc += (DEV.autoStreamRate0 + (DEV.autoStreamRate1 - DEV.autoStreamRate0) * ramp) * dt;
-      while (acc >= 1) { acc -= 1; if (!one()) { acc = 0; break; } }
+      const top = (now - t0) / 1000 - DEV.autoStreamRamp, big = top - DEV.autoStreamMedT - DEV.autoStreamBigT;
+      const want = kind !== 'gold' || top < DEV.autoStreamMedT ? 1 : big < 0 ? DEV.autoStreamMedN : DEV.autoStreamBigN * Math.pow(2, big / DEV.autoStreamGrow);
+      while (acc >= 1) { acc -= 1; if (!one(Math.round(want), big < 0 ? 1 : 0)) { acc = 0; break; } }
     }, 33);
     const finish = () => { clearTimeout(hold); clearInterval(tick); removeEventListener('pointermove', move); removeEventListener('pointerup', up); removeEventListener('pointercancel', up); };
     /** @param {any} ev */
