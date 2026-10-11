@@ -8,7 +8,7 @@ release loop, testing), then the README of the `src/` folder you're working in.
 Planned with the owner (brief + quiz answers + 16 stages + the PM's kick-start prompt, all in `AUTOBATTLER.md`;
 mock-up `docs/autobattler-mockup.png`). Progress: AUTOBATTLER.md's Log. `main` keeps the old game.
 
-**Where it stands (2026-10-11, v1.0.36 live at /auto/; v1.0.35: the item audit part 1 — bins, triggers common, Wand Refresh and Glass Cannon fixed, colour sweep; v1.0.36: pickups as bag tiles flying into the bag; v1.0.37: Shield, Pinpointer, Ghost) (other perks still do nothing in Auto: only max health, Glass Cannon's damage and these three): all stages 0–14 built; feedback rounds 1 and 2 released.**
+**Where it stands (2026-10-11, v1.0.38 live at /auto/; v1.0.35: the item audit part 1 — bins, triggers common, Wand Refresh and Glass Cannon fixed, colour sweep; v1.0.36: pickups as bag tiles flying into the bag; v1.0.37: Shield, Pinpointer, Ghost; v1.0.38: jetpack fuel, the old cough, the meter on the jetpack, health rings round the helmets) (other perks still do nothing in Auto: only max health, Glass Cannon's damage and these three): all stages 0–14 built; feedback rounds 1 and 2 released.**
 
 **Next session (bug fixing, 2026-10-11):** the owner is playing v1.0.32 on the phone and sends notes; the PM fixes them
 in small rounds itself (no agents unless a note is a big new feature). Known rough edges, not yet reported by the owner:
@@ -16,13 +16,13 @@ the view doesn't follow a hand-steered player inside the boss arena; ~~followers
 up~~ (fixed v1.0.34); after a wipe the camera doesn't move onto the last ragdoll by itself. The owner may paste a Dev-panel report
 ("Copy Dev settings", panel via ⏸ held 5 s then ⚙️): it becomes the new defaults (`src/dev/knobs.js`). Leftover worktree
 folders `../cr-hub`, `../cr-death`, `../cr-roam`, `../oldmain` can't be deleted (Permission denied): harmless, ignore.
-Known flake: browser `auto-steer` "stick right… the scroll follows" (timing: re-run alone). Screenshot tools for the owner live in `tools/*shots.js` (e.g. `devshots`, `roamshots`, `hubshots`, `vendshots`).
+Known flake: browser `auto-steer` "stick right… the scroll follows" (timing: fails about one run in two, on v1.0.37 too; re-run alone). Screenshot tools for the owner live in `tools/*shots.js` (e.g. `devshots`, `roamshots`, `hubshots`, `vendshots`).
 
 **The item audit is back** (owner's notes, 2026-10-11: `docs/auto-item-audit-notes.txt`, each line marked done or which
 stage). v1.0.35 did the small part. **Next, one agent stage at a time** (worktree, AUTOBATTLER.md section 8's limits):
 ~~(1) machine items as bag tiles flying into the bag~~ (done v1.0.36);
-~~(2) perks: Shield, Pinpointer, Ghost~~ (done v1.0.37); (3) jetpack fuel for auto and
-manual movement; (4)-(5) the shot looks in two halves (the notes' [stage: shots]: missile homing, fire spreading, etc.).
+~~(2) perks: Shield, Pinpointer, Ghost~~ (done v1.0.37); ~~(3) jetpack fuel~~ (done v1.0.38, plus health rings);
+**next: (4)-(5)** the shot looks in two halves (the notes' [stage: shots]: missile homing, fire spreading, etc.).
 Each with screenshots for the owner's OK before release.
 
 **Was waiting on the owner: the item audit** (`docs/auto-item-audit.txt` and the page `docs/auto-item-audit.html`, published at https://claude.ai/artifact/Mh3LkWFHfS2VhKs9R5d4zX: notes and a bin per item, "Copy all edited module notes" gives their edits as text; both made by `node tools/itemaudit.js docs/auto-item-audit.txt docs/auto-item-audit.html` from `tools/itemaudit.html`): every mod, perk and exo mod, works now / could / wouldn't. Most perks do nothing in Auto yet (only max health); the owner will send notes for an overhaul (likely an agent-sized stage: perk effects + a unique look on the player for each, Permanent Shield first: a light-blue radial glow brighter outside, flashing off on a hit, back when ready). Bug round 2 (v1.0.34): manual mode semi-automatic (steered only while the stick is pushed; `ctlOn`), the crosshair on

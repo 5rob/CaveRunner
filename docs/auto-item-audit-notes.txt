@@ -67,7 +67,7 @@ NOTES (68):
 - perk:ghost "Angry Ghost": Needs nerfing. (it does nothing in Auto yet: build it, nerfed)
 - perk:shield "Permanent Shield": Ensure it looks good. (earlier: a light-blue radial glow, brighter outside, flashing off on a hit, back when ready)
 - perk:pinpoint "Pinpointer": Just adds a red laser pointer to where the character happens to be aiming. Purely aesthetic perk.
-[stage: jetpack]:
+[done v1.0.38]:
 - exo:jet "Jetpack": Auto and manual player movement needs to adhere to jetpack fuel levels and recharge limits.
 [later] — keep as they are (most not wired into Auto yet: GUN_TODO in src/art/scenegun.js):
 - mod:knock, damper, crit, spiral, follow, cold, battery, boom, brim, crystal, dormant, stillc, shieldc, vigour, storm,

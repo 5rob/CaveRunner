@@ -5,6 +5,19 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.38 — CaveRunner Auto: jetpack fuel, the old cough, health rings (branch `autobattler`)
+Released 2026-10-11 on the branch (owner OK'd `tools/fuelshots.js`, `tools/hpringshots.js`). Agent ~15 min (worktree `cr-fuel`) + PM.
+- Jetpack fuel in a level (exo Jetpack: a longer tank, a faster refill): jetting drains, the ground refills, dry = no
+  thrust till it's back to a restart line; hand-steered too. The autopilot waits at a wall to refill (`S.fuelWait`).
+  Hub and title keep a bottomless tank. `auto/fuel.js`; knobs `autoFuelDrain` / `autoFuelRegen`.
+- The cough is the old game's own: `SPUTTER_FUEL` / `sputterStep` moved to `core/util.js` (player.js re-exports);
+  near empty the jet cuts out, a dip, grey puffs, the sputter sound; running dry sputters too.
+- The fuel meter is a strip down the back of the jetpack (`drawRunner`'s `gauge`), shown only when not full: yellow,
+  orange under a quarter, red blinking when dry. The bar over the head is gone.
+- Health rings: each helmet in the player row is ringed by that player's health, his colour, clockwise from the top
+  (`nav.js hpFrac`, `.ahp`); under a quarter it flashes red (`.ahpf`), faster toward 0 (`--fl`).
+- Tests: new `auto-fuel`; `auto-nav` checks `hpFrac`; `auto-perks` pins the starter shot (was flaky).
+
 ## v1.0.37 — CaveRunner Auto: Permanent Shield, Pinpointer, Angry Ghost (branch `autobattler`)
 Released 2026-10-11 on the branch (owner OK'd `tools/perkshots.js`). Agent ~9 min (worktree `cr-perks`).
 - Permanent Shield: soaks a whole hit (`levelHurt`), back after 2.5 s; a light-blue glow brightest at the rim, a flash
