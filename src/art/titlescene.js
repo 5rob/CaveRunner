@@ -31,6 +31,7 @@ import { GUN_HELD, gunMuzzle } from './sprites.js';
 import { GUN_ART } from './gunart.js';
 import { gunPull, gunTick, perkDmg, planShots, shotsOf } from './scenegun.js';
 import { teamClearer } from '../auto/clear.js';
+import { FUEL_TAKEOFF, fuelCan, fuelForClimb, fuelTick } from '../auto/fuel.js';
 import { ghostHome, ghostTarget, perkOn, shieldTick } from '../auto/perks.js';
 
 export const TITLE_VW = 220;          // world units across the screen
@@ -105,7 +106,7 @@ export const TITLE_HOME = {
  *   dig: number, clearT: number, keep: TKit | null, dx: number, dy: number, digY: number, sawT: number, switches: number[],
  *   bursty: number, burst: boolean, jet: boolean, jetT: number, jetCd: number, pace: number, spd: number,
  *   nav: { F: any, fx: number, fy: number, t: number }, stepT?: number, sawS?: number, rst?: { t?: number }, rub?: string, rubWas?: boolean,
- *   hide?: boolean, out?: boolean, outT?: number, stand?: boolean, dealt?: number, shieldT?: number, shieldHit?: number, ghost?: { x: number, y: number, cd: number, fired: number } | null, clr?: { p: number, g: number } | null, clrT?: number,
+ *   hide?: boolean, out?: boolean, outT?: number, stand?: boolean, dealt?: number, shieldT?: number, fuel?: number, empty?: boolean, sputT?: number, sputGap?: number, sputN?: number, shieldHit?: number, ghost?: { x: number, y: number, cd: number, fired: number } | null, clr?: { p: number, g: number } | null, clrT?: number,
  *   ctl?: RunnerCtl | null, ctlWas?: boolean, cvx?: number, jetIn?: { nx: number, ny: number } | null, jx?: number, jy?: number, smokeAcc?: number, smokeN?: number, rag?: import('../world/ragdoll.js').Ragdoll | null, lamp?: boolean }} TRunner */
 /** a player steered by hand (CaveRunner Auto, feedback round 2: the selected player in a level): the pill stick's push
  * @typedef {{ active: boolean, nx: number, ny: number, mag: number }} RunnerCtl */
@@ -133,7 +134,7 @@ export const TITLE_HOME = {
  *   fire: TFire[], dirty: number[][], dirtyAll: boolean, carved: number, burnt: number, swaps: number, groundT: number, flyT: number, kinds: Record<string, number>,
  *   webs: WebLine[], cut: number, lineT: number, silk: { x: number, y: number, ax: number, ay: number, vx: number, vy: number, life: number }[],
  *   nav: { F: any, fx: number, fy: number, t: number }, fireAcc: number, fireN: number, burning: Set<number>, gotN: number, pops: number, lampsPopped: number, kitNames: Set<string>,
- *   digT: number, digs: number, digWhy: Record<string, number>, still?: boolean, zp: TitlePlan, snd: TSnd[], hub?: TitleHub, lvl?: TitleLevel, pace?: number, team?: RunPlayer[], blocked?: number, blockedKind?: string, tier?: number, loot?: TLoot[],
+ *   digT: number, digs: number, digWhy: Record<string, number>, still?: boolean, zp: TitlePlan, snd: TSnd[], hub?: TitleHub, lvl?: TitleLevel, pace?: number, team?: RunPlayer[], blocked?: number, blockedKind?: string, fuelWait?: number, tier?: number, loot?: TLoot[],
  *   onTake?: (it: BagItem, x: number, y: number) => void }} TitleScene */
 // a finite level in the scrolling ring (CaveRunner Auto, auto/level.js levelScene): zp its plan (made whole up front); step runs
 // after titleStep's own; data is the level's own state. S.pace (0..) scales the scroll (auto/pilot.js)
@@ -141,7 +142,7 @@ export const TITLE_HOME = {
 /** @typedef {{ zp: TitlePlan, step?: (S: TitleScene, dt: number) => void, data?: any, hurt?: (S: TitleScene, i: number, dmg: number) => void,
  *   loot?: (S: TitleScene, f: Enemy) => BagItem[], fits?: (S: TitleScene, it: BagItem) => boolean, take?: (S: TitleScene, it: BagItem) => boolean, lootCol?: (it: BagItem) => string,
  *   blockCell?: (B: import('../auto/blocked.js').ZoneBlock, wx: number, y: number, cy: number, fy: number, cur: number) => number,
- *   blockCol?: (S: TitleScene, B: import('../auto/blocked.js').ZoneBlock, c: number, wx: number, cy: number, fy: number) => void, blockKind?: (S: TitleScene, wx: number) => string, free?: (S: TitleScene, r?: TRunner) => boolean, spawn?: (S: TitleScene) => { gap: number, cap: number } }} TitleLevel */
+ *   blockCol?: (S: TitleScene, B: import('../auto/blocked.js').ZoneBlock, c: number, wx: number, cy: number, fy: number) => void, blockKind?: (S: TitleScene, wx: number) => string, free?: (S: TitleScene, r?: TRunner) => boolean, fuel?: (S: TitleScene, r: TRunner) => { fuel: number, refuel: number } | null, spawn?: (S: TitleScene) => { gap: number, cap: number } }} TitleLevel */
 // blockCell, blockCol, blockKind (CaveRunner Auto stage 6b, auto/blocked.js): a blocked zone's cells and web lines, and what a dig goes into
 // loot (CaveRunner Auto, auto/level.js): what a kill drops (its gold spills as nuggets, the rest as TLoot pickups); fits: would it go in the bag;
 // take: put it in the bag (false: it didn't fit). A pickup: the item, its colour, nopull (s before it can fly), wait (the bag is full)
@@ -1243,6 +1244,8 @@ function jetOver(S, r) {
     if (titleSolid(S, sx, y) || titleSolid(S, sx + 8, y)) { run = 0; continue; }
     run += TCELL;
     if (run >= PH + 4) {
+      // (owner, exo Jetpack) not enough in the tank for the climb: he waits at the wall (the level holds its scroll) and refills
+      if (fuelOn(S) && (r.empty || fuelOf(r) < fuelForClimb(r.y - y, tankOf(S, r).fuel))) { S.fuelWait = S.t; r.x = Math.max(8, r.x - 1); return true; }
       setMode(S, r, 'fly', 1.5); r.tx = r.x + 12; r.ty = y - 2; r.retarget = 1.2; r.vy = Math.min(r.vy, -60); r.ground = false;
       r.burst = false; r.x = Math.max(8, r.x - 1);
       return true;
@@ -1274,7 +1277,15 @@ function stepRunnerMove(S, r, dt) {
   else flyStep(S, r, dt);
   r.x = Math.max(8, Math.min(r.ctl ? TITLE_VW - PW - 8 : TITLE_VW * 0.62, r.x));   // (one steered by hand: the whole screen)
   r.y = Math.max(S.top - 40, Math.min(S.bot + 10, r.y));
+  if (fuelOn(S)) { const P = tankOf(S, r); fuelTick(r, r.dig || r.mode !== 'fly' ? 0 : r.flame, r.ground || (!!r.dig && r.mode === 'run'), dt, P.fuel, P.refuel); }
 }
+// CaveRunner Auto's jet fuel (auto/fuel.js): only in a level (the title and the hub fly on a bottomless tank)
+/** @param {TitleScene} S */
+const fuelOn = S => !!(S.team && S.lvl && S.lvl.fuel);
+/** @param {TRunner} r */
+const fuelOf = r => (r.fuel == null ? 1 : r.fuel);
+/** @param {TitleScene} S @param {TRunner} r */
+const tankOf = (S, r) => (S.lvl && S.lvl.fuel && S.lvl.fuel(S, r)) || { fuel: 1, refuel: 1 };
 // The players keep apart (owner, v0.0.167): within TITLE_SEP of each other they're eased apart (sideways on the
 // ground, any way in the air), and they never overlap: two bodies that do are pushed out along the shallower
 // way (sideways for one on the ground), each half, or all of it on the one with room (never into rock)
@@ -1328,7 +1339,7 @@ export const ctlOn = r => !!r.ctl && r.ctl.active && r.ctl.mag > DEAD;
 // as anyone does (startDig: the clearing rule). His gun aims and fires by itself
 /** @param {TitleScene} S @param {TRunner} r @param {RunnerCtl} st @param {number} dt */
 function ctlStep(S, r, st, dt) {
-  const m = st.active && st.mag > DEAD ? (st.mag - DEAD) / (1 - DEAD) : 0, jet = m > 0 && st.ny < 0, mv = DEV.move;
+  const m = st.active && st.mag > DEAD ? (st.mag - DEAD) / (1 - DEAD) : 0, jet = m > 0 && st.ny < 0 && !(fuelOn(S) && !fuelCan(r)), mv = DEV.move;   // (dry, or a cough: no thrust)
   r.cvx = r.cvx || 0;
   if (jet) {
     r.cvx = approach(r.cvx, st.nx * m * P_JET * DEV.autoMoveK * mv, JET_ACC * DEV.autoMoveK * dt);
@@ -1394,7 +1405,8 @@ function runStep(S, r, dt) {
   r.x += vx * dt;
   r.gait += (sv(S) + vx) * dt * 0.38;
   if ((r.stepT = (r.stepT || 0) - dt * Math.abs(sv(S) + vx) / 20) <= 0) { r.stepT = 1; snd(S, 'step', cx, r.y + PH); }
-  if (r.modeT <= 0) { setMode(S, r, 'fly', flyTime(R)); pickTarget(S, r); r.vy = -40; r.ground = false; r.burst = R() < r.bursty; r.jet = r.burst; r.jetT = 0.3; r.jetCd = 0; }
+  if (r.modeT <= 0 && !(fuelOn(S) && fuelOf(r) < FUEL_TAKEOFF)) { setMode(S, r, 'fly', flyTime(R));   // (low on fuel: he runs on till it's refilled)
+    pickTarget(S, r); r.vy = -40; r.ground = false; r.burst = R() < r.bursty; r.jet = r.burst; r.jetT = 0.3; r.jetCd = 0; }
 }
 /** @param {TitleScene} S @param {TRunner} r @param {number} dt */
 function flyStep(S, r, dt) {
@@ -1422,6 +1434,8 @@ function flyStep(S, r, dt) {
     const want = (r.ty - r.y) * 2.2 - r.vy * 1.6;                 // the pull toward where he's going (down +)
     thr = Math.max(0, Math.min(1, (GRAV - want) / JET));
   }
+  // (owner, exo Jetpack) dry: no thrust, and he comes down to land and refill; a cough cuts it for a blink
+  if (fuelOn(S) && !fuelCan(r)) { thr = 0; if (r.empty && !landing) r.modeT = Math.min(r.modeT, 0); }
   r.vy += (GRAV - JET * thr) * dt;
   r.vy = Math.max(-170, Math.min(240, r.vy));
   r.flame = thr;

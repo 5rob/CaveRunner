@@ -2007,7 +2007,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "autoBossDmg", g: "autofoes", label: "Boss damage (× a normal one)", min: 0.5, max: 10, step: 0.25 }
   );
   DEV_GROUPS.push(["autofoes", "Auto: enemies"]);
-  Object.assign(DEV_DEFAULTS, { autoMoveK: 0.55, autoJetTilt: 1, autoJetSmoke: 1, autoDeathStop: 1.5, autoTpBlink: 1, autoTpBoomWait: 0.6, autoTpBoomR: 60 });
+  Object.assign(DEV_DEFAULTS, { autoMoveK: 0.55, autoJetTilt: 1, autoJetSmoke: 1, autoDeathStop: 1.5, autoTpBlink: 1, autoTpBoomWait: 0.6, autoTpBoomR: 60, autoFuelDrain: 1, autoFuelRegen: 1 });
   DEV_META.push(
     { k: "autoMoveK", g: "autodeath", label: "Hand-steered speed (× the old game’s walk, jet, their pushes; hub and steering a player; the hub’s followers too)", min: 0.2, max: 1.5, step: 0.05 },
     { k: "autoJetTilt", g: "autodeath", label: "Jet flame: the autopilot’s tilt with its speed across (at most)", min: 0, max: 1.5, step: 0.05 },
@@ -2015,7 +2015,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "autoDeathStop", g: "autodeath", label: "All fallen: the scroll eases to a stop over (s)", min: 0.1, max: 6, step: 0.1 },
     { k: "autoTpBlink", g: "autodeath", label: "Tap A: the helmet light blinks for (s)", min: 0.1, max: 4, step: 0.05 },
     { k: "autoTpBoomWait", g: "autodeath", label: "… then the blast, home after (s)", min: 0.1, max: 4, step: 0.05 },
-    { k: "autoTpBoomR", g: "autodeath", label: "The blast’s size", min: 10, max: 200, step: 1 }
+    { k: "autoTpBoomR", g: "autodeath", label: "The blast’s size", min: 10, max: 200, step: 1 },
+    { k: "autoFuelDrain", g: "autodeath", label: "Jet fuel: drain (× the old game’s; a level only, auto/fuel.js)", min: 0, max: 3, step: 0.05 },
+    { k: "autoFuelRegen", g: "autodeath", label: "Jet fuel: refill on the ground (× the old game’s)", min: 0.1, max: 3, step: 0.05 }
   );
   DEV_GROUPS.push(["autodeath", "Auto: jetpack and death"]);
   Object.assign(DEV_DEFAULTS, { autoLootMod: 6, autoLootRed: 2, autoLootExo: 30, autoLootEliteGold: 3, autoLootBossGold: 10 });
@@ -11578,6 +11580,35 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return null;
   }
 
+  // src/auto/fuel.js
+  var FUEL_TAKEOFF = 0.6;
+  var FUEL_SPUTTER = 0.25;
+  var fuelCan = (r) => !r.empty && !(r.sputT && r.sputT > 0);
+  function fuelTick(r, thr, ground, dt, tank = 1, refill = 1) {
+    if (r.fuel == null) r.fuel = 1;
+    if (r.empty && r.fuel >= FUEL_RESTART) r.empty = false;
+    if (thr > 0 && !r.empty) {
+      r.fuel -= FUEL_DRAIN * DEV.autoFuelDrain * (0.5 + 0.5 * Math.min(1, thr)) * dt / Math.max(0.1, tank);
+      if (r.fuel <= 0) {
+        r.fuel = 0;
+        r.empty = true;
+      }
+    } else if (ground) r.fuel = Math.min(1, r.fuel + FUEL_REGEN * DEV.autoFuelRegen * refill * dt);
+    r.sputT = Math.max(0, (r.sputT || 0) - dt);
+    r.sputGap = Math.max(0, (r.sputGap || 0) - dt);
+    if (thr > 0 && !r.empty && r.fuel < FUEL_SPUTTER && r.sputGap <= 0) {
+      const w = 1 - r.fuel / FUEL_SPUTTER, h3 = () => {
+        const v = Math.sin((r.sputN = (r.sputN || 0) + 1) * 91.17 + (r.id || 0) * 31.7) * 43758.5453;
+        return v - Math.floor(v);
+      };
+      if (h3() < dt * (1 + 7 * w)) {
+        r.sputT = 0.04 + h3() * (0.05 + 0.08 * w);
+        r.sputGap = r.sputT + 0.1 + h3() * 0.2;
+      }
+    }
+  }
+  var fuelForClimb = (h3, tank = 1) => Math.min(0.95, FUEL_RESTART + Math.max(0, h3) / 110 * FUEL_DRAIN * DEV.autoFuelDrain / Math.max(0.1, tank));
+
   // src/auto/perks.js
   var perksOf = (pl) => perkBag([...new Set((pl && pl.perks || []).map((it) => it && it.id).filter(Boolean))].map(String));
   var perkOn = (pl, flag) => !!pl && !!perksOf(pl)[flag];
@@ -13031,6 +13062,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
       run += TCELL;
       if (run >= PH + 4) {
+        if (fuelOn(S2) && (r.empty || fuelOf(r) < fuelForClimb(r.y - y, tankOf(S2, r).fuel))) {
+          S2.fuelWait = S2.t;
+          r.x = Math.max(8, r.x - 1);
+          return true;
+        }
         setMode(S2, r, "fly", 1.5);
         r.tx = r.x + 12;
         r.ty = y - 2;
@@ -13068,7 +13104,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     else flyStep(S2, r, dt);
     r.x = Math.max(8, Math.min(r.ctl ? TITLE_VW - PW - 8 : TITLE_VW * 0.62, r.x));
     r.y = Math.max(S2.top - 40, Math.min(S2.bot + 10, r.y));
+    if (fuelOn(S2)) {
+      const P = tankOf(S2, r);
+      fuelTick(r, r.dig || r.mode !== "fly" ? 0 : r.flame, r.ground || !!r.dig && r.mode === "run", dt, P.fuel, P.refuel);
+    }
   }
+  var fuelOn = (S2) => !!(S2.team && S2.lvl && S2.lvl.fuel);
+  var fuelOf = (r) => r.fuel == null ? 1 : r.fuel;
+  var tankOf = (S2, r) => S2.lvl && S2.lvl.fuel && S2.lvl.fuel(S2, r) || { fuel: 1, refuel: 1 };
   function separate(S2, dt) {
     const P = S2.runners;
     const shove = (r, dx, dy) => {
@@ -13112,7 +13155,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var JET_SINK = 110;
   var ctlOn = (r) => !!r.ctl && r.ctl.active && r.ctl.mag > DEAD;
   function ctlStep(S2, r, st, dt) {
-    const m = st.active && st.mag > DEAD ? (st.mag - DEAD) / (1 - DEAD) : 0, jet = m > 0 && st.ny < 0, mv = DEV.move;
+    const m = st.active && st.mag > DEAD ? (st.mag - DEAD) / (1 - DEAD) : 0, jet = m > 0 && st.ny < 0 && !(fuelOn(S2) && !fuelCan(r)), mv = DEV.move;
     r.cvx = r.cvx || 0;
     if (jet) {
       r.cvx = approach(r.cvx, st.nx * m * JET * DEV.autoMoveK * mv, JET_ACC * DEV.autoMoveK * dt);
@@ -13208,7 +13251,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       r.stepT = 1;
       snd(S2, "step", cx, r.y + PH);
     }
-    if (r.modeT <= 0) {
+    if (r.modeT <= 0 && !(fuelOn(S2) && fuelOf(r) < FUEL_TAKEOFF)) {
       setMode(S2, r, "fly", flyTime(R));
       pickTarget(S2, r);
       r.vy = -40;
@@ -13251,6 +13294,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     } else {
       const want = (r.ty - r.y) * 2.2 - r.vy * 1.6;
       thr = Math.max(0, Math.min(1, (GRAV - want) / JET2));
+    }
+    if (fuelOn(S2) && !fuelCan(r)) {
+      thr = 0;
+      if (r.empty && !landing) r.modeT = Math.min(r.modeT, 0);
     }
     r.vy += (GRAV - JET2 * thr) * dt;
     r.vy = Math.max(-170, Math.min(240, r.vy));
@@ -15936,6 +15983,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       blockCol,
       blockKind,
       free: (S3, r) => levelFree(S3, L, r),
+      fuel: (_S, r) => team && team[r.id] ? playerStats(team[r.id]) : null,
       spawn: (S3) => levelSpawn(S3, L)
     }, team, tier });
     L.elites = elitePlan(plan, S2.rnd);
@@ -16114,7 +16162,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       roamStep2(S2, L, lead);
       return;
     }
-    const want = L.webK * pilotPace({ x: levelTeamX(S2), stopX: stop, elites: L.elites, chests: L.chests, hold: L.hold, blocked: L.blocked });
+    const want = L.webK * pilotPace({ x: levelTeamX(S2), stopX: stop, elites: L.elites, chests: L.chests, hold: L.hold, blocked: L.blocked || S2.fuelWait != null && S2.t - S2.fuelWait < 0.3 });
     S2.pace = pilotEase(S2.pace || 0, want, dt);
   }
   var levelLead = (S2) => S2.runners.find((r) => ctlOn(r) && !r.out) || null;
@@ -30198,6 +30246,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       drawRunner(c, r.x, r.y, PW, PH, r.face, gait, r.mode !== "run", r.flame, false, hands, null, r.col);
       drawGun(c, pcx + ax * 2.5, gy, r.ang, GUN_HELD, K.art);
     });
+    if (r.fuel != null && r.fuel < 0.995 && !r.out) {
+      const bw = 10, bx = Math.round(pcx - bw / 2), by = Math.round(r.y - 5);
+      ctx.fillStyle = "rgba(0,0,0,0.55)";
+      ctx.fillRect(bx - 0.5, by - 0.5, bw + 1, 2.5);
+      ctx.fillStyle = r.empty ? Math.sin(S2.t * 18) > 0 ? "#ff4a3a" : "#7a2018" : r.fuel < 0.25 ? "#ff9a3a" : "#ffd166";
+      ctx.fillRect(bx, by, r.empty ? bw * Math.max(0.08, r.fuel) : bw * r.fuel, 1.5);
+    }
     if (r.dig) {
       const mz = gunMuzzle(pcx + ax * 2.5, gy, r.ang, GUN_HELD, K.art);
       const blade = { look: "disc", x: mz.x + ax * 3, y: mz.y + ay * 3, vx: ax, vy: ay, size: 3.2, spin: S2.t * 9, col: "#d9dde4" };
