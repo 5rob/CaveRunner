@@ -16,12 +16,12 @@ require('../tests/build')();
 (async () => {
   const browser = await launch();
   const ctx = await browser.newContext({ viewport: { width: 412, height: 880 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2.625 });
-  await ctx.addInitScript(() => { window.__TEST_TITLE = true; window.__TITLE_SEED = 101; window.__AUTO_LEVEL = 3; localStorage.removeItem('caverunner-auto-run'); });
+  await ctx.addInitScript(() => { window.__TEST_TITLE = true; window.__TITLE_SEED = 101; window.__AUTO_LEVEL = 11; localStorage.removeItem('caverunner-auto-run'); });
   const page = await ctx.newPage();
   page.on('pageerror', e => console.log('PAGEERROR', e.message));
   await page.goto('file://' + path.join(__dirname, '..', 'tests', 'build', 'test.html'));
   await page.waitForTimeout(400);
-  await page.evaluate(() => { Object.assign(DEV, { autoFoeDmg: 0, autoWallMin: 0, autoWallMax: 0 }); const r = newRun(4); addPlayer(r); addPlayer(r); saveAutoRun(r); });
+  await page.evaluate(() => { Object.assign(DEV, { autoFoeDmg: 0, autoWallMin: 999, autoWallMax: 999, autoBlockN: 0 }); const r = newRun(4); addPlayer(r); addPlayer(r); saveAutoRun(r); });
   await page.locator('.tstart').dispatchEvent('pointerdown');
   await page.waitForTimeout(4000);
   const info = () => page.evaluate(() => {
@@ -48,7 +48,7 @@ require('../tests/build')();
   await page.screenshot({ path: path.join(OUT, 't-b-grown.png') });
   // further along: the scene stepped on (the zones go by), grown
   // (the zones stage) stepped at 3× pace so each shot is a zone or so further on (900 frames at normal pace stayed in the first)
-  for (const [n, steps] of [['t-c-1.png', 500], ['t-c-2.png', 500], ['t-c-3.png', 500], ['t-c-4.png', 500]]) {
+  for (const [n, steps] of [['t-c-1.png', 900], ['t-c-2.png', 900], ['t-c-3.png', 900], ['t-c-4.png', 900]]) {
     const z = await page.evaluate(s => {
       const S = window.__autoScene, p = DEV.autoLvlPace;
       DEV.autoLvlPace = p * 3;
