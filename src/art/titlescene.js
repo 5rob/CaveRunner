@@ -235,15 +235,28 @@ function mkMine(R, x0, x1) {
     const a0 = Math.max(L[k], L[k + 1], x0 + 50) + 12, a1 = Math.min(Rx[k], Rx[k + 1], x1 - 50) - 12;
     if (a1 > a0) holes.push({ k, x: a0 + R() * (a1 - a0), w: 12 + R() * 10 });
   }
+  // (Auto's tall level) up to MINE_MORE more tunnels over the stack, dead-ended both ends, linked by holes now and then: mineBands
+  // stacks as many as the band has room for. Their own numbers (seeded by x0), so the plan's draws stay as they were
+  const R2 = titleRng((Math.floor(x0) * 31 + 7) >>> 0);
+  for (let e = 0; e < MINE_MORE; e++) {
+    const k = n + e;
+    L.push(x0 + 44 + R2() * 60); Rx.push(x1 - 44 - R2() * 60); sh.push(12 + R2() * 8);
+    const a0 = Math.max(L[k - 1], L[k], x0 + 50) + 12, a1 = Math.min(Rx[k - 1], Rx[k], x1 - 50) - 12;
+    if (a1 > a0 && R2() < 0.8) holes.push({ k: k - 1, x: a0 + R2() * (a1 - a0), w: 12 + R2() * 10 });
+  }
   return { n, ein, eout, lf: R() * 0.6, sh, L, Rx, holes, steps };
 }
+const MINE_TALL = 200;                // … only in a band taller than this (world units: the old height's stays as it was)
+const MINE_MORE = 5;                  // a mine's extra tunnels at most (a tall level's; none fit at the old height)
 // a mine's tunnels in a band (top, bot): each one's roof c and floor f, the stack set by lf in the room there is
 /** @param {TMine} M @param {{ top: number, bot: number }} B @returns {{ c: number, f: number }[]} */
 export function mineBands(M, B) {
-  const lo = B.bot - 10, hi = B.top - 2, total = M.n * TIMBER_H + M.sh.reduce((a, v) => a + v, 0);
-  let f = lo - M.lf * Math.max(0, lo - hi - total - 10) - (M.n < 3 ? 10 : 0);
+  const lo = B.bot - 10, hi = B.top - 2;
+  let total = M.n * TIMBER_H + M.sh.slice(0, M.n - 1).reduce((a, v) => a + v, 0), nk = M.n;
+  while (lo - hi > MINE_TALL && nk < M.L.length && total + M.sh[nk - 1] + TIMBER_H + 30 <= lo - hi) { total += M.sh[nk - 1] + TIMBER_H; nk++; }
+  let f = lo - M.lf * Math.max(0, lo - hi - total - 10) - (nk < 3 ? 10 : 0);
   const out = [];
-  for (let k = 0; k < M.n; k++) { out.push({ c: f - TIMBER_H, f }); f = f - TIMBER_H - (M.sh[k] || 0); }
+  for (let k = 0; k < nk; k++) { out.push({ c: f - TIMBER_H, f }); f = f - TIMBER_H - (M.sh[k] || 0); }
   return out;
 }
 // how far a tunnel is dug past its frames at x: its roof up, its floor down (big lumps and a fine fray)
@@ -292,7 +305,31 @@ export function titleNoise(x, y) {
 // the zone at a point, with a ragged border: pushed up to ZBLEND either way by noise (big lumps and a
 // fine fray), so one zone's rock, moss, bricks and back wall break up into the next instead of a cut
 /** @param {number} wx @param {number} y @param {{ zp?: TitlePlan }} [B] */
-export const titleZoneAt = (wx, y, B) => titleZone(wx + (titleNoise(wx / 24, y / 14) - 0.5) * 2 * ZBLEND + (titleNoise(wx / 4, y / 4) - 0.5) * 12, B);
+export const titleZoneAt = (wx, y, B) => titleZoneLook(wx, y, B).z;
+// (CaveRunner Auto's tall level; owner: not straight vertical slices) the zone a point looks like, as the old game's
+// level.js zones: the plan's order along x kept, but x pushed by a big domain-warped noise field (DEV.autoZoneWarp at
+// most, its lumps autoZoneScale across, warped by autoZoneRag), so borders curve and slant up and down the height,
+// plus islands of the next zone (autoZoneIsle: their share). A pad or the arena keeps its own look, and lends none.
+// Pure (position and the knobs). The title (no lvl) keeps the old ragged edge only
+/** @param {number} wx @param {number} y @param {{ zp?: TitlePlan, lvl?: unknown }} [B] @returns {TZone} */
+export function titleZoneLook(wx, y, B) {
+  const fray = (titleNoise(wx / 24, y / 14) - 0.5) * 2 * ZBLEND + (titleNoise(wx / 4, y / 4) - 0.5) * 12;
+  if (!B || !B.lvl) return titleZoneSpan(wx + fray, B);
+  const Zs = titleZoneSpan(wx, B);
+  if (Zs.flat) return Zs;
+  const sc = DEV.autoZoneScale, g = DEV.autoZoneRag, h = sc * 0.45;
+  const qx = wx / sc + (fbm(wx / h + 5.2, y / h + 1.3) - 0.5) * 2 * g, qy = y / sc + (fbm(wx / h + 9.7, y / h + 4.1) - 0.5) * 2 * g;
+  let x2 = wx + (fbm(qx, qy) - 0.5) * 2 * DEV.autoZoneWarp + fray;
+  if (titleNoise(wx / 46 + 3.3, y / 46 + 7.7) > 1 - DEV.autoZoneIsle) {
+    const Zw = titleZoneSpan(x2, B);
+    x2 = x2 - Zw.x0 < Zw.x1 - x2 ? Zw.x0 - 1 : Zw.x1 + 1;
+  }
+  const Z = titleZoneSpan(x2, B);
+  return Z.flat ? Zs : Z;
+}
+// three octaves of titleNoise, about 0..1, stretched to fill it (pure)
+/** @param {number} x @param {number} y */
+const fbm = (x, y) => Math.max(0, Math.min(1, ((titleNoise(x, y) + 0.5 * titleNoise(x * 2.03 + 17, y * 2.03 + 31) + 0.25 * titleNoise(x * 4.1 + 41, y * 4.1 + 7)) / 1.75 - 0.5) * 1.7 + 0.5));
 // The winding caves (owner, v0.0.172: the natural caves that aren't big and open): rock, a narrow tunnel snaking up
 // and down through it (its middle windMid, its half height windHalf: 15–26), now and then a side branch off it above or
 // below, and pockets of air in the rock round it (windAir), fading in from the zone's ends
@@ -318,13 +355,20 @@ function windAir(x, y, Z, B) {
   const m2 = mid + side * (half + 14 + titleNoise(x / 30 + Z.ph[0], 13) * 16);
   return Math.abs(y - m2) < (on - 0.5) * 2 * 11;
 }
+// one zone's own roof and floor at x (no blending; the mine works' slope is titleCeil's)
+/** @param {number} x @param {TZone} Z @param {{ top: number, bot: number, lvl?: unknown }} B */
+const zCeil = (x, Z, B) => (Z.z === 'winding' ? windMid(x, Z, B) - windHalf(x, Z)
+  : B.top - 4 + Z.co + (Math.sin(x * 0.018 * Z.cf + Z.ph[0]) * 10 + Math.sin(x * 0.049 * Z.cf + Z.ph[1]) * 6) * Z.ca * bandK(B)
+    + (bandK(B) - 1) * 45 * titleNoise(x / 90 + Z.ph[2], 9.1));
+/** @param {number} x @param {TZone} Z @param {{ top: number, bot: number, lvl?: unknown }} B */
+const zFloor = (x, Z, B) => (Z.z === 'winding' ? windMid(x, Z, B) + windHalf(x, Z)
+  : B.bot - 22 + Z.fo + (Math.sin(x * 0.021 * Z.ff + Z.ph[2]) * 7 + Math.sin(x * 0.057 * Z.ff + Z.ph[3]) * 4) * Z.fa * bandK(B)
+    - (bandK(B) - 1) * 30 * titleNoise(x / 80 + Z.ph[3], 4.3));
 // the cave's roof and floor as made (world x; B the band: top, bot in world units, under the title, over the menu).
 // The timber works come down to TIMBER_H over the floor, the height of their frames
 /** @param {number} wx @param {{ top: number, bot: number, zp?: TitlePlan }} B */
 export const titleCeil = (wx, B) => {
-  const nat = zoneMix(wx, B, (x, Z) => (Z.z === 'winding' ? windMid(x, Z, B) - windHalf(x, Z)
-    : B.top - 4 + Z.co + (Math.sin(x * 0.018 * Z.cf + Z.ph[0]) * 10 + Math.sin(x * 0.049 * Z.cf + Z.ph[1]) * 6) * Z.ca * bandK(B)
-      + (bandK(B) - 1) * 45 * titleNoise(x / 90 + Z.ph[2], 9.1))) + Math.sin(wx * 0.11) * 2;
+  const nat = zoneMix(wx, B, (x, Z) => zCeil(x, Z, B)) + Math.sin(wx * 0.11) * 2;
   // the layer's roof comes down over a natural slope (owner, v0.0.165: the old short step was too steep and
   // straight): an S-curve about TIMBER_RAMP long, starting a little before the works, where it starts shifted
   // by noise, the rock along it lumpy (big lumps and a fine fray, none once it's down)
@@ -363,9 +407,7 @@ const timberD = (wx, B) => {
 export const titleWebAt = webAt;   // (and bent where a player pushed through it)
 /** @param {number} wx @param {{ top: number, bot: number, zp?: TitlePlan }} B */
 export const titleFloor = (wx, B) => {
-  const nat = zoneMix(wx, B, (x, Z) => (Z.z === 'winding' ? windMid(x, Z, B) + windHalf(x, Z)
-    : B.bot - 22 + Z.fo + (Math.sin(x * 0.021 * Z.ff + Z.ph[2]) * 7 + Math.sin(x * 0.057 * Z.ff + Z.ph[3]) * 4) * Z.fa * bandK(B)
-      - (bandK(B) - 1) * 30 * titleNoise(x / 80 + Z.ph[3], 4.3))) + Math.sin(wx * 0.13) * 1.5;
+  const nat = zoneMix(wx, B, (x, Z) => zFloor(x, Z, B)) + Math.sin(wx * 0.13) * 1.5;
   const b = built(wx, B), base = nat * (1 - b) + (B.bot - 20) * b, T = mineNear(wx, B);
   return T ? base + (T.band.f - base) * T.bt : base;
 };
@@ -420,7 +462,7 @@ function genCol(S, c) {
   const inside = (t, y) => !!M && wx > M.L[t.k] + (titleNoise(y / 9, 71 + t.k * 3) - 0.5) * 18 + (titleNoise(y / 3, 73 + t.k * 3) - 0.5) * 6
     && wx < M.Rx[t.k] + (titleNoise(y / 9, 79 + t.k * 3) - 0.5) * 18 + (titleNoise(y / 3, 83 + t.k * 3) - 0.5) * 6;
   // the holes through the shelves, ragged (their width ±4 by height)
-  const near = M ? M.holes.filter(h => Math.abs(wx - h.x) < h.w / 2 + 4) : [];
+  const near = M ? M.holes.filter(h => h.k + 1 < bands.length && Math.abs(wx - h.x) < h.w / 2 + 4) : [];
   /** @param {number} y */
   const inHole = y => near.some(h => y >= bands[h.k + 1].f - 0.5 && y < bands[h.k].c + 0.5 && Math.abs(wx - h.x) < h.w / 2 + (titleNoise(y / 5, h.x) - 0.5) * 8);
   // moss patches on the floor (thicker moss, bright grass tufts on top), as decorate.js bakes them
@@ -435,10 +477,13 @@ function genCol(S, c) {
   const ledge = !Zn.flat && (z === 'moss' || z === 'grove' || z === 'webs') && built(lmid, S) === 0 && h2(lk, 11) < 0.5 && wx >= lx0 && wx < lx0 + lw && lf - lc > 60;
   // a blocked zone (CaveRunner Auto, auto/blocked.js): its blockage over the open band (a mine's: its tunnels' stack)
   const bk0 = Zn.blk, bk = bk0 && S.lvl && S.lvl.blockCell ? S.lvl.blockCell : null;
-  const by0 = M && bands.length ? bands[bands.length - 1].c - 14 : cy, by1 = M && bands.length ? bands[0].f + 3 : fy;
+  const by0 = M && bands.length ? bands[Math.min(M.n, bands.length) - 1].c - 14 : cy, by1 = M && bands.length ? bands[0].f + 3 : fy;
   if (bk0 && S.lvl && S.lvl.blockCol) S.lvl.blockCol(S, bk0, c, wx, by0, by1);
+  /** @type {Map<TZone, { c: number, f: number }>} */
+  const shp = new Map();
+  let carved = false;
   for (let r = 0; r < S.rows; r++) {
-    const y = (r + 0.5) * TCELL, zc = titleZoneAt(wx, y, S);   // the skin (moss or bricks) frays at a border
+    const y = (r + 0.5) * TCELL, Zc = titleZoneLook(wx, y, S), zc = Zc.z;   // the skin (moss or bricks) frays at a border
     let m = TM.AIR;
     const t = tun.find(t => t.open && y >= t.rc && y < t.rf && inside(t, y));
     if (M && !t && y < cy && !inHole(y)) m = TM.ROCK;
@@ -461,8 +506,19 @@ function genCol(S, c) {
     if (m === TM.AIR && y >= fy - rub && y < fy) m = y < fy - rub + 2 && h2(c, r) < 0.7 ? TM.RUBM : TM.RUB;
     if (m === TM.AIR && y >= fy - tuft * TCELL && y < fy && zc !== 'paved') m = TM.GRASS;
     if (z === 'winding' && TITLE_SOLID[m] && windAir(wx, y, Zn, S)) m = TM.AIR;
+    // (Auto's tall level) another zone's look here: its open air opens too, over this column's floor (DEV.autoZoneOpen; off: it upset the autopilot, auto-level and auto-tall)
+    if (Zc !== Zn && TITLE_SOLID[m] && DEV.autoZoneOpen && S.lvl && S.bot - S.top > MINE_TALL && !Zn.blk && !Zc.blk && !Zn.flat && Zc.z !== 'timber' && y > S.top + 24 && y < fy) {
+      let sh = shp.get(Zc);
+      if (!sh) { sh = { c: zCeil(wx, Zc, S), f: zFloor(wx, Zc, S) }; shp.set(Zc, sh); }
+      if ((y >= sh.c && y < sh.f) || (Zc.z === 'winding' && windAir(wx, y, Zc, S))) { m = TM.AIR; carved = true; }
+    }
     if (bk) m = bk(bk0, wx, y, by0, by1, m);
     S.cells[base + r] = m;
+  }
+  // where another zone opened the rock, the new floor gets its skin (moss; bricks in the brick works' look)
+  if (carved) for (let r = 0; r < S.rows - 1; r++) if (S.cells[base + r] === TM.AIR && S.cells[base + r + 1] === TM.ROCK) {
+    const brick = titleZoneAt(wx, (r + 1.5) * TCELL, S) === 'paved';
+    for (let k = 1; k <= 2 && r + k < S.rows && S.cells[base + r + k] === TM.ROCK; k++) S.cells[base + r + k] = brick ? TM.BRICK : TM.MOSS;
   }
   // a lantern hanging on its chain under each tunnel's roof: between the frames, and some inside them
   if (b > 0.95) for (const t of tun) if (t.open && inside(t, t.c + 4) && (Math.abs(t.v - (FRAME_W + FRAME_GAP) / 2) < 1 || Math.abs(t.v - FRAME_W / 2) < 1) && R() < 0.7)
