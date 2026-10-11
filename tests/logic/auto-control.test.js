@@ -74,6 +74,7 @@ r.out = false;
 
 // (owner, v1.0.42) after the stick is let go he stays steered for DEV.autoCtlWait s (drops off the jet), then the autopilot
 G.DEV.autoCtlWait = 3;
+S.props = S.props.filter(p => p.k !== 'climb'); S.webs.length = 0; r.hang = null;   // (no vine or web line to grab: he would hang, auto/hang.js)
 G.levelControl(S, r.id, push(0, -1));
 for (let i = 0; i < 15; i++) G.titleStep(S, 1 / 30);
 G.levelControl(S, r.id, { active: true, nx: 0, ny: 0, mag: 0 });
