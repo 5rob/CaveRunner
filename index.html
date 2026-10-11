@@ -2060,8 +2060,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "autoBossDmg", g: "autofoes", label: "Boss damage (× a normal one)", min: 0.5, max: 10, step: 0.25 }
   );
   DEV_GROUPS.push(["autofoes", "Auto: enemies"]);
-  Object.assign(DEV_DEFAULTS, { autoMoveK: 0.55, autoJetTilt: 1, autoJetSmoke: 1, autoDeathStop: 1.5, autoTpBlink: 1, autoTpBoomWait: 0.6, autoTpBoomR: 60, autoFuelDrain: 1, autoFuelRegen: 1, autoCtlWait: 3 });
+  Object.assign(DEV_DEFAULTS, { autoMoveK: 0.55, autoJetTilt: 1, autoJetSmoke: 1, autoDeathStop: 1.5, autoTpBlink: 1, autoTpBoomWait: 0.6, autoTpBoomR: 60, autoFuelDrain: 1, autoFuelRegen: 1, autoCtlWait: 3, autoVineFire: 1 });
   DEV_META.push(
+    { k: "autoVineFire", g: "autodeath", label: "Auto levels: vines and silk burn up at this × the old game speed (the title menu: 0.1)", min: 0.1, max: 5, step: 0.1 },
     { k: "autoCtlWait", g: "autodeath", label: "Manual mode: seconds of the stick at rest before the autopilot takes him back", min: 0, max: 10, step: 0.25 },
     { k: "autoMoveK", g: "autodeath", label: "Hand-steered speed (× the old game’s walk, jet, their pushes; hub and steering a player; the hub’s followers too)", min: 0.2, max: 1.5, step: 0.05 },
     { k: "autoJetTilt", g: "autodeath", label: "Jet flame: the autopilot’s tilt with its speed across (at most)", min: 0, max: 1.5, step: 0.05 },
@@ -14684,7 +14685,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         cutArch(S2, p, ((p.u0 || 0.5) + (p.u1 || 0.5)) / 2, true);
         continue;
       }
-      p.len -= kr("firePlant", R) * TITLE_FIRESPEED * (p.st === "silk" ? TITLE_WEBFIRE : 1) * dt;
+      const vf = S2.lvl ? DEV.autoVineFire : TITLE_FIRESPEED;
+      p.len -= kr("firePlant", R) * vf * (p.st === "silk" ? TITLE_WEBFIRE : 1) * dt;
       const pa = p;
       const tip = p.sw || p.tl ? vinePt(pa, Math.max(0, p.len)) : { x: 0, y: Math.max(0, p.len) }, tx = p.ox + tip.x, ty = p.y + tip.y;
       if (R() < dt * 30) flameAt(S2, tx - S2.scroll + (R() - 0.5) * 4, ty);
@@ -14692,7 +14694,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (ticks) {
         lightArea(S2, tx, ty, 5, 0.3 * TITLE_FIRESPEED);
         spreadFrom(S2, tx, ty);
-        for (const o of S2.props) if (!o.burn && !o.gone && !o.arc && burns(o) && Math.abs(o.ox - tx) < 10 && ty > o.y - 4 && ty < o.y + o.len + 4 && R() < 0.25 * TITLE_FIRESPEED) catchPlant(S2, o);
+        for (const o of S2.props) if (!o.burn && !o.gone && !o.arc && burns(o) && Math.abs(o.ox - tx) < 10 && ty > o.y - 4 && ty < o.y + o.len + 4 && R() < 0.25 * Math.min(1, vf)) catchPlant(S2, o);
       }
       if (p.len < 3) {
         p.gone = true;

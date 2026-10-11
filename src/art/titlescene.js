@@ -2094,8 +2094,10 @@ function stepFire(S, dt) {
   for (const p of S.props.slice()) {
     if (!p.burn || p.gone) continue;
     if (p.arc) { cutArch(S, p, ((p.u0 || 0.5) + (p.u1 || 0.5)) / 2, true); continue; }   // lit by hand: cut there
-    // up from its tip (silk TITLE_WEBFIRE × faster), at TITLE_FIRESPEED × the game's; a swinging one's tip where it hangs
-    p.len -= kr('firePlant', R) * TITLE_FIRESPEED * (p.st === 'silk' ? TITLE_WEBFIRE : 1) * dt;
+    // up from its tip (silk TITLE_WEBFIRE × faster), at TITLE_FIRESPEED × the game's (a CaveRunner Auto level: DEV.autoVineFire ×,
+    // owner v1.0.50: it was too slow to see); a swinging one's tip where it hangs
+    const vf = S.lvl ? DEV.autoVineFire : TITLE_FIRESPEED;
+    p.len -= kr('firePlant', R) * vf * (p.st === 'silk' ? TITLE_WEBFIRE : 1) * dt;
     /** @type {any} */
     const pa = p;
     const tip = p.sw || p.tl ? vinePt(pa, Math.max(0, p.len)) : { x: 0, y: Math.max(0, p.len) }, tx = p.ox + tip.x, ty = p.y + tip.y;
@@ -2104,7 +2106,7 @@ function stepFire(S, dt) {
     if (ticks) {
       lightArea(S, tx, ty, 5, 0.3 * TITLE_FIRESPEED);
       spreadFrom(S, tx, ty);
-      for (const o of S.props) if (!o.burn && !o.gone && !o.arc && burns(o) && Math.abs(o.ox - tx) < 10 && ty > o.y - 4 && ty < o.y + o.len + 4 && R() < 0.25 * TITLE_FIRESPEED) catchPlant(S, o);
+      for (const o of S.props) if (!o.burn && !o.gone && !o.arc && burns(o) && Math.abs(o.ox - tx) < 10 && ty > o.y - 4 && ty < o.y + o.len + 4 && R() < 0.25 * Math.min(1, vf)) catchPlant(S, o);
     }
     if (p.len < 3) { p.gone = true; lightArea(S, tx, ty, 6, 0.5); }
   }
