@@ -10,7 +10,7 @@ const D = G.DEV;
 const m = G.MODS.aimassist;
 ok('aimassist is a modifier', m && m.kind === 'mod', m && m.kind);
 ok('it has a price, family and Noita twin', G.MOD_PRICE.aimassist > 0 && G.FAMILY_OF.aimassist && G.NOITA_OF.aimassist);
-ok('in ALL_IDS', G.ALL_IDS.includes('aimassist'));
+ok('binned in CaveRunner Auto (owner, v1.0.35): kept, never handed out', !!G.MODS.aimassist.off && !G.ALL_IDS.includes('aimassist'));
 const mk = slots => G.resetGun({ name: 'T', cap: slots.length, castDelay: 0.12, recharge: 0.4, manaMax: 9999, manaRegen: 60,
   spread: 0, multi: 1, shuffle: false, mana: 9999, speedMul: 1, slots });
 ok('hasAssist sees it anywhere on the gun', G.hasAssist(mk(['bolt', 'aimassist', 'bolt'])) && !G.hasAssist(mk(['bolt'])) && !G.hasAssist(null));

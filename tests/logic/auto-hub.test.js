@@ -13,7 +13,7 @@ check('evenly spaced', gaps.every(g => g === gaps[0]) && gaps[0] > 56, gaps);
 check('all inside the strip, the same margin each end', xs[0] > 0 && Math.abs(xs[0] - (G.HUB_W - xs[5])) < 1e-9, [xs[0], G.HUB_W]);
 check('hubStopX finds them', G.hubStopX('perk') === xs[4] && G.hubStopX('exit') === xs[5]);
 check('each machine has its look; the exo machine its own hue and glyphs', ['gun', 'exo', 'mod', 'perk'].every(k => G.HUB_MACHINES[k])
-  && new Set(['gun', 'exo', 'mod', 'perk'].map(k => G.HUB_MACHINES[k].hue)).size === 4 && G.HUB_EXO_GLYPHS.length === 4);
+  && new Set(['gun', 'exo', 'mod', 'perk'].map(k => G.HUB_MACHINES[k].hue)).size === 4 && G.HUB_EXO_GLYPHS.length === G.EXO_CATS.length);
 
 const vh = 190, S = G.hubScene(vh, 101, 1), H = G.hubState(S), fy = G.hubFloor(vh);
 check('a fixed strip: as wide as the hub, no creatures', S.hub && S.ncol * G.TCELL === G.HUB_W && S.foes.length === 0, S.ncol);

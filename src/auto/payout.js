@@ -35,7 +35,7 @@ export function machinePay(run, id, tier) {
 }
 
 // the perks a perk machine gives: the named ones (not the stat perks, those are the exo mods')
-const GIFT_PERKS = Object.keys(PERKS).filter(id => !PERKS[id].stat);
+const GIFT_PERKS = Object.keys(PERKS).filter(id => !PERKS[id].stat && !PERKS[id].off);
 
 // the item machine id spits out at a tier: the gun machine a gun at the tier's level (shopGun), the exo machine an exo
 // mod of the tier (a random category), the mod machine a mod (crystalRoll, repeats allowed), the perk machine a perk

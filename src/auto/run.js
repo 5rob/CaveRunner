@@ -15,7 +15,7 @@ import { resetGun } from '../spells/guns.js';
 export const BAG_COLS = 7, BAG_ROWS = 10, BAG_SLOTS = BAG_COLS * BAG_ROWS;
 export const MAX_PLAYERS = 4, GUN_SLOTS = 4, EXO_SLOTS = 5, PERK_SLOTS = 6, CARROT_MAX = 5;
 /** @type {ExoCat[]} */
-export const EXO_CATS = ['hp', 'speed', 'jet', 'carrot'];
+export const EXO_CATS = ['hp', 'speed', 'jet'];   // owner (v1.0.35): Carrot binned (run.exo.carrot stays for old saves)
 // which STAT_PERKS each exo category draws its values from (jet = fuel and recharge together)
 /** @type {Record<ExoCat, string[]>} */
 export const EXO_STATS = { hp: ['hp'], speed: ['walk'], jet: ['fuel', 'refuel'], carrot: ['carrot'] };

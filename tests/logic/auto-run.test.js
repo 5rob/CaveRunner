@@ -125,9 +125,10 @@ let eb = G.exoBonus(run.players[0]);
 check('one jet exo mod gives fuel and recharge together', near(eb.fuel, 1.3) && near(eb.refuel, 1.3), [eb.fuel, eb.refuel]);
 for (const t of [3, 4, 5]) {
   G.bagAdd(run, G.exoMod('carrot', t));
-  G.fitExo(run, run.bag.findIndex(x => x && x.cat === 'carrot'), 0, 'carrot', t - 1);
+  // Carrot is out of the exo machine (owner, v1.0.35) but an old save's still counts: fitted straight into its row
+  const ci = run.bag.findIndex(x => x && x.cat === 'carrot'); run.players[0].exo.carrot[t - 1] = run.bag[ci]; run.bag[ci] = null;
 }
-check('carrot adds levels, capped at V (3+4+5 → 5)', G.exoBonus(run.players[0]).carrot === 5);
+check('Carrot binned (owner, v1.0.35): an old save’s fitted ones count for nothing', G.exoBonus(run.players[0]).carrot === 0);
 
 // ---- fitPerk and playerStats ----
 G.bagAdd(run, { kind: 'perk', id: 'move', n: 1 });
@@ -138,7 +139,7 @@ check('fitPerk: into one of 6 slots', G.fitPerk(run, pmi, 0, 5) && run.players[0
 const st = G.playerStats(run.players[0]);
 check('playerStats: exo speed, then the perk on top (1.16 × 1.3)', near(st.walk, 1.16 * 1.3), st.walk);
 check('playerStats: max health from exo hp', st.maxHp === G.PLAYER_HP + 20, st.maxHp);
-check('playerStats: jet and carrot carried through', near(st.fuel, 1.3) && near(st.refuel, 1.3) && st.carrot === 5);
+check('playerStats: jet carried through', near(st.fuel, 1.3) && near(st.refuel, 1.3) && st.carrot === 0);
 check('unfitPerk', G.unfitPerk(run, 0, 5) && run.players[0].perks[5] === null && near(G.playerStats(run.players[0]).walk, 1.16));
 
 // ---- prices and scrap ----

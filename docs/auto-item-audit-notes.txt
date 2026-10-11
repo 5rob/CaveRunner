@@ -1,0 +1,77 @@
+The owner's audit notes, pasted 2026-10-11 (from docs/auto-item-audit.html's "Copy all edited module notes").
+Status per line: [done v1.0.35] / [stage: shots] / [stage: perks] / [stage: jetpack] / [later].
+Also asked the same day: a colour sweep of the mod families [done v1.0.35]; vending-machine items drawn as the real
+bag icon (rounded box and all) and, when vacuumed, a copy flying from the player into its bag slot [stage: icons].
+
+CAVERUNNER AUTO ITEM AUDIT — owner's notes (list of v1.0.34, 178 items)
+
+GENERAL:
+Keep all mods, perks, exo, unless specifically flagged for deletion.
+
+DELETE (16): [done v1.0.35: off, kept for old saves]
+- mod:digbolt "Digging Bolt"
+- mod:glance "Glowing Lance"
+- mod:tele "Teleport Bolt"
+- mod:eater "Matter Eater" — Borer already does this.
+- mod:followaim "Follow This"
+- mod:aimassist "Aim Assist"
+- mod:farcast "Long-Distance Cast"
+- mod:sawstorm "Spells To Giga Sawblades"
+- perk:eye "All-Seeing Eye"
+- perk:eradar "Enemy Radar"
+- perk:minimap "Mini-map"
+- perk:iradar "Item Radar"
+- perk:tinker "Tinker with Wands Everywhere"
+- perk:wradar "Wand Radar"
+- perk:sight "Trajectory Sight"
+- exo:carrot "Carrot"
+
+NOTES (68):
+[stage: shots] — the shot looks (and the behaviour in them):
+- mod:bolt "Bolt": Improve the FX of the shot to be just like the one in Noita. We had it looking great at one point a while back, but it changed somehow. In fact, I want all shooting sprites to be improved in some way.
+- mod:spark "Spark": Spark looks way cooler in Noita. Please replicate.
+- mod:slug "Slug": Could be changed to a large calibur bullet sprite. A puff of smoke fron the tip of the gun when fired.
+- mod:buck "Buckshot": Needs to look like a rapid spray of small metal pellets with short range. Needs trigger variations.
+- mod:lance "Lance": Give it a thin blue light saber look.
+- mod:blast "Blast": Leave a fading particle trail of smoke as it's thrown, then have it coming up from its lit fuse when it comes to rest.
+- mod:arrow "Magic Arrow": Make sprite smaller, longer a thinner. Flies with a white fade off streak along its trajectory coming out of it.
+- mod:missile "Magic Missile": Needs to shoot out at whatever angle it was shot at, then curve towards enemies with built in homing to nearest enemy. Can be a small missile sprite with a hot rocket trail going from fire to smoke quickly from its back end and a extending out on a long smoke trail of its trajectory. Does small explosion on hit.
+- mod:fball "Fireball": Can this look like a proper flying flaming fire ball? Trail of fire. Smoke trail. Throws a spread of fire where it lands. See fire destruction mechanic to see how fire is visually treated.
+- mod:fbolt "Firebolt": Same notes as fireball.
+- mod:flamer "Flamethrower": Same notes as fireball for matching look.
+- mod:bubble "Bubble Spark": A bright blue wobbly bubble that twinkles and casts a blue hued light in an area around it.
+- mod:spit "Spitter Bolt": Make it drop falling pink particles. See jellyfish projectiles for falling particles.
+- mod:eorb "Energy Orb": Make look like a undulating ball of powerful energy.
+- mod:esph "Energy Sphere": Same as energy or visuals, but hollow.
+- mod:zap "Lightning Bolt": This needs a lot of work. Again. We used to have a perfect version of it that looked a lot like lightning. See if you can track it down.
+- mod:chain "Chain Bolt": Make it a small raging black and purple lightning ball, crackling with power. When it chain zips to another enemy, it is a fast streak.
+- mod:void "Black Hole": Ensure we've got the particle effects happening.
+- mod:plasma "Plasma Beam": Bright purple plasma beam weapon that inflicts fire and burning where it lands.
+- mod:ldrill "Luminous Drill": Same as plasma beam, but bright green, and has a length cut off. Maybe fade off the tip.
+- mod:cross "Death Cross": Add sparkly particles.
+- mod:pollen "Pollen": Should glow and light a small area around them. Leave small particle trail
+- mod:disc "Disc Projectile": Can there be 4 copies of the sprite under the main one that fade off in opacity each and each one is a frame or two behind, so it creates a trail effect?
+- mod:nuke "Nuke": Needs a more exaggerated explosion effect.
+- mod:meteor "Meteor": Same visual notes as nuke. But also emphasise the meteor trail.
+[done v1.0.35]:
+- mod:teleshort "Small Teleport Bolt": Reduce teleport distance x0.75
+- mod:trigger "Hair Trigger": Ensure this actually reduces recharge time. (it does: tests/logic/auto-audit)
+- mod:recharge "Quick Recharge": Keep. Double check it works. (it does: tests/logic/auto-audit)
+- mod:gravmod "Gravity" / mod:float "Anti-Gravity" / mod:flat "Horizontal Path": This should be purple to match other trajectory mods.
+- mod:addtrig "Add Trigger" / addtimer / adddeath: These need to be more common, as I plan to phase out trigger variations of shots. In fact, this is me asking to remove variations and make all triggers a lvl one common drop.
+- mod:crystal_t / mod:dormant_t: Same feedback about removing trigger variations.
+- mod:refresh "Wand Refresh": This doesn't seem to work. Please fix.
+- perk:glass "Glass Cannon": Why no boost yet? Fix please.
+- perk:fireimm "Fire Immunity": Archive but keep. As fire damage is currently not implemented.
+[stage: perks]:
+- perk:ghost "Angry Ghost": Needs nerfing. (it does nothing in Auto yet: build it, nerfed)
+- perk:shield "Permanent Shield": Ensure it looks good. (earlier: a light-blue radial glow, brighter outside, flashing off on a hit, back when ready)
+- perk:pinpoint "Pinpointer": Just adds a red laser pointer to where the character happens to be aiming. Purely aesthetic perk.
+[stage: jetpack]:
+- exo:jet "Jetpack": Auto and manual player movement needs to adhere to jetpack fuel levels and recharge limits.
+[later] — keep as they are (most not wired into Auto yet: GUN_TODO in src/art/scenegun.js):
+- mod:knock, damper, crit, spiral, follow, cold, battery, boom, brim, crystal, dormant, stillc, shieldc, vigour, storm,
+  vacfield, glitter, blood, bpower, telecast, warpcast, gpower: Keep
+- mod:discrim "Discriminate": Keep. I'll come back to it later with a target selection idea.
+- mod:autoaim "Auto-Aim": Keep. Need for chain stacking different projectiles with triggers, so they can auto aim at targets when are spawned.
+- mod:auto "Questions Later": This is for making a gun with the trigger constantly held down regardless of enemies. Keep.

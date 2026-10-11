@@ -29,7 +29,7 @@ import { rustleStep } from '../audio/recipes.js';
 import { pixText, pixWidth } from './pixfont.js';
 import { GUN_HELD, gunMuzzle } from './sprites.js';
 import { GUN_ART } from './gunart.js';
-import { gunPull, gunTick, planShots, shotsOf } from './scenegun.js';
+import { gunPull, gunTick, perkDmg, planShots, shotsOf } from './scenegun.js';
 import { teamClearer } from '../auto/clear.js';
 
 export const TITLE_VW = 220;          // world units across the screen
@@ -1527,8 +1527,8 @@ function stepRunnerGun(S, r, dt) {
     if (!best) return;
     const plan = gunPull(g, pl.guns);
     if (!plan) return;
-    const mz = gunMuzzle(gx0 + Math.cos(r.ang) * 2.5, gy0, r.ang, GUN_HELD, r.kit.art), out = planShots(plan, r.ang, mz.x, mz.y, R, r.id);
-    for (const s of out) S.shots.push(s);
+    const mz = gunMuzzle(gx0 + Math.cos(r.ang) * 2.5, gy0, r.ang, GUN_HELD, r.kit.art), out = planShots(plan, r.ang, mz.x, mz.y, R, r.id), dm = perkDmg(pl);
+    for (const s of out) { s.dmg *= dm; S.shots.push(s); }
     if (out.length) { burst(S, mz.x, mz.y, 3, out[0].col, 40, 'spark', 0.12); snd(S, 'cast', mz.x, mz.y, r.kit); }
     return;
   }

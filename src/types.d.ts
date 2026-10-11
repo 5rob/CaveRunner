@@ -278,6 +278,7 @@ interface NestState {
 interface Perk extends Partial<Omit<PerkBag, 'maxHp'>> {   // dmg, speed, shield, …: the bag fields it moves
   name: string; glyph: string; tint: string; info: string;
   stat?: string; tier?: number;   // a stat perk (STAT_PERKS): which stat, and its level 1-5
+  off?: number;                   // kept, never handed out (CaveRunner Auto: binned or archived by the owner)
 }
 /** every perk you own folded into one bag: perkBag (data/perks.js), W.pb */
 interface PerkBag {

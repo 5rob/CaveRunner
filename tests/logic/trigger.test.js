@@ -13,7 +13,8 @@ const mk = (slots, over) => G.resetGun(Object.assign({ name: 'T', cap: slots.len
   multi: 1, shuffle: false, mana: 9999, speedMul: 1, slots }, over || {}));
 const plan = (slots, over) => G.planCast(mk(slots, over));
 const M = G.MODS;
-const TRIGGERS = G.ALL_IDS.filter(id => M[id].trig);
+// the variants are kept (old saves, and the payload machinery) but off in CaveRunner Auto (owner, v1.0.35)
+const TRIGGERS = Object.keys(M).filter(id => M[id].trig);
 const ADDS = G.ALL_IDS.filter(id => M[id].addTrig);
 
 const depth = sh => (sh.payload && sh.payload.length ? 1 + Math.max(...sh.payload.map(depth)) : 0);

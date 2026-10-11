@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v1.0.34</title>
-<!-- VERSION = 'v1000034' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v1.0.35</title>
+<!-- VERSION = 'v1000035' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -1071,7 +1071,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v1.0.34';</script>
+<script>const VERSION = 'v1.0.35';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -2994,6 +2994,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     digbolt: {
       name: "Digging Bolt",
       kind: "shot",
+      off: 1,
       glyph: "▤",
       col: "#7ab8ff",
       mana: 0,
@@ -3013,6 +3014,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     glance: {
       name: "Glowing Lance",
       kind: "shot",
+      off: 1,
       glyph: "▬",
       col: "#fff0a8",
       mana: 26,
@@ -3179,6 +3181,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     tele: {
       name: "Teleport Bolt",
       kind: "shot",
+      off: 1,
       glyph: "⤳",
       col: "#8fe8ff",
       mana: 40,
@@ -3208,7 +3211,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       spread: 0,
       delay: 0.05,
       size: 1.6,
-      life: 0.13,
+      life: 0.0975,
       grav: 200,
       tele: 1,
       recoil: 0,
@@ -3393,6 +3396,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     farcast: {
       name: "Long-Distance Cast",
       kind: "util",
+      off: 1,
       glyph: "➟",
       col: "#f0f0f0",
       mana: 4,
@@ -3423,6 +3427,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     sawstorm: {
       name: "Spells To Giga Sawblades",
       kind: "util",
+      off: 1,
       glyph: "✳",
       col: "#d9dde4",
       mana: 40,
@@ -3484,7 +3489,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       name: "Gravity",
       kind: "mod",
       glyph: "⇓",
-      col: "#63c8ff",
+      col: "#b57cff",
       mana: 2,
       d: 0.02,
       info: "Drags the shot down as it flies",
@@ -3496,7 +3501,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       name: "Anti-Gravity",
       kind: "mod",
       glyph: "⇑",
-      col: "#63c8ff",
+      col: "#b57cff",
       mana: 3,
       d: 0.02,
       info: "Lifts the shot as it flies",
@@ -3558,6 +3563,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     followaim: {
       name: "Follow This",
       kind: "mod",
+      off: 1,
       glyph: "↬",
       col: "#b57cff",
       mana: 10,
@@ -3597,6 +3603,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     aimassist: {
       name: "Aim Assist",
       kind: "mod",
+      off: 1,
       glyph: "⌖",
       col: "#b57cff",
       mana: 3,
@@ -3637,7 +3644,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       name: "Horizontal Path",
       kind: "mod",
       glyph: "═",
-      col: "#ff5a52",
+      col: "#b57cff",
       mana: 4,
       d: 0.03,
       info: "Forces the shot dead level, and it hits harder for it",
@@ -3649,6 +3656,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     eater: {
       name: "Matter Eater",
       kind: "mod",
+      off: 1,
       glyph: "▩",
       col: "#b57cff",
       mana: 14,
@@ -3994,7 +4002,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     storm: "field",
     vacfield: "field",
     glitter: "field",
-    refresh: "cast",
+    refresh: "upkeep",
     farcast: "cast",
     telecast: "cast",
     warpcast: "cast",
@@ -4008,16 +4016,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     mu: "cast",
     zeta: "cast",
     knock: "dmg",
-    kick: "dmg",
+    kick: "upkeep",
     crit: "dmg",
-    flat: "dmg",
+    flat: "path",
     lust: "dmg",
     manapow: "dmg",
     bboom: "dmg",
     bpower: "dmg",
     gpower: "dmg",
-    gravmod: "vel",
-    float: "vel",
+    gravmod: "path",
+    float: "path",
+    // owner (v1.0.35): trajectory mods are purple
     boomer: "path",
     spiral: "path",
     pong: "path",
@@ -4035,8 +4044,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     trifur: "pattern",
     behind: "pattern",
     damper: "upkeep",
-    hspread: "upkeep",
+    hspread: "pattern",
     blood: "upkeep",
+    // owner (v1.0.35) colour sweep: Recoil with its Damper, Heavy Spread with Reduce Spread, Wand Refresh a recharge mod
     addtrig: "cast",
     addtimer: "cast",
     adddeath: "cast"
@@ -4306,9 +4316,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     myriad: 4,
     omega: 4,
     zeta: 4,
-    addtrig: 3,
-    addtimer: 3,
-    adddeath: 3,
+    addtrig: 1,
+    addtimer: 1,
+    adddeath: 1,
     tele: 2,
     teleshort: 1
   };
@@ -4345,6 +4355,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       trig,
       draw: 1,
       base,
+      off: 1,
       mana: Math.round(m.mana * 1.3 + 5),
       mark: k.mark,
       info: m.info + ". " + (trig === "hit" ? "Casts the next spell where it hits" : trig === "timer" ? "Casts the next spell a moment after firing" : "Casts the next spell where it dies")
@@ -9437,9 +9448,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     BOUNCE_EXPLOSION: ["2,3,4,5", "0.2,0.6,0.8,0.8"],
     ALL_DISCS: ["0,6,10", "0.1,0.05,1"],
     RESET: ["10", "1"],
-    ADD_TRIGGER: ["3,4,5,10", "0.3,0.6,0.6,1"],
-    ADD_TIMER: ["3,4,5,10", "0.3,0.6,0.6,1"],
-    ADD_DEATH_TRIGGER: ["3,4,5,10", "0.3,0.6,0.6,1"],
+    // owner (v1.0.35): the triggers are level-one common drops (the trigger variants are gone)
+    ADD_TRIGGER: ["0,1,2,3,4,5,6,10", "1,1,1,1,1,1,1,1"],
+    ADD_TIMER: ["0,1,2,3,4,5,6,10", "1,1,1,1,1,1,1,1"],
+    ADD_DEATH_TRIGGER: ["0,1,2,3,4,5,6,10", "1,1,1,1,1,1,1,1"],
     ALPHA: ["5,6,10", "0.1,0.2,1"],
     GAMMA: ["5,6,10", "0.1,0.2,1"],
     TAU: ["5,6,10", "0.1,0.2,1"],
@@ -10954,6 +10966,420 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return { rech, rechMul, manaMax, manaRegen, auto };
   }
 
+  // src/data/perks.js
+  var PERKS = {
+    eye: {
+      name: "All-Seeing Eye",
+      off: 1,
+      glyph: "◉",
+      tint: "#8fd3ff",
+      seeAll: 1,
+      info: "The whole floor is lit. No fog anywhere, on this floor or any other."
+    },
+    ghost: {
+      name: "Angry Ghost",
+      glyph: "☾",
+      tint: "#c9a6ff",
+      ghost: 1,
+      info: "A spirit trails you and fires at whatever is nearest."
+    },
+    gold: {
+      name: "Attract Gold",
+      glyph: "◇",
+      tint: "#ffc93c",
+      goldPull: 3,
+      info: "Coin flies to you from three times as far away."
+    },
+    bounce: {
+      name: "Bouncing Spells",
+      glyph: "⤢",
+      tint: "#7ad7ff",
+      bounce: 1,
+      info: "Every shot bounces once more than it otherwise would."
+    },
+    close: {
+      name: "Close Call",
+      glyph: "✧",
+      tint: "#ff8a1f",
+      close: 1,
+      info: "+40% critical chance while something is within 56 units of you."
+    },
+    conc: {
+      name: "Concentrated Spells",
+      glyph: "✹",
+      tint: "#ff5a52",
+      dmg: 1.25,
+      spread: 0.5,
+      delay: 1.15,
+      recoil: 1.25,
+      info: "A quarter more damage and half the spread, but a slower gun and a harder kick."
+    },
+    contact: {
+      name: "Contact Damage",
+      glyph: "✺",
+      tint: "#ff5a36",
+      contact: 1,
+      info: "Anything that touches you is hurt by it."
+    },
+    crit: {
+      name: "Critical Hit +",
+      glyph: "✳",
+      tint: "#ff5a52",
+      crit: 0.15,
+      info: "+15% chance of a hit doing triple damage."
+    },
+    eradar: {
+      name: "Enemy Radar",
+      off: 1,
+      glyph: "▲",
+      tint: "#ff5a52",
+      radarEnemy: 1,
+      info: "The nearest creatures are marked at the edge of the screen."
+    },
+    health: {
+      name: "Extra Health",
+      glyph: "✚",
+      tint: "#46c48c",
+      hpAdd: 50,
+      info: "50 more maximum health, and it comes full."
+    },
+    life: {
+      name: "Extra Life",
+      glyph: "♥",
+      tint: "#ff5a36",
+      lives: 1,
+      info: "You get back up once, at full health, the first time you are killed."
+    },
+    knock: {
+      name: "Extra Knockback on Spells",
+      glyph: "⟫",
+      tint: "#e88a3c",
+      recoil: 1.5,
+      info: "Half again the kick out of every shot — which the jetpack can work with."
+    },
+    lev: {
+      name: "Faster Levitation",
+      glyph: "⬆",
+      tint: "#7ad7ff",
+      jet: 1.25,
+      info: "A quarter more thrust out of the jetpack."
+    },
+    minimap: {
+      name: "Mini-map",
+      off: 1,
+      glyph: "▦",
+      tint: "#e9ecf2",
+      minimap: 1,
+      info: "A small map of what you have seen, over the gun buttons: you, creatures nearby, crystals and your pins. Tap it to zoom out."
+    },
+    fireimm: {
+      name: "Fire Immunity",
+      off: 1,
+      glyph: "♨",
+      tint: "#ff7a2f",
+      fireImm: 1,
+      info: "Fire never catches on you: walk through flames, burning grass and your own fire spells unhurt. Blasts still hurt."
+    },
+    move: {
+      name: "Faster Movement",
+      glyph: "➤",
+      tint: "#6db8ff",
+      walk: 1.3,
+      info: "Walk and fly a third faster."
+    },
+    proj: {
+      name: "Faster Projectiles",
+      glyph: "⇒",
+      tint: "#ffc93c",
+      speed: 1.25,
+      info: "Everything you fire travels a quarter faster."
+    },
+    wands: {
+      name: "Faster Wands",
+      glyph: "↻",
+      tint: "#6db8ff",
+      delay: 0.75,
+      rech: 0.75,
+      info: "Cast delay and recharge are three quarters of what they were."
+    },
+    glass: {
+      name: "Glass Cannon",
+      glyph: "✷",
+      tint: "#ff5a52",
+      dmg: 2.5,
+      hpMul: 0.5,
+      info: "Two and a half times the damage, and half the health to spend."
+    },
+    greed: {
+      name: "Greed",
+      glyph: "⬤",
+      tint: "#ffc93c",
+      gold: 2,
+      info: "Every coin is worth double."
+    },
+    homing: {
+      name: "Homing Shots",
+      glyph: "↝",
+      tint: "#b57cff",
+      homing: 3,
+      info: "Your shots bend towards whatever is nearest."
+    },
+    invis: {
+      name: "Invisibility",
+      glyph: "☁",
+      tint: "#9aa3ad",
+      invis: 1,
+      info: "Creatures do not notice you until you are almost on top of them."
+    },
+    iradar: {
+      name: "Item Radar",
+      off: 1,
+      glyph: "◆",
+      tint: "#b57cff",
+      radarItem: 1,
+      info: "The nearest mod lying in the cave is marked at the edge of the screen."
+    },
+    trail: {
+      name: "Levitation Trail",
+      glyph: "≈",
+      tint: "#ff8a1f",
+      trail: 1,
+      info: "Flying leaves a trail of fire behind you that burns what it touches."
+    },
+    shield: {
+      name: "Permanent Shield",
+      glyph: "⬡",
+      tint: "#7ad7ff",
+      shield: 1,
+      info: "A shield soaks the first hit and comes back a couple of seconds later."
+    },
+    pinpoint: {
+      name: "Pinpointer",
+      glyph: "⊙",
+      tint: "#5ee0a0",
+      pinpointer: 1,
+      speed: 1.2,
+      spread: 0.6,
+      info: "You aim at the nearest creature instead of by hand, with a sightline to it."
+    },
+    repel: {
+      name: "Projectile Repulsion Field",
+      glyph: "⊘",
+      tint: "#8fd3ff",
+      repel: 1,
+      info: "Shots aimed at you are shoved aside before they arrive."
+    },
+    tinker: {
+      name: "Tinker with Wands Everywhere",
+      off: 1,
+      glyph: "⚙",
+      tint: "#e9ecf2",
+      tinker: 1,
+      info: "The mod screen works out in the cave, not only in the shop."
+    },
+    unlimited: {
+      name: "Unlimited Spells",
+      glyph: "∞",
+      tint: "#6db8ff",
+      mana: 0,
+      info: "Spells cost no mana at all."
+    },
+    wradar: {
+      name: "Wand Radar",
+      off: 1,
+      glyph: "▣",
+      tint: "#ffc93c",
+      radarWand: 1,
+      info: "The nearest gun lying in the cave is marked at the edge of the screen."
+    },
+    hearts: {
+      name: "Stronger Hearts",
+      glyph: "❤",
+      tint: "#46c48c",
+      heal: 1.5,
+      info: "Anything that heals you heals half again as much."
+    },
+    sight: {
+      name: "Trajectory Sight",
+      off: 1,
+      glyph: "⋯",
+      tint: "#7ad7ff",
+      trajectory: 1,
+      info: "Shows where your next shot flies — the dotted aim line, mods and all."
+    }
+  };
+  var ROMAN = ["I", "II", "III", "IV", "V"];
+  var STAT_PERKS = {
+    hp: {
+      name: "Max Health",
+      glyph: "♥",
+      tint: "#ff5a6e",
+      field: "hpAdd",
+      vals: [20, 40, 65, 95, 130],
+      say: (v) => v + " more maximum health, and it comes full."
+    },
+    walk: {
+      name: "Movement Speed",
+      glyph: "➤",
+      tint: "#6db8ff",
+      field: "walk",
+      vals: [1.08, 1.16, 1.25, 1.35, 1.5],
+      say: (v) => "Walk and fly " + Math.round((v - 1) * 100) + "% faster."
+    },
+    fuel: {
+      name: "Jetpack Fuel",
+      glyph: "▮",
+      tint: "#ff9a2e",
+      field: "fuel",
+      vals: [1.15, 1.3, 1.5, 1.75, 2],
+      say: (v) => "A tank " + Math.round((v - 1) * 100) + "% bigger: the jetpack runs that much longer."
+    },
+    refuel: {
+      name: "Jetpack Recharge",
+      glyph: "↺",
+      tint: "#ffd35a",
+      field: "refuel",
+      vals: [1.15, 1.3, 1.5, 1.75, 2],
+      say: (v) => "The tank refills " + Math.round((v - 1) * 100) + "% faster."
+    },
+    pull: {
+      name: "Gold Vacuum",
+      glyph: "⊛",
+      tint: "#ffc93c",
+      field: "goldPull",
+      vals: [1.3, 1.6, 2, 2.5, 3],
+      say: (v) => "Gold flies to you from " + Math.round((v - 1) * 100) + "% further away."
+    },
+    // the level itself (1-5): each thing it stretches has a Dev min (none fitted) and max (level V), carrotAt
+    carrot: {
+      name: "Carrot",
+      glyph: "⌖",
+      tint: "#ff8c2a",
+      field: "carrot",
+      vals: [1, 2, 3, 4, 5],
+      say: (v) => "Carrot " + ROMAN[v - 1] + " of V: the camera pulls back, the torch reaches further, the aim line runs longer — and creatures notice you from further off."
+    }
+  };
+  var STAT_KEYS = Object.keys(STAT_PERKS);
+  var STAT_PRICE = [60, 140, 260, 420, 650];
+  for (const s of STAT_KEYS) {
+    const S2 = STAT_PERKS[s];
+    S2.vals.forEach((v, i) => {
+      PERKS["st_" + s + (i + 1)] = {
+        name: S2.name + " " + ROMAN[i],
+        glyph: S2.glyph,
+        tint: S2.tint,
+        stat: s,
+        tier: i + 1,
+        [S2.field]: v,
+        info: S2.say(v) + " Fits the suit’s " + S2.name + " slot."
+      };
+    });
+  }
+  var PERK_IDS = Object.keys(PERKS);
+  var SUIT_SLOTS = 6;
+  var SUIT_LEN = SUIT_SLOTS + STAT_KEYS.length;
+  function fitsSlot(id, i) {
+    const k = PERKS[id];
+    if (!k) return false;
+    return i < SUIT_SLOTS ? !k.stat : k.stat === STAT_KEYS[i - SUIT_SLOTS];
+  }
+  var PERK_PRICE = 200;
+  var perkPrice = (id) => PERKS[id] && PERKS[id].tier ? STAT_PRICE[PERKS[id].tier - 1] : PERK_PRICE;
+  function activePerks(lo) {
+    return (lo.suit || []).filter((id, i, a) => id && PERKS[id] && a.indexOf(id) === i);
+  }
+  function perkBag(ids) {
+    const P = {
+      dmg: 1,
+      speed: 1,
+      spread: 1,
+      bounce: 0,
+      recoil: 1,
+      crit: 0,
+      mana: 1,
+      delay: 1,
+      rech: 1,
+      walk: 1,
+      jet: 1,
+      hpMul: 1,
+      hpAdd: 0,
+      heal: 1,
+      gold: 1,
+      goldPull: 1,
+      shield: 0,
+      lives: 0,
+      ghost: 0,
+      homing: 0,
+      trail: 0,
+      contact: 0,
+      close: 0,
+      invis: 0,
+      repel: 0,
+      seeAll: 0,
+      radarEnemy: 0,
+      radarItem: 0,
+      radarWand: 0,
+      tinker: 0,
+      extraItem: 0,
+      pinpointer: 0,
+      trajectory: 0,
+      fuel: 1,
+      refuel: 1,
+      carrot: 0,
+      fireImm: 0,
+      minimap: 0
+    };
+    for (const id of ids || []) {
+      const k = PERKS[id];
+      if (!k) continue;
+      P.dmg *= k.dmg || 1;
+      P.speed *= k.speed || 1;
+      P.spread *= k.spread || 1;
+      P.recoil *= k.recoil || 1;
+      P.delay *= k.delay || 1;
+      P.rech *= k.rech || 1;
+      P.walk *= k.walk || 1;
+      P.jet *= k.jet || 1;
+      P.hpMul *= k.hpMul || 1;
+      P.heal *= k.heal || 1;
+      P.gold *= k.gold || 1;
+      P.goldPull *= k.goldPull || 1;
+      P.fuel *= k.fuel || 1;
+      P.refuel *= k.refuel || 1;
+      if (k.mana === 0) P.mana = 0;
+      else P.mana *= k.mana || 1;
+      P.bounce += k.bounce || 0;
+      P.crit += k.crit || 0;
+      P.hpAdd += k.hpAdd || 0;
+      P.lives += k.lives || 0;
+      P.ghost += k.ghost || 0;
+      P.homing = Math.max(P.homing, k.homing || 0);
+      P.carrot = Math.max(P.carrot, k.carrot || 0);
+      for (const f of [
+        "shield",
+        "trail",
+        "contact",
+        "close",
+        "invis",
+        "repel",
+        "seeAll",
+        "radarEnemy",
+        "radarItem",
+        "radarWand",
+        "tinker",
+        "extraItem",
+        "pinpointer",
+        "trajectory",
+        "fireImm",
+        "minimap"
+      ])
+        if (k[f]) P[f] = 1;
+    }
+    P.maxHp = Math.max(10, Math.round((PLAYER_HP + P.hpAdd) * P.hpMul));
+    return P;
+  }
+
   // src/art/scenegun.js
   var SP = 0.5;
   var SG_LIFE = 1.6;
@@ -10968,8 +11394,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     "brim",
     "crystal",
     "dormant",
-    "crystal_t",
-    "dormant_t",
     "stillc",
     "shieldc",
     "vigour",
@@ -10982,11 +11406,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     "crit",
     "spiral",
     "follow",
-    "followaim",
     "autoaim",
-    "aimassist",
     "discrim",
-    "eater",
     "gpower",
     "cluster",
     // a passive with no meaning here (the scene always fires on its own)
@@ -11007,7 +11428,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (g.idx == null) g.idx = 0;
     const wrap = () => {
       g.idx = 0;
-      g.rechT = g.rechLen = effRecharge(g);
+      g.rechT = g.rechLen = g.skipRech ? 0 : effRecharge(g);
+      g.skipRech = false;
       shuffleOrder(g);
     };
     const plan = planCast(g, others);
@@ -11022,6 +11444,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     g.mana = (g.mana || 0) - plan.cost;
     g.delayT = g.delayMax = plan.delay;
+    if ((plan.acts || []).includes("refresh")) g.skipRech = true;
     if (plan.wrap) wrap();
     return plan;
   }
@@ -11066,6 +11489,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     return out;
   }
+  var perkDmg = (pl) => perkBag([...new Set((pl.perks || []).map((it) => it && it.id).filter(Boolean))].map(String)).dmg;
   function planShots(plan, ang, x, y, R, by) {
     const out = [];
     for (const sh of plan.shots) if (!sh.still) for (const s of shotsOf(sh, ang, x, y, R, by)) out.push(s);
@@ -12922,8 +13346,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (!best) return;
       const plan = gunPull(g, pl.guns);
       if (!plan) return;
-      const mz2 = gunMuzzle(gx0 + Math.cos(r.ang) * 2.5, gy0, r.ang, GUN_HELD, r.kit.art), out = planShots(plan, r.ang, mz2.x, mz2.y, R, r.id);
-      for (const s of out) S2.shots.push(s);
+      const mz2 = gunMuzzle(gx0 + Math.cos(r.ang) * 2.5, gy0, r.ang, GUN_HELD, r.kit.art), out = planShots(plan, r.ang, mz2.x, mz2.y, R, r.id), dm = perkDmg(pl);
+      for (const s of out) {
+        s.dmg *= dm;
+        S2.shots.push(s);
+      }
       if (out.length) {
         burst(S2, mz2.x, mz2.y, 3, out[0].col, 40, "spark", 0.12);
         snd(S2, "cast", mz2.x, mz2.y, r.kit);
@@ -13607,412 +14034,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var titlePx = (cw) => Math.max(4, Math.floor(Math.min(cw * 0.92 / pixWidth("RUNNER", 1, 1), 15)));
   var titleBottom = (cw, top) => top + titlePx(cw) * 16 + Math.ceil(titlePx(cw) * 2.2) + 20;
 
-  // src/data/perks.js
-  var PERKS = {
-    eye: {
-      name: "All-Seeing Eye",
-      glyph: "◉",
-      tint: "#8fd3ff",
-      seeAll: 1,
-      info: "The whole floor is lit. No fog anywhere, on this floor or any other."
-    },
-    ghost: {
-      name: "Angry Ghost",
-      glyph: "☾",
-      tint: "#c9a6ff",
-      ghost: 1,
-      info: "A spirit trails you and fires at whatever is nearest."
-    },
-    gold: {
-      name: "Attract Gold",
-      glyph: "◇",
-      tint: "#ffc93c",
-      goldPull: 3,
-      info: "Coin flies to you from three times as far away."
-    },
-    bounce: {
-      name: "Bouncing Spells",
-      glyph: "⤢",
-      tint: "#7ad7ff",
-      bounce: 1,
-      info: "Every shot bounces once more than it otherwise would."
-    },
-    close: {
-      name: "Close Call",
-      glyph: "✧",
-      tint: "#ff8a1f",
-      close: 1,
-      info: "+40% critical chance while something is within 56 units of you."
-    },
-    conc: {
-      name: "Concentrated Spells",
-      glyph: "✹",
-      tint: "#ff5a52",
-      dmg: 1.25,
-      spread: 0.5,
-      delay: 1.15,
-      recoil: 1.25,
-      info: "A quarter more damage and half the spread, but a slower gun and a harder kick."
-    },
-    contact: {
-      name: "Contact Damage",
-      glyph: "✺",
-      tint: "#ff5a36",
-      contact: 1,
-      info: "Anything that touches you is hurt by it."
-    },
-    crit: {
-      name: "Critical Hit +",
-      glyph: "✳",
-      tint: "#ff5a52",
-      crit: 0.15,
-      info: "+15% chance of a hit doing triple damage."
-    },
-    eradar: {
-      name: "Enemy Radar",
-      glyph: "▲",
-      tint: "#ff5a52",
-      radarEnemy: 1,
-      info: "The nearest creatures are marked at the edge of the screen."
-    },
-    health: {
-      name: "Extra Health",
-      glyph: "✚",
-      tint: "#46c48c",
-      hpAdd: 50,
-      info: "50 more maximum health, and it comes full."
-    },
-    life: {
-      name: "Extra Life",
-      glyph: "♥",
-      tint: "#ff5a36",
-      lives: 1,
-      info: "You get back up once, at full health, the first time you are killed."
-    },
-    knock: {
-      name: "Extra Knockback on Spells",
-      glyph: "⟫",
-      tint: "#e88a3c",
-      recoil: 1.5,
-      info: "Half again the kick out of every shot — which the jetpack can work with."
-    },
-    lev: {
-      name: "Faster Levitation",
-      glyph: "⬆",
-      tint: "#7ad7ff",
-      jet: 1.25,
-      info: "A quarter more thrust out of the jetpack."
-    },
-    minimap: {
-      name: "Mini-map",
-      glyph: "▦",
-      tint: "#e9ecf2",
-      minimap: 1,
-      info: "A small map of what you have seen, over the gun buttons: you, creatures nearby, crystals and your pins. Tap it to zoom out."
-    },
-    fireimm: {
-      name: "Fire Immunity",
-      glyph: "♨",
-      tint: "#ff7a2f",
-      fireImm: 1,
-      info: "Fire never catches on you: walk through flames, burning grass and your own fire spells unhurt. Blasts still hurt."
-    },
-    move: {
-      name: "Faster Movement",
-      glyph: "➤",
-      tint: "#6db8ff",
-      walk: 1.3,
-      info: "Walk and fly a third faster."
-    },
-    proj: {
-      name: "Faster Projectiles",
-      glyph: "⇒",
-      tint: "#ffc93c",
-      speed: 1.25,
-      info: "Everything you fire travels a quarter faster."
-    },
-    wands: {
-      name: "Faster Wands",
-      glyph: "↻",
-      tint: "#6db8ff",
-      delay: 0.75,
-      rech: 0.75,
-      info: "Cast delay and recharge are three quarters of what they were."
-    },
-    glass: {
-      name: "Glass Cannon",
-      glyph: "✷",
-      tint: "#ff5a52",
-      dmg: 2.5,
-      hpMul: 0.5,
-      info: "Two and a half times the damage, and half the health to spend."
-    },
-    greed: {
-      name: "Greed",
-      glyph: "⬤",
-      tint: "#ffc93c",
-      gold: 2,
-      info: "Every coin is worth double."
-    },
-    homing: {
-      name: "Homing Shots",
-      glyph: "↝",
-      tint: "#b57cff",
-      homing: 3,
-      info: "Your shots bend towards whatever is nearest."
-    },
-    invis: {
-      name: "Invisibility",
-      glyph: "☁",
-      tint: "#9aa3ad",
-      invis: 1,
-      info: "Creatures do not notice you until you are almost on top of them."
-    },
-    iradar: {
-      name: "Item Radar",
-      glyph: "◆",
-      tint: "#b57cff",
-      radarItem: 1,
-      info: "The nearest mod lying in the cave is marked at the edge of the screen."
-    },
-    trail: {
-      name: "Levitation Trail",
-      glyph: "≈",
-      tint: "#ff8a1f",
-      trail: 1,
-      info: "Flying leaves a trail of fire behind you that burns what it touches."
-    },
-    shield: {
-      name: "Permanent Shield",
-      glyph: "⬡",
-      tint: "#7ad7ff",
-      shield: 1,
-      info: "A shield soaks the first hit and comes back a couple of seconds later."
-    },
-    pinpoint: {
-      name: "Pinpointer",
-      glyph: "⊙",
-      tint: "#5ee0a0",
-      pinpointer: 1,
-      speed: 1.2,
-      spread: 0.6,
-      info: "You aim at the nearest creature instead of by hand, with a sightline to it."
-    },
-    repel: {
-      name: "Projectile Repulsion Field",
-      glyph: "⊘",
-      tint: "#8fd3ff",
-      repel: 1,
-      info: "Shots aimed at you are shoved aside before they arrive."
-    },
-    tinker: {
-      name: "Tinker with Wands Everywhere",
-      glyph: "⚙",
-      tint: "#e9ecf2",
-      tinker: 1,
-      info: "The mod screen works out in the cave, not only in the shop."
-    },
-    unlimited: {
-      name: "Unlimited Spells",
-      glyph: "∞",
-      tint: "#6db8ff",
-      mana: 0,
-      info: "Spells cost no mana at all."
-    },
-    wradar: {
-      name: "Wand Radar",
-      glyph: "▣",
-      tint: "#ffc93c",
-      radarWand: 1,
-      info: "The nearest gun lying in the cave is marked at the edge of the screen."
-    },
-    hearts: {
-      name: "Stronger Hearts",
-      glyph: "❤",
-      tint: "#46c48c",
-      heal: 1.5,
-      info: "Anything that heals you heals half again as much."
-    },
-    sight: {
-      name: "Trajectory Sight",
-      glyph: "⋯",
-      tint: "#7ad7ff",
-      trajectory: 1,
-      info: "Shows where your next shot flies — the dotted aim line, mods and all."
-    }
-  };
-  var ROMAN = ["I", "II", "III", "IV", "V"];
-  var STAT_PERKS = {
-    hp: {
-      name: "Max Health",
-      glyph: "♥",
-      tint: "#ff5a6e",
-      field: "hpAdd",
-      vals: [20, 40, 65, 95, 130],
-      say: (v) => v + " more maximum health, and it comes full."
-    },
-    walk: {
-      name: "Movement Speed",
-      glyph: "➤",
-      tint: "#6db8ff",
-      field: "walk",
-      vals: [1.08, 1.16, 1.25, 1.35, 1.5],
-      say: (v) => "Walk and fly " + Math.round((v - 1) * 100) + "% faster."
-    },
-    fuel: {
-      name: "Jetpack Fuel",
-      glyph: "▮",
-      tint: "#ff9a2e",
-      field: "fuel",
-      vals: [1.15, 1.3, 1.5, 1.75, 2],
-      say: (v) => "A tank " + Math.round((v - 1) * 100) + "% bigger: the jetpack runs that much longer."
-    },
-    refuel: {
-      name: "Jetpack Recharge",
-      glyph: "↺",
-      tint: "#ffd35a",
-      field: "refuel",
-      vals: [1.15, 1.3, 1.5, 1.75, 2],
-      say: (v) => "The tank refills " + Math.round((v - 1) * 100) + "% faster."
-    },
-    pull: {
-      name: "Gold Vacuum",
-      glyph: "⊛",
-      tint: "#ffc93c",
-      field: "goldPull",
-      vals: [1.3, 1.6, 2, 2.5, 3],
-      say: (v) => "Gold flies to you from " + Math.round((v - 1) * 100) + "% further away."
-    },
-    // the level itself (1-5): each thing it stretches has a Dev min (none fitted) and max (level V), carrotAt
-    carrot: {
-      name: "Carrot",
-      glyph: "⌖",
-      tint: "#ff8c2a",
-      field: "carrot",
-      vals: [1, 2, 3, 4, 5],
-      say: (v) => "Carrot " + ROMAN[v - 1] + " of V: the camera pulls back, the torch reaches further, the aim line runs longer — and creatures notice you from further off."
-    }
-  };
-  var STAT_KEYS = Object.keys(STAT_PERKS);
-  var STAT_PRICE = [60, 140, 260, 420, 650];
-  for (const s of STAT_KEYS) {
-    const S2 = STAT_PERKS[s];
-    S2.vals.forEach((v, i) => {
-      PERKS["st_" + s + (i + 1)] = {
-        name: S2.name + " " + ROMAN[i],
-        glyph: S2.glyph,
-        tint: S2.tint,
-        stat: s,
-        tier: i + 1,
-        [S2.field]: v,
-        info: S2.say(v) + " Fits the suit’s " + S2.name + " slot."
-      };
-    });
-  }
-  var PERK_IDS = Object.keys(PERKS);
-  var SUIT_SLOTS = 6;
-  var SUIT_LEN = SUIT_SLOTS + STAT_KEYS.length;
-  function fitsSlot(id, i) {
-    const k = PERKS[id];
-    if (!k) return false;
-    return i < SUIT_SLOTS ? !k.stat : k.stat === STAT_KEYS[i - SUIT_SLOTS];
-  }
-  var PERK_PRICE = 200;
-  var perkPrice = (id) => PERKS[id] && PERKS[id].tier ? STAT_PRICE[PERKS[id].tier - 1] : PERK_PRICE;
-  function activePerks(lo) {
-    return (lo.suit || []).filter((id, i, a) => id && PERKS[id] && a.indexOf(id) === i);
-  }
-  function perkBag(ids) {
-    const P = {
-      dmg: 1,
-      speed: 1,
-      spread: 1,
-      bounce: 0,
-      recoil: 1,
-      crit: 0,
-      mana: 1,
-      delay: 1,
-      rech: 1,
-      walk: 1,
-      jet: 1,
-      hpMul: 1,
-      hpAdd: 0,
-      heal: 1,
-      gold: 1,
-      goldPull: 1,
-      shield: 0,
-      lives: 0,
-      ghost: 0,
-      homing: 0,
-      trail: 0,
-      contact: 0,
-      close: 0,
-      invis: 0,
-      repel: 0,
-      seeAll: 0,
-      radarEnemy: 0,
-      radarItem: 0,
-      radarWand: 0,
-      tinker: 0,
-      extraItem: 0,
-      pinpointer: 0,
-      trajectory: 0,
-      fuel: 1,
-      refuel: 1,
-      carrot: 0,
-      fireImm: 0,
-      minimap: 0
-    };
-    for (const id of ids || []) {
-      const k = PERKS[id];
-      if (!k) continue;
-      P.dmg *= k.dmg || 1;
-      P.speed *= k.speed || 1;
-      P.spread *= k.spread || 1;
-      P.recoil *= k.recoil || 1;
-      P.delay *= k.delay || 1;
-      P.rech *= k.rech || 1;
-      P.walk *= k.walk || 1;
-      P.jet *= k.jet || 1;
-      P.hpMul *= k.hpMul || 1;
-      P.heal *= k.heal || 1;
-      P.gold *= k.gold || 1;
-      P.goldPull *= k.goldPull || 1;
-      P.fuel *= k.fuel || 1;
-      P.refuel *= k.refuel || 1;
-      if (k.mana === 0) P.mana = 0;
-      else P.mana *= k.mana || 1;
-      P.bounce += k.bounce || 0;
-      P.crit += k.crit || 0;
-      P.hpAdd += k.hpAdd || 0;
-      P.lives += k.lives || 0;
-      P.ghost += k.ghost || 0;
-      P.homing = Math.max(P.homing, k.homing || 0);
-      P.carrot = Math.max(P.carrot, k.carrot || 0);
-      for (const f of [
-        "shield",
-        "trail",
-        "contact",
-        "close",
-        "invis",
-        "repel",
-        "seeAll",
-        "radarEnemy",
-        "radarItem",
-        "radarWand",
-        "tinker",
-        "extraItem",
-        "pinpointer",
-        "trajectory",
-        "fireImm",
-        "minimap"
-      ])
-        if (k[f]) P[f] = 1;
-    }
-    P.maxHp = Math.max(10, Math.round((PLAYER_HP + P.hpAdd) * P.hpMul));
-    return P;
-  }
-
   // src/spells/collection.js
   function modTiers() {
     return [1, 2, 3, 4].map((tier) => ({ tier, ids: ALL_IDS.filter((id) => tierOf(id) === tier) }));
@@ -14052,7 +14073,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   // src/auto/run.js
   var BAG_COLS = 7, BAG_ROWS = 10, BAG_SLOTS = BAG_COLS * BAG_ROWS;
   var MAX_PLAYERS = 4, GUN_SLOTS = 4, EXO_SLOTS = 5, PERK_SLOTS = 6, CARROT_MAX = 5;
-  var EXO_CATS = ["hp", "speed", "jet", "carrot"];
+  var EXO_CATS = ["hp", "speed", "jet"];
   var EXO_STATS = { hp: ["hp"], speed: ["walk"], jet: ["fuel", "refuel"], carrot: ["carrot"] };
   var EXO_GLYPH = { hp: "♥", speed: "➤", jet: "🚀", carrot: "⌖" };
   var five = (v) => Math.max(5, Math.round(v / 5) * 5);
@@ -14905,7 +14926,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const n = Math.floor(paid / p.n);
     return { n, left: paid - n * p.n, price: p.n };
   }
-  var GIFT_PERKS = Object.keys(PERKS).filter((id) => !PERKS[id].stat);
+  var GIFT_PERKS = Object.keys(PERKS).filter((id) => !PERKS[id].stat && !PERKS[id].off);
   function machineItem(id, tier, rnd2) {
     const t = Math.max(1, tier | 0);
     if (id === "gun") return { kind: "gun", gun: shopGun(rnd2, t, false), n: 1 };

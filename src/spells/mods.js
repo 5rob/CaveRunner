@@ -208,11 +208,11 @@ export const MODS = {
              dmg: 1, speed: 140, spread: 0, delay: 0.5, size: 24, life: 3.5, eat: 19, pull: 70, recoil: 0 },
   // Noita's Digging Bolt: a short-range grinder in a puff of blue smoke that throws the
   // rock it chews back out as chips. Barely scratches a creature
-  digbolt: { name: 'Digging Bolt', kind: 'shot', glyph: '▤', col: '#7ab8ff', mana: 0,
+  digbolt: { name: 'Digging Bolt', kind: 'shot', off: 1, glyph: '▤', col: '#7ab8ff', mana: 0,
              info: 'Free, short-range, and very good at mining. Grinds rock to chips in a puff of blue smoke; only scratches creatures',
              dmg: 0.2, speed: 460, spread: 2, delay: 0.1, size: 2, life: 0.55, bore: 6, recoil: 2,
              look: 'drill', light: '90,170,255', lightR: 14 },
-  glance:  { name: 'Glowing Lance', kind: 'shot', glyph: '▬', col: '#fff0a8', mana: 26,
+  glance:  { name: 'Glowing Lance', kind: 'shot', off: 1, glyph: '▬', col: '#fff0a8', mana: 26,
              info: 'A shining golden spear that lights the cave and cuts straight through a line of enemies',
              dmg: 3.2, speed: 640, spread: 0.4, delay: 0.3, size: 2.5, life: 1.3, pierce: 3, recoil: 20,
              accel: 0.5, vmax: 1100, look: 'lance', light: '255,235,150', lightR: 46 },
@@ -246,13 +246,13 @@ export const MODS = {
              dmg: 5, speed: 420, spread: 2, delay: 0.55, size: 5, life: 3,
              explode: 40, grav: 700, bore: 4, recoil: 50, fire: 1, look: 'flame', light: '255,150,50', lightR: 60 },
   // Noita's Teleport Bolts: harmless, and wherever the bolt stops you go
-  tele:    { name: 'Teleport Bolt', kind: 'shot', glyph: '⤳', col: '#8fe8ff', mana: 40,
+  tele:    { name: 'Teleport Bolt', kind: 'shot', off: 1, glyph: '⤳', col: '#8fe8ff', mana: 40,
              info: 'Harmless. Wherever it lands or runs out, you appear there',
              dmg: 0, speed: 700, spread: 0, delay: 0.05, size: 2, life: 0.5, grav: 200, tele: 1, recoil: 0,
              look: 'sparks', light: '140,210,255', lightR: 36 },
   teleshort:{ name: 'Small Teleport Bolt', kind: 'shot', glyph: '↝', col: '#8fe8ff', mana: 20,
              info: 'A short hop. Harmless; nothing but a streak of blue sparks, and you appear wherever it stops',
-             dmg: 0, speed: 1100, spread: 0, delay: 0.05, size: 1.6, life: 0.13, grav: 200, tele: 1, recoil: 0,
+             dmg: 0, speed: 1100, spread: 0, delay: 0.05, size: 1.6, life: 0.0975, grav: 200, tele: 1, recoil: 0,
              look: 'sparks', light: '140,210,255', lightR: 30 },
 
   // ---- static projectiles: they stay where you put them and do their work over time ----
@@ -300,14 +300,14 @@ export const MODS = {
              f: s => { s.dmg += 2; } },
   gpower:  { name: 'Gold To Power', kind: 'util', glyph: '⛁', col: '#d8a52a', mana: 10,
              info: 'Spends some of your gold to make the shot hit harder', act: 'gpower' },
-  farcast: { name: 'Long-Distance Cast', kind: 'util', glyph: '➟', col: '#f0f0f0', mana: 4,
+  farcast: { name: 'Long-Distance Cast', kind: 'util', off: 1, glyph: '➟', col: '#f0f0f0', mana: 4,
              info: 'The shot starts well ahead of you', act: 'far', d: 0.02 },
   telecast:{ name: 'Teleporting Cast', kind: 'util', glyph: '⇝', col: '#f0f0f0', mana: 26,
              info: 'The shot starts at the nearest enemy instead of at you', act: 'tele', d: 0.04 },
   warpcast:{ name: 'Warp Cast', kind: 'util', glyph: '⇉', col: '#f0f0f0', mana: 12,
              info: 'The shot jumps forward the instant it is cast, stopped by walls',
              act: 'warp', d: 0.02 },
-  sawstorm:{ name: 'Spells To Giga Sawblades', kind: 'util', glyph: '✳', col: '#d9dde4', mana: 40,
+  sawstorm:{ name: 'Spells To Giga Sawblades', kind: 'util', off: 1, glyph: '✳', col: '#d9dde4', mana: 40,
              info: 'Every shot of yours still in the air turns into a sawblade', act: 'saws', d: 0.1 },
 
   // ---- projectile modifiers ----
@@ -320,9 +320,9 @@ export const MODS = {
              info: 'Takes the shove out of a heavy gun', f: s => { s.recoil *= 0.2; } },
   crit:    { name: 'Critical Plus', kind: 'mod', glyph: '✴', col: '#ff5a52', mana: 6, d: 0.04,
              info: '+25% chance of a hit doing triple damage', f: s => { s.crit += 0.25; } },
-  gravmod: { name: 'Gravity', kind: 'mod', glyph: '⇓', col: '#63c8ff', mana: 2, d: 0.02,
+  gravmod: { name: 'Gravity', kind: 'mod', glyph: '⇓', col: '#b57cff', mana: 2, d: 0.02,
              info: 'Drags the shot down as it flies', f: s => { s.grav += 420; } },
-  float:   { name: 'Anti-Gravity', kind: 'mod', glyph: '⇑', col: '#63c8ff', mana: 3, d: 0.02,
+  float:   { name: 'Anti-Gravity', kind: 'mod', glyph: '⇑', col: '#b57cff', mana: 3, d: 0.02,
              info: 'Lifts the shot as it flies', f: s => { s.grav -= 340; } },
   boomer:  { name: 'Boomerang', kind: 'mod', glyph: '↩', col: '#b57cff', mana: 8, d: 0.05,
              info: 'Flies out, and halfway through its flight turns and comes back to you', f: s => { s.boomer += 3.2; s.life *= 1.5; } },
@@ -334,7 +334,7 @@ export const MODS = {
              info: 'Pulls it back to you: a shot slows, stops and comes straight back; a field comes to you and stays with you',
              f: s => { s.follow += 4; } },
   // owner (v0.0.155): Follow Me split in two; this half is the Gravity Gun's, a White Hole held where you aim
-  followaim: { name: 'Follow This', kind: 'mod', glyph: '↬', col: '#b57cff', mana: 10, d: 0.04,
+  followaim: { name: 'Follow This', kind: 'mod', off: 1, glyph: '↬', col: '#b57cff', mana: 10, d: 0.04,
              info: 'A field hovers just ahead of your gun and goes wherever you aim (the Gravity Gun’s trick); a shot is pulled to that spot',
              f: s => { s.followAim += 4; } },
   orbit:   { name: 'Orbiting Arc', kind: 'mod', glyph: '◴', col: '#b57cff', mana: 9, d: 0.06,
@@ -344,7 +344,7 @@ export const MODS = {
              f: s => { s.autoaim = 1; } },
   // Aim Assist (LIST3 #10): the right stick drives a pointer that snaps onto creatures and fires on its own
   // once it's on one (game/systems/gun.js aimAndCast, spells/assist.js). The pull aims at the snapped creature.
-  aimassist: { name: 'Aim Assist', kind: 'mod', glyph: '⌖', col: '#b57cff', mana: 3, d: 0.02,
+  aimassist: { name: 'Aim Assist', kind: 'mod', off: 1, glyph: '⌖', col: '#b57cff', mana: 3, d: 0.02,
              info: 'The aim stick becomes a pointer that snaps onto enemies and fires when it\'s on one (no trigger ring)',
              f: s => { s.assist = 1; } },
   // Discriminate (LIST3 #11): each copy carries its own target, set once in the Bag with the world pointer
@@ -356,10 +356,10 @@ export const MODS = {
   nearhome:{ name: 'Short-range Homing', kind: 'mod', glyph: '⌒', col: '#b57cff', mana: 5, d: 0.02,
              info: 'Only steers once it is already close to something',
              f: s => { s.homing += 7; s.homeR = 70; } },
-  flat:    { name: 'Horizontal Path', kind: 'mod', glyph: '═', col: '#ff5a52', mana: 4, d: 0.03,
+  flat:    { name: 'Horizontal Path', kind: 'mod', glyph: '═', col: '#b57cff', mana: 4, d: 0.03,
              info: 'Forces the shot dead level, and it hits harder for it',
              f: s => { s.flat = 1; s.dmg *= 1.6; } },
-  eater:   { name: 'Matter Eater', kind: 'mod', glyph: '▩', col: '#b57cff', mana: 14, d: 0.06,
+  eater:   { name: 'Matter Eater', kind: 'mod', off: 1, glyph: '▩', col: '#b57cff', mana: 14, d: 0.06,
              info: 'Eats a tunnel through rock the whole way',
              f: s => { s.eat = Math.max(s.eat, 4); } },
   lust:    { name: 'Bloodlust', kind: 'mod', glyph: '♥', col: '#ff5a52', mana: 10, d: 0.05,
@@ -452,17 +452,17 @@ export const FAMILY_OF = {
   pollen: 'shots', disc: 'shots', nuke: 'shots', meteor: 'shots', tele: 'shots', teleshort: 'shots',
   boom: 'field', brim: 'field', crystal: 'field', dormant: 'field', stillc: 'field',
   shieldc: 'field', vigour: 'field', storm: 'field', vacfield: 'field', glitter: 'field',
-  refresh: 'cast', farcast: 'cast', telecast: 'cast',
+  refresh: 'upkeep', farcast: 'cast', telecast: 'cast',
   warpcast: 'cast', sawstorm: 'cast', alpha: 'cast', gamma: 'cast', tau: 'cast',
   omega: 'cast', phi: 'cast', sigma: 'cast', mu: 'cast', zeta: 'cast',
-  knock: 'dmg', kick: 'dmg', crit: 'dmg', flat: 'dmg', lust: 'dmg', manapow: 'dmg',
+  knock: 'dmg', kick: 'upkeep', crit: 'dmg', flat: 'path', lust: 'dmg', manapow: 'dmg',
   bboom: 'dmg', bpower: 'dmg', gpower: 'dmg',
-  gravmod: 'vel', float: 'vel',
+  gravmod: 'path', float: 'path',   // owner (v1.0.35): trajectory mods are purple
   boomer: 'path', spiral: 'path', pong: 'path', orbit: 'path', autoaim: 'path', aimassist: 'path', discrim: 'path',
   nearhome: 'path', eater: 'path',
   split: 'pattern', cluster: 'pattern', oct: 'pattern', myriad: 'pattern', bifur: 'pattern',
   trifur: 'pattern', behind: 'pattern',
-  damper: 'upkeep', hspread: 'upkeep', blood: 'upkeep',
+  damper: 'upkeep', hspread: 'pattern', blood: 'upkeep',   // owner (v1.0.35) colour sweep: Recoil with its Damper, Heavy Spread with Reduce Spread, Wand Refresh a recharge mod
   addtrig: 'cast', addtimer: 'cast', adddeath: 'cast',
 };
 /** @type {Record<string, string>} */
@@ -520,7 +520,7 @@ export const MOD_TIER = {
   eater: 3, lust: 3, cluster: 3, manapow: 3, bpower: 3, gpower: 3, telecast: 3, tau: 3,
   mu: 3, phi: 3, sigma: 3, seeker: 4, pierce: 4, quad: 4, cold: 4, void: 4, nuke: 4,
   meteor: 4, storm: 4, glitter: 4, sawstorm: 4, blood: 4, oct: 4, myriad: 4, omega: 4,
-  zeta: 4, addtrig: 3, addtimer: 3, adddeath: 3, tele: 2, teleshort: 1,
+  zeta: 4, addtrig: 1, addtimer: 1, adddeath: 1, tele: 2, teleshort: 1,
 };
 export const tierOf = (/** @type {string} */ id) => MOD_TIER[id] || 2;
 
@@ -559,7 +559,7 @@ export const VAC_PULL = 260;                   // White Hole: units/s it hauls t
 for (const [id, base, trig, extra] of TRIG_VARIANTS) {
   const m = MODS[base], k = TRIG_KINDS[trig];
   MODS[id] = Object.assign({}, m, {
-    name: m.name + ' ' + k.tag, trig, draw: 1, base,
+    name: m.name + ' ' + k.tag, trig, draw: 1, base, off: 1,
     mana: Math.round(m.mana * 1.3 + 5), mark: k.mark,
     info: m.info + '. ' + (trig === 'hit' ? 'Casts the next spell where it hits'
       : trig === 'timer' ? 'Casts the next spell a moment after firing'

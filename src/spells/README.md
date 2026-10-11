@@ -51,7 +51,7 @@ and `game/systems/shotlooks.js`.
   and must widen `multi` for themselves *and* their originals or the multicast limit eats them.
   They never copy a copy, never expand after a wrap-around, and `multi` is clamped to what the gun
   can produce. Break one and Omega or Myriad runs away.
-- **Triggers are variants, Noita-style.** No stand-alone trigger spells: `TRIG_VARIANTS` builds
+- **Triggers are variants, Noita-style** (CaveRunner Auto, v1.0.35: the variants are `off`, the owner phased them out; Add Trigger/Timer/Expiration are tier 1 and common). No stand-alone trigger spells: `TRIG_VARIANTS` builds
   `bolt_t`, `arrow_ti`, `void_d`… from a base spell (`trig` = `'hit' | 'timer' | 'expire'`, `draw`,
   `timer`, `mark` = the tile's badge; `base` = the spell it came from). Add Trigger/Timer/Expiration
   (`addTrig` mods) make the next *shot* a carrier. A carrier's payload is `payloadOf(draw)` inside

@@ -5,6 +5,20 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.35 — CaveRunner Auto: the owner's item audit, part 1 (branch `autobattler`)
+Released 2026-10-11 on the branch. The owner's notes: `docs/auto-item-audit-notes.txt` (what's done, what's staged).
+- Binned (kept for old saves, never handed out; `off: 1`): mods Digging Bolt, Glowing Lance, Teleport Bolt, Matter Eater,
+  Follow This, Aim Assist, Long-Distance Cast, Spells To Giga Sawblades; perks All-Seeing Eye, Enemy/Item/Wand Radar,
+  Mini-map, Tinker, Trajectory Sight, and Fire Immunity (archived); the exo Carrot (out of `EXO_CATS`, counts for nothing).
+- The "... With Trigger/Timer" variants are off; Add Trigger / Add Timer / Add Expiration Trigger are tier 1 and common on
+  every floor (`spawn.js`).
+- Fix: Wand Refresh did nothing in Auto (`scenegun.js gunPull` now skips the next recharge, as the game's `skipRech`).
+- Fix: Glass Cannon gave no damage (`perkDmg(player)`: the fitted perks' damage × on every shot a player fires).
+- Hair Trigger and Quick Recharge checked: they do shorten the recharge.
+- Small Teleport Bolt hops 0.75 as far. Colours: Gravity, Anti-Gravity, Horizontal Path purple (flight path); the sweep
+  moved Wand Refresh and Recoil to green (upkeep), Heavy Spread to pink (pattern).
+- Tests: new `auto-audit`; `trigger`, `aimassist`, `auto-run`, `auto-hub`, `auto-guns` updated for the bins.
+
 ## v1.0.34 — CaveRunner Auto: semi-automatic manual mode, its crosshair, full speed on a slow phone (branch `autobattler`)
 Released 2026-10-11 on the branch (bug round 2; owner OK'd the crosshair, shot `tools/stickshots.js` stick-c-cross).
 - Manual mode is semi-automatic: the picked player (helmet held) plays by himself and the level keeps the pilot's pace

@@ -7,6 +7,7 @@
 import { effRecharge, gunPassives, planCast } from '../spells/cast.js';
 import { shuffleOrder } from '../spells/guns.js';
 import { MODS } from '../spells/mods.js';
+import { perkBag } from '../data/perks.js';
 /** @typedef {import('./titlescene.js').TShot} SceneShot */
 
 const SP = 0.5;                       // the scene's speed scale (titlescene.js SP: the game's speeds at the title's screen)
@@ -23,9 +24,9 @@ export const SG_PELLETS = 12;         // at most this many of one shot at once
 /** @type {string[]} */
 export const GUN_TODO = [
   // statics and fields (they don't fly: planShots leaves them out)
-  'boom', 'brim', 'crystal', 'dormant', 'crystal_t', 'dormant_t', 'stillc', 'shieldc', 'vigour', 'storm', 'vacfield', 'glitter',
+  'boom', 'brim', 'crystal', 'dormant', 'stillc', 'shieldc', 'vigour', 'storm', 'vacfield', 'glitter',
   // modifiers whose effect the scene's shot model has no field for yet
-  'knock', 'damper', 'crit', 'spiral', 'follow', 'followaim', 'autoaim', 'aimassist', 'discrim', 'eater', 'gpower', 'cluster',
+  'knock', 'damper', 'crit', 'spiral', 'follow', 'autoaim', 'discrim', 'gpower', 'cluster',
   // a passive with no meaning here (the scene always fires on its own)
   'auto',
 ];
@@ -50,12 +51,14 @@ export function gunPull(g, others) {
   if (!gunReady(g)) return null;
   if (!g.order) shuffleOrder(g);
   if (g.idx == null) g.idx = 0;
-  const wrap = () => { g.idx = 0; g.rechT = g.rechLen = effRecharge(g); shuffleOrder(g); };
+  // Wand Refresh (owner, v1.0.35: it did nothing here): the next time the list runs out, no recharge (the game's skipRech)
+  const wrap = () => { g.idx = 0; g.rechT = g.rechLen = g.skipRech ? 0 : effRecharge(g); g.skipRech = false; shuffleOrder(g); };
   const plan = planCast(g, others);
   if (!plan.shots.length) { wrap(); return null; }
   if ((g.mana || 0) < plan.cost) { g.idx = plan.start; g.delayT = 0.12; return null; }
   g.mana = (g.mana || 0) - plan.cost;
   g.delayT = g.delayMax = plan.delay;
+  if ((plan.acts || []).includes('refresh')) g.skipRech = true;
   if (plan.wrap) wrap();
   return plan;
 }
@@ -81,6 +84,9 @@ export function shotsOf(sh, ang, x, y, R, by) {
   }
   return out;
 }
+// the damage the player's fitted perks multiply their shots by (Glass Cannon x2.5; owner, v1.0.35: it did nothing). Each perk once
+/** @param {RunPlayer} pl */
+export const perkDmg = pl => perkBag([...new Set((pl.perks || []).map(it => it && it.id).filter(Boolean))].map(String)).dmg;
 // every shot of a plan, fired at `ang` from (x, y)
 /** @param {Plan} plan @param {number} ang @param {number} x @param {number} y @param {() => number} R @param {number} [by] @returns {SceneShot[]} */
 export function planShots(plan, ang, x, y, R, by) {

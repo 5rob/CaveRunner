@@ -84,7 +84,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   check('A away from the exit does nothing', await page.evaluate(() => hubExitFlash(window.__title.S) === 0));
 
   // stage 8a: the context nav. Tap a player → 4 choices; Guns → 4 gun slots; a gun → its mod tiles; B back up to the
-  // players; Exo → 4 categories → 5 slots; Perks → 6 slots. The row keeps its height at every level.
+  // players; Exo → 3 categories → 5 slots; Perks → 6 slots. The row keeps its height at every level.
   const navH = async () => page.$eval('.anav', e => e.getBoundingClientRect().height);
   const h0 = await navH(), hs = [];
   const nav = () => page.evaluate(() => { const a = document.querySelector('.anav');
@@ -110,7 +110,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   check('B at the top: nothing', (await nav()).level === 'players');
   await tapNav('[data-player="0"]'); await tapNav('[data-open="exo"]');
   v = await nav();
-  check('Exo suit: 4 categories', v.level === 'exo' && v.circles === 4, v);
+  check('Exo suit: 3 categories (Carrot binned, v1.0.35)', v.level === 'exo' && v.circles === 3, v);
   await tapNav('[data-open="jet"]');
   v = await nav();
   check('a category: 5 slots', v.level === 'cat' && v.slots === 5, v);
