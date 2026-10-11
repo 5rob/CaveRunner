@@ -14099,7 +14099,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (s.pay && s.trig === "timer" && s.age >= (s.timer || 0)) release(S2, s);
       keepTrail(s);
       if (s.sid) {
-        if (S2.parts.length < TITLE_PARTS - FX_ROOM) for (const p of autoTrail(s, dt, S2.rnd)) S2.parts.push(p);
+        if (S2.parts.length < TITLE_PARTS - FX_ROOM) for (const p of autoTrail(s, dt, Math.random)) S2.parts.push(p);
       } else if (s.look === "flame" && S2.rnd() < dt * 20) burst(S2, s.x, s.y, 1, "#ff7a1a", 15, "fire", 0.3);
       if (s.foe) {
         const hit = S2.runners.find((ru) => !ru.out && Math.abs(ru.x + PW / 2 - s.x) < 7 && Math.abs(ru.y + PH / 2 - s.y) < 11);

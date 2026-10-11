@@ -1898,7 +1898,8 @@ function stepShots(S, dt) {
     if (s.pay && s.trig === 'timer' && s.age >= (s.timer || 0)) release(S, s);
     // each shot's own trail (auto/shotfx.js); the old flame specks for the shots it doesn't know
     keepTrail(s);
-    if (s.sid) { if (S.parts.length < TITLE_PARTS - FX_ROOM) for (const p of autoTrail(s, dt, S.rnd)) S.parts.push(p); }
+    // trails are looks only: their own random numbers (Math.random), so the run plays the same
+    if (s.sid) { if (S.parts.length < TITLE_PARTS - FX_ROOM) for (const p of autoTrail(s, dt, Math.random)) S.parts.push(p); }
     else if (s.look === 'flame' && S.rnd() < dt * 20) burst(S, s.x, s.y, 1, '#ff7a1a', 15, 'fire', 0.3);
     if (s.foe) {
       const hit = S.runners.find(ru => !ru.out && Math.abs(ru.x + PW / 2 - s.x) < 7 && Math.abs(ru.y + PH / 2 - s.y) < 11);

@@ -54,6 +54,32 @@ const SHEETS = [
       await page.waitForTimeout(900);
     }
     await page.screenshot({ path: path.join(OUT, n + '.png') });
+    // close-ups (the shots are tiny at phone size): a 64 px box round a shot of each mod, x3, four to a sheet with names
+    // close-ups cut from the play canvas in the frame a shot of that mod is in flight (they're fast and short), a 48-unit box, x4
+    await page.evaluate(() => {
+      const d = document.createElement('div'); d.id = 'zoomsheet';
+      Object.assign(d.style, { position: 'fixed', inset: '0', background: '#0b0910', zIndex: 99999, display: 'none', gridTemplateColumns: '1fr 1fr', gap: '8px', padding: '40px 8px', alignContent: 'start', font: '16px sans-serif', color: '#fff' });
+      document.body.appendChild(d);
+    });
+    for (const m of mods) {
+      for (let i = 0; i < 200; i++) {
+        const got = await page.evaluate(([m, last]) => {
+          const S = window.__autoScene, C = window.__autoCam.current, cv = document.querySelector('.aplaycvs');
+          const s = S.shots.find(q => q.sid === m && q.age > 0.04);
+          if (!s && !last) return false;
+          const k = cv.width / TITLE_VW, w = document.createElement('div'); w.textContent = m + (s ? '' : ' (none in flight)');
+          const c = document.createElement('canvas'); c.width = 192; c.height = 192; Object.assign(c.style, { width: '192px', height: '192px', display: 'block', border: '1px solid #555' });
+          if (s) { const v = camTo(C, s.x, s.y), x = c.getContext('2d'); x.imageSmoothingEnabled = false; x.drawImage(cv, v.x * k - 24 * k, v.y * k - 24 * k, 48 * k, 48 * k, 0, 0, 192, 192); }
+          w.appendChild(c); document.getElementById('zoomsheet').appendChild(w);
+          return true;
+        }, [m, i === 199]);
+        if (got) break;
+        if (i % 25 === 24) await page.evaluate(() => { const S = window.__autoScene; const f = titleFoeAt(S, enemyFor('rotta', 1), levelTeamX(S) + 90); f.hp = f.hpMax = 9999; });
+        await page.waitForTimeout(40);
+      }
+    }
+    await page.evaluate(() => { document.getElementById('zoomsheet').style.display = 'grid'; });
+    await page.screenshot({ path: path.join(OUT, n + '-zoom.png') });
     said.push(`${n}.png  ${ok ? '' : '(level never started) '}${mods.map((m, i) => ['blue', 'red', 'green', 'gold'][i] + ': ' + m).join(', ')}`);
     await ctx.close();
   }
