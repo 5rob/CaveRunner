@@ -19,7 +19,7 @@ import { crackleAt, crackleBody } from '../../art/crackle.js';
 import { drawProp, propGlow } from '../../art/props.js';
 import { gunArtId } from '../../art/gunart.js';
 import { CRYSTAL_PAL, CRYSTAL_R, GREEN_PAL, GUN_HELD, gunMuzzle, drawGun, drawNugget, glowAt, drawRunner, jetFlame, pixelHeld, pixelSoft, pixelSprite } from '../../art/sprites.js';
-import { TCELL, TITLE_SOLID, TITLE_VW, TM, titleNoise, titleSolid, titleSolidCell, titleWebAt, titleFlameDir, titleNozzle } from '../../art/titlescene.js';
+import { LEAFY, autoOn, TCELL, TITLE_SOLID, TITLE_VW, TM, titleNoise, titleSolid, titleSolidCell, titleWebAt, titleFlameDir, titleNozzle } from '../../art/titlescene.js';
 import { visPoly } from '../../world/vision.js';
 import { drawBolt, drawLook } from './looks.js';
 import { hubBack, hubGlow, hubLight } from './hubdraw.js';
@@ -103,7 +103,7 @@ function terrain(S) {
     const x = ((c % N) + N) % N, col = x * S.rows, m = S.cells[col + r];
     const up = r > 1 && (!TITLE_SOLID[S.cells[col + r - 1]] || !TITLE_SOLID[S.cells[col + r - 2]]);
     const [cr, cg, cb] = cellRGB(m, c, r, up), o = (r * N + x) * 4;
-    D[o] = cr; D[o + 1] = cg; D[o + 2] = cb; D[o + 3] = 255;
+    D[o] = cr; D[o + 1] = cg; D[o + 2] = cb; D[o + 3] = S.back && m === TM.AIR ? 0 : 255;   // (a backdrop: S.back shows through the open air)
   };
   let ch = false;
   if (S.dirtyAll) { C.painted = S.gen - N; S.dirtyAll = false; S.dirty.length = 0; }
@@ -128,6 +128,7 @@ export function titleDraw(ctx, S, cw, ch, cam) {
   ctx.translate(sx, sy);
   ctx.scale(k, k);
   if (cam && (cam.z !== 1 || cam.w || cam.y !== cam.ay)) { ctx.translate(TITLE_VW / 2, cam.ay); ctx.scale(cam.z, cam.z); ctx.translate(-cam.x, -cam.y); }
+  if (S.back) S.back(ctx, S);   // a backdrop behind the open air (Dev's fire sim: game/render/firelabdraw.js)
   // the terrain: the ring of columns, in (up to) two pieces
   const cv = terrain(S), N = S.ncol, c0 = S.hub ? 0 : Math.floor(S.scroll / TCELL) - 2, n = S.hub ? N : Math.ceil(TITLE_VW / TCELL) + 4;
   ctx.imageSmoothingEnabled = false;
@@ -168,18 +169,27 @@ export function titleDraw(ctx, S, cw, ch, cam) {
     if (!p.burn || p.gone || p.arc || p.x < -20 || p.x > TITLE_VW + 20) continue;
     /** @type {any} */
     const pr = p, bent = p.sw || p.tl, reach = p.st === 'silk' ? 3 : 7;
-    const top = S.lvl ? Math.max(0, Math.min(p.len, p.ch ?? p.len)) : p.len, from = S.lvl ? Math.min(top, p.lit ?? top) : Math.max(0, p.len - reach);
+    const top = autoOn(S) ? Math.max(0, Math.min(p.len, p.ch ?? p.len)) : p.len, from = autoOn(S) ? Math.min(top, p.lit ?? top) : Math.max(0, p.len - reach);
     /** @param {number} k */
     const at = k => bent ? vinePt(pr, k) : { x: 0, y: k };
     ctx.save(); ctx.translate(-S.scroll, 0);
     for (let k = from; k <= top; k += TCELL * 0.75) {
       const q = at(k);
-      crackleAt(ctx, p.ox + q.x, p.y + q.y, TCELL, S.fireN, !S.lvl && p.len - k < 1.5);
+      crackleAt(ctx, p.ox + q.x, p.y + q.y, TCELL, S.fireN, !autoOn(S) && p.len - k < 1.5);
     }
-    if (S.lvl) for (let k = top + TCELL * 0.75; k <= p.len; k += TCELL * 0.75) {
-      const q = at(k), c = Math.floor((p.ox + q.x) / TCELL), r = Math.floor((p.y + q.y) / TCELL);
+    /** @param {number} x @param {number} y a charred cell (an ember now and then) */
+    const char = (x, y) => {
+      const c = Math.floor(x / TCELL), r = Math.floor(y / TCELL);
       ctx.fillStyle = (c * 7 + r * 13 + S.fireN) % 6 === 0 ? FIRE_COLS[3] : (c + r) & 1 ? '#2a201a' : '#3a2e26';
       ctx.fillRect(c * TCELL, r * TCELL, TCELL, TCELL);
+    };
+    if (autoOn(S)) for (let k = top + TCELL * 0.75; k <= p.len; k += TCELL * 0.75) { const q = at(k); char(p.ox + q.x, p.y + q.y); }
+    // (owner v1.0.56: the leaves stayed green) the leaves where art/props.js drawProp puts them (every 5 along, either side,
+    // swaying by its off()): alight on the burning stretch, charred past it
+    if (autoOn(S) && LEAFY(p.st)) for (let k = 4, s = 1, st = p.st === 'kelp' ? 7 : 5; k < p.len; k += st, s = -s) {
+      if (k < from) continue;
+      const q = at(k), lx = p.ox + q.x + Math.sin(S.t * (p.st === 'kelp' ? 1.6 : 1.1) + p.seed * 6 + k * 0.08) * (p.st === 'kelp' ? 5 : 1.6) * (k / p.len), ly = p.y + q.y;
+      for (const d of [1.5, 3.3]) if (k <= top) crackleAt(ctx, lx + s * d, ly, TCELL, S.fireN, false); else char(lx + s * d, ly);
     }
     ctx.restore();
   }
@@ -512,6 +522,7 @@ export const TITLE_EDGE = 6;            // light reaches this far into the rock 
 export const TITLE_LAMPR = 60;          // a lantern's pool of light (world units)
 /** @param {CanvasRenderingContext2D} ctx @param {import('../../art/titlescene.js').TitleScene} S */
 function titleDark(ctx, S) {
+  if (S.lab) return;   // (Dev's fire sim: a lit range)
   const x0 = -40, w = Math.ceil(((S.hub ? S.ncol * TCELL : TITLE_VW) + 80) / TCELL), h = Math.ceil(S.vh / TCELL);
   if (!DK.L) { DK.L = document.createElement('canvas'); DK.D = document.createElement('canvas'); }
   const L = DK.L, D = DK.D;

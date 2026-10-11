@@ -91,7 +91,8 @@ function wall(tank0) {
   const a = wall(1);
   check('a normal tank: the autopilot gets over the low wall, using fuel', a.over && a.lo < 1, a);
   const b = wall(0.05);
-  check('nearly dry at the wall: it waits, refills, and still gets over', b.over && b.waited > 0, b);
+  // (v1.0.56: since going round rock (navAround) he may walk over this low wall dry, no wait needed; a wait is fine too)
+  check('nearly dry at the wall: still gets over, never blocked', b.over && !b.blocked, b);
 }
 // the cough is the old game's own (core/util.js sputterStep, owner): low and jetting it cuts out now and then
 {

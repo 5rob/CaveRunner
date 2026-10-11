@@ -24,6 +24,15 @@ require('../tests/build')();
   await page.locator('.adevbtn').dispatchEvent('pointerdown');
   await page.waitForTimeout(400);
   await page.screenshot({ path: path.join(OUT, 'dev-b-panel.png') });
-  console.log('dev-a-gear.png  the Dev ⚙️ beside ⏸ (dev mode on)\ndev-b-panel.png  the Dev panel open, Auto tab');
+  // c: the Auto tab, its fire group open (v1.0.56)
+  await page.getByText('Auto', { exact: true }).first().click();
+  await page.waitForTimeout(200);
+  await page.getByText('Auto: fire', { exact: true }).first().click();
+  await page.waitForTimeout(200);
+  await page.getByText('Auto: fire', { exact: true }).first().scrollIntoViewIfNeeded();
+  await page.evaluate(() => { const e = [...document.querySelectorAll('*')].find(n => n.textContent === 'Auto: fire'); if (e) e.scrollIntoView({ block: 'start' }); });
+  await page.waitForTimeout(200);
+  await page.screenshot({ path: path.join(OUT, 'dev-c-fire.png') });
+  console.log('dev-a-gear.png  the Dev ⚙️ beside ⏸ (dev mode on)\ndev-b-panel.png  the Dev panel open, Auto tab\ndev-c-fire.png  Auto: fire open');
   await browser.close();
 })().catch(e => { console.log(e); process.exit(1); });

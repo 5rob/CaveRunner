@@ -123,7 +123,7 @@ export const DEV_TABS = [
   ['look', 'Look', ['view', 'light', 'fx', 'holoflash', 'guide']],
   ['player', 'Player', ['player', 'carrot', 'bh', 'sound', 'ui', 'menuptr', 'aimassist', 'witness']],
   ['creatures', 'Creatures', ['enemy', 'elite', 'elitefx', 'spider', 'rat', 'jelly', 'jellycol']],
-  ['world', 'World', ['level', 'arch', 'sway', 'fire']],
+  ['world', 'World', ['level', 'arch', 'sway']],
   ['level2', 'Level 2', ['level2', 'l2dark', 'l2boom', 'l2alien']],
 ];
 /** @param {string} g @returns {string} the tab a group sits on */
@@ -702,14 +702,14 @@ DEV_GROUPS.push(['autofoes', 'Auto: enemies']);
 // the slow stop, Tap A, the helmet light, the blast, home)
 Object.assign(DEV_DEFAULTS, { autoMoveK: 0.55, autoJetTilt: 1, autoJetSmoke: 1, autoDeathStop: 1.5, autoTpBlink: 1, autoTpBoomWait: 0.6, autoTpBoomR: 60, autoFuelDrain: 1, autoFuelRegen: 1, autoCtlWait: 3, autoVineFire: 3, autoVineSpread: 24, autoVineJitter: 0.8, autoVineAsh: 6, autoFireJump: 14, autoFireJumpP: 0.5, autoNavCut: 0.8, autoNavGive: 1.2 });
 DEV_META.push(
-  { k: 'autoVineFire',   g: 'autodeath', label: 'Auto levels: vines and silk burn up at this × the old game speed (the title menu: 0.1)', min: 0.1, max: 5, step: 0.1 },
-  { k: 'autoVineSpread', g: 'autodeath', label: 'Auto levels: the flames climb a vine this × faster than it burns away (1: only the tip burns)', min: 1, max: 40, step: 0.5 },
+  { k: 'autoVineFire',   g: 'autofire', label: 'Auto levels: vines and silk burn up at this × the old game speed (the title menu: 0.1)', min: 0.1, max: 5, step: 0.1 },
+  { k: 'autoVineSpread', g: 'autofire', label: 'Auto levels: the flames climb a vine this × faster than it burns away (1: only the tip burns)', min: 1, max: 40, step: 0.5 },
   { k: 'autoNavCut',     g: 'autodeath', label: 'Auto levels: rock facing back at a player more than this (its normal · the way on) he saws; less, he goes over or under', min: 0, max: 1, step: 0.05 },
   { k: 'autoNavGive',    g: 'autodeath', label: '… and saws anyway once he has tried going round it this long (s)', min: 0.2, max: 5, step: 0.1 },
-  { k: 'autoVineJitter', g: 'autodeath', label: 'Auto levels: the flames climbing a vine spurt and stall by this much either way (0: even)', min: 0, max: 1, step: 0.05 },
-  { k: 'autoVineAsh',    g: 'autodeath', label: 'Auto levels: the charred, crumbling end of a burning vine or strand is this long (units)', min: 0, max: 20, step: 1 },
-  { k: 'autoFireJump',   g: 'autodeath', label: 'Auto levels: fire jumps sideways from a burning vine or strand to vines and webs this near (units)', min: 2, max: 40, step: 1 },
-  { k: 'autoFireJumpP',  g: 'autodeath', label: '… at this chance a fire tick, from each burning stretch', min: 0, max: 1, step: 0.05 },
+  { k: 'autoVineJitter', g: 'autofire', label: 'Auto levels: the flames climbing a vine spurt and stall by this much either way (0: even)', min: 0, max: 1, step: 0.05 },
+  { k: 'autoVineAsh',    g: 'autofire', label: 'Auto levels: the charred, crumbling end of a burning vine or strand is this long (units)', min: 0, max: 20, step: 1 },
+  { k: 'autoFireJump',   g: 'autofire', label: 'Auto levels: fire jumps sideways from a burning vine or strand to vines and webs this near (units)', min: 2, max: 40, step: 1 },
+  { k: 'autoFireJumpP',  g: 'autofire', label: '… at this chance a fire tick, from each burning stretch', min: 0, max: 1, step: 0.05 },
   { k: 'autoCtlWait',    g: 'autodeath', label: 'Manual mode: seconds of the stick at rest before the autopilot takes him back', min: 0, max: 10, step: 0.25 },
   { k: 'autoMoveK',      g: 'autodeath', label: 'Hand-steered speed (× the old game’s walk, jet, their pushes; hub and steering a player; the hub’s followers too)', min: 0.2, max: 1.5, step: 0.05 },
   { k: 'autoJetTilt',    g: 'autodeath', label: 'Jet flame: the autopilot’s tilt with its speed across (at most)', min: 0, max: 1.5, step: 0.05 },
@@ -721,6 +721,15 @@ DEV_META.push(
   { k: 'autoFuelDrain',  g: 'autodeath', label: 'Jet fuel: drain (× the old game’s; a level only, auto/fuel.js)', min: 0, max: 3, step: 0.05 },
   { k: 'autoFuelRegen',  g: 'autodeath', label: 'Jet fuel: refill on the ground (× the old game’s)', min: 0.1, max: 3, step: 0.05 });
 DEV_GROUPS.push(['autodeath', 'Auto: jetpack and death']);
+// (owner v1.0.56: full controls for fire in Auto) the level's own fire knobs; the old game's (burn times, creatures) show here too
+Object.assign(DEV_DEFAULTS, { autoFireSpread: 0.1, autoWebFire: 3, autoVineCatch: 0.25, autoLeafReach: 5, autoLeafLight: 0.15 });
+DEV_META.push(
+  { k: 'autoFireSpread', g: 'autofire', label: 'Auto levels: fire spreads cell to cell, and onto vines and webs from burning ground, at this × the old game', min: 0, max: 3, step: 0.05 },
+  { k: 'autoWebFire',    g: 'autofire', label: 'Auto levels: silk burns up this × faster than vines', min: 0.1, max: 10, step: 0.1 },
+  { k: 'autoVineCatch',  g: 'autofire', label: 'Auto levels: a vine beside a burning one catches at this chance a fire tick', min: 0, max: 1, step: 0.05 },
+  { k: 'autoLeafReach',  g: 'autofire', label: 'Auto levels: a burning stem or leaf lights moss, grass and timber this near (units)', min: 0, max: 20, step: 0.5 },
+  { k: 'autoLeafLight',  g: 'autofire', label: '… each of those cells at this chance a fire tick', min: 0, max: 1, step: 0.01 });
+DEV_GROUPS.push(['autofire', 'Auto: fire']);
 // the level's drops (auto/loot.js, stage 6 part 2): gun mods, gems and exo mods from kills
 Object.assign(DEV_DEFAULTS, { autoLootMod: 6, autoLootRed: 2, autoLootExo: 30, autoLootEliteGold: 3, autoLootBossGold: 10 });
 DEV_META.push(
@@ -776,7 +785,9 @@ DEV_META.push(
   { k: 'autoStreamGrow',  g: 'autothrow', label: 'Gold stream: big nuggets double in worth every (s)', min: 0.2, max: 10, step: 0.1 });
 DEV_GROUPS.push(['autothrow', 'Auto: throw']);
 // before the last tab: that one also takes any group in no tab
-DEV_TABS.splice(DEV_TABS.length - 1, 0, ['auto', 'Auto', ['auto', 'autohub', 'automaps', 'autolevel', 'autoblocks', 'autoguns', 'autoperks', 'autofoes', 'autodeath', 'autoloot', 'autochests', 'autobag', 'autothrow']]);
+// (owner v1.0.56) every fire knob on its own page, under the fire sim's window (ui/firesim.js)
+DEV_TABS.splice(DEV_TABS.length - 1, 0, ['firesim', 'Fire sim', ['autofire', 'fire']]);
+DEV_TABS.splice(DEV_TABS.length - 2, 0, ['auto', 'Auto', ['auto', 'autohub', 'automaps', 'autolevel', 'autoblocks', 'autoguns', 'autoperks', 'autofoes', 'autodeath', 'autoloot', 'autochests', 'autobag', 'autothrow']]);
 export const DEV_KEY = 'caverunner-dev';
 /** @type {DevKnobs} */
 export const DEV = Object.assign({}, DEV_DEFAULTS);

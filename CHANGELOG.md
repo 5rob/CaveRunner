@@ -5,6 +5,25 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.56 — CaveRunner Auto: Dev → Fire sim page; leaves burn and pass fire on; full fire knobs (branch `autobattler`)
+Released 2026-10-12 on the branch. PM alone (no agent: the PM had the fire code loaded), owner OK'd the shots.
+- Leaves (owner: they didn't burn): `titledraw.js` draws them alight along the burning stretch and charred past it (where
+  `art/props.js` puts them, `LEAFY`); in Auto's rules every point of a burning stretch, leaves too, lights fuel cells
+  (moss, grass, timber) within `autoLeafReach` (5) at `autoLeafLight` (0.15) a tick, and jumps to vines and webs as before.
+- Fire knobs (owner: full controls): new `autoFireSpread` (0.1, cell to cell and onto plants: was `TITLE_FIRESPEED` in
+  levels too), `autoWebFire` (3), `autoVineCatch` (0.25), `autoLeafReach`/`autoLeafLight`; the group `autofire`.
+- **Dev → Fire sim** (new tab `firesim`, owner's design): a window on a long still room (`art/firelab.js` `labScene`, `LAB_W`
+  1500: vines, arches, webs, moss, a crate, a frame, grass, mixes; `S.lab` = Auto's fire rules, `autoOn(S)`), a worn range
+  backdrop (`game/render/firelabdraw.js` `labBack`, through `S.back`; open air see-through, no dark), drag sideways to pan,
+  Respawn (a new line-up), Fire (`titleIgnite` at the test object nearest the middle, `labNearest`); under it every fire knob
+  (the `autofire` and old `fire` groups, moved off the Auto and World tabs; open by default there). `ui/firesim.js`.
+- Fixes from v1.0.55's going-round: it called `jetOver`, whose low-fuel wait held the whole team (even mid-air) on any slope
+  (now `jetOver(S, r, false)`: low fuel, he saws); the dry drop nudged a player up any rock he touched (now only when
+  stuck in it). `auto-clear` went 1 in 4 failing → 0 in 16.
+- Suites: `auto-firelab` (new); `auto-loot` clears other creatures for the full-bag check (more fire, more kills);
+  `auto-fuel`'s dry low wall: gets over, never blocked (he may walk it dry, no wait needed). Shots: `tools/firesimshots.js`;
+  `tools/devshots.js` adds the fire group. `auto-steer` (browser) flaked 2/5 here, 1/6 on v1.0.55, 0/5 on v1.0.54: watch it.
+
 ## v1.0.55 — CaveRunner Auto: vines burn all along; players go round rock before sawing; no spawns past the boss (branch `autobattler`)
 Released 2026-10-12 on the branch. PM alone, owner OK'd the vine shots.
 - Vine fire (owner: only the end pixel looked alight): the flames already ran up `p.lit` but only the tip was drawn. A burning

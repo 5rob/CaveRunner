@@ -525,6 +525,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   color:var(--muted);font-size:20px;line-height:1}
 .devtabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;margin:0 -14px;padding:0 10px}
 .devtabs::-webkit-scrollbar{display:none}
+/* Dev → Fire sim (ui/firesim.js): the test room window, drag sideways to pan (the panel still scrolls up and down) */
+.firesim{margin:4px 0 10px}
+.firesimcvs{display:block;width:100%;height:210px;border-radius:10px;border:1px solid #3a3530;background:#000;touch-action:pan-y}
+.firesimbtns{display:flex;gap:8px;margin-top:8px}
+.firesimbtns .dbg{flex:1}
+.firesimbtns .firego{background:#c8501a;color:#fff}
 .devtab{position:relative;flex:1 0 auto;height:42px;padding:0 10px;border:0;border-bottom:3px solid transparent;
   background:none;color:var(--muted);font:700 13px system-ui,sans-serif;white-space:nowrap}
 .devtab.on{color:var(--text);border-bottom-color:var(--acc)}

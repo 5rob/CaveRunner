@@ -20,6 +20,7 @@ import {
 import { auditText, loadAudit } from '../save/audit.js';
 import { loadPresets, presetGun, removePreset, savePresets } from '../save/presets.js';
 import { gunColor } from '../spells/guns.js';
+import { FireSim } from './firesim.js';
 import { h, useEffect, useRef, useState } from './h.js';
 
 // A live jellyfish for Dev → Jellyfish colours: the real jellyStep and drawJelly in a
@@ -558,9 +559,11 @@ export function DevPanel({ input, refresh, close, onRestart, onSpawnGun, onSpawn
     return o ? devTabOf(o[0]) : DEV_TABS[0][0];
   });
   const setTab = t => { blurBox(); setTabS(t); lsSet('caverunner-devtab', t); };
+  // (Fire sim: its groups open until shut)
+  const isOpen = g => openG[g] ?? devTabOf(g) === 'firesim';
   const toggleG = g => {
     blurBox();
-    const o = Object.assign({}, openG, { [g]: !openG[g] });
+    const o = Object.assign({}, openG, { [g]: !isOpen(g) });
     setOpenG(o);
     lsSet('caverunner-devgroups', o);
   };
@@ -627,9 +630,10 @@ export function DevPanel({ input, refresh, close, onRestart, onSpawnGun, onSpawn
               'aria-selected': t === tab, onClick: () => setTab(t) }, name, chg ? h('i', { className: 'devdot' }) : null);
           }))),
       h('div', { className: 'devbody' },
+        !needle && tab === 'firesim' ? h(FireSim, null) : null,
         shown.length ? null : h('p', { className: 'devnote' }, 'No knob matches “' + q.trim() + '”.'),
         shown.map(({ g, name, rows, hits, nameHit }) => {
-          const shut = needle ? false : !openG[g];
+          const shut = needle ? false : !isOpen(g);
           const changed = rows.filter(m => DEV[m.k] !== DEV_DEFAULTS[m.k]).length;
           return h('div', { key: g, className: 'devgroup' + (shut ? '' : ' open') },
             h(DevGroupHead, { g, name, shut, toggle: toggleG, n: rows.filter(m => m.type !== 'curve').length, changed,

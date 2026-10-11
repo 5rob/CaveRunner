@@ -147,7 +147,7 @@ export const TITLE_HOME = {
  *   fire: TFire[], dirty: number[][], dirtyAll: boolean, carved: number, burnt: number, swaps: number, groundT: number, flyT: number, kinds: Record<string, number>,
  *   webs: WebLine[], cut: number, lineT: number, silk: { x: number, y: number, ax: number, ay: number, vx: number, vy: number, life: number }[],
  *   nav: { F: any, fx: number, fy: number, t: number }, fireAcc: number, fireN: number, burning: Set<number>, gotN: number, pops: number, lampsPopped: number, kitNames: Set<string>,
- *   digT: number, digs: number, digWhy: Record<string, number>, still?: boolean, zp: TitlePlan, snd: TSnd[], hub?: TitleHub, lvl?: TitleLevel, pace?: number, team?: RunPlayer[], blocked?: number, blockedKind?: string, huddle?: boolean, fuelWait?: number, tier?: number, loot?: TLoot[],
+ *   digT: number, digs: number, digWhy: Record<string, number>, still?: boolean, zp: TitlePlan, snd: TSnd[], hub?: TitleHub, lvl?: TitleLevel, lab?: boolean, back?: (ctx: CanvasRenderingContext2D, S: TitleScene) => void, pace?: number, team?: RunPlayer[], blocked?: number, blockedKind?: string, huddle?: boolean, fuelWait?: number, tier?: number, loot?: TLoot[],
  *   onTake?: (it: BagItem, x: number, y: number) => void }} TitleScene */
 // a finite level in the scrolling ring (CaveRunner Auto, auto/level.js levelScene): zp its plan (made whole up front); step runs
 // after titleStep's own; data is the level's own state. S.pace (0..) scales the scroll (auto/pilot.js)
@@ -1374,12 +1374,12 @@ function navAround(S, r, dx, dy, why) {
   // over: open air above it he can reach (jetOver: the fuel wait too); under: a gap below as tall as he is; neither: he saws
   if (n.y < 0) {
     // (dry in the air: the tank fills only on the ground) out of the rock and down he drops to land, not hung waiting up there
-    if (fuelOn(S) && !r.ground && (r.empty || !fuelCan(r))) {
+    if (fuelOn(S) && !r.ground && (r.empty || !fuelCan(r)) && boxRock(S, r.x, r.y)) {   // (stuck in it: only touching it, he waits as ever)
       let k = 1;
       while (k <= 4 && boxRock(S, r.x, r.y - k)) k++;
       if (k <= 4) { r.y -= k; r.vy = Math.max(r.vy, 0); r.modeT = Math.min(r.modeT, 0); return true; }
     }
-    return jetOver(S, r);
+    return jetOver(S, r, false);
   }
   const sx = r.x + PW / 2 + 10;
   let run = 0;
@@ -1408,9 +1408,10 @@ export function rockNormal(S, r, dx, dy) {
   return n && m > 1e-6 ? { x: sx / m, y: sy / m } : null;
 }
 // a wall ahead he can't clear (CaveRunner Auto's level): open air above it, tall enough for him, within reach? Up he
-// jets to it (flying, aimed just over it). false: there's none (blocked all the way)
-/** @param {TitleScene} S @param {TRunner} r */
-function jetOver(S, r) {
+// jets to it (flying, aimed just over it). false: there's none (blocked all the way). wait false (navAround, going round
+// rock he could saw: v1.0.56, it held the whole team for a low tank mid-air): not enough fuel, false, he saws instead
+/** @param {TitleScene} S @param {TRunner} r @param {boolean} [wait] */
+function jetOver(S, r, wait = true) {
   const sx = r.x + PW / 2 + 10;
   let run = 0;
   // (from a little below his feet: already flying through the gap over it, the air under him counts too)
@@ -1419,7 +1420,7 @@ function jetOver(S, r) {
     run += TCELL;
     if (run >= PH + 4) {
       // (owner, exo Jetpack) not enough in the tank for the climb: he waits at the wall (the level holds its scroll) and refills
-      if (fuelOn(S) && (r.empty || fuelOf(r) < fuelForClimb(r.y - y, tankOf(S, r).fuel))) { S.fuelWait = S.t; r.x = Math.max(8, r.x - 1); return true; }
+      if (fuelOn(S) && (r.empty || fuelOf(r) < fuelForClimb(r.y - y, tankOf(S, r).fuel))) { if (!wait) return false; S.fuelWait = S.t; r.x = Math.max(8, r.x - 1); return true; }
       setMode(S, r, 'fly', 1.5); r.tx = r.x + 12; r.ty = y - 2; r.retarget = 1.2; r.vy = Math.min(r.vy, -60); r.ground = false;
       r.burst = false; r.x = Math.max(8, r.x - 1);
       return true;
@@ -2172,7 +2173,7 @@ function stepFire(S, dt) {
   let ticks = 0;
   while (S.fireAcc >= FIRE_TICK) {
     S.fireAcc -= FIRE_TICK; ticks++; S.fireN++;
-    const sp = kr('fireSpread', R) * TITLE_FIRESPEED, keep = [], n0 = S.fire.length;
+    const fs = fireK(S), sp = kr('fireSpread', R) * fs, keep = [], n0 = S.fire.length;
     for (let k = 0; k < n0; k++) {
       const f = S.fire[k];
       if (f.c < S.gen - S.ncol || !FUEL[S.cells[ci(S, f.c, f.r)]]) { S.burning.delete(f.c * S.rows + f.r); continue; }   // carved away, or scrolled off
@@ -2195,7 +2196,7 @@ function stepFire(S, dt) {
     if (S.fire.length) {
       let q = 0;
       for (const p of S.props) {
-        if (p.burn || p.gone || !burns(p) || R() > TITLE_FIRESPEED) continue;
+        if (p.burn || p.gone || !burns(p) || R() > fs) continue;
         if (p.arc) {
           const n = p.arc.length - 1;
           for (let k = 0; k <= n; k += 2) if (fireNear(S, p.ox + p.arc[k][0], p.y + p.arc[k][1], 2)) { catchArch(S, p, k / n); break; }
@@ -2203,7 +2204,7 @@ function stepFire(S, dt) {
           for (let yy = p.y + 2; yy < p.y + p.len; yy += 8) if (fireNear(S, p.ox, yy, 2)) { catchPlant(S, p); break; }
         }
       }
-      for (const L of S.webs.slice()) if (!L.fu && R() < TITLE_FIRESPEED) for (let u = 0; u <= 1; u += 0.25) {
+      for (const L of S.webs.slice()) if (!L.fu && R() < fs) for (let u = 0; u <= 1; u += 0.25) {
         const w = titleWebAt(L, u);
         if (fireNear(S, w.x, w.y, 2)) { catchWeb(S, L, u); break; }
       }
@@ -2225,40 +2226,55 @@ function stepFire(S, dt) {
     if (p.arc) { cutArch(S, p, ((p.u0 || 0.5) + (p.u1 || 0.5)) / 2, true); continue; }   // lit by hand: cut there
     // up from its tip (silk TITLE_WEBFIRE × faster), at TITLE_FIRESPEED × the game's (a CaveRunner Auto level: DEV.autoVineFire ×,
     // owner v1.0.50: it was too slow to see); a swinging one's tip where it hangs
-    const vf = S.lvl ? DEV.autoVineFire : TITLE_FIRESPEED, rate = kr('firePlant', R) * vf * (p.st === 'silk' ? TITLE_WEBFIRE : 1);
+    const vf = autoOn(S) ? DEV.autoVineFire : TITLE_FIRESPEED, rate = kr('firePlant', R) * vf * (p.st === 'silk' ? (autoOn(S) ? DEV.autoWebFire : TITLE_WEBFIRE) : 1);
     // Auto's level (owner v1.0.55: only the tip looked alight) three states along it: unburnt from the root to p.lit, burning
     // p.lit..p.ch (alight all along, drawn so: titledraw), charred and crumbling p.ch..p.len (DEV.autoVineAsh long), its end
     // falling away as ash; the title: burning at the tip, as ever (p.ch = p.len)
     const was = p.len;
-    if (S.lvl) { p.ch = (p.ch ?? p.len) - rate * dt; p.len = Math.min(p.len, p.ch + DEV.autoVineAsh); } else p.ch = p.len -= rate * dt;
+    if (autoOn(S)) { p.ch = (p.ch ?? p.len) - rate * dt; p.len = Math.min(p.len, p.ch + DEV.autoVineAsh); } else p.ch = p.len -= rate * dt;
     const top = Math.max(0, p.ch);
     // the flames run up ahead of it: the front climbing at DEV.autoVineSpread × the burn (the title: 1, only the tip); in a level
     // (owner v1.0.55: not so even) spurting and stalling by noise along it and in time, ± DEV.autoVineJitter
-    const lit0 = p.lit ?? top, jit = S.lvl ? 1 + DEV.autoVineJitter * (2 * titleNoise(lit0 * 0.12 + p.seed * 97, p.seed * 31 + S.t * 1.5) - 1) : 1;
-    p.lit = Math.max(0, Math.min(top, lit0 - rate * (S.lvl ? DEV.autoVineSpread * jit : 1) * dt));
+    const lit0 = p.lit ?? top, jit = autoOn(S) ? 1 + DEV.autoVineJitter * (2 * titleNoise(lit0 * 0.12 + p.seed * 97, p.seed * 31 + S.t * 1.5) - 1) : 1;
+    p.lit = Math.max(0, Math.min(top, lit0 - rate * (autoOn(S) ? DEV.autoVineSpread * jit : 1) * dt));
     /** @type {any} */
     const pa = p;
     /** @param {number} k a point k along it from the root, world */
     const at = k => { const q = p.sw || p.tl ? vinePt(pa, Math.max(0, k)) : { x: 0, y: Math.max(0, k) }; return { x: p.ox + q.x, y: p.y + q.y }; };
     const T = at(top), F = at(p.lit), tx = T.x, ty = T.y, span = Math.max(0, top - p.lit);
-    if (S.lvl && was > p.len && R() < dt * 25) { const q = at(p.len); burst(S, q.x - S.scroll, q.y, 1, R() < 0.3 ? '#ff7a2a' : '#2a201a', 15, 'chunk', 0.7); }
+    if (autoOn(S) && was > p.len && R() < dt * 25) { const q = at(p.len); burst(S, q.x - S.scroll, q.y, 1, R() < 0.3 ? '#ff7a2a' : '#2a201a', 15, 'chunk', 0.7); }
     for (let n = R() < dt * (30 + span * 1.5) ? 1 + Math.floor(span / 25) : 0; n > 0; n--) { const q = at(p.lit + R() * span); flameAt(S, q.x - S.scroll + (R() - 0.5) * 4, q.y); }
     if (R() < dt * (4 + span * 0.2)) { const q = at(p.lit + R() * span); fireSmoke(S, q.x - S.scroll, q.y); }
     // (Auto's level, owner v1.0.53/55) the whole burning stretch lights what's beside it, sideways too: a point every 6 along it
     // (at most 16), jumping DEV.autoFireJump at autoFireJumpP a tick; the title: the tip and the front, as ever
     const pts = [T];
     if (span > 4) pts.push(F);
-    if (S.lvl && span > 6) for (let k = 1, n = Math.min(16, Math.floor(span / 6)); k < n; k++) pts.push(at(p.lit + span * k / n));
+    if (autoOn(S) && span > 6) for (let k = 1, n = Math.min(16, Math.floor(span / 6)); k < n; k++) pts.push(at(p.lit + span * k / n));
+    // (owner v1.0.56) its leaves as well (where art/props.js draws them: every 5 along, either side), at most 12
+    if (autoOn(S) && LEAFY(p.st)) {
+      const st = p.st === 'kelp' ? 7 : 5, k0 = 4 + Math.ceil(Math.max(0, p.lit - 4) / st) * st, n = Math.max(0, Math.floor((top - k0) / st) + 1), step = Math.max(1, Math.ceil(n / 12));
+      for (let i = 0; i < n; i += step) { const k = k0 + i * st, q = at(k), s = ((k - 4) / st) % 2 ? -1 : 1; pts.push({ x: q.x + s * 2.5, y: q.y }); }
+    }
     if (ticks) for (const E of pts) {
-      if (E === T || E === F) lightArea(S, E.x, E.y, 5, 0.3 * TITLE_FIRESPEED);
-      if (S.lvl) spreadFrom(S, E.x, E.y, DEV.autoFireJump, DEV.autoFireJumpP); else spreadFrom(S, E.x, E.y);
-      for (const o of S.props) if (!o.burn && !o.gone && !o.arc && burns(o) && Math.abs(o.ox - E.x) < 10 && E.y > o.y - 4 && E.y < o.y + o.len + 4 && R() < 0.25 * Math.min(1, vf)) catchPlant(S, o);
+      if (autoOn(S)) lightArea(S, E.x, E.y, DEV.autoLeafReach, DEV.autoLeafLight);
+      else if (E === T || E === F) lightArea(S, E.x, E.y, 5, 0.3 * fireK(S));
+      if (autoOn(S)) spreadFrom(S, E.x, E.y, DEV.autoFireJump, DEV.autoFireJumpP); else spreadFrom(S, E.x, E.y);
+      for (const o of S.props) if (!o.burn && !o.gone && !o.arc && burns(o) && Math.abs(o.ox - E.x) < 10 && E.y > o.y - 4 && E.y < o.y + o.len + 4 && R() < (autoOn(S) ? DEV.autoVineCatch : 0.25 * Math.min(1, vf))) catchPlant(S, o);
     }
     if (p.len < 3) { p.gone = true; lightArea(S, tx, ty, 6, 0.5); }
   }
   // a web line lit by hand (fu): it's cut there
   for (const L of S.webs.slice()) if (L.fu) cutWeb(S, L, (L.fu[0] + L.fu[1]) / 2, true);
 }
+// Auto's fire rules (vines alight all along, the knobs of Dev's Fire sim page): a level, or that page's room (S.lab, art/firelab.js)
+/** @param {TitleScene} S */
+export const autoOn = S => !!(S.lvl || S.lab);
+// how fast fire spreads cell to cell and onto plants and webs: the title TITLE_FIRESPEED × the game's, a level DEV.autoFireSpread
+/** @param {TitleScene} S */
+const fireK = S => autoOn(S) ? DEV.autoFireSpread : TITLE_FIRESPEED;
+// a hanging plant drawn with leaves either side of its stem (art/props.js drawProp; titledraw.js lights them)
+/** @param {string} st */
+export const LEAFY = st => !['silk', 'root', 'chain', 'myc', 'icefall'].includes(st);
 // what the title's fire burns: the game's flammable plants, and cut silk
 /** @param {TProp} p */
 const burns = p => !!FLAMMABLE[p.st] || p.st === 'silk';
