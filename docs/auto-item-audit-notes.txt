@@ -46,7 +46,8 @@ blast, arrow, missile, fball, fbolt, flamer, bubble, spit, pollen, disc. Part 2 
 - mod:esph "Energy Sphere": Same as energy or visuals, but hollow.
 - mod:zap "Lightning Bolt": This needs a lot of work. Again. We used to have a perfect version of it that looked a lot like lightning. See if you can track it down.
 - mod:chain "Chain Bolt": Make it a small raging black and purple lightning ball, crackling with power. When it chain zips to another enemy, it is a fast streak.
-- mod:void "Black Hole": Ensure we've got the particle effects happening.
+- mod:void "Black Hole": Ensure we've got the particle effects happening. [+ pull, v1.0.40]
+- mod:vacfield "White Hole": (owner, 2026-10-11) its version updated too [done v1.0.40: cast in Auto, pulls, new look]
 - mod:plasma "Plasma Beam": Bright purple plasma beam weapon that inflicts fire and burning where it lands.
 - mod:ldrill "Luminous Drill": Same as plasma beam, but bright green, and has a length cut off. Maybe fade off the tip.
 - mod:cross "Death Cross": Add sparkly particles.
@@ -78,7 +79,7 @@ hearts, and the stat perks hp, walk, fuel, refuel, pull. Carrot: scrapped (owner
 - exo:jet "Jetpack": Auto and manual player movement needs to adhere to jetpack fuel levels and recharge limits.
 [later] — keep as they are (most not wired into Auto yet: GUN_TODO in src/art/scenegun.js):
 - mod:knock, damper, crit, spiral, follow, cold, battery, boom, brim, crystal, dormant, stillc, shieldc, vigour, storm,
-  vacfield, glitter, blood, bpower, telecast, warpcast, gpower: Keep
+  glitter, blood, bpower, telecast, warpcast, gpower: Keep
 - mod:discrim "Discriminate": Keep. I'll come back to it later with a target selection idea.
 - mod:autoaim "Auto-Aim": Keep. Need for chain stacking different projectiles with triggers, so they can auto aim at targets when are spawned.
 - mod:auto "Questions Later": This is for making a gun with the trigger constantly held down regardless of enemies. Keep.

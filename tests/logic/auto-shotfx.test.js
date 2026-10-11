@@ -143,5 +143,24 @@ for (const id of ['eorb', 'esph', 'zap', 'chain', 'void', 'cross', 'nuke', 'mete
   }
   check('level: Plasma Beam fires as a beam and hits (and burns) the creature ahead', beams > 0 && foe.hp < 9999 && burn > 0, { beams, hp: foe.hp, burn });
 }
+// Black Hole's pull and the White Hole (owner, v1.0.40)
+{
+  const mk = (x, y) => ({ x, y, ty: y, hp: 5 });
+  const hole = { x: 100, y: 50, size: 12, pull: 70 }, near = mk(140, 50), far = mk(400, 50), dead = mk(130, 50); dead.hp = 0;
+  const es = { x: 117, y: 50, vx: 0, vy: 0, life: 1, foe: true }, mine = { x: 110, y: 50, vx: 0, vy: 0, life: 1, foe: false };
+  /** @type {any} */ const h = hole;
+  const ate = G.holePull(h, [near, far, dead], 0, /** @type {any} */ ([es, mine]), 1 / 60, 65);
+  check('Black Hole: a creature in reach is hauled toward it, one out of reach and a dead one stay', near.x < 140 && far.x === 400 && dead.x === 130, [near.x, far.x, dead.x]);
+  check('Black Hole: an enemy shot at its edge is swallowed, ours is left alone', es.life === 0 && ate.length === 1 && mine.life === 1);
+  const c = mk(101, 50); for (let i = 0; i < 120; i++) G.holePull(h, [c], 0, [], 1 / 60, 65);
+  check('Black Hole: never past the centre', Math.abs(c.x - 100) < 1.01, c.x);
+  const wh = G.whiteHole({ sid: 'vacfield', life: 1.2, r: 64, col: '#9fd8ff' }, 0, 10, 20, 0);
+  check('White Hole: cast still, WH_AHEAD along the aim, harmless, pulling over its r', wh.vx === 0 && wh.vy === 0 && wh.x === 10 + G.WH_AHEAD && wh.dmg === 0 && wh.vac === 64, wh);
+  const plan = { shots: [{ sid: 'vacfield', still: 1, life: 1.2, r: 64 }] };
+  check('White Hole: planShots casts it (no longer GUN_TODO)', G.planShots(plan, 0, 0, 0, Math.random, 0).length === 1 && !G.GUN_TODO.includes('vacfield'));
+  const a = mk(wh.x + 40, 20), b = mk(wh.x + 100, 20);
+  for (let i = 0; i < 30; i++) G.vacPull(wh, [a, b], 0, [], 1 / 60, G.VAC_PULL);
+  check('White Hole: a creature within its reach is pulled in, one outside is not', Math.abs(a.x - wh.x) < 40 && b.x === wh.x + 100, [a.x - wh.x, b.x - wh.x]);
+}
 console.log(fails ? `${fails} FAILED` : 'all passed');
 process.exit(fails ? 1 : 0);

@@ -6,7 +6,7 @@
 // shotLights: the light a shot throws round it. What they shed as they fly is auto/shotfx.js.
 
 import { glowAt } from '../../art/sprites.js';
-import { drawBolt, drawLook } from './looks.js';
+import { drawBolt, drawLook, drawWhiteHole } from './looks.js';
 import { jagPts } from '../../auto/shotfx.js';
 
 /** @typedef {import('../../art/titlescene.js').TShot} TShot */
@@ -86,6 +86,18 @@ export function drawGlowShot(c, s, W) {
   if (s.sid === 'slug' || s.sid === 'disc' || s.sid === 'missile' || s.sid === 'void') return true;   // drawn solid
   /** @type {any} */
   const G2 = { ctx: c };
+  if (s.sid === 'vacfield') {           // White Hole: the game's look (white core, wheeling blue stars), bigger, and a faint rim at its reach
+    /** @type {any} */
+    const f = { x: s.x, y: s.y, r: (s.vac || 64) * 1.6, life: s.life, max: s.max || 1.2 };
+    /** @type {any} */
+    const Wt = W;
+    drawWhiteHole(Wt, G2, f);
+    const fade = Math.min(1, (f.max - s.life) * 8, s.life * 5);
+    c.globalAlpha = 0.18 * fade * (0.7 + 0.3 * Math.sin(W.time * 6)); c.strokeStyle = '#8fd0ff'; c.lineWidth = 0.6;
+    c.beginPath(); c.arc(s.x, s.y, (s.vac || 64) * (0.95 - 0.1 * ((W.time * 1.5) % 1)), 0, Math.PI * 2); c.stroke();
+    c.globalAlpha = 1;
+    return true;
+  }
   if (s.sid === 'buck') {               // a glint streaking behind the pellet
     c.globalAlpha = 0.45; c.strokeStyle = '#dfe6f0'; c.lineWidth = 0.6;
     c.beginPath(); c.moveTo(s.x - ux * 3, s.y - uy * 3); c.lineTo(s.x, s.y); c.stroke();

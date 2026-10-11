@@ -23,9 +23,10 @@ const SHEETS = [
   ['s5', ['eorb', 'esph', 'zap', 'chain']],
   ['s6', ['void', 'plasma', 'ldrill', 'cross']],
   ['s7', ['nuke', 'meteor', 'nuke!', 'meteor!']],
+  ['s8', ['void', 'vacfield', 'void', 'vacfield']],   // Black Hole pulling, White Hole (v1.0.40)
 ];
 const ONLY = process.argv[3] ? process.argv[3].split(',') : null;   // node tools/shotlookshots.js <outdir> s5,s6
-const BOX = { void: 64, plasma: 120, ldrill: 80, 'nuke!': 120, 'meteor!': 110, meteor: 64, nuke: 64 };   // close-up box (world units)
+const BOX = { vacfield: 150, void: 110, plasma: 120, ldrill: 80, 'nuke!': 120, 'meteor!': 110, meteor: 64, nuke: 64 };   // close-up box (world units)
 
 (async () => {
   const browser = await launch();

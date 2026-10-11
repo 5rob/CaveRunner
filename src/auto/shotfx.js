@@ -85,6 +85,14 @@ export function autoTrail(s, dt, R) {
         out.push(P(R() < 0.25 ? '#ffffff' : R() < 0.6 ? '#d27aff' : '#8a2cff', s.x, s.y, Math.cos(a) * v, Math.sin(a) * v, rr(0.06, 0.16), rr(0.5, 0.8), 'glow')); }
       if (ch(10)) out.push(P('#20082e', s.x, s.y, rr(-6, 6), rr(-6, 6), rr(0.3, 0.5), rr(0.8, 1.2), 'smoke'));
       break;
+    case 'vacfield': { // White Hole: pale-blue motes drawn in from its reach to the core, a white twinkle at the middle
+      const rv = s.vac || 64;
+      for (let k = 0; k < 3; k++) if (ch(30)) {
+        const a = R() * 6.28, d = rv * rr(0.5, 1), v = rr(70, 130);
+        out.push(P(R() < 0.3 ? '#ffffff' : R() < 0.6 ? '#c8ecff' : '#7cc4ff', s.x + Math.cos(a) * d, s.y + Math.sin(a) * d, -Math.cos(a) * v, -Math.sin(a) * v, Math.min(0.6, d / v), rr(0.5, 1), 'glow'));
+      }
+      break;
+    }
     case 'void': {    // the old game's black-hole trail: purple motes drifting round its rim (as bullets.js, ~0.9 a frame)
       const n = Math.min(3, Math.round(dt * 54 + R() * 0.5));
       for (let k = 0; k < n; k++) { const a = rr(0, 6.283), q = s.size * rr(0.6, 1.1);
@@ -222,3 +230,46 @@ export function bigBoomFx(sid, x, y, r, R) {
 // how long a boom's look lasts, and how much bigger it draws than the blast (nuke and meteor: much more)
 /** @param {string} [sid] */
 export const boomLook = sid => sid === 'nuke' ? { max: 1.1, k: 2.4 } : sid === 'meteor' ? { max: 0.9, k: 2 } : { max: 0.38, k: 1 };
+
+// Black Hole's pull (owner, v1.0.40), as the old game's (game/systems/bullets.js): creatures within reach are hauled
+// in, harder the closer they are, never past the centre; enemy shots near it bend in, and are swallowed at its edge.
+// `reach` is DEV.bhPull × pull / 70. Mutates the creatures and the shots; returns the swallowed shots' places.
+/** @param {import('../art/titlescene.js').TShot} s @param {{ x: number, y: number, ty: number, hp: number }[]} foes @param {number} scroll @param {import('../art/titlescene.js').TShot[]} shots @param {number} dt @param {number} reach @returns {{x: number, y: number}[]} */
+export function holePull(s, foes, scroll, shots, dt, reach) {
+  for (const f of foes) {
+    if (!(f.hp > 0)) continue;
+    const dx = s.x - (f.x - scroll), dy = s.y - f.ty, d = Math.hypot(dx, dy) || 1;
+    if (d < reach) {
+      const v = Math.min(d / dt, 60 + 420 * (1 - d / reach));
+      f.x += dx / d * v * dt; f.y += dy / d * v * dt; f.ty += dy / d * v * dt;
+    }
+  }
+  const ate = [];
+  for (const q of shots) {
+    if (!q.foe || q.life <= 0) continue;
+    const dx = s.x - q.x, dy = s.y - q.y, d = Math.hypot(dx, dy) || 1;
+    if (d < s.size + 6) { q.life = 0; ate.push({ x: q.x, y: q.y }); }
+    else if (d < reach) { q.vx += dx / d * 900 * dt; q.vy += dy / d * 900 * dt; }
+  }
+  return ate;
+}
+
+// White Hole (owner, v1.0.40; the game's 'vacuum' field, game/systems/fields.js): a steady strong pull into its middle,
+// through walls, harming nothing. Creatures within `s.vac` are hauled in at `pull` units/s at the edge (faster further
+// in) and held at the middle; enemy shots are bent in and slowed, so they settle rather than swing through.
+/** @param {import('../art/titlescene.js').TShot} s @param {{ x: number, y: number, ty: number, hp: number }[]} foes @param {number} scroll @param {import('../art/titlescene.js').TShot[]} shots @param {number} dt @param {number} pull */
+export function vacPull(s, foes, scroll, shots, dt, pull) {
+  const reach = s.vac || 64;
+  /** @param {number} d */
+  const sp = d => pull * (0.35 + 0.65 * (1 - d / reach));
+  for (const f of foes) {
+    if (!(f.hp > 0)) continue;
+    const dx = s.x - (f.x - scroll), dy = s.y - f.ty, d = Math.hypot(dx, dy) || 1;
+    if (d < reach) { const m = Math.min(d, sp(d) * dt); f.x += dx / d * m; f.y += dy / d * m; f.ty += dy / d * m; }
+  }
+  for (const q of shots) {
+    if (!q.foe || q.life <= 0) continue;
+    const dx = s.x - q.x, dy = s.y - q.y, d = Math.hypot(dx, dy) || 1;
+    if (d < reach) { const k = Math.exp(-4 * dt); q.vx = q.vx * k + dx / d * 900 * dt; q.vy = q.vy * k + dy / d * 900 * dt; }
+  }
+}

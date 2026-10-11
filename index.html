@@ -11522,6 +11522,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
         if (ch(10)) out.push(P("#20082e", s.x, s.y, rr2(-6, 6), rr2(-6, 6), rr2(0.3, 0.5), rr2(0.8, 1.2), "smoke"));
         break;
+      case "vacfield": {
+        const rv = s.vac || 64;
+        for (let k = 0; k < 3; k++) if (ch(30)) {
+          const a = R() * 6.28, d = rv * rr2(0.5, 1), v = rr2(70, 130);
+          out.push(P(R() < 0.3 ? "#ffffff" : R() < 0.6 ? "#c8ecff" : "#7cc4ff", s.x + Math.cos(a) * d, s.y + Math.sin(a) * d, -Math.cos(a) * v, -Math.sin(a) * v, Math.min(0.6, d / v), rr2(0.5, 1), "glow"));
+        }
+        break;
+      }
       case "void": {
         const n = Math.min(3, Math.round(dt * 54 + R() * 0.5));
         for (let k = 0; k < n; k++) {
@@ -11680,6 +11688,54 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return out.slice(0, BIG_BOOM_PARTS);
   }
   var boomLook = (sid) => sid === "nuke" ? { max: 1.1, k: 2.4 } : sid === "meteor" ? { max: 0.9, k: 2 } : { max: 0.38, k: 1 };
+  function holePull(s, foes, scroll, shots, dt, reach2) {
+    for (const f of foes) {
+      if (!(f.hp > 0)) continue;
+      const dx = s.x - (f.x - scroll), dy = s.y - f.ty, d = Math.hypot(dx, dy) || 1;
+      if (d < reach2) {
+        const v = Math.min(d / dt, 60 + 420 * (1 - d / reach2));
+        f.x += dx / d * v * dt;
+        f.y += dy / d * v * dt;
+        f.ty += dy / d * v * dt;
+      }
+    }
+    const ate = [];
+    for (const q of shots) {
+      if (!q.foe || q.life <= 0) continue;
+      const dx = s.x - q.x, dy = s.y - q.y, d = Math.hypot(dx, dy) || 1;
+      if (d < s.size + 6) {
+        q.life = 0;
+        ate.push({ x: q.x, y: q.y });
+      } else if (d < reach2) {
+        q.vx += dx / d * 900 * dt;
+        q.vy += dy / d * 900 * dt;
+      }
+    }
+    return ate;
+  }
+  function vacPull(s, foes, scroll, shots, dt, pull) {
+    const reach2 = s.vac || 64;
+    const sp = (d) => pull * (0.35 + 0.65 * (1 - d / reach2));
+    for (const f of foes) {
+      if (!(f.hp > 0)) continue;
+      const dx = s.x - (f.x - scroll), dy = s.y - f.ty, d = Math.hypot(dx, dy) || 1;
+      if (d < reach2) {
+        const m = Math.min(d, sp(d) * dt);
+        f.x += dx / d * m;
+        f.y += dy / d * m;
+        f.ty += dy / d * m;
+      }
+    }
+    for (const q of shots) {
+      if (!q.foe || q.life <= 0) continue;
+      const dx = s.x - q.x, dy = s.y - q.y, d = Math.hypot(dx, dy) || 1;
+      if (d < reach2) {
+        const k = Math.exp(-4 * dt);
+        q.vx = q.vx * k + dx / d * 900 * dt;
+        q.vy = q.vy * k + dy / d * 900 * dt;
+      }
+    }
+  }
 
   // src/art/scenegun.js
   var SP = 0.5;
@@ -11700,7 +11756,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     "shieldc",
     "vigour",
     "storm",
-    "vacfield",
     "glitter",
     // modifiers whose effect the scene's shot model has no field for yet
     "knock",
@@ -11801,8 +11856,57 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var perkDmg = (pl) => perkBag([...new Set((pl.perks || []).map((it) => it && it.id).filter(Boolean))].map(String)).dmg;
   function planShots(plan, ang, x, y, R, by) {
     const out = [];
-    for (const sh of plan.shots) if (!sh.still) for (const s of shotsOf(sh, ang, x, y, R, by)) out.push(s);
+    for (const sh of plan.shots) {
+      if (sh.sid === "vacfield") {
+        out.push(whiteHole(sh, ang, x, y, by));
+        continue;
+      }
+      if (!sh.still) for (const s of shotsOf(sh, ang, x, y, R, by)) out.push(s);
+    }
     return out;
+  }
+  var WH_AHEAD = 50;
+  function whiteHole(sh, ang, x, y, by) {
+    const life = Math.max(0.3, sh.life || 1.2);
+    return {
+      x: x + Math.cos(ang) * WH_AHEAD,
+      y: y + Math.sin(ang) * WH_AHEAD,
+      vx: 0,
+      vy: 0,
+      size: 2,
+      col: sh.col || "#9fd8ff",
+      look: "",
+      life,
+      max: life,
+      foe: false,
+      spin: 0,
+      grav: 0,
+      drag: 0,
+      explode: 0,
+      pit: 0,
+      fire: 0,
+      bounce: 0,
+      bounceE: 0,
+      pierce: 0,
+      dmg: 0,
+      homing: 0,
+      accel: 0,
+      vmax: 0,
+      chain: 0,
+      real: true,
+      by: by == null ? -1 : by,
+      trig: null,
+      timer: 0,
+      pay: null,
+      age: 0,
+      sid: "vacfield",
+      light: "159,216,255",
+      lightR: 30,
+      beam: 0,
+      ang,
+      pull: 0,
+      vac: sh.r || 64
+    };
   }
 
   // src/auto/clear.js
@@ -14231,6 +14335,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       keepTrail(s);
       if (s.sid) {
         if (S2.parts.length < TITLE_PARTS - FX_ROOM) for (const p of autoTrail(s, dt, Math.random)) S2.parts.push(p);
+      }
+      if (s.pull && !s.foe) for (const a of holePull(s, S2.foes, S2.scroll, S2.shots, dt, DEV.bhPull * s.pull / 70)) burst(S2, a.x, a.y, 3, "#c58cff", 40, "spark", 0.25);
+      if (s.vac) {
+        vacPull(s, S2.foes, S2.scroll, S2.shots, dt, VAC_PULL);
+        continue;
       }
       if (s.sid === "zap" && S2.zaps.length < 24) {
         const fk = zapFork(s, S2.foes, S2.scroll, dt, Math.random);
@@ -30386,6 +30495,20 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const sp = Math.hypot(s.vx, s.vy) || 1, ux = s.vx / sp, uy = s.vy / sp;
     if (s.sid === "slug" || s.sid === "disc" || s.sid === "missile" || s.sid === "void") return true;
     const G2 = { ctx: c };
+    if (s.sid === "vacfield") {
+      const f = { x: s.x, y: s.y, r: (s.vac || 64) * 1.6, life: s.life, max: s.max || 1.2 };
+      const Wt = W;
+      drawWhiteHole(Wt, G2, f);
+      const fade = Math.min(1, (f.max - s.life) * 8, s.life * 5);
+      c.globalAlpha = 0.18 * fade * (0.7 + 0.3 * Math.sin(W.time * 6));
+      c.strokeStyle = "#8fd0ff";
+      c.lineWidth = 0.6;
+      c.beginPath();
+      c.arc(s.x, s.y, (s.vac || 64) * (0.95 - 0.1 * (W.time * 1.5 % 1)), 0, Math.PI * 2);
+      c.stroke();
+      c.globalAlpha = 1;
+      return true;
+    }
     if (s.sid === "buck") {
       c.globalAlpha = 0.45;
       c.strokeStyle = "#dfe6f0";
