@@ -1953,6 +1953,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "autoHubDemoNear", g: "autohub", label: "A crystal machine plays its demo with you this near (world units; the old shop’s 100)", min: 20, max: 240, step: 5 }
   );
   DEV_GROUPS.push(["autohub", "Auto: hub"]);
+  Object.assign(DEV_DEFAULTS, { autoMapPrice: 1e6, autoMapGrow: 1, autoMapStep: 5 });
+  DEV_META.push(
+    { k: "autoMapPrice", g: "automaps", label: "Map machine: the second map’s price (gold)", min: 1e3, max: 1e7, step: 1e3 },
+    { k: "autoMapGrow", g: "automaps", label: "Map machine: price × each map after the second", min: 1, max: 10, step: 0.1 },
+    { k: "autoMapStep", g: "automaps", label: "Each map starts this many tiers harder than the one before", min: 0, max: 50, step: 1 }
+  );
+  DEV_GROUPS.push(["automaps", "Auto: maps"]);
   Object.assign(DEV_DEFAULTS, {
     autoLvlMin: 5,
     autoLvlPace: 1,
@@ -2110,7 +2117,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "autoStreamRamp", g: "autothrow", label: "Stream: ramps up over (s)", min: 0.1, max: 6, step: 0.1 }
   );
   DEV_GROUPS.push(["autothrow", "Auto: throw"]);
-  DEV_TABS.splice(DEV_TABS.length - 1, 0, ["auto", "Auto", ["auto", "autohub", "autolevel", "autoblocks", "autoguns", "autoperks", "autofoes", "autodeath", "autoloot", "autochests", "autobag", "autothrow"]]);
+  DEV_TABS.splice(DEV_TABS.length - 1, 0, ["auto", "Auto", ["auto", "autohub", "automaps", "autolevel", "autoblocks", "autoguns", "autoperks", "autofoes", "autodeath", "autoloot", "autochests", "autobag", "autothrow"]]);
   var DEV_KEY = "caverunner-dev";
   var DEV = Object.assign({}, DEV_DEFAULTS);
   var dueMs = (floor) => floor === 1 ? DEV.due1 * 6e4 : DEADLINE_MS;
@@ -14814,6 +14821,67 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return [...by.values()];
   }
 
+  // src/auto/maps.js
+  var MAP_NAMES = THEMES.map((t) => t.name.replace(/\b\w/g, (c) => c.toUpperCase()));
+  var fresh = (i) => ({ level: 1, best: 0, beaten: false, paid: 0, owned: i === 0 });
+  function mapsOf(run) {
+    if (!Array.isArray(run.maps)) {
+      const t = Math.max(1, run.tier | 0 || 1);
+      run.maps = [{ level: t, best: t - 1, beaten: t > 1, paid: 0, owned: true }];
+      run.map = 0;
+    }
+    while (run.maps.length < MAP_NAMES.length) run.maps.push(fresh(run.maps.length));
+    if (!(run.map >= 0 && run.map < run.maps.length && run.maps[run.map].owned)) run.map = 0;
+    return run.maps;
+  }
+  function mapTier(run) {
+    const m = mapsOf(run)[run.map || 0];
+    return m.level + (run.map || 0) * DEV.autoMapStep;
+  }
+  function syncTier(run) {
+    run.tier = mapTier(run);
+    return run.tier;
+  }
+  var mapPrice = (i) => i <= 0 ? 0 : Math.round(DEV.autoMapPrice * Math.pow(DEV.autoMapGrow, i - 1));
+  var nextLocked = (run) => mapsOf(run).findIndex((m) => !m.owned);
+  function mapState(run, i) {
+    const ms = mapsOf(run), m = ms[i];
+    if (!m) return "locked";
+    if (m.owned) return "owned";
+    if (i !== nextLocked(run)) return "locked";
+    return ms[i - 1] && ms[i - 1].beaten ? "buy" : "beat";
+  }
+  function payMap(run, n) {
+    const i = nextLocked(run);
+    if (i < 0 || mapState(run, i) !== "buy" || n <= 0) return Math.max(0, n);
+    const m = run.maps[i], price = mapPrice(i), take = Math.min(n, price - m.paid);
+    m.paid += take;
+    if (m.paid >= price) {
+      m.owned = true;
+      m.paid = price;
+    }
+    return n - take;
+  }
+  function selectMap(run, i) {
+    const m = mapsOf(run)[i];
+    if (!m || !m.owned) return false;
+    run.map = i;
+    syncTier(run);
+    return true;
+  }
+  function mapCleared(run) {
+    const m = mapsOf(run)[run.map || 0];
+    m.best = Math.max(m.best, m.level);
+    m.level++;
+    m.beaten = true;
+    syncTier(run);
+  }
+  function mapFailed(run) {
+    mapsOf(run)[run.map || 0].level = 1;
+    syncTier(run);
+  }
+  var mapLabel = (run) => MAP_NAMES[run.map || 0] + " Lv " + mapsOf(run)[run.map || 0].level;
+
   // src/auto/run.js
   var BAG_COLS = 7, BAG_ROWS = 10, BAG_SLOTS = BAG_COLS * BAG_ROWS;
   var MAX_PLAYERS = 4, GUN_SLOTS = 4, EXO_SLOTS = 5, PERK_SLOTS = 6, CARROT_MAX = 5;
@@ -14872,6 +14940,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   function newRun(seed) {
     const run = { tier: 1, players: [newPlayer(0)], bag: Array(BAG_SLOTS).fill(null), seed: seed || 1 + Math.floor(Math.random() * 1e6) };
+    mapsOf(run);
     giveKit(run, run.players[0]);
     return run;
   }
@@ -14881,12 +14950,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       p.alive = true;
     }
   }
-  var levelSeed = (run) => 1 + ((run.seed || 1) * 7919 + run.tier * 104729) % 999983;
+  var levelSeed = (run) => 1 + ((run.seed || 1) * 7919 + run.tier * 104729 + (run.map || 0) * 15485863) % 999983;
   function levelFailed(run) {
+    mapFailed(run);
     healRun(run);
   }
   function levelCleared(run) {
-    run.tier++;
+    mapCleared(run);
     healRun(run);
   }
   function itemKey(it) {
@@ -15285,8 +15355,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 
   // src/auto/throw.js
   var throwR = (g) => g.kind === "gold" ? g.lump ? NUGGETS[0].r : NUGGETS[2].r : CRYSTAL_R;
-  var THROW_TAKES = { gun: "gold", exo: "gold", mod: "red", perk: "green" };
-  var MACHINES = ["gun", "exo", "mod", "perk"];
+  var THROW_TAKES = { gun: "gold", exo: "gold", mod: "red", perk: "green", map: "gold" };
+  var MACHINES = ["gun", "exo", "mod", "perk", "map"];
   var MOUTH_UP = 30;
   var MACH_HALF = 28;
   var MACH_H = 84;
@@ -15409,7 +15479,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var HUB_FLASH = 0.4;
   var HUB_ZAP = 1.4;
   var HUB_PAD = 14;
-  var STOP_IDS = ["enter", "gun", "exo", "mod", "perk", "exit"];
+  var STOP_IDS = ["enter", "gun", "exo", "mod", "perk", "map", "exit"];
   var HUB_STOPS = STOP_IDS.map((id, i) => ({ id, x: HUB_EDGE + i * HUB_GAP }));
   var HUB_W = HUB_EDGE * 2 + (HUB_STOPS.length - 1) * HUB_GAP;
   var hubStopX = (id) => (HUB_STOPS.find((s) => s.id === id) || HUB_STOPS[0]).x;
@@ -15417,7 +15487,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     gun: { hue: "#ffd95a", icon: "gun" },
     exo: { hue: "#3fe6d6", icon: "exo" },
     mod: { hue: "#ff3a4a", icon: "⚙️", takes: "red" },
-    perk: { hue: "#3dff7a", icon: "✦", takes: "green" }
+    perk: { hue: "#3dff7a", icon: "✦", takes: "green" },
+    map: { hue: "#c89bff", icon: "map" }
+    // the map machine (auto/maps.js): its front is painted by hubdraw.js drawMapFront
   };
   var HUB_EXO_GLYPHS = EXO_CATS.map((c) => EXO_GLYPH[c]);
   var HUB_EXO_T = 1.2;
@@ -15428,7 +15500,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return r >= fr - 14 ? TM.SWALL : TM.BWALL;
   };
   var hubState = (S2) => S2.hub && S2.hub.data;
-  function hubScene(vh, seed, n, tier = 1, paid = {}) {
+  function hubScene(vh, seed, n, tier = 1, paid = {}, run) {
     const fy = hubFloor(vh);
     const H = {
       fy,
@@ -15446,7 +15518,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       back: [],
       vend: {},
       paidV: 0,
-      demo: {}
+      demo: {},
+      run,
+      mapSel: run ? run.map || 0 : 0,
+      mapFlick: 0,
+      mapT: -99
     };
     const S2 = titleScene(vh, seed, fy - HUB_ROOM, fy, { runners: n, hub: { w: HUB_W / TCELL, cell: hubCell(fy), step: hubStep, data: H } });
     S2.runners.forEach((r, i) => {
@@ -15501,6 +15577,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     hubMove(S2, H, dt);
     stepThrown(S2, H, dt);
     stepPay(S2, H);
+    stepMap(S2, H);
     stepHubDemo(H, S2.runners[0] && H.arrived[0] ? S2.runners[0].x + PW / 2 : -999, dt);
     for (let i = 0; i < H.on.length; i++) {
       const at = LIGHT_WAIT + i * LIGHT_RUN * 1.6;
@@ -15546,7 +15623,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function hubMove(S2, H, dt) {
     const L = S2.runners[0];
     if (!L || !H.arrived[0]) return;
-    const st = H.stick, m = push(st), jet = m > 0 && st.dy < 0, mv = DEV.move;
+    const st = H.stick, br = mapBrowsing(S2, H), m = br ? 0 : push(st), jet = m > 0 && st.dy < 0, mv = DEV.move;
     if (jet) {
       L.vx = approach(L.vx, st.nx * m * JET * DEV.autoMoveK * mv, JET_ACC * DEV.autoMoveK * dt);
       const ty = jetLift(st.ny, m) * mv;
@@ -15651,6 +15728,54 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function hubExitFlash(S2) {
     const H = hubState(S2);
     return H ? Math.max(0, Math.min(1, 1 - (S2.t - H.exitT) / HUB_FLASH)) : 0;
+  }
+  var MAP_FLICK = 0.55;
+  var MAP_UPRIGHT = 0.7;
+  function mapBrowsing(S2, H) {
+    const st = H.stick;
+    return !!H.run && st.active && st.mag > DEAD && Math.abs(st.ny) > MAP_UPRIGHT && hubPayAt(S2) === "map";
+  }
+  function stepMap(S2, H) {
+    const run = H.run;
+    if (!run) return;
+    const ms = mapsOf(run);
+    const n = H.paid.map || 0;
+    if (n > 0) {
+      const was = ms.filter((m) => m.owned).length, ch = payMap(run, n);
+      H.paid.map = 0;
+      H.paidV++;
+      if (ch > 0) H.back.push({ kind: "gold", n: ch });
+      if (ms.filter((m) => m.owned).length > was) {
+        H.mapT = S2.t;
+        S2.flash = Math.max(S2.flash, 0.4);
+        S2.snd.push({ k: "arc", x: hubStopX("map"), y: H.fy - 40 });
+      }
+    }
+    const st = H.stick, flick = mapBrowsing(S2, H) && st.mag >= MAP_FLICK ? st.ny < 0 ? -1 : 1 : 0;
+    if (flick && flick !== H.mapFlick) {
+      const to = Math.max(0, Math.min(ms.length - 1, H.mapSel + flick));
+      if (to !== H.mapSel) {
+        H.mapSel = to;
+        S2.snd.push({ k: "coinland", x: hubStopX("map"), y: H.fy - 40 });
+      }
+    }
+    H.mapFlick = flick;
+  }
+  function hubMapA(S2) {
+    const H = hubState(S2);
+    if (!H || !H.run) return "no";
+    const s = mapState(H.run, H.mapSel);
+    return s === "owned" ? "pick" : s === "buy" ? "pay" : "no";
+  }
+  function hubMapPick(S2) {
+    const H = hubState(S2);
+    if (!H || !H.run || !selectMap(H.run, H.mapSel)) return false;
+    H.tier = H.run.tier;
+    H.mapT = S2.t;
+    H.paidV++;
+    S2.flash = Math.max(S2.flash, 0.3);
+    S2.snd.push({ k: "arc", x: hubStopX("map"), y: H.fy - 40 });
+    return true;
   }
   function hubPrice(id, tier) {
     if (id === "gun") return { n: autoGunPrice(tier), kind: "gold" };
@@ -25410,12 +25535,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     const id = rollMod(Math.random, W.floor);
     if (!id) return null;
-    const fresh = !inp.collection.includes(id);
-    if (fresh) {
+    const fresh2 = !inp.collection.includes(id);
+    if (fresh2) {
       inp.collection.push(id);
       saveCollection(inp.collection);
     }
-    return { kind: "mod", id, fresh };
+    return { kind: "mod", id, fresh: fresh2 };
   }
   function stepCrystals(W, G, F2) {
     const dt = F2.dt;
@@ -25633,6 +25758,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ctx.globalAlpha = 0.35;
     ctx.fillRect(x + 12, cy + 11, MW - 24, 1);
     ctx.globalAlpha = 1;
+    if (m.icon === "map") {
+      ctx.restore();
+      return;
+    }
     const icon = m.icon === "exo" ? HUB_EXO_GLYPHS[Math.floor(t / HUB_EXO_T) % HUB_EXO_GLYPHS.length] : m.icon;
     const f = Math.floor(t * 14) + cx;
     const drop = hs4(f) < 0.07, jit = hs4(f * 1.3) < 0.1 ? (hs4(f * 2.1) - 0.5) * 3 : 0;
@@ -25684,8 +25813,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     ctx.restore();
   }
-  function payRing(ctx, x, y, hue, f, a) {
-    const R = ICON / 2 + 3.5, a0 = -Math.PI / 2, a1 = a0 + Math.PI * 2 * Math.max(0, Math.min(1, f));
+  function payRing(ctx, x, y, hue, f, a, R = ICON / 2 + 3.5) {
+    const a0 = -Math.PI / 2, a1 = a0 + Math.PI * 2 * Math.max(0, Math.min(1, f));
     ctx.save();
     ctx.lineCap = "round";
     ctx.globalAlpha = 0.5;
@@ -25708,6 +25837,60 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       ctx.beginPath();
       ctx.arc(x + Math.cos(a1) * R, y + Math.sin(a1) * R, 1, 0, Math.PI * 2);
       ctx.fill();
+    }
+    ctx.restore();
+  }
+  function drawMapFront(ctx, cx, fy, run, sel, t, since) {
+    const ms = mapsOf(run), hue = HUB_MACHINES.map.hue, act = run.map || 0, m = ms[sel], st = mapState(run, sel);
+    const x = cx - MW / 2, y = fy - MH, gx = x + 8, gy = y + 7, gw = MW - 16, gh = 42, B = 0.5;
+    const line = (s, base, w, px, col) => {
+      const k = Math.min(px, w / Math.max(1, pixWidth(s, 1, B)));
+      ctx.fillStyle = col;
+      pixText(ctx, s, cx - pixWidth(s, k, B) / 2, base, k, k * 1.3, B, 8);
+    };
+    ctx.save();
+    ctx.shadowColor = hue;
+    ctx.shadowBlur = 2;
+    line("NOW " + MAP_NAMES[act].toUpperCase() + " LV" + ms[act].level, gy + 5, gw - 4, 0.42, hue);
+    ctx.fillStyle = hue;
+    ctx.globalAlpha = 0.4;
+    ctx.fillRect(gx + 3, gy + 7.5, gw - 6, 0.5);
+    ctx.globalAlpha = 1;
+    const bob2 = Math.sin(t * 5) * 0.6;
+    ctx.fillStyle = "#ffffff";
+    if (sel > 0) {
+      ctx.beginPath();
+      ctx.moveTo(cx, gy + 9.5 - bob2);
+      ctx.lineTo(cx - 2.5, gy + 12 - bob2);
+      ctx.lineTo(cx + 2.5, gy + 12 - bob2);
+      ctx.closePath();
+      ctx.fill();
+    }
+    if (sel < ms.length - 1) {
+      ctx.beginPath();
+      ctx.moveTo(cx, gy + gh - 1.5 + bob2);
+      ctx.lineTo(cx - 2.5, gy + gh - 4 + bob2);
+      ctx.lineTo(cx + 2.5, gy + gh - 4 + bob2);
+      ctx.closePath();
+      ctx.fill();
+    }
+    const words = MAP_NAMES[sel].toUpperCase().split(" "), l2 = words.length > 1 ? [words[0], words.slice(1).join(" ")] : words;
+    const mid = gy + 25, nc = st === "owned" ? "#ffffff" : st === "buy" ? "#e8dcff" : "#7a7090";
+    if (st === "buy") payRing(ctx, cx, mid - 1, hue, m.paid / Math.max(1, mapPrice(sel)), 1, 13);
+    l2.forEach((w, k) => line(w, mid - (l2.length - 1) * 4 + k * 8 + 1.5, st === "buy" ? 22 : gw - 6, 0.75, nc));
+    if (st === "owned" && sel === act) line("ACTIVE", gy + gh - 6, gw - 6, 0.5, "#3dff7a");
+    if (st === "beat" || st === "locked") line(st === "beat" ? "BEAT " + MAP_NAMES[sel - 1].toUpperCase() + " FIRST" : "LOCKED", gy + gh - 6, gw - 6, 0.5, "#ff8a8a");
+    ctx.shadowBlur = 0;
+    if (st === "owned") {
+      ctx.shadowColor = "#3dff7a";
+      ctx.shadowBlur = 3;
+      line("LV " + m.level, fy - 22 + 6 + 3.5 * 1.1, MW - 26, 0.85, sel === act ? "#3dff7a" : "#d8ffe4");
+    } else if (st === "buy") drawPrice(ctx, cx, fy, { n: mapPrice(sel) - m.paid, kind: "gold" }, t);
+    if (since >= 0 && since < 0.5) {
+      ctx.globalCompositeOperation = "lighter";
+      ctx.globalAlpha = 0.5 * (1 - since / 0.5);
+      ctx.fillStyle = hue;
+      ctx.fillRect(gx, gy, gw, gh);
     }
     ctx.restore();
   }
@@ -25759,7 +25942,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         ctx.fillRect(st.x + TUBE_W2 / 2 - 3, y + 3, 3, 2);
       }
       if (st.id === "enter" || st.id === "exit") drawHubPad(ctx, st.x, H.fy, t + i);
-      else {
+      else if (st.id === "map") {
+        drawMachine(ctx, st.x, H.fy, HUB_MACHINES.map, t);
+        if (H.run) drawMapFront(ctx, st.x, H.fy, H.run, H.mapSel, t, t - H.mapT);
+      } else {
         const pr = machinePay({ paid: H.paid }, st.id, H.tier), vs = H.vend[st.id];
         drawMachine(ctx, st.x, H.fy, HUB_MACHINES[st.id], t, pr.price ? (H.paid[st.id] || 0) / pr.price : 0, vs !== void 0 && vs >= 0 ? t - vs : -1);
         drawPrice(ctx, st.x, H.fy, hubPrice(st.id, H.tier), t);
@@ -26119,6 +26305,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (!raw) return null;
       const d = JSON.parse(raw);
       if (!d || d.v !== AUTO_SAVE_V || !d.run || !Array.isArray(d.run.players) || !Array.isArray(d.run.bag)) return null;
+      mapsOf(d.run);
+      syncTier(d.run);
       return d.run;
     } catch (e) {
       return null;
@@ -28881,7 +29069,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const t = setTimeout(() => setSure(false), 3e3);
       return () => clearTimeout(t);
     }, [sure]);
-    const fresh = () => {
+    const fresh2 = () => {
       if (!onNew) return;
       if (sure) onNew();
       else setSure(true);
@@ -28909,7 +29097,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         h("button", { className: "pbtn resume", onPointerDown: tap(close) }, "▶ Resume"),
         h("button", { className: "pbtn save", onPointerDown: tap(save) }, saved ? h("span", { key: saved, className: "saved" }, "✓ Saved") : "💾 Save"),
         h(Volumes),
-        onNew ? h("button", { className: "pbtn newrun" + (sure ? " sure" : ""), onPointerDown: tap(fresh) }, sure ? "Tap again: new run" : "↺ New run") : null,
+        onNew ? h("button", { className: "pbtn newrun" + (sure ? " sure" : ""), onPointerDown: tap(fresh2) }, sure ? "Tap again: new run" : "↺ New run") : null,
         h("button", { className: "pbtn exit", onPointerDown: tap(exit) }, "⏏ Exit to main menu")
       )
     );
@@ -30535,8 +30723,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
       }
       if (r.ghost) {
-        const g = r.ghost, fresh = Math.max(0, 1 - (S2.t - g.fired) / 0.25);
-        glowAt(ctx, g.x, g.y + bob(S2, r), 10 + fresh * 6, 0.22 + fresh * 0.3, "201,166,255");
+        const g = r.ghost, fresh2 = Math.max(0, 1 - (S2.t - g.fired) / 0.25);
+        glowAt(ctx, g.x, g.y + bob(S2, r), 10 + fresh2 * 6, 0.22 + fresh2 * 0.3, "201,166,255");
       }
     }
   }
@@ -31347,6 +31535,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function drawPayHint(c, S2) {
     const H = hubState(S2), id = hubPayAt(S2);
     if (!H || !id) return;
+    const ma = id === "map" ? hubMapA(S2) : "pay";
+    if (ma === "no") return;
     const x = hubStopX(id) - S2.scroll, y = H.fy - MACH_H - 9 + Math.sin(S2.t * 4) * 1.2, w = 40, hh = 11;
     c.fillStyle = "rgba(14,9,26,0.9)";
     c.strokeStyle = "#4ef08a";
@@ -31365,7 +31555,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     c.fillStyle = "#fff";
     c.fillText("A", x - w / 2 + 6, y + 0.3);
     c.fillStyle = "#f1ecff";
-    c.fillText("to Pay", x + 4, y + 0.3);
+    c.fillText(ma === "pick" ? "to Play" : "to Pay", x + 4, y + 0.3);
     c.textBaseline = "alphabetic";
   }
   function drawThrown(c, S2) {
@@ -32472,8 +32662,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (br.width < 4 || br.height < 4 || cr.width < 4) return;
       const v = camTo(C, x, y), k = cr.width / TITLE_VW, s = tr.width;
       const tx = Math.max(br.left + s / 2, Math.min(br.right - s / 2, tr.left + s / 2)), ty = Math.max(br.top + s / 2, Math.min(br.bottom - s / 2, tr.top + s / 2));
-      const fresh = !!run.bag[i] && (run.bag[i].n || 1) <= (it.n || 1);
-      const f = { k: ++flyN.current, it: Object.assign({}, it), slot: i, fresh, x0: cr.left + v.x * k, y0: cr.top + v.y * k, x1: tx, y1: ty, s };
+      const fresh2 = !!run.bag[i] && (run.bag[i].n || 1) <= (it.n || 1);
+      const f = { k: ++flyN.current, it: Object.assign({}, it), slot: i, fresh: fresh2, x0: cr.left + v.x * k, y0: cr.top + v.y * k, x1: tx, y1: ty, s };
       setFlies((fs) => [...fs, f]);
     };
     useEffect(() => {
@@ -32497,7 +32687,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             cam.current = C2;
             return { S: S3, C: C2, warm: 0 };
           }
-          const S2 = hubScene(vh, seed, run.players.length, run.tier, run.paid || (run.paid = {}));
+          const S2 = hubScene(vh, seed, run.players.length, run.tier, run.paid || (run.paid = {}), run);
           scene.current = S2;
           S2.onTake = (it, x, y) => flyIn(it, x, y);
           if (window.__TEST_TITLE) window.__autoHub = S2;
@@ -32597,6 +32787,21 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (!S2 || !at) {
         pressA();
         return;
+      }
+      if (at === "map") {
+        const a = hubMapA(S2);
+        if (a === "pick") {
+          if (hubMapPick(S2)) {
+            SFX.fx("open");
+            saveAutoRun(run);
+            setV((n) => n + 1);
+          }
+          return;
+        }
+        if (a === "no") {
+          SFX.ui("tap");
+          return;
+        }
       }
       const kind = THROW_TAKES[at], id = e.pointerId, x0 = e.clientX, y0 = e.clientY;
       let dx = 0, dy = 0, stream = false, acc = 0, t0 = 0, last = performance.now();
@@ -33014,7 +33219,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         SFX.fx("close");
         setDevOpen(false);
       } }) : null,
-      paused ? h(PauseMenu, { input, label: "Tier " + run.tier, onNew: freshRun, close: () => {
+      paused ? h(PauseMenu, { input, label: mapLabel(run), onNew: freshRun, close: () => {
         SFX.fx("close");
         setPaused(false);
       } }) : null

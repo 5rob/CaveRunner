@@ -7,11 +7,11 @@ let fails = 0;
 const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FAIL'} ${n}${x !== undefined ? ' -> ' + JSON.stringify(x) : ''}`); };
 
 const ids = G.HUB_STOPS.map(s => s.id), xs = G.HUB_STOPS.map(s => s.x);
-check('the stops, left to right: enter, gun, exo, mod, perk, exit', ids.join() === 'enter,gun,exo,mod,perk,exit', ids);
+check('the stops, left to right: enter, gun, exo, mod, perk, map, exit', ids.join() === 'enter,gun,exo,mod,perk,map,exit', ids);
 const gaps = xs.slice(1).map((x, i) => x - xs[i]);
 check('evenly spaced', gaps.every(g => g === gaps[0]) && gaps[0] > 56, gaps);
-check('all inside the strip, the same margin each end', xs[0] > 0 && Math.abs(xs[0] - (G.HUB_W - xs[5])) < 1e-9, [xs[0], G.HUB_W]);
-check('hubStopX finds them', G.hubStopX('perk') === xs[4] && G.hubStopX('exit') === xs[5]);
+check('all inside the strip, the same margin each end', xs[0] > 0 && Math.abs(xs[0] - (G.HUB_W - xs[xs.length - 1])) < 1e-9, [xs[0], G.HUB_W]);
+check('hubStopX finds them', G.hubStopX('perk') === xs[4] && G.hubStopX('map') === xs[5] && G.hubStopX('exit') === xs[6]);
 check('each machine has its look; the exo machine its own hue and glyphs', ['gun', 'exo', 'mod', 'perk'].every(k => G.HUB_MACHINES[k])
   && new Set(['gun', 'exo', 'mod', 'perk'].map(k => G.HUB_MACHINES[k].hue)).size === 4 && G.HUB_EXO_GLYPHS.length === G.EXO_CATS.length);
 

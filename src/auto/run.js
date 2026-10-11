@@ -10,6 +10,7 @@ import { PERKS, STAT_PERKS, perkBag, perkPrice } from '../data/perks.js';
 import { stackKey } from '../spells/collection.js';
 import { TITLE_COLS } from '../art/titlescene.js';
 import { MODS, tierOf } from '../spells/mods.js';
+import { mapCleared, mapFailed, mapsOf } from './maps.js';
 import { resetGun } from '../spells/guns.js';
 
 export const BAG_COLS = 7, BAG_ROWS = 10, BAG_SLOTS = BAG_COLS * BAG_ROWS;
@@ -77,6 +78,7 @@ export function kitMissing(run, rnd) {
 export function newRun(seed) {
   /** @type {AutoRun} */
   const run = { tier: 1, players: [newPlayer(0)], bag: Array(BAG_SLOTS).fill(null), seed: seed || 1 + Math.floor(Math.random() * 1e6) };
+  mapsOf(run);
   giveKit(run, run.players[0]);
   return run;
 }
@@ -87,14 +89,15 @@ export function healRun(run) {
   for (const p of run.players) { p.hp = playerStats(p).maxHp; p.alive = true; }
 }
 /** the run's level at its tier: the same run's tier n is always the same level @param {AutoRun} run */
-export const levelSeed = run => 1 + ((run.seed || 1) * 7919 + run.tier * 104729) % 999983;
-/** every player fell in the level (stage 6): home, the tier unchanged, healed (the loot kept) @param {AutoRun} run */
+export const levelSeed = run => 1 + ((run.seed || 1) * 7919 + run.tier * 104729 + (run.map || 0) * 15485863) % 999983;
+/** every player fell in the level (stage 6): home, the active map back to level 1 (auto/maps.js), healed (the loot kept) @param {AutoRun} run */
 export function levelFailed(run) {
+  mapFailed(run);
   healRun(run);
 }
-/** the level's boss is down and the team is home: tier + 1, healed @param {AutoRun} run */
+/** the level's end teleporter reached: the active map's level + 1 (run.tier with it: auto/maps.js), healed @param {AutoRun} run */
 export function levelCleared(run) {
-  run.tier++;
+  mapCleared(run);
   healRun(run);
 }
 

@@ -3,6 +3,8 @@
 // `storage` is optional (localStorage by default) so the logic suite can pass a fake.
 // (Named loadAutoRun / saveAutoRun: `saveRun` is already the old game's, game/systems/save-run.js.)
 
+import { mapsOf, syncTier } from './maps.js';
+
 export const AUTO_SAVE_KEY = 'caverunner-auto-run';
 export const AUTO_SAVE_V = 1;
 
@@ -20,6 +22,8 @@ export function loadAutoRun(storage) {
     if (!raw) return null;
     const d = JSON.parse(raw);
     if (!d || d.v !== AUTO_SAVE_V || !d.run || !Array.isArray(d.run.players) || !Array.isArray(d.run.bag)) return null;
+    mapsOf(d.run);   // an old save (run.tier, no maps): map 0 at that level
+    syncTier(d.run);
     return d.run;
   } catch (e) { return null; }
 }

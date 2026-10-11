@@ -24,6 +24,7 @@ import { coneDust } from './shoplights.js';
 import { holoLight, holoPass } from './guide.js';
 import { demoAt } from '../systems/shops.js';
 import { PAY_CYCLE, machinePay, payPhase } from '../../auto/payout.js';
+import { MAP_NAMES, mapPrice, mapState, mapsOf } from '../../auto/maps.js';
 
 const MW = 56, MH = 84;                     // a machine's cabinet (render/shops.js: MACHINE_W, MACHINE_H)
 const PAD_W = 30, BEAM_H = 64;              // the pads (render/pads.js)
@@ -93,6 +94,7 @@ export function drawMachine(ctx, cx, fy, m, t, pay = 0, vt = -1) {
   ctx.fillStyle = '#0a0c10'; ctx.fillRect(x + 12, cy, MW - 24, 12);
   ctx.fillStyle = '#2c323e'; ctx.fillRect(x + 12, cy, MW - 24, 3);
   ctx.fillStyle = m.hue; ctx.globalAlpha = 0.35; ctx.fillRect(x + 12, cy + 11, MW - 24, 1); ctx.globalAlpha = 1;
+  if (m.icon === 'map') { ctx.restore(); return; }   // the map machine: its front is drawMapFront's
   // the hologram: a beam up from the emitter, the icon flickering in front of the glass (the exo machine's: its glyphs in turn)
   const icon = m.icon === 'exo' ? HUB_EXO_GLYPHS[Math.floor(t / HUB_EXO_T) % HUB_EXO_GLYPHS.length] : m.icon;
   const f = Math.floor(t * 14) + cx;
@@ -129,9 +131,9 @@ export function drawMachine(ctx, cx, fy, m, t, pay = 0, vt = -1) {
 
 // The payment ring (stage 10b): a loading bar round the hologram, from the top clockwise, f of the price paid: a dim
 // track, the paid part in the machine's hue with a glow and a bright head
-/** @param {CanvasRenderingContext2D} ctx @param {number} x @param {number} y @param {string} hue @param {number} f 0-1 @param {number} a */
-function payRing(ctx, x, y, hue, f, a) {
-  const R = ICON / 2 + 3.5, a0 = -Math.PI / 2, a1 = a0 + Math.PI * 2 * Math.max(0, Math.min(1, f));
+/** @param {CanvasRenderingContext2D} ctx @param {number} x @param {number} y @param {string} hue @param {number} f 0-1 @param {number} a @param {number} [R] its radius */
+function payRing(ctx, x, y, hue, f, a, R = ICON / 2 + 3.5) {
+  const a0 = -Math.PI / 2, a1 = a0 + Math.PI * 2 * Math.max(0, Math.min(1, f));
   ctx.save();
   ctx.lineCap = 'round';
   ctx.globalAlpha = 0.5; ctx.strokeStyle = '#1c2230'; ctx.lineWidth = 2.2;
@@ -142,6 +144,45 @@ function payRing(ctx, x, y, hue, f, a) {
     ctx.shadowBlur = 0; ctx.fillStyle = '#ffffff';
     ctx.beginPath(); ctx.arc(x + Math.cos(a1) * R, y + Math.sin(a1) * R, 1, 0, Math.PI * 2); ctx.fill();
   }
+  ctx.restore();
+}
+
+// The map machine's front (auto/maps.js): on the glass, the active map and its level at the top ("NOW"), the browsed
+// map's name in the middle with ▲ ▼ where there's more to browse, and what it is: owned (its level on the coin panel; the
+// active one ticked), the next to buy (a payment ring round its name, the gold still owed on the coin panel), or locked
+// ("BEAT <previous> FIRST"). since: how long since a map was picked or bought (the glass flashes)
+/** @param {CanvasRenderingContext2D} ctx @param {number} cx @param {number} fy @param {AutoRun} run @param {number} sel the browsed map @param {number} t @param {number} since */
+export function drawMapFront(ctx, cx, fy, run, sel, t, since) {
+  const ms = mapsOf(run), hue = HUB_MACHINES.map.hue, act = run.map || 0, m = ms[sel], st = mapState(run, sel);
+  const x = cx - MW / 2, y = fy - MH, gx = x + 8, gy = y + 7, gw = MW - 16, gh = 42, B = 0.5;
+  /** one line of the blocky font, centred at cx, shrunk to fit w @param {string} s @param {number} base @param {number} w @param {number} px @param {string} col */
+  const line = (s, base, w, px, col) => {
+    const k = Math.min(px, w / Math.max(1, pixWidth(s, 1, B)));
+    ctx.fillStyle = col; pixText(ctx, s, cx - pixWidth(s, k, B) / 2, base, k, k * 1.3, B, 8);
+  };
+  ctx.save();
+  ctx.shadowColor = hue; ctx.shadowBlur = 2;
+  // the top line: what's active now
+  line('NOW ' + MAP_NAMES[act].toUpperCase() + ' LV' + ms[act].level, gy + 5, gw - 4, 0.42, hue);
+  ctx.fillStyle = hue; ctx.globalAlpha = 0.4; ctx.fillRect(gx + 3, gy + 7.5, gw - 6, 0.5); ctx.globalAlpha = 1;
+  // the browse arrows
+  const bob = Math.sin(t * 5) * 0.6;
+  ctx.fillStyle = '#ffffff';
+  if (sel > 0) { ctx.beginPath(); ctx.moveTo(cx, gy + 9.5 - bob); ctx.lineTo(cx - 2.5, gy + 12 - bob); ctx.lineTo(cx + 2.5, gy + 12 - bob); ctx.closePath(); ctx.fill(); }
+  if (sel < ms.length - 1) { ctx.beginPath(); ctx.moveTo(cx, gy + gh - 1.5 + bob); ctx.lineTo(cx - 2.5, gy + gh - 4 + bob); ctx.lineTo(cx + 2.5, gy + gh - 4 + bob); ctx.closePath(); ctx.fill(); }
+  // the browsed map's name, one word a line (two at most)
+  const words = MAP_NAMES[sel].toUpperCase().split(' '), l2 = words.length > 1 ? [words[0], words.slice(1).join(' ')] : words;
+  const mid = gy + 25, nc = st === 'owned' ? '#ffffff' : st === 'buy' ? '#e8dcff' : '#7a7090';
+  if (st === 'buy') payRing(ctx, cx, mid - 1, hue, m.paid / Math.max(1, mapPrice(sel)), 1, 13);
+  l2.forEach((w, k) => line(w, mid - (l2.length - 1) * 4 + k * 8 + 1.5, st === 'buy' ? 22 : gw - 6, 0.75, nc));
+  if (st === 'owned' && sel === act) line('ACTIVE', gy + gh - 6, gw - 6, 0.5, '#3dff7a');
+  if (st === 'beat' || st === 'locked') line(st === 'beat' ? 'BEAT ' + MAP_NAMES[sel - 1].toUpperCase() + ' FIRST' : 'LOCKED', gy + gh - 6, gw - 6, 0.5, '#ff8a8a');
+  ctx.shadowBlur = 0;
+  // the coin panel: its level (owned) or the gold still owed (the next to buy)
+  if (st === 'owned') { ctx.shadowColor = '#3dff7a'; ctx.shadowBlur = 3; line('LV ' + m.level, fy - 22 + 6 + 3.5 * 1.1, MW - 26, 0.85, sel === act ? '#3dff7a' : '#d8ffe4'); }
+  else if (st === 'buy') drawPrice(ctx, cx, fy, { n: mapPrice(sel) - m.paid, kind: 'gold' }, t);
+  // picked or bought: the glass flashes
+  if (since >= 0 && since < 0.5) { ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.5 * (1 - since / 0.5); ctx.fillStyle = hue; ctx.fillRect(gx, gy, gw, gh); }
   ctx.restore();
 }
 
@@ -186,6 +227,7 @@ export function hubBack(ctx, S) {
       ctx.fillRect(st.x - TUBE_W / 2, y + 3, 3, 2); ctx.fillRect(st.x + TUBE_W / 2 - 3, y + 3, 3, 2);
     }
     if (st.id === 'enter' || st.id === 'exit') drawHubPad(ctx, st.x, H.fy, t + i);
+    else if (st.id === 'map') { drawMachine(ctx, st.x, H.fy, HUB_MACHINES.map, t); if (H.run) drawMapFront(ctx, st.x, H.fy, H.run, H.mapSel, t, t - H.mapT); }
     else {
       const pr = machinePay({ paid: H.paid }, st.id, H.tier), vs = H.vend[st.id];
       drawMachine(ctx, st.x, H.fy, HUB_MACHINES[st.id], t, pr.price ? ((H.paid[st.id] || 0) / pr.price) : 0, vs !== undefined && vs >= 0 ? t - vs : -1);

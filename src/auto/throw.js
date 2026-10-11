@@ -28,9 +28,9 @@ export const throwR = g => (g.kind === 'gold' ? (g.lump ? NUGGETS[0].r : NUGGETS
 
 // what each machine takes
 /** @type {Record<string, Cash>} */
-export const THROW_TAKES = { gun: 'gold', exo: 'gold', mod: 'red', perk: 'green' };
+export const THROW_TAKES = { gun: 'gold', exo: 'gold', mod: 'red', perk: 'green', map: 'gold' };
 /** @type {import('./hub.js').HubStopId[]} */
-const MACHINES = ['gun', 'exo', 'mod', 'perk'];
+const MACHINES = ['gun', 'exo', 'mod', 'perk', 'map'];
 export const MOUTH_UP = 30;          // the mouth: this far above the floor (world units; the coin panel)
 export const MACH_HALF = 28;         // a machine's half width (it's 56 wide, 84 tall)
 export const MACH_H = 84;

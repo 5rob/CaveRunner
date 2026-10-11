@@ -177,7 +177,7 @@ check('scrap follows its Dev knob', (() => { const o = G.DEV.autoScrap; G.DEV.au
   const mem = {};
   const fake = { getItem: k => (k in mem ? mem[k] : null), setItem: (k, v) => { mem[k] = String(v); } };
   check('nothing saved: null', G.loadAutoRun(fake) === null);
-  run.tier = 4;
+  run.maps[0].level = 4; G.syncTier(run);   // (auto/maps.js: run.tier follows the active map's level)
   check('saveAutoRun writes its own key, versioned', G.saveAutoRun(run, fake) && JSON.parse(mem[G.AUTO_SAVE_KEY]).v === 1
     && G.AUTO_SAVE_KEY === 'caverunner-auto-run');
   const back = G.loadAutoRun(fake);
