@@ -111,6 +111,8 @@ export function AutoScreen() {
   // (owner, v1.0.47) the play area grown down over the nav and the bag to the bag's bottom edge (a double tap on it; again,
   // or B, back): bigPlay px added to its height, taken back by a negative bottom margin, so the rest stays where it is under it
   const [bigPlay, setBigPlay] = useState(0);
+  const bigPlayRef = useRef(0);
+  bigPlayRef.current = bigPlay;
   const playTapT = useRef(0);
   const navRef = useRef(nav);
   navRef.current = nav;
@@ -189,7 +191,9 @@ export function AutoScreen() {
     return runScene(c, {
       size: () => ({ w: c.clientWidth, hh: c.clientHeight }),
       make: (w, hh, seed) => {
-        const k = w / TITLE_VW, vh = hh / k;
+        // (v1.0.47 fix) a scene made while the play area is grown is still made at its own size: shrunk back, the camera
+        // stays on the players
+        const k = w / TITLE_VW, vh = Math.max(1, hh - bigPlayRef.current) / k;
         // the level: the run's (a test flag opens one straight away: window.__AUTO_LEVEL = its seed); full heal at its start
         if (where.current === 'level') {
           healRun(run);

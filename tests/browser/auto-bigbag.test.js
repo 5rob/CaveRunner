@@ -51,6 +51,17 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   await ptap(); await page.waitForTimeout(120); await ptap(); await page.waitForTimeout(600);
   await page.locator('.abtn.ab').dispatchEvent('pointerdown'); await page.waitForTimeout(600);
   check('grown, then B: back', Math.abs(await bot('.aplay') - play0) < 1);
+  // a level made while the play area is grown, then shrunk back: the players still on screen (the camera at their height)
+  await ptap(); await page.waitForTimeout(120); await ptap(); await page.waitForTimeout(600);
+  await page.evaluate(() => { const S = window.__title.S, H = hubState(S); for (const r of S.runners) { r.x = hubStopX('exit') - S.scroll - PW / 2; r.y = H.fy - PH; } hubExit(S); });
+  let lvl = false;
+  for (let i = 0; i < 60 && !lvl; i++) { await page.waitForTimeout(100); lvl = await page.evaluate(() => !!window.__autoScene && window.__title.S === window.__autoScene); }
+  await page.waitForTimeout(1500);
+  await ptap(); await page.waitForTimeout(120); await ptap(); await page.waitForTimeout(800);
+  const seen = await page.evaluate(() => { const S = window.__title.S, C = window.__title.C, cv = document.querySelector('.aplaycvs'), k = cv.clientWidth / TITLE_VW;
+    return S.runners.filter(r => !r.hide).map(r => Math.round(camTo(C, r.x, r.y).y * k)).concat([cv.clientHeight]); });
+  const hh = seen.pop();
+  check('made grown, shrunk back: the players on screen', lvl && seen.length > 0 && seen.every(y => y > 0 && y < hh), { lvl, seen, hh });
   await browser.close();
   console.log(fails ? `\n${fails} FAILED` : '\nall ok');
   process.exit(fails ? 1 : 0);

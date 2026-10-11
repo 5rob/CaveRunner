@@ -5,6 +5,11 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.48 — CaveRunner Auto: the camera after the grown play area (branch `autobattler`)
+Released 2026-10-11 on the branch. PM alone (owner's bug).
+- A scene made while the play area was grown (the hub to a level, or back) took the grown height, so shrunk back its camera
+  sat below the players. `make` now takes the play area's own height (`bigPlayRef`). Browser `auto-bigbag` checks it.
+
 ## v1.0.47 — CaveRunner Auto: the play area grows over the nav and bag (branch `autobattler`)
 Released 2026-10-11 on the branch. PM alone (owner's ask).
 - A double tap on the play area (`BIG_TAP`) grows it down to the bag's bottom edge, over the nav and the bag (`bigPlay`:
