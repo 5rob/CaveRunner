@@ -28,7 +28,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   for (let i = 0; i < 40 && !(on = !!(await page.$('.auto'))); i++) await page.waitForTimeout(50);
   check('the auto screen is up', on);
   const nav = async (...sel) => { for (const s of sel) { const L = page.locator(s === 'B' ? '.abtn.ab' : '.anav ' + s).first(); await L.dispatchEvent('pointerdown'); await page.evaluate(() => dispatchEvent(new PointerEvent('pointerup'))); await page.waitForTimeout(340); } };   // (the stack's rows slide 0.28 s)
-  const saved = () => page.evaluate(() => { const r = loadAutoRun(); return { slots: r.players[0].guns[0].slots, guns: r.players[0].guns.map(g => !!g), bag: r.bag.map(b => b && (b.id || b.kind)) }; });
+  const saved = () => page.evaluate(() => { const r = loadAutoRun(); return { slots: r.players[0].guns[0] && r.players[0].guns[0].slots, guns: r.players[0].guns.map(g => !!g), bag: r.bag.map(b => b && (b.id || b.kind)) }; });
   const centre = async sel => { const b = await page.locator(sel).first().boundingBox(); return { x: b.x + b.width / 2, y: b.y + b.height / 2, w: b.width, b }; };
   const sawSlot = async () => { const s = await saved(); return '.abag [data-slot="' + s.bag.indexOf('saw') + '"]'; };
   const mdrag = async (from, to, mid) => {
@@ -119,6 +119,16 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
 
   // stage 12: a green gem onto an empty player circle
   if (await page.$('.shade')) { await page.locator('.shade').first().dispatchEvent('pointerdown'); await page.waitForTimeout(150); }
+  // (owner, v1.0.43) a gun dragged out of the Guns row into the bag, and back onto its circle
+  for (let i = 0; i < 4 && !(await page.$('.anav.l-guns')); i++) await nav('B');
+  const ej = (await saved()).bag.findIndex((b, j) => !b && j > 2);
+  await mdrag(await centre('.anav [data-gslot="0"]'), await centre('.abag [data-slot="' + ej + '"]'));
+  const sg = await saved();
+  check('a gun circle dragged into the bag: the gun goes to that bag slot', !sg.guns[0] && sg.bag[ej] === 'gun', { ej, sg });
+  await mdrag(await centre('.abag [data-slot="' + ej + '"]'), await centre('.anav [data-gslot="0"]'));
+  const sg2 = await saved();
+  check('… and dragged back onto its circle', sg2.guns[0] && !sg2.bag[ej], sg2);
+  for (let i = 0; i < 4 && !(await page.$('.anav.l-players')); i++) await nav('B');
   for (let i = 0; i < 4 && !(await page.$('.anav.l-players')); i++) await nav('B');
   const team = () => page.evaluate(() => { const r = loadAutoRun(); const g = r.bag.find(b => b && b.kind === 'green'); return { n: r.players.length, green: g ? g.n : 0, saws: r.bag.filter(b => b && b.id === 'saw').reduce((a, b) => a + b.n, 0) }; });
   const t0 = await team();

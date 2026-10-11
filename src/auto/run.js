@@ -272,6 +272,7 @@ export function unfitGun(run, p, gs) {
   const pl = run.players[p], g = pl && pl.guns[gs];
   if (!g || bagAdd(run, { kind: 'gun', gun: g, n: 1 })) return false;
   pl.guns[gs] = null;
+  gunsActive(pl);
   return true;
 }
 /** @param {AutoRun} run @param {number} p @param {ExoCat} cat @param {number} s @returns {boolean} */
@@ -335,6 +336,36 @@ export function rowToBag(run, p, row, s, j) {
   if (itemKey(b) && itemKey(b) === itemKey(out)) { b.n += 1; arr[s] = null; return true; }
   if (b.n === 1 && rowFits(row, b)) { arr[s] = mod ? b.id : b; run.bag[j] = out; return true; }
   return false;
+}
+
+// (owner, v1.0.43) a fitted gun dragged out of the Guns row into bag slot j: an empty slot takes it, a gun there swaps
+// in; anything else: false (the screen falls back to the first free slot, unfitGun). The gun that fires moves to another
+// fitted one if it was this one
+/** @param {AutoRun} run @param {number} p @param {number} gs @param {number} j @returns {boolean} */
+export function gunToBag(run, p, gs, j) {
+  const pl = run.players[p], g = pl && pl.guns[gs], b = run.bag[j];
+  if (!g || j < 0 || j >= run.bag.length) return false;
+  if (b && !(b.kind === 'gun' && b.gun && b.n === 1)) return false;
+  run.bag[j] = { kind: 'gun', gun: g, n: 1 };
+  pl.guns[gs] = b && b.gun ? b.gun : null;
+  gunsActive(pl);
+  return true;
+}
+// two of a player's gun slots swap (the one firing stays the same gun)
+/** @param {AutoRun} run @param {number} p @param {number} a @param {number} b @returns {boolean} */
+export function gunMove(run, p, a, b) {
+  const pl = run.players[p];
+  if (!pl || a === b || a < 0 || b < 0 || a >= pl.guns.length || b >= pl.guns.length || !pl.guns[a]) return false;
+  const t = pl.guns[a]; pl.guns[a] = pl.guns[b]; pl.guns[b] = t;
+  if (pl.active === a) pl.active = b; else if (pl.active === b) pl.active = a;
+  return true;
+}
+// the gun that fires is a fitted one if he has any
+/** @param {RunPlayer} pl */
+function gunsActive(pl) {
+  if (pl.guns[pl.active]) return;
+  const k = pl.guns.findIndex(g => !!g);
+  if (k >= 0) pl.active = k;
 }
 
 // Which of player p's 4 guns fires. False if that slot holds no gun.

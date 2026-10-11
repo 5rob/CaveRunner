@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v1.0.42</title>
-<!-- VERSION = 'v1000042' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v1.0.43</title>
+<!-- VERSION = 'v1000043' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -1078,7 +1078,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v1.0.42';</script>
+<script>const VERSION = 'v1.0.43';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -15037,6 +15037,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const pl = run.players[p], g = pl && pl.guns[gs];
     if (!g || bagAdd(run, { kind: "gun", gun: g, n: 1 })) return false;
     pl.guns[gs] = null;
+    gunsActive(pl);
     return true;
   }
   function unfitExo(run, p, cat, s) {
@@ -15106,6 +15107,30 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       return true;
     }
     return false;
+  }
+  function gunToBag(run, p, gs, j) {
+    const pl = run.players[p], g = pl && pl.guns[gs], b = run.bag[j];
+    if (!g || j < 0 || j >= run.bag.length) return false;
+    if (b && !(b.kind === "gun" && b.gun && b.n === 1)) return false;
+    run.bag[j] = { kind: "gun", gun: g, n: 1 };
+    pl.guns[gs] = b && b.gun ? b.gun : null;
+    gunsActive(pl);
+    return true;
+  }
+  function gunMove(run, p, a, b) {
+    const pl = run.players[p];
+    if (!pl || a === b || a < 0 || b < 0 || a >= pl.guns.length || b >= pl.guns.length || !pl.guns[a]) return false;
+    const t = pl.guns[a];
+    pl.guns[a] = pl.guns[b];
+    pl.guns[b] = t;
+    if (pl.active === a) pl.active = b;
+    else if (pl.active === b) pl.active = a;
+    return true;
+  }
+  function gunsActive(pl) {
+    if (pl.guns[pl.active]) return;
+    const k = pl.guns.findIndex((g) => !!g);
+    if (k >= 0) pl.active = k;
   }
   function setActive(run, p, gs) {
     const pl = run.players[p];
@@ -32669,12 +32694,16 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     };
     const srcItem = (src) => {
       if (src.from === "bag") return run.bag[src.i] || null;
+      if (src.from === "guns") {
+        const pl = run.players[navRef.current.p], g = pl && pl.guns[src.i];
+        return g ? { kind: "gun", gun: g, n: 1 } : null;
+      }
       const c = navRow(navRef.current, run, MAX_PLAYERS).cells[src.i];
       return c && c.item || null;
     };
-    const down = (e, src) => {
+    const down = (e, src, force) => {
       if (press.current || !srcItem(src)) return;
-      const grab = !!(e.target && e.target.closest && e.target.closest(".agrab"));
+      const grab = !!force || !!(e.target && e.target.closest && e.target.closest(".agrab"));
       if (grab) e.preventDefault();
       const p = { id: e.pointerId, x0: e.clientX, y0: e.clientY, src, grab, drag: false };
       press.current = p;
@@ -32742,7 +32771,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (t.dataset.pslot !== void 0) return { key: "p" + t.dataset.pslot, to: "player", s: Number(t.dataset.pslot), ok: src.from === "bag" && it.kind === "green" && run.players.length < MAX_PLAYERS };
       if (t.dataset.gslot !== void 0) {
         const s = Number(t.dataset.gslot);
-        return { key: "g" + s, to: "gun", s, ok: src.from === "bag" && n.level === "guns" && it.kind === "gun" };
+        return { key: "g" + s, to: "gun", s, ok: src.from === "bag" && n.level === "guns" && it.kind === "gun" || src.from === "guns" && s !== src.i };
+      }
+      if (src.from === "guns") {
+        const j = gt ? Number(gt.dataset.slot) : -1;
+        return { key: j >= 0 ? "s" + j : "bag", to: "bag", s: j, ok: t.classList.contains("abag") || !!gt };
       }
       const bs = gt ? Number(gt.dataset.slot) : -1;
       if (src.from === "bag") return { key: "s" + bs, to: "bag", s: bs, ok: bs >= 0 && bs !== src.i };
@@ -32777,6 +32810,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           done = !!pl;
           if (pl && scene.current) sceneAddRunner(scene.current);
         } else if (src.from === "bag" && at.to === "gun") done = fitGun(run, src.i, n.p, at.s);
+        else if (src.from === "guns" && at.to === "gun") done = gunMove(run, n.p, src.i, at.s);
+        else if (src.from === "guns" && at.to === "bag") done = at.s >= 0 && gunToBag(run, n.p, src.i, at.s) || unfitGun(run, n.p, src.i);
         else if (src.from === "bag" && at.to === "bag") done = bagMove(run, src.i, at.s);
         else if (src.from === "nav" && at.to === "nav") done = !!row && rowMove(run, n.p, row, src.i, at.s);
         else if (src.from === "nav" && at.to === "bag" && row && at.s >= 0 && rowToBag(run, n.p, row, src.i, at.s)) done = true;
@@ -32816,10 +32851,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           setV((v) => v + 1);
         }
       }, DEV.autoHoldMs);
+      const x0 = e.clientX, y0 = e.clientY;
       const finish = () => {
         clearTimeout(timer);
+        removeEventListener("pointermove", move);
         removeEventListener("pointerup", up);
         removeEventListener("pointercancel", cancel);
+      };
+      const move = (ev) => {
+        if (ev.pointerId !== id || held || Math.hypot(ev.clientX - x0, ev.clientY - y0) <= MOVE) return;
+        finish();
+        down({ pointerId: id, clientX: x0, clientY: y0, target: null, preventDefault() {
+        } }, { from: "guns", i }, true);
       };
       const up = (ev) => {
         if (ev.pointerId !== id) return;
@@ -32829,6 +32872,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const cancel = (ev) => {
         if (ev.pointerId === id) finish();
       };
+      addEventListener("pointermove", move);
       addEventListener("pointerup", up);
       addEventListener("pointercancel", cancel);
     };

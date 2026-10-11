@@ -5,6 +5,13 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.43 — CaveRunner Auto: drag a gun out of the Guns row (branch `autobattler`)
+Released 2026-10-11 on the branch. PM alone (owner's ask).
+- In the nav's Guns row, a gun circle slid off before the hold (equip) becomes a drag: into the bag slot under the finger
+  (`run.js gunToBag`: an empty slot, or a gun there swaps in; else the first free slot, `unfitGun`), or onto another
+  gun circle (`gunMove`, a swap; the firing gun follows). Taking out the firing gun makes another fitted one fire.
+- Tests: `auto-run` (gunToBag, gunMove), browser `auto-drag` (out to the bag and back with the mouse).
+
 ## v1.0.42 — CaveRunner Auto: manual mode holds 3 s after the stick is let go (branch `autobattler`)
 Released 2026-10-11 on the branch. PM alone (owner's ask: back off the jet and have him drop, not flown up by the autopilot).
 - `ctlOn` stays true till the stick has rested `DEV.autoCtlWait` s (3; Dev "Auto: death & feel"): `r.ctlIdle`, counted

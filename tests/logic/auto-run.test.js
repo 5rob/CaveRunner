@@ -238,5 +238,20 @@ check('the Auto tab holds the auto group', G.DEV_TABS.some(t => t[0] === 'auto' 
   check('an empty slot moves nothing', !G.rowMove(run, 0, { gun: 0 }, 0, 1));
 }
 
+// (owner, v1.0.43) a gun out of the Guns row into a chosen bag slot; swaps between gun slots
+{
+  const run = G.newRun(5), pl = run.players[0], g0 = pl.guns[0];
+  const j = run.bag.findIndex(b => !b);
+  check('gunToBag: the gun to that empty bag slot, his slot empty', G.gunToBag(run, 0, 0, j) && run.bag[j].gun === g0 && !pl.guns[0]);
+  check('gunToBag: an empty gun slot refuses', !G.gunToBag(run, 0, 0, j));
+  const g1 = { ...g0, name: 'other' };
+  pl.guns[2] = g1; pl.active = 2;
+  check('gunToBag: a gun in that bag slot swaps in', G.gunToBag(run, 0, 2, j) && pl.guns[2] === g0 && run.bag[j].gun === g1 && pl.active === 2);
+  const mi = run.bag.findIndex(b => b && b.kind === 'mod');
+  check('gunToBag: onto a mod refuses', mi >= 0 && !G.gunToBag(run, 0, 2, mi));
+  check('gunMove: swap, the firing gun follows', G.gunMove(run, 0, 2, 1) && pl.guns[1] === g0 && !pl.guns[2] && pl.active === 1);
+  pl.guns[3] = g1;
+  check('out of the bag goes the firing one: another fitted gun fires', G.gunToBag(run, 0, 1, run.bag.findIndex(b => !b)) && pl.active === 3);
+}
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
 process.exit(fails ? 1 : 0);

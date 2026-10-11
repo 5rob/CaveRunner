@@ -29,7 +29,7 @@ import { levelBoss } from '../../auto/enemies.js';
 import { MODS, famCol } from '../../spells/mods.js';
 import { HUB_MACHINES } from '../../auto/hub.js';
 import { PERKS, STAT_PERKS } from '../../data/perks.js';
-import { BAG_SLOTS, EXO_STATS, MAX_PLAYERS, addPlayer, bagAdd, bagSlotOf, fitExo, fitGun, fitMod, fitPerk, healRun, levelCleared, levelFailed, levelSeed, kitMissing, newRun, bagMove, rowMove, rowToBag,
+import { BAG_SLOTS, EXO_STATS, MAX_PLAYERS, addPlayer, bagAdd, bagSlotOf, fitExo, fitGun, fitMod, fitPerk, healRun, levelCleared, levelFailed, levelSeed, kitMissing, newRun, bagMove, rowMove, rowToBag, gunToBag, gunMove, unfitGun,
   scrapAt, setActive, spend, unfitExo, unfitMod, unfitPerk } from '../../auto/run.js';
 import { loadAutoRun, saveAutoRun } from '../../auto/save.js';
 import { EXO_NAMES, arcPick, gunArc, navBack, navOpen, navPath, navPick, navRow, navStart, hpFrac } from '../../auto/nav.js';
@@ -316,15 +316,16 @@ export function AutoScreen() {
   /** what the source item is: a bag slot's, or a nav slot's at the nav's level @param {DragSrc} src @returns {BagItem | null} */
   const srcItem = src => {
     if (src.from === 'bag') return run.bag[src.i] || null;
+    if (src.from === 'guns') { const pl = run.players[navRef.current.p], g = pl && pl.guns[src.i]; return g ? { kind: 'gun', gun: g, n: 1 } : null; }
     const c = navRow(navRef.current, run, MAX_PLAYERS).cells[src.i];
     return (c && c.item) || null;
   };
   // a press on a tile: on the grab handle it may become a drag (past MOVE px); a release without one is a tap (its card);
   // a cancelled press (the browser took it for a scroll) does nothing
-  /** @param {any} e @param {DragSrc} src */
-  const down = (e, src) => {
+  /** @param {any} e @param {DragSrc} src @param {boolean} [force] a drag without the grab handle (a gun circle slid off) */
+  const down = (e, src, force) => {
     if (press.current || !srcItem(src)) return;
-    const grab = !!(e.target && e.target.closest && e.target.closest('.agrab'));
+    const grab = !!force || !!(e.target && e.target.closest && e.target.closest('.agrab'));
     if (grab) e.preventDefault();
     /** @type {Press} */
     const p = { id: e.pointerId, x0: e.clientX, y0: e.clientY, src, grab, drag: false };
@@ -381,8 +382,9 @@ export function AutoScreen() {
     if (t.dataset.pslot !== undefined) return { key: 'p' + t.dataset.pslot, to: 'player', s: Number(t.dataset.pslot), ok: src.from === 'bag' && it.kind === 'green' && run.players.length < MAX_PLAYERS };
     if (t.dataset.gslot !== undefined) {
       const s = Number(t.dataset.gslot);
-      return { key: 'g' + s, to: 'gun', s, ok: src.from === 'bag' && n.level === 'guns' && it.kind === 'gun' };
+      return { key: 'g' + s, to: 'gun', s, ok: (src.from === 'bag' && n.level === 'guns' && it.kind === 'gun') || (src.from === 'guns' && s !== src.i) };
     }
+    if (src.from === 'guns') { const j = gt ? Number(gt.dataset.slot) : -1; return { key: j >= 0 ? 's' + j : 'bag', to: 'bag', s: j, ok: t.classList.contains('abag') || !!gt }; }
     // (feedback round 1) the bag slot under the finger: things go where they're put
     const bs = gt ? Number(gt.dataset.slot) : -1;
     if (src.from === 'bag') return { key: 's' + bs, to: 'bag', s: bs, ok: bs >= 0 && bs !== src.i };
@@ -419,6 +421,8 @@ export function AutoScreen() {
         done = !!pl;
         if (pl && scene.current) sceneAddRunner(scene.current);
       } else if (src.from === 'bag' && at.to === 'gun') done = fitGun(run, src.i, n.p, at.s);
+      else if (src.from === 'guns' && at.to === 'gun') done = gunMove(run, n.p, src.i, at.s);
+      else if (src.from === 'guns' && at.to === 'bag') done = (at.s >= 0 && gunToBag(run, n.p, src.i, at.s)) || unfitGun(run, n.p, src.i);
       else if (src.from === 'bag' && at.to === 'bag') done = bagMove(run, src.i, at.s);
       else if (src.from === 'nav' && at.to === 'nav') done = !!row && rowMove(run, n.p, row, src.i, at.s);
       else if (src.from === 'nav' && at.to === 'bag' && row && at.s >= 0 && rowToBag(run, n.p, row, src.i, at.s)) done = true;
@@ -458,12 +462,20 @@ export function AutoScreen() {
       SFX.unlock();
       if (setActive(run, s.p, i)) { saveAutoRun(run); SFX.fx('open'); setV(v => v + 1); }
     }, DEV.autoHoldMs);
-    const finish = () => { clearTimeout(timer); removeEventListener('pointerup', up); removeEventListener('pointercancel', cancel); };
+    const x0 = e.clientX, y0 = e.clientY;
+    const finish = () => { clearTimeout(timer); removeEventListener('pointermove', move); removeEventListener('pointerup', up); removeEventListener('pointercancel', cancel); };
+    // (owner, v1.0.43) slid off before the hold: the gun is dragged (into the bag, or onto another gun circle: a swap)
+    /** @param {any} ev */
+    const move = ev => {
+      if (ev.pointerId !== id || held || Math.hypot(ev.clientX - x0, ev.clientY - y0) <= MOVE) return;
+      finish();
+      down({ pointerId: id, clientX: x0, clientY: y0, target: null, preventDefault() {} }, { from: 'guns', i }, true);
+    };
     /** @param {any} ev */
     const up = ev => { if (ev.pointerId !== id) return; finish(); if (!held) openAt(s, i); };
     /** @param {any} ev */
     const cancel = ev => { if (ev.pointerId === id) finish(); };
-    addEventListener('pointerup', up); addEventListener('pointercancel', cancel);
+    addEventListener('pointermove', move); addEventListener('pointerup', up); addEventListener('pointercancel', cancel);
   };
   // stage 9: a press on a player's helmet. Let go soon: his menu (a tap). Held DEV.autoHoldMs: in a level (feedback round 2)
   // manual mode for him (auto/level.js: the pill stick steers him, the view follows, the team behind him; B lets him go);
@@ -782,7 +794,7 @@ function ItemIcon({ it }) {
 }
 
 // ---- stage 8b: drag and drop, the cards ----
-/** @typedef {{ from: 'bag' | 'nav', i: number }} DragSrc */
+/** @typedef {{ from: 'bag' | 'nav' | 'guns', i: number }} DragSrc */
 /** @typedef {{ key: string, to: 'nav' | 'gun' | 'bag' | 'scrap' | 'play' | 'player', s: number, ok: boolean }} DropAt */
 /** @typedef {{ src: DragSrc, x: number, y: number, over: DropAt | null, back: boolean }} Drag */
 /** @typedef {{ id: number, x0: number, y0: number, src: DragSrc, grab: boolean, drag: boolean }} Press */

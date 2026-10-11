@@ -8,7 +8,7 @@ release loop, testing), then the README of the `src/` folder you're working in.
 Planned with the owner (brief + quiz answers + 16 stages + the PM's kick-start prompt, all in `AUTOBATTLER.md`;
 mock-up `docs/autobattler-mockup.png`). Progress: AUTOBATTLER.md's Log. `main` keeps the old game.
 
-**Where it stands (2026-10-11, v1.0.42 live at /auto/; v1.0.42: manual mode holds 3 s after the stick rests (`autoCtlWait`); v1.0.41: the steered player hangs on vines and web lines (old mechanics; autopilot never grabs); v1.0.40: shot looks part 2, Black Hole pulls, White Hole cast; v1.0.39: shot looks part 1 (13 shots, missile homing, fire spray); v1.0.35: the item audit part 1 — bins, triggers common, Wand Refresh and Glass Cannon fixed, colour sweep; v1.0.36: pickups as bag tiles flying into the bag; v1.0.37: Shield, Pinpointer, Ghost; v1.0.38: jetpack fuel, the old cough, the meter on the jetpack, health rings round the helmets) (other perks still do nothing in Auto: only max health, Glass Cannon's damage and these three): all stages 0–14 built; feedback rounds 1 and 2 released.**
+**Where it stands (2026-10-11, v1.0.43 live at /auto/; v1.0.43: guns drag out of the Guns row into the bag (`gunToBag`); v1.0.42: manual mode holds 3 s after the stick rests (`autoCtlWait`); v1.0.41: the steered player hangs on vines and web lines (old mechanics; autopilot never grabs); v1.0.40: shot looks part 2, Black Hole pulls, White Hole cast; v1.0.39: shot looks part 1 (13 shots, missile homing, fire spray); v1.0.35: the item audit part 1 — bins, triggers common, Wand Refresh and Glass Cannon fixed, colour sweep; v1.0.36: pickups as bag tiles flying into the bag; v1.0.37: Shield, Pinpointer, Ghost; v1.0.38: jetpack fuel, the old cough, the meter on the jetpack, health rings round the helmets) (other perks still do nothing in Auto: only max health, Glass Cannon's damage and these three): all stages 0–14 built; feedback rounds 1 and 2 released.**
 
 **Next session (bug fixing, 2026-10-11):** the owner is playing v1.0.32 on the phone and sends notes; the PM fixes them
 in small rounds itself (no agents unless a note is a big new feature). Known rough edges, not yet reported by the owner:
@@ -52,8 +52,8 @@ Open, in order of weight:
 2. ~~A fresh run stops at the first rock within seconds~~ v1.0.21: nothing blocks till the level's sure blocked zone (suite `auto-wall`).
 3. ~~Tune the gold stream~~ replaced by paying with A (v1.0.25; knobs "Auto: throw").
 4. Polish noted: the gun arc crowds the left corner for player 1, empty arc circles faint; chest small, grass over it;
-   the menu icons small after the ×1.5 padding; only bag items scrap/drop (not slot items); no dragging a gun out of
-   its circle (slot-to-slot moves within a row: done in v1.0.23); `auto-loot` flakes rarely in a full run (logic and browser: chance, passes alone).
+   the menu icons small after the ×1.5 padding; only bag items scrap/drop (not slot items); dragging a gun out of
+   its circle done v1.0.43 (slot-to-slot moves within a row: done in v1.0.23); `auto-loot` flakes rarely in a full run (logic and browser: chance, passes alone).
 5. Old-game code still bundled through `cards.js` / `editor.js` (GunIcon) / `pause.js` (`save/save.js`).
 How the PM worked: one agent per stage in a hand-made worktree (`git worktree add ../cr-stageN -b stageN autobattler`
 + `node_modules`; the Agent tool's own worktree option fails on the path's casing), the time-box brief word for word

@@ -19,7 +19,7 @@ art, …), never `game/`, `ui/` or `main.js`. Everything here is pure: the logic
     `gold` / `red` / `green` (stacks without limit). `itemKey`, `bagCount(run, kind)`, `bagAdd(run, item)` (onto its
     stack, else the first empty slot; returns what didn't fit, null if it all did), `spend(run, kind, n)`.
   - Moves (change `run` in place; a refused move returns false and changes nothing): `fitMod(run, bagI, p, gunSlot,
-    modSlot)` / `unfitMod`, `fitGun(run, bagI, p, slot)` / `unfitGun`, `fitExo(run, bagI, p, cat, slot)` (only its own
+    modSlot)` / `unfitMod`, `fitGun(run, bagI, p, slot)` / `unfitGun` / `gunToBag(run, p, slot, bagJ)` / `gunMove(run, p, a, b)` (v1.0.43, the Guns row's drags), `fitExo(run, bagI, p, cat, slot)` (only its own
     category) / `unfitExo`, `fitPerk(run, bagI, p, slot)` (refuses stat perks `st_*`: those are exo mods now) /
     `unfitPerk`, `setActive(run, p, slot)`, `addPlayer(run)` (one green gem, at most 4). Fitting onto a full slot
     swaps the old one back into the bag. `scrap(item, tier)` → gold for the whole stack; `scrapAt(run, i)` does it.
