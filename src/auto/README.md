@@ -6,6 +6,7 @@ art, …), never `game/`, `ui/` or `main.js`. Everything here is pure: the logic
 
 ## Files
 
+- `itemtile.js` — (owner) an item drawn as its bag tile on a canvas: `drawItemTile(c, it, x, y, s)` (the box `#2c1f45`, outline `itemEdgeCol(it)` (the bag's rule, shared with AutoScreen), the glyph / exo pixel map / roman tier from `art/itemicon.js`), `tileItem(it)` (mods, exo mods, perks: guns, gold and gems keep their own sprites), `ITEM_SPEND`. A machine's payout and every such pickup draw this way (`game/render/titledraw.js drawLoot`). `run.js bagSlotOf(run, it)`: the slot an item just added sits in (its stack's; a gun's own), for the fly-into-the-bag copy.
 - `run.js` — the run model (stage 1).
   - `newRun(seed?)` → `AutoRun` `{ tier: 1, players: [newPlayer(0)], bag, seed }` (between levels, stage 4b: `levelSeed(run)`, `healRun(run)` to each player's `maxHp`, `levelCleared(run)` tier + 1 and heal); `newPlayer(i)` → `RunPlayer` (colour
     `TITLE_COLS[i]`, `guns` ×4, `active`, `exo` { hp, speed, jet, carrot } ×5 slots each, `perks` ×6, `hp`, `alive`).

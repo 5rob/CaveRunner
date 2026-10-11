@@ -132,7 +132,8 @@ export const TITLE_HOME = {
  *   fire: TFire[], dirty: number[][], dirtyAll: boolean, carved: number, burnt: number, swaps: number, groundT: number, flyT: number, kinds: Record<string, number>,
  *   webs: WebLine[], cut: number, lineT: number, silk: { x: number, y: number, ax: number, ay: number, vx: number, vy: number, life: number }[],
  *   nav: { F: any, fx: number, fy: number, t: number }, fireAcc: number, fireN: number, burning: Set<number>, gotN: number, pops: number, lampsPopped: number, kitNames: Set<string>,
- *   digT: number, digs: number, digWhy: Record<string, number>, still?: boolean, zp: TitlePlan, snd: TSnd[], hub?: TitleHub, lvl?: TitleLevel, pace?: number, team?: RunPlayer[], blocked?: number, blockedKind?: string, tier?: number, loot?: TLoot[] }} TitleScene */
+ *   digT: number, digs: number, digWhy: Record<string, number>, still?: boolean, zp: TitlePlan, snd: TSnd[], hub?: TitleHub, lvl?: TitleLevel, pace?: number, team?: RunPlayer[], blocked?: number, blockedKind?: string, tier?: number, loot?: TLoot[],
+ *   onTake?: (it: BagItem, x: number, y: number) => void }} TitleScene */
 // a finite level in the scrolling ring (CaveRunner Auto, auto/level.js levelScene): zp its plan (made whole up front); step runs
 // after titleStep's own; data is the level's own state. S.pace (0..) scales the scroll (auto/pilot.js)
 // hurt(S, i, dmg): a creature hit player i for dmg (its kind's damage; auto/enemies.js levelHurt)
@@ -1802,7 +1803,10 @@ function stepLoot(S, dt) {
       g.vx += (dx / d) * grab * dt * 6; g.vy += (dy / d) * grab * dt * 6;
       g.vx *= 0.88; g.vy *= 0.88;
       g.x += g.vx * dt; g.y += g.vy * dt;
-      if (d < 12 && (!L || !L.take || L.take(S, g.it))) { S.loot.splice(i, 1); snd(S, 'coin', g.x - S.scroll, g.y); }
+      if (d < 12 && (!L || !L.take || L.take(S, g.it))) {
+        S.loot.splice(i, 1); snd(S, 'coin', g.x - S.scroll, g.y);
+        if (S.onTake) S.onTake(g.it, g.x - S.scroll, g.y);   // the screen flies a copy of its tile into the bag (AutoScreen)
+      }
       continue;
     }
     g.amount = g.it.kind === 'red' || g.it.kind === 'green' ? 25 : 5;     // a gem lies as the biggest nugget (drawn as the game's crystal)
@@ -2002,6 +2006,9 @@ export function camClamp(C) {
 // the scene point under a screen point (sx, sy in screen units: css px / the screen's scale)
 /** @param {TitleCam} C @param {number} sx @param {number} sy */
 export const camAt = (C, sx, sy) => ({ x: C.x + (sx - TITLE_VW / 2) / C.z, y: C.y + (sy - C.ay) / C.z });
+// and back: a scene point (x on screen as drawn, y) to the view (TITLE_VW across; × the canvas width / TITLE_VW for css px)
+/** @param {TitleCam} C @param {number} x @param {number} y */
+export const camTo = (C, x, y) => ({ x: (x - C.x) * C.z + TITLE_VW / 2, y: (y - C.y) * C.z + C.ay });
 // follow the locked player (eased), ease to zt
 /** @param {TitleCam} C @param {TitleScene} S @param {number} dt */
 export function camStep(C, S, dt) {

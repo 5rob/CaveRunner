@@ -130,6 +130,15 @@ export function bagAdd(run, item) {
   return item.n > 1 ? Object.assign({}, item, { n: item.n - 1 }) : null;
 }
 
+// the bag slot an item just added sits in (its stack's, or for a gun the slot holding that gun), or -1: where the
+// pickup's fly-copy lands (ui/auto/AutoScreen.js)
+/** @param {AutoRun} run @param {BagItem} item @returns {number} */
+export function bagSlotOf(run, item) {
+  const key = itemKey(item);
+  if (key) return run.bag.findIndex(it => !!it && itemKey(it) === key);
+  return run.bag.findIndex(it => !!it && it.kind === item.kind && !!item.gun && it.gun === item.gun);
+}
+
 // take one off bag slot i (the whole slot when it's the last): the single item taken, or null
 /** @param {AutoRun} run @param {number} i @returns {BagItem | null} */
 function takeOne(run, i) {

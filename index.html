@@ -1065,6 +1065,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .acard .aumarks{display:none}
 .acard .tg{width:28px;height:28px;display:flex;align-items:center;justify-content:center}
 .acard .tg .apixg{width:100%;height:100%}
+/* (owner) a pickup's tile flying into its bag slot (AutoScreen FlyTile): above the screen, not touchable */
+.afly{position:fixed;z-index:45;pointer-events:none;box-shadow:0 4px 14px rgba(0,0,0,0.55)}
 </style>
 </head>
 <body>
@@ -13705,6 +13707,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         if (d < 12 && (!L || !L.take || L.take(S2, g.it))) {
           S2.loot.splice(i, 1);
           snd(S2, "coin", g.x - S2.scroll, g.y);
+          if (S2.onTake) S2.onTake(g.it, g.x - S2.scroll, g.y);
         }
         continue;
       }
@@ -13948,6 +13951,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     C.y = y0 > y1 ? (y0 + y1) / 2 : Math.max(y0, Math.min(y1, C.y));
   }
   var camAt = (C, sx, sy) => ({ x: C.x + (sx - TITLE_VW / 2) / C.z, y: C.y + (sy - C.ay) / C.z });
+  var camTo = (C, x, y) => ({ x: (x - C.x) * C.z + TITLE_VW / 2, y: (y - C.y) * C.z + C.ay });
   function camStep(C, S2, dt) {
     const e = 1 - Math.exp(-8 * dt), r = C.lock >= 0 ? S2.runners[C.lock] : null;
     if (C.zt) {
@@ -14171,6 +14175,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     run.bag[i] = Object.assign({}, item, { n: 1 });
     return item.n > 1 ? Object.assign({}, item, { n: item.n - 1 }) : null;
+  }
+  function bagSlotOf(run, item) {
+    const key = itemKey(item);
+    if (key) return run.bag.findIndex((it) => !!it && itemKey(it) === key);
+    return run.bag.findIndex((it) => !!it && it.kind === item.kind && !!item.gun && it.gun === item.gun);
   }
   function takeOne(run, i) {
     const it = run.bag[i];
@@ -27826,7 +27835,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     );
   }
 
-  // src/ui/auto/icons.js
+  // src/art/itemicon.js
   var NAV_ICONS = {
     guns: { px: [
       "............",
@@ -27923,6 +27932,77 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const v = [0, 1, 2].map((i) => Math.max(0, Math.min(255, Math.round(ch(tint, i) * k))));
     return "rgb(" + v.join(",") + ")";
   }
+  var ICON_PX = 18;
+  var GLYPHS4 = /* @__PURE__ */ new Map();
+  var BIG2 = null;
+  function glyphCanvas(glyph, col) {
+    const key = glyph + "|" + col;
+    if (GLYPHS4.has(key)) return GLYPHS4.get(key) || null;
+    const N = ICON_PX, B = 160;
+    if (!BIG2) {
+      const b = document.createElement("canvas");
+      b.width = B;
+      b.height = B;
+      BIG2 = b.getContext("2d", { willReadFrequently: true });
+    }
+    const c = document.createElement("canvas");
+    c.width = N;
+    c.height = N;
+    const ctx = c.getContext("2d", { willReadFrequently: true }), big = BIG2;
+    if (!ctx || !big) return null;
+    big.clearRect(0, 0, B, B);
+    big.font = "900 " + Math.round(B * 0.6) + "px system-ui, sans-serif";
+    big.textAlign = "center";
+    big.textBaseline = "middle";
+    big.fillStyle = col;
+    big.fillText(glyph, B / 2, B / 2);
+    const px = big.getImageData(0, 0, B, B).data;
+    let x0 = B, y0 = B, x1 = -1, y1 = -1;
+    for (let y = 0; y < B; y++) for (let x = 0; x < B; x++) {
+      if (px[(y * B + x) * 4 + 3] > 40) {
+        if (x < x0) x0 = x;
+        if (x > x1) x1 = x;
+        if (y < y0) y0 = y;
+        if (y > y1) y1 = y;
+      }
+    }
+    if (x1 >= 0) {
+      const w = x1 - x0 + 1, ht = y1 - y0 + 1, k = N / Math.max(w, ht);
+      ctx.imageSmoothingEnabled = true;
+      ctx.drawImage(big.canvas, x0, y0, w, ht, (N - w * k) / 2, (N - ht * k) / 2, w * k, ht * k);
+      const im = ctx.getImageData(0, 0, N, N), d = im.data;
+      for (let i = 3; i < d.length; i += 4) d[i] = d[i] >= 100 ? 255 : 0;
+      ctx.putImageData(im, 0, 0);
+    }
+    GLYPHS4.set(key, c);
+    return c;
+  }
+  var PIXS = /* @__PURE__ */ new Map();
+  function pixCanvas(id, tint) {
+    const key = id + "|" + (tint || "");
+    if (PIXS.has(key)) return PIXS.get(key) || null;
+    const ic = NAV_ICONS[id];
+    if (!ic) {
+      PIXS.set(key, null);
+      return null;
+    }
+    const w = Math.max(...ic.px.map((r) => r.length)), ht = ic.px.length, n = Math.max(w, ht);
+    const c = document.createElement("canvas");
+    c.width = n;
+    c.height = n;
+    const ctx = c.getContext("2d");
+    if (!ctx) return null;
+    for (let y = 0; y < ht; y++) for (let x = 0; x < ic.px[y].length; x++) {
+      const k = ic.px[y][x];
+      if (k === "." || !ic.pal[k]) continue;
+      ctx.fillStyle = tint ? tintShade(tint, ic.pal[k]) : ic.pal[k];
+      ctx.fillRect(x + Math.floor((n - w) / 2), y + Math.floor((n - ht) / 2), 1, 1);
+    }
+    PIXS.set(key, c);
+    return c;
+  }
+
+  // src/ui/auto/icons.js
   function PixIcon({ id, size = 26, tint }) {
     const ic = NAV_ICONS[id];
     if (!ic) return null;
@@ -27950,15 +28030,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   var GLYPH_PX = 18;
   var GLYPH_BIG = 160;
-  var BIG2 = null;
+  var BIG3 = null;
   var glyphBig = () => {
-    if (!BIG2) {
+    if (!BIG3) {
       const c = document.createElement("canvas");
       c.width = GLYPH_BIG;
       c.height = GLYPH_BIG;
-      BIG2 = c.getContext("2d", { willReadFrequently: true });
+      BIG3 = c.getContext("2d", { willReadFrequently: true });
     }
-    return BIG2;
+    return BIG3;
   };
   function GlyphIcon({ glyph, col }) {
     const ref = useRef(null);
@@ -29590,7 +29670,47 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (c && c.y != null) drawHint(ctx, c.x - S2.scroll, c.y - 28, "Tap A to open", S2.t);
   }
 
+  // src/auto/itemtile.js
+  var ITEM_SPEND = "#c9cdd6";
+  function itemEdgeCol(it) {
+    return it.kind === "mod" ? famCol(it.id || "") : it.kind === "gun" ? HUB_MACHINES.gun.hue : it.kind === "exo" ? HUB_MACHINES.exo.hue : it.kind === "perk" ? HUB_MACHINES.perk.hue : ITEM_SPEND;
+  }
+  var tileItem = (it) => it.kind === "mod" || it.kind === "exo" || it.kind === "perk";
+  function drawItemTile(c, it, x, y, s) {
+    const r = s * 0.19, lw = Math.max(0.6, s * 0.045), x0 = x - s / 2, y0 = y - s / 2;
+    c.save();
+    c.fillStyle = "#2c1f45";
+    c.strokeStyle = itemEdgeCol(it);
+    c.lineWidth = lw;
+    c.beginPath();
+    c.roundRect(x0 + lw / 2, y0 + lw / 2, s - lw, s - lw, r);
+    c.fill();
+    c.stroke();
+    let ic = null;
+    if (it.kind === "mod") {
+      const m = MODS[it.id || ""];
+      ic = glyphCanvas(m ? m.glyph : "?", m ? famCol(it.id || "") : "#888");
+    } else if (it.kind === "perk") {
+      const pk = PERKS[it.id || ""];
+      ic = glyphCanvas(pk ? pk.glyph : "?", pk ? HUB_MACHINES.perk.hue : "#888");
+    } else if (it.kind === "exo") ic = pixCanvas(it.cat || "hp", HUB_MACHINES.exo.hue);
+    if (ic) {
+      const k = s * 0.64;
+      c.imageSmoothingEnabled = false;
+      c.drawImage(ic, x - k / 2, y - k / 2, k, k);
+    }
+    if (it.kind === "exo" && it.tier) {
+      c.fillStyle = "#ffd23a";
+      c.font = "900 " + (s * 0.19).toFixed(2) + "px ui-monospace, monospace";
+      c.textAlign = "left";
+      c.textBaseline = "top";
+      c.fillText(ROMAN[it.tier - 1] || "", x0 + s * 0.09, y0 + s * 0.07);
+    }
+    c.restore();
+  }
+
   // src/game/render/titledraw.js
+  var LOOT_TILE = 13;
   var T = THEMES[0];
   var CACHE = /* @__PURE__ */ new WeakMap();
   var hash3 = (c, r) => {
@@ -30011,6 +30131,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
       if (gem) {
         drawNugget(c, x, y - (CRYSTAL_R - 8.4), CRYSTAL_R, 3.7, 0, g.it.kind === "green" ? GREEN_PAL : CRYSTAL_PAL);
+        continue;
+      }
+      if (tileItem(g.it)) {
+        drawItemTile(c, g.it, x, y - LOOT_TILE / 2 + 4, LOOT_TILE);
         continue;
       }
       c.fillStyle = g.col;
@@ -31058,6 +31182,20 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }, 200);
       return () => clearInterval(id);
     }, []);
+    const noFlies = [];
+    const [flies, setFlies] = useState(noFlies);
+    const flyN = useRef(0);
+    const flyIn = (it, x, y) => {
+      const c = cvs.current, C = cam.current, bag = document.querySelector(".abag"), i = bagSlotOf(run, it);
+      const tile = i >= 0 ? document.querySelector('.abag [data-slot="' + i + '"]') : null;
+      if (!c || !C || !bag || !tile) return;
+      const cr = c.getBoundingClientRect(), br = bag.getBoundingClientRect(), tr = tile.getBoundingClientRect();
+      if (br.width < 4 || br.height < 4 || cr.width < 4) return;
+      const v = camTo(C, x, y), k = cr.width / TITLE_VW, s = tr.width;
+      const tx = Math.max(br.left + s / 2, Math.min(br.right - s / 2, tr.left + s / 2)), ty = Math.max(br.top + s / 2, Math.min(br.bottom - s / 2, tr.top + s / 2));
+      const f = { k: ++flyN.current, it: Object.assign({}, it), slot: i, x0: cr.left + v.x * k, y0: cr.top + v.y * k, x1: tx, y1: ty, s };
+      setFlies((fs) => [...fs, f]);
+    };
     useEffect(() => {
       const c = cvs.current;
       if (!c) return void 0;
@@ -31070,6 +31208,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             saveAutoRun(run);
             const S3 = levelScene(vh, window.__AUTO_LEVEL || levelSeed(run), run.players.length, void 0, run.players, run.tier, run);
             scene.current = S3;
+            S3.onTake = (it, x, y) => flyIn(it, x, y);
             if (window.__TEST_TITLE) window.__autoScene = S3;
             const C2 = titleCam(vh / 2, vh);
             cam.current = C2;
@@ -31077,6 +31216,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           }
           const S2 = hubScene(vh, seed, run.players.length, run.tier, run.paid || (run.paid = {}));
           scene.current = S2;
+          S2.onTake = (it, x, y) => flyIn(it, x, y);
           if (window.__TEST_TITLE) window.__autoHub = S2;
           if (S2.hub) {
             S2.hub.fits = (_S, it) => bagFits(run, it);
@@ -31566,6 +31706,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       arc ? h(GunArc, { arc, run }) : null,
       burst3 ? h(CoinBurst, { key: burst3.k, burst: burst3 }) : null,
       drag ? h(Ghost, { drag, it: srcItem(drag.src) }) : null,
+      flies.map((f) => h(FlyTile, { key: f.k, f, done: () => setFlies((fs) => fs.filter((q) => q.k !== f.k)) })),
       card ? h(CardPop, { it: card, close: () => setCard(null) }) : null,
       devOpen ? h(DevPanel, { input, refresh: () => setV((v) => v + 1), close: () => {
         SFX.fx("close");
@@ -31837,12 +31978,30 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const d = (200 * DEV.autoGrab).toFixed(1) + "%";
     return h("i", { className: "agrab", style: { width: d, height: d } });
   }
-  var itemEdge = (it) => {
-    if (!it) return void 0;
-    const c = it.kind === "mod" ? famCol(it.id || "") : it.kind === "gun" ? HUB_MACHINES.gun.hue : it.kind === "exo" ? HUB_MACHINES.exo.hue : it.kind === "perk" ? HUB_MACHINES.perk.hue : ITEM_SPEND;
-    return { "--ic": c };
-  };
-  var ITEM_SPEND = "#c9cdd6";
+  var itemEdge = (it) => it ? { "--ic": itemEdgeCol(it) } : void 0;
+  var FLY_MS = 500;
+  function FlyTile({ f, done }) {
+    const ref = useRef(null);
+    useEffect(() => {
+      const el = ref.current;
+      if (!el || !el.animate) {
+        done();
+        return void 0;
+      }
+      const a = el.animate(
+        [{ transform: "translate(" + (f.x0 - f.x1) + "px," + (f.y0 - f.y1) + "px) scale(0.55)" }, { transform: "translate(0px,0px) scale(1)" }],
+        { duration: FLY_MS, easing: "cubic-bezier(.45,0,.25,1)", fill: "forwards" }
+      );
+      a.onfinish = done;
+      return () => a.cancel();
+    }, []);
+    return h("div", {
+      ref,
+      className: "aslot full afly k-" + f.it.kind,
+      "data-fly": f.slot,
+      style: { left: f.x1 - f.s / 2 + "px", top: f.y1 - f.s / 2 + "px", width: f.s + "px", height: f.s + "px", ...itemEdge(f.it) }
+    }, h(ItemIcon, { it: f.it }));
+  }
   function Ghost({ drag, it }) {
     if (!it) return null;
     return h(

@@ -76,6 +76,8 @@ export * from './auto/loot.js';
 export * from './auto/chests.js';
 export * from './auto/blocked.js';
 export * from './auto/nav.js';
+export * from './auto/itemtile.js';
+export * from './art/itemicon.js';
 export * from './art/scenegun.js';
 export * from './audio/recipes.js';
 export * from './audio/sfx.js';

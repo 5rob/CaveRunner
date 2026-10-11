@@ -1056,3 +1056,5 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .acard .aumarks{display:none}
 .acard .tg{width:28px;height:28px;display:flex;align-items:center;justify-content:center}
 .acard .tg .apixg{width:100%;height:100%}
+/* (owner) a pickup's tile flying into its bag slot (AutoScreen FlyTile): above the screen, not touchable */
+.afly{position:fixed;z-index:45;pointer-events:none;box-shadow:0 4px 14px rgba(0,0,0,0.55)}

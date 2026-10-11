@@ -61,7 +61,7 @@ const stats = (o, perk = false) => Object.entries(o).filter(([k, v]) => !SKIP.ha
 const statText = st => st.map(([l, v]) => l + (v ? ' ' + v : '')).join(', ');
 // the game's own icon colours (the bag's): a mod its family's, a perk the perk machine's green, an exo mod the exo machine's teal
 const PERK_HUE = '#3dff7a', EXO_HUE = '#3fe6d6';
-const iconsSrc = fs.readFileSync(path.join(__dirname, '..', 'src', 'ui', 'auto', 'icons.js'), 'utf8').replace(/\r\n/g, '\n');
+const iconsSrc = fs.readFileSync(path.join(__dirname, '..', 'src', 'art', 'itemicon.js'), 'utf8').replace(/\r\n/g, '\n');
 const NAV_ICONS = eval('(' + (iconsSrc.match(/export const NAV_ICONS = (\{[\s\S]*?\n\});/) || [])[1] + ')');
 const line = (name, info, st, note, id, glyph, col) => {
   ROWS.push({ ...CUR, id, name, info: info || '', stats: st || [], note: note || '', glyph: glyph || '', col: col || '' });

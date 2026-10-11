@@ -26,6 +26,9 @@ import { hubBack, hubGlow, hubLight } from './hubdraw.js';
 import { levelBack, levelGlow, levelLight } from './leveldraw.js';
 import { hubState, hubStopX } from '../../auto/hub.js';
 import { MACH_H, hubPayAt, throwR } from '../../auto/throw.js';
+import { drawItemTile, tileItem } from '../../auto/itemtile.js';
+// a pickup drawn as its bag tile: this many world units across
+export const LOOT_TILE = 13;
 
 const T = THEMES[0];                                   // Mossy caves
 /** @type {WeakMap<object, { cv: HTMLCanvasElement, cx: CanvasRenderingContext2D, img: ImageData, painted: number, white?: number, whiteT?: number }>} */
@@ -397,7 +400,7 @@ function drawThrown(c, S) {
   }
 }
 
-// CaveRunner Auto's drops (S.loot: a gun mod, gems, an exo mod): a red or green gem is the game's crystal at its size
+// CaveRunner Auto's drops (S.loot: a gun mod, gems, an exo mod; a mod, exo mod or perk as its bag tile, auto/itemtile.js): a red or green gem is the game's crystal at its size
 // (drawNugget, CRYSTAL_R, owner: so they stand out); the others a glowing diamond in the item's colour, pulsing; one
 // waiting (the bag full) pulses slowly and dimmer
 /** @param {CanvasRenderingContext2D} c @param {import('../../art/titlescene.js').TitleScene} S */
@@ -415,6 +418,7 @@ function drawLoot(c, S) {
     c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1;
     if (g.it.kind === 'gun' && g.it.gun) { drawGun(c, x, y, 0, GUN_HELD * 1.6, gunArtId(g.it.gun)); continue; }   // a machine's gun: its sprite (PM)
     if (gem) { drawNugget(c, x, y - (CRYSTAL_R - 8.4), CRYSTAL_R, 3.7, 0, g.it.kind === 'green' ? GREEN_PAL : CRYSTAL_PAL); continue; }
+    if (tileItem(g.it)) { drawItemTile(c, g.it, x, y - LOOT_TILE / 2 + 4, LOOT_TILE); continue; }   // a mod, exo mod or perk: its bag tile (owner)
     c.fillStyle = g.col;
     c.beginPath(); c.moveTo(x, y - r * 1.3); c.lineTo(x + r, y); c.lineTo(x, y + r * 1.3); c.lineTo(x - r, y); c.closePath(); c.fill();
     c.fillStyle = '#ffffff'; c.globalAlpha = 0.6 + 0.4 * p; c.fillRect(x - 1.2, y - 2, 2, 2); c.globalAlpha = 1;

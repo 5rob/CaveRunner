@@ -16,7 +16,7 @@
 // (direction and speed). (Stage 10a's throw from the bag tile is gone.)
 
 import { SFX } from '../../audio/sfx.js';
-import { TITLE_VW, camAt, titleCam } from '../../art/titlescene.js';
+import { TITLE_VW, camAt, camTo, titleCam } from '../../art/titlescene.js';
 import { DEAD } from '../../core/consts.js';
 import { chestOpen } from '../../auto/chests.js';
 import { HUB_W, hubExit, hubLeft, hubScene, hubState, hubStick, hubStopX } from '../../auto/hub.js';
@@ -29,7 +29,7 @@ import { levelBoss } from '../../auto/enemies.js';
 import { MODS, famCol } from '../../spells/mods.js';
 import { HUB_MACHINES } from '../../auto/hub.js';
 import { PERKS, STAT_PERKS } from '../../data/perks.js';
-import { BAG_SLOTS, EXO_STATS, MAX_PLAYERS, addPlayer, bagAdd, fitExo, fitGun, fitMod, fitPerk, healRun, levelCleared, levelFailed, levelSeed, kitMissing, newRun, bagMove, rowMove, rowToBag,
+import { BAG_SLOTS, EXO_STATS, MAX_PLAYERS, addPlayer, bagAdd, bagSlotOf, fitExo, fitGun, fitMod, fitPerk, healRun, levelCleared, levelFailed, levelSeed, kitMissing, newRun, bagMove, rowMove, rowToBag,
   scrapAt, setActive, spend, unfitExo, unfitMod, unfitPerk } from '../../auto/run.js';
 import { loadAutoRun, saveAutoRun } from '../../auto/save.js';
 import { EXO_NAMES, arcPick, gunArc, navBack, navOpen, navPath, navPick, navRow, navStart } from '../../auto/nav.js';
@@ -45,6 +45,7 @@ import { runScene } from '../scenecanvas.js';
 import { leaveItem } from '../../art/titlescene.js';
 import { sceneAddRunner } from '../../auto/addrunner.js';
 import { bagFits, lootCol } from '../../auto/loot.js';
+import { itemEdgeCol } from '../../auto/itemtile.js';
 import { h, useEffect, useRef, useState } from '../h.js';
 
 const ROMAN = ['I', 'II', 'III', 'IV', 'V'];
@@ -143,6 +144,24 @@ export function AutoScreen() {
     }, 200);
     return () => clearInterval(id);
   }, []);
+  // (owner) a pickup taken into the bag: a copy of its tile flies from where the player took it (x, y in the scene) to the
+  // bag slot it went into (bagSlotOf); that slot scrolled out of sight: to the bag's nearest edge; no bag on show: none
+  /** @type {Fly[]} */
+  const noFlies = [];
+  const [flies, setFlies] = useState(noFlies);
+  const flyN = useRef(0);
+  /** @param {BagItem} it @param {number} x @param {number} y */
+  const flyIn = (it, x, y) => {
+    const c = cvs.current, C = cam.current, bag = document.querySelector('.abag'), i = bagSlotOf(run, it);
+    const tile = i >= 0 ? document.querySelector('.abag [data-slot="' + i + '"]') : null;
+    if (!c || !C || !bag || !tile) return;
+    const cr = c.getBoundingClientRect(), br = bag.getBoundingClientRect(), tr = tile.getBoundingClientRect();
+    if (br.width < 4 || br.height < 4 || cr.width < 4) return;
+    const v = camTo(C, x, y), k = cr.width / TITLE_VW, s = tr.width;
+    const tx = Math.max(br.left + s / 2, Math.min(br.right - s / 2, tr.left + s / 2)), ty = Math.max(br.top + s / 2, Math.min(br.bottom - s / 2, tr.top + s / 2));
+    const f = { k: ++flyN.current, it: Object.assign({}, it), slot: i, x0: cr.left + v.x * k, y0: cr.top + v.y * k, x1: tx, y1: ty, s };
+    setFlies(fs => [...fs, f]);
+  };
   useEffect(() => {
     const c = cvs.current;
     if (!c) return undefined;
@@ -156,6 +175,7 @@ export function AutoScreen() {
           saveAutoRun(run);
           const S = levelScene(vh, window.__AUTO_LEVEL || levelSeed(run), run.players.length, undefined, run.players, run.tier, run);
           scene.current = S;
+          S.onTake = (it, x, y) => flyIn(it, x, y);
           if (window.__TEST_TITLE) window.__autoScene = S;   // the shot scripts (tools/clearshots.js) reach the level here
           const C = titleCam(vh / 2, vh);
           cam.current = C;
@@ -164,6 +184,7 @@ export function AutoScreen() {
         // the hub: the strip, the players teleporting in, the camera on player 1
         const S = hubScene(vh, seed, run.players.length, run.tier, run.paid || (run.paid = {}));
         scene.current = S;
+        S.onTake = (it, x, y) => flyIn(it, x, y);
         if (window.__TEST_TITLE) window.__autoHub = S;   // tests and shot scripts reach the hub (stage 12)
         // stage 10b: the machines' payouts fly into the bag (titlescene.js stepLoot); the bag full, they wait on the floor
         if (S.hub) { S.hub.fits = (_S, it) => bagFits(run, it); S.hub.take = (_S, it) => { if (bagAdd(run, it)) return false; saveAutoRun(run); setV(v => v + 1); return true; }; }
@@ -515,6 +536,7 @@ export function AutoScreen() {
     arc ? h(GunArc, { arc, run }) : null,
     burst ? h(CoinBurst, { key: burst.k, burst }) : null,
     drag ? h(Ghost, { drag, it: srcItem(drag.src) }) : null,
+    flies.map(f => h(FlyTile, { key: f.k, f, done: () => setFlies(fs => fs.filter(q => q.k !== f.k)) })),
     card ? h(CardPop, { it: card, close: () => setCard(null) }) : null,
     devOpen ? h(DevPanel, { input, refresh: () => setV(v => v + 1), close: () => { SFX.fx('close'); setDevOpen(false); } }) : null,
     paused ? h(PauseMenu, { input, label: 'Tier ' + run.tier, onNew: freshRun, close:() => { SFX.fx('close'); setPaused(false); } }) : null);
@@ -771,16 +793,28 @@ function Grab() {
 
 // the dragged item, under the finger (a refused drop slides it home: .back)
 /** @param {{ drag: Drag, it: BagItem | null }} props */
-// a tile's outline by the item's group (owner): a mod its family's colour (the old Bag's: shots yellow, trajectory
-// purple, …), a gun, exo mod or perk its machine's, gold and gems (things you spend) one light grey
+// a tile's outline by the item's group (owner): auto/itemtile.js itemEdgeCol (the canvas's tiles share it)
 /** @param {BagItem | null} it @returns {any} */
-const itemEdge = it => {
-  if (!it) return undefined;
-  const c = it.kind === 'mod' ? famCol(it.id || '') : it.kind === 'gun' ? HUB_MACHINES.gun.hue : it.kind === 'exo' ? HUB_MACHINES.exo.hue
-    : it.kind === 'perk' ? HUB_MACHINES.perk.hue : ITEM_SPEND;
-  return { '--ic': c };
-};
-const ITEM_SPEND = '#c9cdd6';
+const itemEdge = it => it ? { '--ic': itemEdgeCol(it) } : undefined;
+
+// a pickup's tile flying into its bag slot (owner): FLY_MS, eased, from the player (a little small) to the slot (its size)
+/** @typedef {{ k: number, it: BagItem, slot: number, x0: number, y0: number, x1: number, y1: number, s: number }} Fly */
+export const FLY_MS = 500;
+/** @param {{ f: Fly, done: () => void }} props */
+function FlyTile({ f, done }) {
+  /** @type {{ current: HTMLDivElement | null }} */
+  const ref = useRef(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || !el.animate) { done(); return undefined; }
+    const a = el.animate([{ transform: 'translate(' + (f.x0 - f.x1) + 'px,' + (f.y0 - f.y1) + 'px) scale(0.55)' }, { transform: 'translate(0px,0px) scale(1)' }],
+      { duration: FLY_MS, easing: 'cubic-bezier(.45,0,.25,1)', fill: 'forwards' });
+    a.onfinish = done;
+    return () => a.cancel();
+  }, []);
+  return h('div', { ref, className: 'aslot full afly k-' + f.it.kind, 'data-fly': f.slot,
+    style: { left: (f.x1 - f.s / 2) + 'px', top: (f.y1 - f.s / 2) + 'px', width: f.s + 'px', height: f.s + 'px', ...itemEdge(f.it) } }, h(ItemIcon, { it: f.it }));
+}
 
 function Ghost({ drag, it }) {
   if (!it) return null;
