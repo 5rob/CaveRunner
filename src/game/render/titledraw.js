@@ -313,17 +313,13 @@ function drawTitleRunner(ctx, S, r) {
     pixelSprite(ctx, x0, y0, R * 2 + 1, R * 2 + 1, 1, false, c => jetFlame(c, nz.x, nz.y, fx, fy, len, S.t));
   }
   const gait = r.mode === 'run' && !r.stand ? r.gait : null;
+  // CaveRunner Auto's jet fuel (auto/fuel.js; owner: down the back of the jetpack): only while the tank isn't full; dry: red, blinking
+  const gauge = r.fuel != null && r.fuel < 0.995 && !r.out ? { v: r.empty ? Math.max(0.1, r.fuel) : r.fuel,
+    col: r.empty ? (Math.sin(S.t * 18) > 0 ? '#ff4a3a' : '#7a2018') : r.fuel < 0.25 ? '#ff9a3a' : '#ffd166' } : null;
   pixelHeld(ctx, ox + 14, oy + 8, 1, false, c => {   // no outline (owner, v0.0.171)
-    drawRunner(c, r.x, r.y, PW, PH, r.face, gait, r.mode !== 'run', r.flame, false, hands, null, r.col);
+    drawRunner(c, r.x, r.y, PW, PH, r.face, gait, r.mode !== 'run', r.flame, false, hands, null, r.col, gauge);
     drawGun(c, pcx + ax * 2.5, gy, r.ang, GUN_HELD, K.art);
   });
-  // CaveRunner Auto's jet fuel (auto/fuel.js): a small gauge over his head, only while the tank isn't full; dry: red, blinking
-  if (r.fuel != null && r.fuel < 0.995 && !r.out) {
-    const bw = 10, bx = Math.round(pcx - bw / 2), by = Math.round(r.y - 5);
-    ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(bx - 0.5, by - 0.5, bw + 1, 2.5);
-    ctx.fillStyle = r.empty ? (Math.sin(S.t * 18) > 0 ? '#ff4a3a' : '#7a2018') : r.fuel < 0.25 ? '#ff9a3a' : '#ffd166';
-    ctx.fillRect(bx, by, r.empty ? bw * Math.max(0.08, r.fuel) : bw * r.fuel, 1.5);
-  }
   // sawing through rock: the Buzzsaw's blade spinning off the barrel (the game's sawblade look)
   if (r.dig) {
     const mz = gunMuzzle(pcx + ax * 2.5, gy, r.ang, GUN_HELD, K.art);

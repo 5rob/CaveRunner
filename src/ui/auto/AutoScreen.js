@@ -178,7 +178,7 @@ export function AutoScreen() {
           const S = levelScene(vh, window.__AUTO_LEVEL || levelSeed(run), run.players.length, undefined, run.players, run.tier, run);
           scene.current = S;
           S.onTake = (it, x, y) => flyIn(it, x, y);
-          if (window.__TEST_TITLE) window.__autoScene = S;   // the shot scripts (tools/clearshots.js) reach the level here
+          if (window.__TEST_TITLE) { window.__autoScene = S; window.__autoCam = cam; }   // the shot scripts (tools/clearshots.js) reach the level here
           const C = titleCam(vh / 2, vh);
           cam.current = C;
           return { S, C, warm: 0 };

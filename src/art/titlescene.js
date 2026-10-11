@@ -106,7 +106,7 @@ export const TITLE_HOME = {
  *   dig: number, clearT: number, keep: TKit | null, dx: number, dy: number, digY: number, sawT: number, switches: number[],
  *   bursty: number, burst: boolean, jet: boolean, jetT: number, jetCd: number, pace: number, spd: number,
  *   nav: { F: any, fx: number, fy: number, t: number }, stepT?: number, sawS?: number, rst?: { t?: number }, rub?: string, rubWas?: boolean,
- *   hide?: boolean, out?: boolean, outT?: number, stand?: boolean, dealt?: number, shieldT?: number, fuel?: number, empty?: boolean, sputT?: number, sputGap?: number, sputN?: number, shieldHit?: number, ghost?: { x: number, y: number, cd: number, fired: number } | null, clr?: { p: number, g: number } | null, clrT?: number,
+ *   hide?: boolean, out?: boolean, outT?: number, stand?: boolean, dealt?: number, shieldT?: number, fuel?: number, empty?: boolean, jetSt?: { cut: number, onT: number, start: boolean, gap?: number }, sputN?: number, dry?: boolean, shieldHit?: number, ghost?: { x: number, y: number, cd: number, fired: number } | null, clr?: { p: number, g: number } | null, clrT?: number,
  *   ctl?: RunnerCtl | null, ctlWas?: boolean, cvx?: number, jetIn?: { nx: number, ny: number } | null, jx?: number, jy?: number, smokeAcc?: number, smokeN?: number, rag?: import('../world/ragdoll.js').Ragdoll | null, lamp?: boolean }} TRunner */
 /** a player steered by hand (CaveRunner Auto, feedback round 2: the selected player in a level): the pill stick's push
  * @typedef {{ active: boolean, nx: number, ny: number, mag: number }} RunnerCtl */
@@ -1277,7 +1277,20 @@ function stepRunnerMove(S, r, dt) {
   else flyStep(S, r, dt);
   r.x = Math.max(8, Math.min(r.ctl ? TITLE_VW - PW - 8 : TITLE_VW * 0.62, r.x));   // (one steered by hand: the whole screen)
   r.y = Math.max(S.top - 40, Math.min(S.bot + 10, r.y));
-  if (fuelOn(S)) { const P = tankOf(S, r); fuelTick(r, r.dig || r.mode !== 'fly' ? 0 : r.flame, r.ground || (!!r.dig && r.mode === 'run'), dt, P.fuel, P.refuel); }
+  if (fuelOn(S)) {
+    const P = tankOf(S, r);
+    fuelTick(r, r.dig || r.mode !== 'fly' ? 0 : r.flame, r.ground || (!!r.dig && r.mode === 'run'), dt, P.fuel, P.refuel);
+    // the old game's cough: a cut-out dips him a little and spits a grey puff; running dry, the sputter
+    if (r.jetSt && r.jetSt.start) {
+      r.vy += DEV.sputDip * SP;
+      const nz = titleNozzle(r);
+      for (let i = 0; i < 3 && S.parts.length < TITLE_PARTS - 10; i++)
+        S.parts.push({ x: nz.x + (S.t * 7.3 + i * 1.7) % 4 - 2, y: nz.y + 2, vx: Math.sin(S.t * 13 + i * 2.1) * 20, vy: 10 + i * 8,
+          life: 0.9, max: 0.9, r: 1.6 + i * 0.3, col: '#6f767e', kind: 'jsmoke' });
+      snd(S, 'sputter', nz.x, nz.y);
+    }
+    if (r.dry) snd(S, 'sputter', r.x, r.y);
+  }
 }
 // CaveRunner Auto's jet fuel (auto/fuel.js): only in a level (the title and the hub fly on a bottomless tank)
 /** @param {TitleScene} S */

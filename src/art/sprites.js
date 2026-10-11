@@ -116,8 +116,8 @@ export function runnerPose(x, y, w, face, gait, air, hands) {
 // The body from a pose (world units). held: drawn between the body and the near arm (the gun, so
 // the hand closes over it). jet: the backpack's nozzle glows. flash: hit (washed red). tint: a player's
 // colour (the title's four players): the backpack and a stripe over the helmet
-/** @param {CanvasRenderingContext2D} ctx @param {BodyPose} P @param {number} jet @param {boolean} flash @param {((c: CanvasRenderingContext2D) => void) | null} [held] @param {string} [tint] */
-export function paintBody(ctx, P, jet, flash, held, tint) {
+/** @param {CanvasRenderingContext2D} ctx @param {BodyPose} P @param {number} jet @param {boolean} flash @param {((c: CanvasRenderingContext2D) => void) | null} [held] @param {string} [tint] @param {{ v: number, col: string } | null} [gauge] */
+export function paintBody(ctx, P, jet, flash, held, tint, gauge) {
   const C = flash ? FLASH : SUIT, f = P.face;
   ctx.save();
   ctx.lineCap = 'round'; ctx.lineJoin = 'round';
@@ -159,6 +159,11 @@ export function paintBody(ctx, P, jet, flash, held, tint) {
     ctx.fillStyle = C.light; ctx.fillRect(-5.6, 9, 1.2, 1.2);
     ctx.fillStyle = C.panel; rr(ctx, -5.8, 15.6, 2.8, 1.8, 0.6); ctx.fill();
     if (jet > 0) { ctx.fillStyle = COL.flame2; rr(ctx, -5.6, 16.6, 2.4, 1.4, 0.6); ctx.fill(); }
+    // CaveRunner Auto's fuel meter (owner): a strip down the pack's back, filling from the bottom
+    if (gauge) {
+      ctx.fillStyle = '#07060b'; ctx.fillRect(-8.6, 7.4, 2.6, 9);
+      ctx.fillStyle = gauge.col; const hh = 8 * Math.max(0, Math.min(1, gauge.v)); ctx.fillRect(-8.1, 15.9 - hh, 1.6, hh);
+    }
   });
   along(P.chest, P.hip, 0, 10, () => {                      // the torso: chest box, belt
     ctx.fillStyle = C.white; rr(ctx, -3.3, 7.8, 6.6, 8.6, 2.2); ctx.fill();
@@ -200,9 +205,9 @@ export function helmetIcon(ctx, s, tint) {
 
 // The runner (also the Exo Suit tab's portrait). gait: the stride's phase in radians, or null
 // standing; hands: where the gun and torch hands go (world units); held: the gun, under the hand.
-/** @param {CanvasRenderingContext2D} ctx @param {number} x @param {number} y @param {number} w @param {number} hh @param {number} face @param {number | null} gait @param {boolean} air @param {number} jet @param {boolean} flash @param {{ gun?: P2 | null, torch?: P2 | null }} [hands] @param {((c: CanvasRenderingContext2D) => void) | null} [held] @param {string} [tint] */
-export function drawRunner(ctx, x, y, w, hh, face, gait, air, jet, flash, hands, held, tint) {
-  paintBody(ctx, runnerPose(x, y, w, face, gait, air, hands), jet, flash, held, tint);
+/** @param {CanvasRenderingContext2D} ctx @param {number} x @param {number} y @param {number} w @param {number} hh @param {number} face @param {number | null} gait @param {boolean} air @param {number} jet @param {boolean} flash @param {{ gun?: P2 | null, torch?: P2 | null }} [hands] @param {((c: CanvasRenderingContext2D) => void) | null} [held] @param {string} [tint] @param {{ v: number, col: string } | null} [gauge] */
+export function drawRunner(ctx, x, y, w, hh, face, gait, air, jet, flash, hands, held, tint, gauge) {
+  paintBody(ctx, runnerPose(x, y, w, face, gait, air, hands), jet, flash, held, tint, gauge);
 }
 
 // The corpse's pose, off the ragdoll's joints (world/ragdoll.js RAG_POSE). A replay saved before

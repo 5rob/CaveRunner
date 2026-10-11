@@ -28,16 +28,33 @@ require('../tests/build')();
   const st = () => page.evaluate(() => { const S = window.__autoScene, r = S && S.runners[0]; return r ? { fuel: r.fuel ?? 1, empty: !!r.empty, ground: !!r.ground, flame: r.flame } : null; });
   /** @param {(s: any) => boolean} ok @param {number} n */
   const until = async (ok, n) => { let s = await st(); for (let i = 0; i < n && !(s && ok(s)); i++) { await page.waitForTimeout(50); s = await st(); } return s; };
+  // a close-up of player 1 (owner: the meter down the jetpack's back is tiny at full size): his box from the screen, x6
+  const zoom = async name => {
+    const box = await page.evaluate(() => {
+      const S = window.__autoScene, r = S.runners[0], C = window.__autoCam.current, cv = document.querySelector('.aplaycvs').getBoundingClientRect();
+      const v = camTo(C, r.x + PW / 2, r.y + PH / 2), k = cv.width / TITLE_VW;
+      return { x: cv.left + v.x * k - 30, y: cv.top + v.y * k - 30, width: 60, height: 60 };
+    });
+    const png = await page.screenshot({ clip: box });
+    await page.evaluate(async b64 => {
+      const im = new Image(); im.src = 'data:image/png;base64,' + b64; await im.decode();
+      const c = document.createElement('canvas'); c.id = 'zoomshot'; c.width = 360; c.height = 360;
+      Object.assign(c.style, { position: 'fixed', left: '26px', top: '200px', width: '360px', height: '360px', zIndex: 99999, border: '2px solid #fff' });
+      const x = c.getContext('2d'); x.imageSmoothingEnabled = false; x.drawImage(im, 0, 0, 360, 360); document.body.appendChild(c);
+    }, png.toString('base64'));
+    await page.locator('#zoomshot').screenshot({ path: path.join(OUT, name) });
+    await page.evaluate(() => document.getElementById('zoomshot').remove());
+  };
   let s = await until(x => !x.ground && x.flame > 0.3 && x.fuel < 0.85, 400);
-  await page.screenshot({ path: path.join(OUT, 'f-a-jetting.png') });
+  await page.screenshot({ path: path.join(OUT, 'f-a-jetting.png') }); await zoom('f-a-zoom.png');
   console.log('f-a-jetting.png  jetting up, the gauge draining', JSON.stringify(s));
   await until(x => !x.ground && x.flame > 0.2, 400);
   await page.evaluate(() => { const r = window.__autoScene.runners[0]; r.fuel = 0.01; });
   s = await until(x => x.empty && !x.ground, 100);
-  await page.screenshot({ path: path.join(OUT, 'f-b-empty.png') });
+  await page.screenshot({ path: path.join(OUT, 'f-b-empty.png') }); await zoom('f-b-zoom.png');
   console.log('f-b-empty.png    dry: no flame, falling, the gauge red', JSON.stringify(await st()));
   s = await until(x => x.ground && x.fuel > 0.45, 300);
-  await page.screenshot({ path: path.join(OUT, 'f-c-refill.png') });
+  await page.screenshot({ path: path.join(OUT, 'f-c-refill.png') }); await zoom('f-c-zoom.png');
   console.log('f-c-refill.png   on the ground, the gauge filling', JSON.stringify(s));
   await browser.close();
 })();

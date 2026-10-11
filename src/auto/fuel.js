@@ -5,32 +5,33 @@
 // tank / refill: the player's playerStats fuel / refuel (perks and the exo Jetpack folded in). Pure: the scene calls it.
 import { FUEL_DRAIN, FUEL_REGEN, FUEL_RESTART } from '../core/consts.js';
 import { DEV } from '../dev/knobs.js';
+import { SPUTTER_FUEL, sputterStep } from '../core/util.js';
 
-/** @typedef {{ fuel?: number, empty?: boolean, sputT?: number, sputGap?: number, sputN?: number, id?: number }} FuelHolder */
+/** @typedef {{ fuel?: number, empty?: boolean, jetSt?: { cut: number, onT: number, start: boolean, gap?: number }, sputN?: number, dry?: boolean, id?: number }} FuelHolder */
 // the line under which the autopilot won't take off for a flight of its own (it runs on and refills first)
 export const FUEL_TAKEOFF = 0.6;
-// the line under which the jet coughs
-export const FUEL_SPUTTER = 0.25;
+// the line under which the jet coughs (the game's)
+export const FUEL_SPUTTER = SPUTTER_FUEL;
 
 // can he jet this frame? (dry: not till it's refilled to FUEL_RESTART; a cough: not for its blink)
 /** @param {FuelHolder} r */
-export const fuelCan = r => !r.empty && !(r.sputT && r.sputT > 0);
+export const fuelCan = r => !r.empty && !(r.jetSt && r.jetSt.cut > 0);
 
 // a frame of the tank: thr the jet's throttle this frame (0 off), ground standing (refills)
 /** @param {FuelHolder} r @param {number} thr @param {boolean} ground @param {number} dt @param {number} [tank] @param {number} [refill] */
 export function fuelTick(r, thr, ground, dt, tank = 1, refill = 1) {
   if (r.fuel == null) r.fuel = 1;
   if (r.empty && r.fuel >= FUEL_RESTART) r.empty = false;
+  r.dry = false;
   if (thr > 0 && !r.empty) {
     r.fuel -= FUEL_DRAIN * DEV.autoFuelDrain * (0.5 + 0.5 * Math.min(1, thr)) * dt / Math.max(0.1, tank);
-    if (r.fuel <= 0) { r.fuel = 0; r.empty = true; }
+    if (r.fuel <= 0) { r.fuel = 0; r.empty = true; r.dry = true; }
   } else if (ground) r.fuel = Math.min(1, r.fuel + FUEL_REGEN * DEV.autoFuelRegen * refill * dt);
-  // the cough: low and jetting, now and then a short cut-out (its own hash, not the scene's seeded stream)
-  r.sputT = Math.max(0, (r.sputT || 0) - dt); r.sputGap = Math.max(0, (r.sputGap || 0) - dt);
-  if (thr > 0 && !r.empty && r.fuel < FUEL_SPUTTER && r.sputGap <= 0) {
-    const w = 1 - r.fuel / FUEL_SPUTTER, h = () => { const v = Math.sin((r.sputN = (r.sputN || 0) + 1) * 91.17 + (r.id || 0) * 31.7) * 43758.5453; return v - Math.floor(v); };
-    if (h() < dt * (1 + 7 * w)) { r.sputT = 0.04 + h() * (0.05 + 0.08 * w); r.sputGap = r.sputT + 0.1 + h() * 0.2; }
-  }
+  // the cough (owner: the old game's): low and jetting, short cut-outs, the game's own sputterStep (core/util.js); its
+  // random is a hash of its own, not the scene's seeded stream. jetSt.start: a cough began this frame (the scene dips him
+  // and puffs grey smoke, as the game); r.dry: the tank ran out this frame (the sputter sound)
+  const h = () => { const v = Math.sin((r.sputN = (r.sputN || 0) + 1) * 91.17 + (r.id || 0) * 31.7) * 43758.5453; return v - Math.floor(v); };
+  sputterStep(r.jetSt || (r.jetSt = { cut: 0, onT: 0, start: false }), dt, r.fuel, thr > 0 && !r.empty, h);
 }
 
 // how much tank a climb of `h` (world units, up) wants, with a margin: the autopilot jets over a wall only with this much

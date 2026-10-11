@@ -93,5 +93,19 @@ function wall(tank0) {
   const b = wall(0.05);
   check('nearly dry at the wall: it waits, refills, and still gets over', b.over && b.waited > 0, b);
 }
+// the cough is the old game's own (core/util.js sputterStep, owner): low and jetting it cuts out now and then
+{
+  const r = { fuel: 0.2, id: 0 };
+  let cuts = 0, starts = 0, blocked = 0;
+  for (let i = 0; i < 120; i++) {
+    r.fuel = 0.2;
+    G.fuelTick(r, 1, false, 1 / 60, 100, 1);
+    if (r.jetSt && r.jetSt.cut > 0) cuts++;
+    if (r.jetSt && r.jetSt.start) starts++;
+    if (!G.fuelCan(r)) blocked++;
+  }
+  check('low and jetting: the old game\'s cough (sputterStep) cuts the jet now and then', starts > 0 && cuts > 0 && blocked === cuts && cuts < 120, { starts, cuts });
+  check('…at the old game\'s line', G.FUEL_SPUTTER === G.SPUTTER_FUEL);
+}
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
 process.exit(fails ? 1 : 0);

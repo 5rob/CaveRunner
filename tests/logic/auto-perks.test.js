@@ -12,6 +12,7 @@ function sandbox(perks, gun) {
   const run = G.newRun(3), pl = run.players[0];
   perks.forEach((id, i) => { pl.perks[i] = perk(id); });
   if (!gun) pl.guns = pl.guns.map(() => null);
+  else pl.guns[0].slots[0] = 'bolt';   // the starter's shot pinned (its random one made the comparison below swing 5–18)
   const S = G.levelScene(200, 3, 1, undefined, run.players);
   for (let i = 0; i < 240; i++) G.titleStep(S, dt);
   S.lvl.step = null; S.pace = 0; S.spawn = 1e9; S.still = false; S.foes.length = 0; S.shots.length = 0;
