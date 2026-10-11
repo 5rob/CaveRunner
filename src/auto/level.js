@@ -125,12 +125,14 @@ export const levelTeamX = S => S.scroll + LVL_TEAM;
 // team: the run's players (stage 5a): each fires its active gun for real (art/scenegun.js), and its damage dealt and
 // health go into L.meters (auto/meters.js, for the stats meters). tier: the run's (stage 6: the creatures' strength, enemyFor),
 // and the creatures hurt the team (auto/enemies.js). run (stage 6 part 2): kills drop loot (auto/loot.js) that is vacuumed into its bag
+// (tall levels) the action band: the old 0.24..0.92 of vh at vh 190 or less; taller, it keeps the old rock over and
+// under it (at most 50 and 20) and the rest is the band, so the cave fills the screen's height
 /** @param {number} vh @param {number} seed @param {number} n @param {LevelPlan} [plan] (default levelPlan(seed)) @param {RunPlayer[]} [team] @param {number} [tier] @param {AutoRun | null} [run] @returns {import('../art/titlescene.js').TitleScene} */
 export function levelScene(vh, seed, n, plan = levelPlan(seed), team, tier = 1, run = null) {
   /** @type {LevelState} */
   const L = { plan, phase: 'arrive', arrived: [], zap: -99, goT: -1, arenaT: -1, bossDead: false, hold: 0, elites: [], chests: [], doneT: -1, meters: [], blocked: false,
     boss: null, failed: false, run, bagV: 0 };
-  const S = titleScene(vh, seed, vh * 0.24, vh * 0.92, { runners: n, level: { zp: plan.zp, step: levelStep, data: L, hurt: levelHurt,
+  const S = titleScene(vh, seed, Math.min(vh * 0.24, 50), vh - Math.min(vh * 0.08, 20), { runners: n, level: { zp: plan.zp, step: levelStep, data: L, hurt: levelHurt,
     loot: (S, f) => killLoot(f.k.boss ? 'boss' : f.k.elite ? 'elite' : 'foe', S.tier || 1, S.rnd, f.k.gold),
     fits: (_S, it) => !L.run || bagFits(L.run, it),
     take: (_S, it) => { if (L.run && bagAdd(L.run, it)) return false; L.bagV++; return true; },

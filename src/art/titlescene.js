@@ -47,6 +47,7 @@ export const TITLE_ZLEN = [200, 360]; // a zone's length, the shortest and longe
 export const TITLE_ZONES = ['moss', 'webs', 'timber', 'paved', 'grove', 'winding'];   // winding: v0.0.172 (owner)
 const ZMIX = 40;                      // the roof's and floor's shapes blend this far either side of a zone's border
 export const ZBLEND = 28;             // a zone's border frays this far (world units) each way, by noise
+export const TITLE_PACKY = 45;        // (Auto's tall level) a flyer's target at most this far up or down from the rest of the team
 export const TIMBER_H = 38;           // the timber works' height, floor to roof: the mine frames' height
 export const TITLE_WEBS = 60;         // web lines at once
 export const TITLE_JUMP = 5;          // fire jumps from a burning vine, arch or web to one this near (world units)
@@ -297,7 +298,11 @@ export const titleZoneAt = (wx, y, B) => titleZone(wx + (titleNoise(wx / 24, y /
 // below, and pockets of air in the rock round it (windAir), fading in from the zone's ends
 /** @param {number} x @param {TZone} Z @param {{ top: number, bot: number }} B */
 const windMid = (x, Z, B) => Math.max(B.top + 26, Math.min(B.bot - 32, (B.top + B.bot) / 2 + 4
-  + (titleNoise(x / 70 + Z.ph[0], 3.7) - 0.5) * 80 + (titleNoise(x / 23 + Z.ph[1], 5.1) - 0.5) * 16));
+  + (titleNoise(x / 70 + Z.ph[0], 3.7) - 0.5) * 80 * bandK(B) + (titleNoise(x / 23 + Z.ph[1], 5.1) - 0.5) * 16));
+// (CaveRunner Auto's tall level) how many times 150 (the old level band's height, 130 at vh 190, with room) this band is: the
+// roof's and floor's waves, the winding tunnel's swing and the tall cave's big lumps grow with it (1 on the title, the hub)
+/** @param {{ top: number, bot: number, lvl?: unknown }} B */
+const bandK = B => (B.lvl ? Math.max(1, (B.bot - B.top) / 150) : 1);
 /** @param {number} x @param {TZone} Z */
 const windHalf = (x, Z) => 15 + titleNoise(x / 28 + Z.ph[2], 7.3) * 11;
 /** open air off the main tunnel at (x, y): a side branch or a pocket @param {number} x @param {number} y @param {TZone} Z @param {{ top: number, bot: number }} B */
@@ -318,7 +323,8 @@ function windAir(x, y, Z, B) {
 /** @param {number} wx @param {{ top: number, bot: number, zp?: TitlePlan }} B */
 export const titleCeil = (wx, B) => {
   const nat = zoneMix(wx, B, (x, Z) => (Z.z === 'winding' ? windMid(x, Z, B) - windHalf(x, Z)
-    : B.top - 4 + Z.co + (Math.sin(x * 0.018 * Z.cf + Z.ph[0]) * 10 + Math.sin(x * 0.049 * Z.cf + Z.ph[1]) * 6) * Z.ca)) + Math.sin(wx * 0.11) * 2;
+    : B.top - 4 + Z.co + (Math.sin(x * 0.018 * Z.cf + Z.ph[0]) * 10 + Math.sin(x * 0.049 * Z.cf + Z.ph[1]) * 6) * Z.ca * bandK(B)
+      + (bandK(B) - 1) * 45 * titleNoise(x / 90 + Z.ph[2], 9.1))) + Math.sin(wx * 0.11) * 2;
   // the layer's roof comes down over a natural slope (owner, v0.0.165: the old short step was too steep and
   // straight): an S-curve about TIMBER_RAMP long, starting a little before the works, where it starts shifted
   // by noise, the rock along it lumpy (big lumps and a fine fray, none once it's down)
@@ -358,7 +364,8 @@ export const titleWebAt = webAt;   // (and bent where a player pushed through it
 /** @param {number} wx @param {{ top: number, bot: number, zp?: TitlePlan }} B */
 export const titleFloor = (wx, B) => {
   const nat = zoneMix(wx, B, (x, Z) => (Z.z === 'winding' ? windMid(x, Z, B) + windHalf(x, Z)
-    : B.bot - 22 + Z.fo + (Math.sin(x * 0.021 * Z.ff + Z.ph[2]) * 7 + Math.sin(x * 0.057 * Z.ff + Z.ph[3]) * 4) * Z.fa)) + Math.sin(wx * 0.13) * 1.5;
+    : B.bot - 22 + Z.fo + (Math.sin(x * 0.021 * Z.ff + Z.ph[2]) * 7 + Math.sin(x * 0.057 * Z.ff + Z.ph[3]) * 4) * Z.fa * bandK(B)
+      - (bandK(B) - 1) * 30 * titleNoise(x / 80 + Z.ph[3], 4.3))) + Math.sin(wx * 0.13) * 1.5;
   const b = built(wx, B), base = nat * (1 - b) + (B.bot - 20) * b, T = mineNear(wx, B);
   return T ? base + (T.band.f - base) * T.bt : base;
 };
@@ -1238,6 +1245,16 @@ function pickTarget(S, r) {
   else if (roll < 0.15) r.ty = c - 10 - R() * 22;
   else r.ty = c + 4 + R() * Math.max(0, f - c - PH - 8);
   r.ty = Math.max(S.top - 32, Math.min(S.bot + 6, r.ty));
+  // (CaveRunner Auto's tall level, owner: "keep them together") a tall level's flyer heads no further than TITLE_PACKY from
+  // the others' middle height and a height wandering over the band as they go (so the pack goes up as well as down), in the
+  // open there if there's any
+  if (bandK(S) > 1.2) {
+    const os = S.runners.filter(o => o !== r && !o.hide && !o.out);
+    if (os.length) {
+      const m = (os.reduce((a, o) => a + o.y, 0) / os.length + S.top + (S.bot - S.top - PH) * titleNoise(S.scroll / 260 + S.seed % 97, 1.7)) / 2, lo = Math.max(c + 4, m - TITLE_PACKY), hi = Math.min(f - PH - 4, m + TITLE_PACKY);
+      r.ty = lo <= hi ? Math.max(lo, Math.min(hi, r.ty)) : Math.max(m - TITLE_PACKY, Math.min(m + TITLE_PACKY, r.ty));
+    }
+  }
   r.retarget = 0.8 + R() * 1.6;
 }
 // rock in his way: out comes the Buzzsaw (TITLE_SAW), and he cuts through until he's in the open again
@@ -2123,7 +2140,9 @@ function spreadFrom(S, wx, y) {
 export const TITLE_ZMAX = 4;
 export const TITLE_ZLOCK = 2;
 // w: the strip's width when wider than the screen (the hub), zmin: how far out it zooms (below 1: the whole strip)
-/** @typedef {{ z: number, x: number, y: number, lock: number, zt: number, ay: number, by: number, w?: number, zmin?: number }} TitleCam */
+// view: the screen's height when it shows less than the box (CaveRunner Auto's tall level with the UI open; default by);
+// pack: follow the team's middle height (camPack) when nobody is locked
+/** @typedef {{ z: number, x: number, y: number, lock: number, zt: number, ay: number, by: number, w?: number, zmin?: number, view?: number, pack?: boolean }} TitleCam */
 /** @param {number} ay the band's middle @param {number} by the box's bottom (screen units) @returns {TitleCam} */
 export const titleCam = (ay, by) => ({ z: 1, x: TITLE_VW / 2, y: ay, lock: -1, zt: 0, ay, by });
 /** @param {TitleCam} C keep the view inside the box */
@@ -2131,7 +2150,7 @@ export function camClamp(C) {
   C.z = Math.max(C.zmin || 1, Math.min(TITLE_ZMAX, C.z));
   const hw = TITLE_VW / 2 / C.z, W = C.w || TITLE_VW;
   C.x = hw * 2 >= W ? W / 2 : Math.max(hw, Math.min(W - hw, C.x));
-  const y0 = C.ay / C.z, y1 = C.by - (C.by - C.ay) / C.z;
+  const y0 = C.ay / C.z, y1 = C.by - ((C.view || C.by) - C.ay) / C.z;
   C.y = y0 > y1 ? (y0 + y1) / 2 : Math.max(y0, Math.min(y1, C.y));
 }
 // the scene point under a screen point (sx, sy in screen units: css px / the screen's scale)
@@ -2146,6 +2165,16 @@ export function camStep(C, S, dt) {
   const e = 1 - Math.exp(-8 * dt), r = C.lock >= 0 ? S.runners[C.lock] : null;
   if (C.zt) { C.z += (C.zt - C.z) * e; if (Math.abs(C.zt - C.z) < 0.01) { C.z = C.zt; C.zt = 0; } }
   if (r) { C.x += (r.x + PW / 2 - C.x) * e; C.y += (r.y + PH / 2 - C.y) * e; }
+  else if (C.pack) { camPack(C, S, 1 - Math.exp(-3 * dt)); return; }
+  camClamp(C);
+}
+// (CaveRunner Auto's tall level) ease the camera's y a fraction e toward the team's middle height (the living, shown
+// runners; none shown yet: where they'll land; none at all: the level's middle), kept inside the level
+/** @param {TitleCam} C @param {TitleScene} S @param {number} e 0..1 (1: there at once) */
+export function camPack(C, S, e) {
+  const up = S.runners.filter(r => !r.out), shown = up.filter(r => !r.hide), rs = shown.length ? shown : up;
+  const y = rs.length ? (Math.min(...rs.map(r => r.y)) + Math.max(...rs.map(r => r.y))) / 2 + PH / 2 : C.by / 2;
+  C.y += (y - C.y) * e;
   camClamp(C);
 }
 // a tap at a scene point: on a player, follow them (or let go if it's the one followed); null: no player there

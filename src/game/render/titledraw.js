@@ -127,7 +127,7 @@ export function titleDraw(ctx, S, cw, ch, cam) {
   const sx = (S.rnd() - 0.5) * S.shake * k, sy = (S.rnd() - 0.5) * S.shake * k;
   ctx.translate(sx, sy);
   ctx.scale(k, k);
-  if (cam && (cam.z !== 1 || cam.w)) { ctx.translate(TITLE_VW / 2, cam.ay); ctx.scale(cam.z, cam.z); ctx.translate(-cam.x, -cam.y); }
+  if (cam && (cam.z !== 1 || cam.w || cam.y !== cam.ay)) { ctx.translate(TITLE_VW / 2, cam.ay); ctx.scale(cam.z, cam.z); ctx.translate(-cam.x, -cam.y); }
   // the terrain: the ring of columns, in (up to) two pieces
   const cv = terrain(S), N = S.ncol, c0 = S.hub ? 0 : Math.floor(S.scroll / TCELL) - 2, n = S.hub ? N : Math.ceil(TITLE_VW / TCELL) + 4;
   ctx.imageSmoothingEnabled = false;

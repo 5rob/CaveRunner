@@ -12189,6 +12189,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var TITLE_ZONES = ["moss", "webs", "timber", "paved", "grove", "winding"];
   var ZMIX = 40;
   var ZBLEND = 28;
+  var TITLE_PACKY = 45;
   var TIMBER_H = 38;
   var TITLE_WEBS = 60;
   var TITLE_JUMP = 5;
@@ -12410,7 +12411,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
   }
   var titleZoneAt = (wx, y, B) => titleZone(wx + (titleNoise(wx / 24, y / 14) - 0.5) * 2 * ZBLEND + (titleNoise(wx / 4, y / 4) - 0.5) * 12, B);
-  var windMid = (x, Z, B) => Math.max(B.top + 26, Math.min(B.bot - 32, (B.top + B.bot) / 2 + 4 + (titleNoise(x / 70 + Z.ph[0], 3.7) - 0.5) * 80 + (titleNoise(x / 23 + Z.ph[1], 5.1) - 0.5) * 16));
+  var windMid = (x, Z, B) => Math.max(B.top + 26, Math.min(B.bot - 32, (B.top + B.bot) / 2 + 4 + (titleNoise(x / 70 + Z.ph[0], 3.7) - 0.5) * 80 * bandK(B) + (titleNoise(x / 23 + Z.ph[1], 5.1) - 0.5) * 16));
+  var bandK = (B) => B.lvl ? Math.max(1, (B.bot - B.top) / 150) : 1;
   var windHalf = (x, Z) => 15 + titleNoise(x / 28 + Z.ph[2], 7.3) * 11;
   function windAir(x, y, Z, B) {
     if (y < B.top - 6 || y > B.bot + 2) return false;
@@ -12425,7 +12427,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return Math.abs(y - m2) < (on - 0.5) * 2 * 11;
   }
   var titleCeil = (wx, B) => {
-    const nat = zoneMix(wx, B, (x, Z) => Z.z === "winding" ? windMid(x, Z, B) - windHalf(x, Z) : B.top - 4 + Z.co + (Math.sin(x * 0.018 * Z.cf + Z.ph[0]) * 10 + Math.sin(x * 0.049 * Z.cf + Z.ph[1]) * 6) * Z.ca) + Math.sin(wx * 0.11) * 2;
+    const nat = zoneMix(wx, B, (x, Z) => Z.z === "winding" ? windMid(x, Z, B) - windHalf(x, Z) : B.top - 4 + Z.co + (Math.sin(x * 0.018 * Z.cf + Z.ph[0]) * 10 + Math.sin(x * 0.049 * Z.cf + Z.ph[1]) * 6) * Z.ca * bandK(B) + (bandK(B) - 1) * 45 * titleNoise(x / 90 + Z.ph[2], 9.1)) + Math.sin(wx * 0.11) * 2;
     const T2 = mineNear(wx, B);
     if (!T2) return nat;
     const lump = Math.sin(Math.PI * T2.bt) * ((titleNoise(wx / 16, 47) - 0.5) * 22 + (titleNoise(wx / 6, 40) - 0.5) * 9 + (titleNoise(wx / 2.5, 43) - 0.5) * 3);
@@ -12452,7 +12454,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   };
   var titleWebAt = webAt;
   var titleFloor = (wx, B) => {
-    const nat = zoneMix(wx, B, (x, Z) => Z.z === "winding" ? windMid(x, Z, B) + windHalf(x, Z) : B.bot - 22 + Z.fo + (Math.sin(x * 0.021 * Z.ff + Z.ph[2]) * 7 + Math.sin(x * 0.057 * Z.ff + Z.ph[3]) * 4) * Z.fa) + Math.sin(wx * 0.13) * 1.5;
+    const nat = zoneMix(wx, B, (x, Z) => Z.z === "winding" ? windMid(x, Z, B) + windHalf(x, Z) : B.bot - 22 + Z.fo + (Math.sin(x * 0.021 * Z.ff + Z.ph[2]) * 7 + Math.sin(x * 0.057 * Z.ff + Z.ph[3]) * 4) * Z.fa * bandK(B) - (bandK(B) - 1) * 30 * titleNoise(x / 80 + Z.ph[3], 4.3)) + Math.sin(wx * 0.13) * 1.5;
     const b = built(wx, B), base = nat * (1 - b) + (B.bot - 20) * b, T2 = mineNear(wx, B);
     return T2 ? base + (T2.band.f - base) * T2.bt : base;
   };
@@ -13587,6 +13589,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     else if (roll < 0.15) r.ty = c - 10 - R() * 22;
     else r.ty = c + 4 + R() * Math.max(0, f - c - PH - 8);
     r.ty = Math.max(S2.top - 32, Math.min(S2.bot + 6, r.ty));
+    if (bandK(S2) > 1.2) {
+      const os = S2.runners.filter((o) => o !== r && !o.hide && !o.out);
+      if (os.length) {
+        const m = (os.reduce((a, o) => a + o.y, 0) / os.length + S2.top + (S2.bot - S2.top - PH) * titleNoise(S2.scroll / 260 + S2.seed % 97, 1.7)) / 2, lo = Math.max(c + 4, m - TITLE_PACKY), hi = Math.min(f - PH - 4, m + TITLE_PACKY);
+        r.ty = lo <= hi ? Math.max(lo, Math.min(hi, r.ty)) : Math.max(m - TITLE_PACKY, Math.min(m + TITLE_PACKY, r.ty));
+      }
+    }
     r.retarget = 0.8 + R() * 1.6;
   }
   function startDig(S2, r, dx, dy, why) {
@@ -14720,7 +14729,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     C.z = Math.max(C.zmin || 1, Math.min(TITLE_ZMAX, C.z));
     const hw = TITLE_VW / 2 / C.z, W = C.w || TITLE_VW;
     C.x = hw * 2 >= W ? W / 2 : Math.max(hw, Math.min(W - hw, C.x));
-    const y0 = C.ay / C.z, y1 = C.by - (C.by - C.ay) / C.z;
+    const y0 = C.ay / C.z, y1 = C.by - ((C.view || C.by) - C.ay) / C.z;
     C.y = y0 > y1 ? (y0 + y1) / 2 : Math.max(y0, Math.min(y1, C.y));
   }
   var camAt = (C, sx, sy) => ({ x: C.x + (sx - TITLE_VW / 2) / C.z, y: C.y + (sy - C.ay) / C.z });
@@ -14737,7 +14746,16 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (r) {
       C.x += (r.x + PW / 2 - C.x) * e;
       C.y += (r.y + PH / 2 - C.y) * e;
+    } else if (C.pack) {
+      camPack(C, S2, 1 - Math.exp(-3 * dt));
+      return;
     }
+    camClamp(C);
+  }
+  function camPack(C, S2, e) {
+    const up = S2.runners.filter((r) => !r.out), shown = up.filter((r) => !r.hide), rs = shown.length ? shown : up;
+    const y = rs.length ? (Math.min(...rs.map((r) => r.y)) + Math.max(...rs.map((r) => r.y))) / 2 + PH / 2 : C.by / 2;
+    C.y += (y - C.y) * e;
     camClamp(C);
   }
   function camTap(C, S2, x, y, reach2) {
@@ -16785,7 +16803,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       run,
       bagV: 0
     };
-    const S2 = titleScene(vh, seed, vh * 0.24, vh * 0.92, { runners: n, level: {
+    const S2 = titleScene(vh, seed, Math.min(vh * 0.24, 50), vh - Math.min(vh * 0.08, 20), { runners: n, level: {
       zp: plan.zp,
       step: levelStep,
       data: L,
@@ -31325,7 +31343,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const sx = (S2.rnd() - 0.5) * S2.shake * k, sy = (S2.rnd() - 0.5) * S2.shake * k;
     ctx.translate(sx, sy);
     ctx.scale(k, k);
-    if (cam && (cam.z !== 1 || cam.w)) {
+    if (cam && (cam.z !== 1 || cam.w || cam.y !== cam.ay)) {
       ctx.translate(TITLE_VW / 2, cam.ay);
       ctx.scale(cam.z, cam.z);
       ctx.translate(-cam.x, -cam.y);
@@ -32504,6 +32522,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       last = now;
       if (!(o.paused && o.paused())) {
         for (let left = Math.min(dt, 0.2); left > 1e-4; left -= 0.05) titleStep(S2, Math.min(left, 0.05));
+        if (C.pack) {
+          C.view = hh / (w / TITLE_VW);
+          C.ay = C.view / 2;
+        }
         camStep(C, S2, Math.min(dt, 0.1));
         titleSound(S2, C, loops, Math.min(dt, 0.1));
       }
@@ -32748,16 +32770,21 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         make: (w, hh, seed) => {
           const k = w / TITLE_VW, vh = Math.max(1, hh - bigPlayRef.current) / k;
           if (where.current === "level") {
+            const bag = c.parentElement && c.parentElement.parentElement && c.parentElement.parentElement.querySelector(".abag");
+            const lvh = (hh + (bag ? Math.max(0, bag.getBoundingClientRect().bottom - c.getBoundingClientRect().bottom) : 0)) / k;
             healRun(run);
             saveAutoRun(run);
-            const S3 = levelScene(vh, window.__AUTO_LEVEL || levelSeed(run), run.players.length, void 0, run.players, run.tier, run);
+            const S3 = levelScene(lvh, window.__AUTO_LEVEL || levelSeed(run), run.players.length, void 0, run.players, run.tier, run);
             scene.current = S3;
             S3.onTake = (it, x, y) => flyIn(it, x, y);
             if (window.__TEST_TITLE) {
               window.__autoScene = S3;
               window.__autoCam = cam;
             }
-            const C2 = titleCam(vh / 2, vh);
+            const C2 = titleCam(hh / k / 2, lvh);
+            C2.pack = true;
+            C2.view = hh / k;
+            camPack(C2, S3, 1);
             cam.current = C2;
             return { S: S3, C: C2, warm: 0 };
           }

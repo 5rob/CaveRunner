@@ -16,7 +16,7 @@
 // (direction and speed). (Stage 10a's throw from the bag tile is gone.)
 
 import { SFX } from '../../audio/sfx.js';
-import { TITLE_VW, camAt, camTo, titleCam } from '../../art/titlescene.js';
+import { TITLE_VW, camAt, camPack, camTo, titleCam } from '../../art/titlescene.js';
 import { DEAD } from '../../core/consts.js';
 import { chestOpen } from '../../auto/chests.js';
 import { HUB_W, hubExit, hubLeft, hubMapA, hubMapPick, hubScene, hubState, hubStick, hubStopX } from '../../auto/hub.js';
@@ -196,13 +196,19 @@ export function AutoScreen() {
         const k = w / TITLE_VW, vh = Math.max(1, hh - bigPlayRef.current) / k;
         // the level: the run's (a test flag opens one straight away: window.__AUTO_LEVEL = its seed); full heal at its start
         if (where.current === 'level') {
+          // (tall levels) a level is made at the grown play area's height (down to the bag's bottom edge) whether it's grown
+          // or not: the UI open, the camera follows the pack up and down it (C.pack, art/titlescene.js camStep)
+          const bag = c.parentElement && c.parentElement.parentElement && c.parentElement.parentElement.querySelector('.abag');
+          const lvh = (hh + (bag ? Math.max(0, bag.getBoundingClientRect().bottom - c.getBoundingClientRect().bottom) : 0)) / k;
           healRun(run);
           saveAutoRun(run);
-          const S = levelScene(vh, window.__AUTO_LEVEL || levelSeed(run), run.players.length, undefined, run.players, run.tier, run);
+          const S = levelScene(lvh, window.__AUTO_LEVEL || levelSeed(run), run.players.length, undefined, run.players, run.tier, run);
           scene.current = S;
           S.onTake = (it, x, y) => flyIn(it, x, y);
           if (window.__TEST_TITLE) { window.__autoScene = S; window.__autoCam = cam; }   // the shot scripts (tools/clearshots.js) reach the level here
-          const C = titleCam(vh / 2, vh);
+          const C = titleCam(hh / k / 2, lvh);
+          C.pack = true; C.view = hh / k;
+          camPack(C, S, 1);
           cam.current = C;
           return { S, C, warm: 0 };
         }

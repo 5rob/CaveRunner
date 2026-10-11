@@ -26,3 +26,4 @@ Creature sprites live with their creature (`creatures/`). Everything draws at wo
 - Ground guns glow (`drawGunGlow`, before the gun sprite) unless `q.old` — set on the gun you swap
   out in `GunSwap`, and kept by the save.
 - A gun's sprite colour is `gunAccent` (its level colour; starter guns keep their family colour).
+- **Tall levels (Auto):** `TitleCam` takes `view` (the screen's height when shorter than `by`; `camClamp` keeps the view inside 0..by) and `pack` (`camPack(C, S, e)`: ease y toward the team's middle height; `camStep` does it when nobody is locked). `bandK`, `TITLE_PACKY`: see src/auto/README.md, Tall levels.

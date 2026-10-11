@@ -68,3 +68,4 @@ creatures, v0.0.164), `drawSilk` (`game/creatures/spider.js`), `drawEnemies`, `d
   `input.current.mapView`.
 - A replay frame (`G.RPV`): camera from the view, the play area above the replay panel, terrain from
   `G.RT`, no aim line, the fog overlay only when the viewer's fog toggle is on.
+- `titleDraw` applies the camera when it's zoomed, wide (`w`), or moved off its anchor height (`y !== ay`: a tall Auto level's pack camera).
