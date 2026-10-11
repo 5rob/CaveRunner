@@ -19,7 +19,7 @@ require('../tests/build')();
   page.on('pageerror', e => console.log('PAGEERROR', e.message));
   await page.goto('file://' + path.join(__dirname, '..', 'tests', 'build', 'test.html'));
   await page.waitForTimeout(400);
-  await page.evaluate(() => { Object.assign(DEV, { autoFoeDmg: 0, autoLvlMin: 0.35, autoWallMin: 0, autoWallMax: 0 }); saveAutoRun(newRun(4)); });
+  await page.evaluate(() => { Object.assign(DEV, { autoFoeDmg: 0, autoWallMin: 0, autoWallMax: 0 }); const r = newRun(4); addPlayer(r); addPlayer(r); saveAutoRun(r); });
   await page.locator('.tstart').dispatchEvent('pointerdown');
   await page.waitForTimeout(3500);
   await page.evaluate(() => {
@@ -45,6 +45,10 @@ require('../tests/build')();
   for (let i = 0; i < 400 && !boss; i++) { await page.waitForTimeout(100); boss = !!(await page.$('.abossbar')); }
   await page.waitForTimeout(1500);
   await page.screenshot({ path: path.join(OUT, 'b-b-boss.png') });
+  await page.locator('.ajourney').dispatchEvent('pointerdown');
+  await page.waitForTimeout(500);
+  await page.screenshot({ path: path.join(OUT, 'b-c-hidden.png') });
+  console.log('b-c-hidden.png  the journey box tapped away');
   console.log('b-a-foes.png / b-a-zoom.png  creatures with health bars (full, 40%, 75%)\nb-b-boss.png  ' + (boss ? 'the boss bar' : '(no boss reached)'));
   await browser.close();
 })();

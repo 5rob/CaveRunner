@@ -922,9 +922,19 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   font:700 12px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.14em;text-transform:uppercase;color:#ffd9b0;
   background:rgba(14,9,26,0.82);border:2px solid #ff8a1f;box-shadow:0 0 14px rgba(255,120,30,0.45);animation:ablock 1.2s ease-in-out infinite}
 @keyframes ablock{0%,100%{opacity:.45}50%{opacity:1}}
-/* (owner, v1.0.44) the boss's bar: big, across the top of the play area, its name above it on the left */
-.abossbar{position:absolute;left:10px;right:56px;top:8px;pointer-events:none;display:flex;flex-direction:column;align-items:stretch;gap:3px}
-.abossbar.dev{right:100px}   /* clear of the Dev ⚙️ too */
+/* (owner, v1.0.44) the top of the play area, a column: the map's name and level (left, clear of the ⏸ and Dev ⚙️), the
+   journey box (the level at its own shape, the helmets where they are; tapped: hidden, its place stays tappable), the boss's bar */
+.atop{position:absolute;left:10px;right:10px;top:8px;pointer-events:none;display:flex;flex-direction:column;align-items:stretch;gap:6px;z-index:5}
+.alvlinfo{min-height:40px;margin-right:50px;display:flex;flex-direction:column;align-items:flex-start;gap:1px}
+.atop.dev .alvlinfo{margin-right:94px}
+.alvlinfo b{font:900 14px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.08em;color:#f1ecff;text-shadow:0 1px 0 #000,0 0 6px rgba(0,0,0,0.8)}
+.alvlinfo span{font:800 11px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.1em;color:#c9b8ff;text-shadow:0 1px 0 #000,0 0 6px rgba(0,0,0,0.8)}
+.ajourney{position:relative;height:20px;border-radius:6px;background:rgba(0,0,0,0.2);border:2px solid #3d2f5c;box-sizing:border-box;
+  pointer-events:auto;touch-action:none;transition:opacity .2s}
+.ajourney.off{opacity:0}
+.ajourney canvas{position:absolute;left:0;top:-6px;width:100%;height:calc(100% + 12px);image-rendering:pixelated}
+/* the boss's bar: big, across the play area, its name above it on the left */
+.abossbar{display:flex;flex-direction:column;align-items:stretch;gap:3px}
 .abossbar b{align-self:flex-start;font:900 13px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.14em;text-transform:uppercase;color:#ffd0d0;
   text-shadow:0 0 6px #ff2a3a,0 1px 0 #000}
 .abosstrack{width:100%;height:16px;border-radius:6px;background:rgba(14,9,26,0.85);border:2px solid #5a1f2a;box-sizing:border-box;overflow:hidden;
@@ -32407,6 +32417,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const [, setHpKey] = useState("");
     pausedRef.current = paused || devOpen;
     const cvs = useRef(null);
+    const jcvs = useRef(null);
+    const [jHid, setJHid] = useState(false);
+    const [inLvl, setInLvl] = useState(false);
     const scene = useRef(null);
     const cam = useRef(null);
     const input = useRef({ saveRun: () => saveAutoRun(run) });
@@ -32441,6 +32454,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         setManual(pk ? pk.id : -1);
         setHpKey(run.players.map((q) => q ? Math.round(hpFrac(q) * 100) : "").join());
         setBlocked(!!(L && L.blocked));
+        setInLvl(!!L);
         if (L) setBagV(L.bagV);
         if (L && L.bagV !== bagV.current) {
           bagV.current = L.bagV;
@@ -32528,6 +32542,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         over: (ctx, S2, w, hh) => {
           const a = levelClearedAge(S2);
           if (a >= 0) clearedText(ctx, a, DEV.autoClearT, w, hh * 0.14);
+          if (jcvs.current) journeyDraw(jcvs.current, S2, run);
           if (levelDeathPrompt(S2)) {
             const k = w / 150;
             ctx.save();
@@ -32695,6 +32710,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         SFX.fx("close");
         setNavHidden(true);
       }
+    };
+    const jTap = (e) => {
+      e.stopPropagation();
+      SFX.ui("tap");
+      setJHid((v) => !v);
     };
     const playTap = (e) => {
       if (navHidden && !(e.target && e.target.closest && e.target.closest(".pausebtn"))) {
@@ -32973,12 +32993,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         { className: "aplay" + (drag && drag.over && drag.over.key === "play" && drag.over.ok ? " drop" : ""), onPointerDown: playTap },
         h("canvas", { ref: cvs, className: "aplaycvs" }),
         blocked ? h("div", { className: "ablocked" }, "Path blocked") : null,
-        boss ? h(
+        h(
           "div",
-          { className: "abossbar" + (devOn ? " dev" : "") },
-          h("b", null, boss.name),
-          h("div", { className: "abosstrack" }, h("i", { style: { width: (100 * boss.hp / Math.max(1, boss.max)).toFixed(1) + "%" } }))
-        ) : null,
+          { className: "atop" + (devOn ? " dev" : "") },
+          h("div", { className: "alvlinfo" }, h("b", null, mapInfo(run).name), h("span", null, "Level " + mapInfo(run).level)),
+          inLvl ? h("div", { className: "ajourney" + (jHid ? " off" : ""), onPointerDown: jTap }, h("canvas", { ref: jcvs })) : null,
+          boss ? h(
+            "div",
+            { className: "abossbar" },
+            h("b", null, boss.name),
+            h("div", { className: "abosstrack" }, h("i", { style: { width: (100 * boss.hp / Math.max(1, boss.max)).toFixed(1) + "%" } }))
+          ) : null
+        ),
         devOn ? h("button", { className: "adevbtn", title: "Dev", onPointerDown: tap(() => {
           SFX.fx("open");
           setDevOpen(true);
@@ -33478,6 +33504,42 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }),
       h("b", null, "+" + burst3.n)
     );
+  }
+  function mapInfo(run) {
+    return { name: "Mossy Caves", level: run.tier };
+  }
+  var HELM_PX = 12;
+  var helmCache = {};
+  function helmSprite(col) {
+    if (!helmCache[col]) {
+      const c = document.createElement("canvas"), x = c.getContext("2d");
+      c.width = c.height = 24;
+      if (x) helmetIcon(x, 24, col);
+      helmCache[col] = c;
+    }
+    return helmCache[col];
+  }
+  function journeyDraw(c, S2, run) {
+    const L = levelState(S2), box = c.parentElement;
+    if (!L || !box) return;
+    const W = L.plan.z1 + L.plan.z0, bw = box.clientWidth, bh = Math.max(6, bw * S2.vh / W);
+    if (Math.abs(box.clientHeight - bh) > 0.5) box.style.height = (bh + 4).toFixed(1) + "px";
+    const dpr = Math.min(3, window.devicePixelRatio || 1), cw = Math.round(bw * dpr), ch = Math.round((bh + HELM_PX) * dpr), m = HELM_PX / 2 * dpr;
+    if (c.width !== cw || c.height !== ch) {
+      c.width = cw;
+      c.height = ch;
+    }
+    const ctx = c.getContext("2d");
+    if (!ctx) return;
+    ctx.clearRect(0, 0, cw, ch);
+    ctx.imageSmoothingEnabled = false;
+    const s = HELM_PX * dpr;
+    for (const r of S2.runners) {
+      const q = run.players[r.id];
+      if (!q || r.hide || r.out) continue;
+      const x = Math.max(s / 2, Math.min(cw - s / 2, (r.x + S2.scroll) / W * cw)), y = m + Math.max(0, Math.min(1, r.y / S2.vh)) * (ch - 2 * m);
+      ctx.drawImage(helmSprite(q.col), Math.round(x - s / 2), Math.round(y - s / 2), Math.round(s), Math.round(s));
+    }
   }
 
   // src/ui/title.js

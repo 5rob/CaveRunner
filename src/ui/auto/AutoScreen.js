@@ -43,6 +43,7 @@ import { DevPanel } from '../devpanel.js';
 import { DEV_HOLD_MS, devShown, setDevShown } from '../devmode.js';
 import { runScene } from '../scenecanvas.js';
 import { leaveItem } from '../../art/titlescene.js';
+import { helmetIcon } from '../../art/sprites.js';
 import { sceneAddRunner } from '../../auto/addrunner.js';
 import { bagFits, lootCol } from '../../auto/loot.js';
 import { itemEdgeCol } from '../../auto/itemtile.js';
@@ -78,6 +79,11 @@ export function AutoScreen() {
   const [, setHpKey] = useState('');   // the players' health (the helmet rings): redraw when it moves
   pausedRef.current = paused || devOpen;
   const cvs = useRef(null);
+  // (owner) the journey box: the level as a strip at its own shape, the players' helmets where they are; a tap hides it, a tap on its place brings it back
+  /** @type {{ current: HTMLCanvasElement | null }} */
+  const jcvs = useRef(null);
+  const [jHid, setJHid] = useState(false);
+  const [inLvl, setInLvl] = useState(false);
   /** @type {{ current: import('../../art/titlescene.js').TitleScene | null }} */
   const scene = useRef(null);
   /** @type {{ current: import('../../art/titlescene.js').TitleCam | null }} */
@@ -132,6 +138,7 @@ export function AutoScreen() {
       setManual(pk ? pk.id : -1);
       setHpKey(run.players.map(q => q ? Math.round(hpFrac(q) * 100) : '').join());
       setBlocked(!!(L && L.blocked));
+      setInLvl(!!L);
       if (L) setBagV(L.bagV);   // drops went into the bag: redraw it
       // stage 13: and save it, so a quit mid-level resumes in the hub with the bag kept
       if (L && L.bagV !== bagV.current) { bagV.current = L.bagV; saveAutoRun(run); }
@@ -204,6 +211,7 @@ export function AutoScreen() {
       // (feedback round 2) everyone down: "Tap A to Teleport back to Hub" (the hub's hint look), on the screen whatever the zoom
       over: (ctx, S, w, hh) => {
         const a = levelClearedAge(S); if (a >= 0) clearedText(ctx, a, DEV.autoClearT, w, hh * 0.14);
+        if (jcvs.current) journeyDraw(jcvs.current, S, run);
         if (levelDeathPrompt(S)) { const k = w / 150; ctx.save(); ctx.scale(k, k); drawHint(ctx, w / 2 / k, hh * 0.3 / k, 'Tap A to Teleport back to Hub', S.t); ctx.restore(); }
       },
       // through the exit pad: to the level; the level's exit pad: home, tier + 1, healed (saved); everyone fallen: home, same tier
@@ -309,6 +317,8 @@ export function AutoScreen() {
     if (n.level !== 'players') { const up = navBack(n); setNav(up.level === 'players' ? { ...up, p: -1 } : up); return; }
     if (!navHidden) { SFX.fx('close'); setNavHidden(true); }
   };
+  /** a tap on the journey box (or its empty place): hide it, show it @param {any} e */
+  const jTap = e => { e.stopPropagation(); SFX.ui('tap'); setJHid(v => !v); };
   /** a tap on the play area: the nav back if hidden @param {any} e */
   const playTap = e => { if (navHidden && !(e.target && e.target.closest && e.target.closest('.pausebtn'))) { SFX.fx('open'); setNavHidden(false); } };
   // (feedback round 2) everyone down in a level: A sets off the teleport home (the helmet light, the blast: auto/death.js)
@@ -536,8 +546,11 @@ export function AutoScreen() {
     h('div', { className: 'aplay' + (drag && drag.over && drag.over.key === 'play' && drag.over.ok ? ' drop' : ''), onPointerDown: playTap },
       h('canvas', { ref: cvs, className: 'aplaycvs' }),
       blocked ? h('div', { className: 'ablocked' }, 'Path blocked') : null,
-      boss ? h('div', { className: 'abossbar' + (devOn ? ' dev' : '') }, h('b', null, boss.name),
-        h('div', { className: 'abosstrack' }, h('i', { style: { width: (100 * boss.hp / Math.max(1, boss.max)).toFixed(1) + '%' } }))) : null,
+      h('div', { className: 'atop' + (devOn ? ' dev' : '') },
+        h('div', { className: 'alvlinfo' }, h('b', null, mapInfo(run).name), h('span', null, 'Level ' + mapInfo(run).level)),
+        inLvl ? h('div', { className: 'ajourney' + (jHid ? ' off' : ''), onPointerDown: jTap }, h('canvas', { ref: jcvs })) : null,
+        boss ? h('div', { className: 'abossbar' }, h('b', null, boss.name),
+          h('div', { className: 'abosstrack' }, h('i', { style: { width: (100 * boss.hp / Math.max(1, boss.max)).toFixed(1) + '%' } }))) : null),
       devOn ? h('button', { className: 'adevbtn', title: 'Dev', onPointerDown: tap(() => { SFX.fx('open'); setDevOpen(true); }) }, '⚙️') : null,
       h('button', { className: 'pausebtn', title: 'Pause (hold 5 s: dev mode)', onPointerDown: pauseDown }, '⏸')),
     h(NavStack, { nav, run, openAt, down, drag, holdHelm, holdGun, meters, pins, metersOf, pinNav, hidden: navHidden, manual }),
@@ -990,4 +1003,45 @@ function CoinBurst({ burst }) {
       return h('i', { key: i, style: { '--dx': (Math.cos(a) * d).toFixed(1) + 'px', '--dy': (Math.sin(a) * d - 14).toFixed(1) + 'px', animationDelay: (i % 3) * 30 + 'ms' } });
     }),
     h('b', null, '+' + burst.n));
+}
+
+// the active map and its level, top left of the play area (owner)
+/** @param {AutoRun} run @returns {{ name: string, level: number }} */
+function mapInfo(run) {
+  return { name: 'Mossy Caves', level: run.tier };
+}
+// (owner) the journey box: the whole level at its own width-to-height shape, across the play area; each player's helmet
+// (the scene's sprite, pixelated) where he is in it; the fallen and the hidden left out
+const HELM_PX = 12;   // a helmet in the box (px); the canvas reaches HELM_PX / 2 past the box's top and bottom (a thin box)
+/** @type {Record<string, HTMLCanvasElement>} */
+const helmCache = {};
+/** @param {string} col @returns {HTMLCanvasElement} */
+function helmSprite(col) {
+  if (!helmCache[col]) {
+    const c = document.createElement('canvas'), x = c.getContext('2d');
+    c.width = c.height = 24;
+    if (x) helmetIcon(x, 24, col);
+    helmCache[col] = c;
+  }
+  return helmCache[col];
+}
+/** @param {HTMLCanvasElement} c @param {import('../../art/titlescene.js').TitleScene} S @param {AutoRun} run */
+function journeyDraw(c, S, run) {
+  const L = levelState(S), box = c.parentElement;
+  if (!L || !box) return;
+  const W = L.plan.z1 + L.plan.z0, bw = box.clientWidth, bh = Math.max(6, bw * S.vh / W);
+  if (Math.abs(box.clientHeight - bh) > 0.5) box.style.height = (bh + 4).toFixed(1) + 'px';   // (+ its 2px border each side)
+  const dpr = Math.min(3, window.devicePixelRatio || 1), cw = Math.round(bw * dpr), ch = Math.round((bh + HELM_PX) * dpr), m = HELM_PX / 2 * dpr;
+  if (c.width !== cw || c.height !== ch) { c.width = cw; c.height = ch; }
+  const ctx = c.getContext('2d');
+  if (!ctx) return;
+  ctx.clearRect(0, 0, cw, ch);
+  ctx.imageSmoothingEnabled = false;
+  const s = HELM_PX * dpr;
+  for (const r of S.runners) {
+    const q = run.players[r.id];
+    if (!q || r.hide || r.out) continue;
+    const x = Math.max(s / 2, Math.min(cw - s / 2, (r.x + S.scroll) / W * cw)), y = m + Math.max(0, Math.min(1, r.y / S.vh)) * (ch - 2 * m);
+    ctx.drawImage(helmSprite(q.col), Math.round(x - s / 2), Math.round(y - s / 2), Math.round(s), Math.round(s));
+  }
 }
