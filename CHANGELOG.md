@@ -5,6 +5,15 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.37 — CaveRunner Auto: Permanent Shield, Pinpointer, Angry Ghost (branch `autobattler`)
+Released 2026-10-11 on the branch (owner OK'd `tools/perkshots.js`). Agent ~9 min (worktree `cr-perks`).
+- Permanent Shield: soaks a whole hit (`levelHurt`), back after 2.5 s; a light-blue glow brightest at the rim, a flash
+  and a flying ring when it breaks, swelling back when ready.
+- Pinpointer: look only (its speed/spread gone from `data/perks.js`): a red laser from the muzzle to the first rock or creature.
+- Angry Ghost: a wisp trailing the player, a slow homing shot at the nearest creature (1 dmg / 1.4 s, 150 range: about a
+  quarter of the old game's). Counts in the player's damage.
+- `auto/perks.js`, `game/render/perkdraw.js`; Dev → Auto → "Auto: perks" (4 knobs). Test: `auto-perks`.
+
 ## v1.0.36 — CaveRunner Auto: pickups as their bag tile, flying into the bag (branch `autobattler`)
 Released 2026-10-11 on the branch (owner OK'd `tools/vendiconshots.js`). Agent ~9 min (worktree `cr-icons`) + PM.
 - A mod, exo mod or perk from a machine (or dropped in a level) lies on the floor as the bag's tile: rounded box in its

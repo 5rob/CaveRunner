@@ -8,7 +8,7 @@ release loop, testing), then the README of the `src/` folder you're working in.
 Planned with the owner (brief + quiz answers + 16 stages + the PM's kick-start prompt, all in `AUTOBATTLER.md`;
 mock-up `docs/autobattler-mockup.png`). Progress: AUTOBATTLER.md's Log. `main` keeps the old game.
 
-**Where it stands (2026-10-11, v1.0.36 live at /auto/; v1.0.35: the item audit part 1 — bins, triggers common, Wand Refresh and Glass Cannon fixed, colour sweep; v1.0.36: pickups as bag tiles flying into the bag): all stages 0–14 built; feedback rounds 1 and 2 released.**
+**Where it stands (2026-10-11, v1.0.36 live at /auto/; v1.0.35: the item audit part 1 — bins, triggers common, Wand Refresh and Glass Cannon fixed, colour sweep; v1.0.36: pickups as bag tiles flying into the bag; v1.0.37: Shield, Pinpointer, Ghost) (other perks still do nothing in Auto: only max health, Glass Cannon's damage and these three): all stages 0–14 built; feedback rounds 1 and 2 released.**
 
 **Next session (bug fixing, 2026-10-11):** the owner is playing v1.0.32 on the phone and sends notes; the PM fixes them
 in small rounds itself (no agents unless a note is a big new feature). Known rough edges, not yet reported by the owner:
@@ -21,7 +21,7 @@ Known flake: browser `auto-steer` "stick right… the scroll follows" (timing: r
 **The item audit is back** (owner's notes, 2026-10-11: `docs/auto-item-audit-notes.txt`, each line marked done or which
 stage). v1.0.35 did the small part. **Next, one agent stage at a time** (worktree, AUTOBATTLER.md section 8's limits):
 ~~(1) machine items as bag tiles flying into the bag~~ (done v1.0.36);
-(2) perks: Permanent Shield's look, Pinpointer's red laser, Angry Ghost built and nerfed; (3) jetpack fuel for auto and
+~~(2) perks: Shield, Pinpointer, Ghost~~ (done v1.0.37); (3) jetpack fuel for auto and
 manual movement; (4)-(5) the shot looks in two halves (the notes' [stage: shots]: missile homing, fire spreading, etc.).
 Each with screenshots for the owner's OK before release.
 

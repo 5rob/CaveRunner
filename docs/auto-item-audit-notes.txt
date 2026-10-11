@@ -63,7 +63,7 @@ NOTES (68):
 - mod:refresh "Wand Refresh": This doesn't seem to work. Please fix.
 - perk:glass "Glass Cannon": Why no boost yet? Fix please.
 - perk:fireimm "Fire Immunity": Archive but keep. As fire damage is currently not implemented.
-[stage: perks]:
+[done v1.0.37]:
 - perk:ghost "Angry Ghost": Needs nerfing. (it does nothing in Auto yet: build it, nerfed)
 - perk:shield "Permanent Shield": Ensure it looks good. (earlier: a light-blue radial glow, brighter outside, flashing off on a hit, back when ready)
 - perk:pinpoint "Pinpointer": Just adds a red laser pointer to where the character happens to be aiming. Purely aesthetic perk.
