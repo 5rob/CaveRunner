@@ -155,3 +155,15 @@ export function vinePt(pr, k) {
 // can this prop swing? (a hanging vine, chain, root, strand — not an arch, not a frozen fall)
 /** @param {Prop} pr */
 export const swings = pr => pr.k === 'climb' && !pr.arc && !!pr.len && pr.st !== 'icefall';
+
+// Hanging from a web line or an arched vine (direction ux, uy): does a push (nx, ny at strength
+// mag) let go? Any push mostly across the line, in any direction (more than LINE_OFF of it), or
+// one along it past an end you're at (atA: the start, atB: the end). Before v125 only pushing
+// down let go, so pushing sideways off a steep line, or off its end, left you stuck on it.
+export const LINE_OFF = 0.75;
+/** @param {number} nx @param {number} ny @param {number} mag @param {number} ux @param {number} uy @param {boolean} atA @param {boolean} atB */
+export function lineLetGo(nx, ny, mag, ux, uy, atA, atB) {
+  if (mag <= 0.5) return false;
+  const along = nx * ux + ny * uy, across = Math.abs(nx * uy - ny * ux);
+  return across > LINE_OFF || (atB && along > 0.3) || (atA && along < -0.3);
+}

@@ -54,7 +54,7 @@ const dt = 1 / 60;
   const run = G.newRun(3);
   const S = G.levelScene(200, 7, 1, G.levelPlan(7, 1, 0), run.players.slice(0, 1)), r = S.runners[0];
   for (let i = 0; i < 180; i++) G.titleStep(S, dt);
-  S.foes.length = 0;
+  S.foes.length = 0; S.props.length = 0; S.webs.length = 0;   // (no vines or webs: dry, he would hang on one, auto/hang.js)
   G.levelControl(S, r.id, { active: true, nx: 0, ny: -1, mag: 1 });
   let f = 0, minFuel = 1, flew = false;
   for (; f < 60 * 12 && !r.empty; f++) { G.titleStep(S, dt); S.foes.length = 0; minFuel = Math.min(minFuel, r.fuel ?? 1); if (r.flame > 0.5) flew = true; }
