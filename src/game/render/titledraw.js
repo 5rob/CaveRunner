@@ -23,7 +23,7 @@ import { TCELL, TITLE_SOLID, TITLE_VW, TM, titleNoise, titleSolid, titleSolidCel
 import { visPoly } from '../../world/vision.js';
 import { drawBolt, drawLook } from './looks.js';
 import { hubBack, hubGlow, hubLight } from './hubdraw.js';
-import { levelBack, levelGlow, levelLight } from './leveldraw.js';
+import { levelBack, levelBars, levelGlow, levelLight } from './leveldraw.js';
 import { hubState, hubStopX } from '../../auto/hub.js';
 import { MACH_H, hubPayAt, throwR } from '../../auto/throw.js';
 import { drawItemTile, tileItem } from '../../auto/itemtile.js';
@@ -288,6 +288,7 @@ export function titleDraw(ctx, S, cw, ch, cam) {
   ctx.globalAlpha = 1;
   ctx.globalCompositeOperation = 'source-over';
   perkFront(ctx, S);   // the Angry Ghost over the dark
+  if (S.lvl) levelBars(ctx, S);   // the creatures' health bars (leveldraw.js)
   if (S.hub) drawPayHint(ctx, S);
   ctx.restore();
   // a white flash on a big kill, and a vignette

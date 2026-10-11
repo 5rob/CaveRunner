@@ -922,10 +922,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   font:700 12px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.14em;text-transform:uppercase;color:#ffd9b0;
   background:rgba(14,9,26,0.82);border:2px solid #ff8a1f;box-shadow:0 0 14px rgba(255,120,30,0.45);animation:ablock 1.2s ease-in-out infinite}
 @keyframes ablock{0%,100%{opacity:.45}50%{opacity:1}}
-.abossbar{position:absolute;left:12px;right:52px;top:10px;pointer-events:none;display:flex;flex-direction:column;align-items:center;gap:3px}
-.abossbar b{font:900 11px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.2em;text-transform:uppercase;color:#ffd0d0;
+/* (owner, v1.0.44) the boss's bar: big, across the top of the play area, its name above it on the left */
+.abossbar{position:absolute;left:10px;right:56px;top:8px;pointer-events:none;display:flex;flex-direction:column;align-items:stretch;gap:3px}
+.abossbar.dev{right:100px}   /* clear of the Dev ⚙️ too */
+.abossbar b{align-self:flex-start;font:900 13px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.14em;text-transform:uppercase;color:#ffd0d0;
   text-shadow:0 0 6px #ff2a3a,0 1px 0 #000}
-.abosstrack{width:100%;height:10px;border-radius:6px;background:rgba(14,9,26,0.85);border:2px solid #5a1f2a;box-sizing:border-box;overflow:hidden;
+.abosstrack{width:100%;height:16px;border-radius:6px;background:rgba(14,9,26,0.85);border:2px solid #5a1f2a;box-sizing:border-box;overflow:hidden;
   box-shadow:0 0 10px rgba(255,40,60,0.35)}
 .abosstrack i{display:block;height:100%;background:linear-gradient(#ff7a6a,#d01c34);transition:width .2s linear}
 .anavrow,.abag,.abtns{border-radius:14px;background:rgba(14,9,26,0.92);border:2px solid #3d2f5c;box-sizing:border-box}
@@ -30407,6 +30409,21 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const c = chestInRange(S2);
     if (c && c.y != null) drawHint(ctx, c.x - S2.scroll, c.y - 28, "Tap A to open", S2.t);
   }
+  function levelBars(ctx, S2) {
+    const L = levelState(S2), boss = L && L.boss;
+    for (const f of S2.foes) {
+      if (f === boss || !(f.hp > 0) || !(f.hpMax > 0)) continue;
+      const x = f.x - S2.scroll;
+      if (x < -30 || x > TITLE_VW + 30) continue;
+      const w = Math.max(10, Math.min(22, f.r * 2.4)), bx = Math.round(x - w / 2), by = Math.round(f.ty - f.r - 7);
+      ctx.globalAlpha = 0.85;
+      ctx.fillStyle = "#14090f";
+      ctx.fillRect(bx - 0.5, by - 0.5, w + 1, 2.5);
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = "#ff3c4e";
+      ctx.fillRect(bx, by, w * Math.min(1, f.hp / f.hpMax), 1.5);
+    }
+  }
 
   // src/auto/itemtile.js
   var ITEM_SPEND = "#c9cdd6";
@@ -31233,6 +31250,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = "source-over";
     perkFront(ctx, S2);
+    if (S2.lvl) levelBars(ctx, S2);
     if (S2.hub) drawPayHint(ctx, S2);
     ctx.restore();
     if (S2.flash > 0) {
@@ -32957,7 +32975,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         blocked ? h("div", { className: "ablocked" }, "Path blocked") : null,
         boss ? h(
           "div",
-          { className: "abossbar" },
+          { className: "abossbar" + (devOn ? " dev" : "") },
           h("b", null, boss.name),
           h("div", { className: "abosstrack" }, h("i", { style: { width: (100 * boss.hp / Math.max(1, boss.max)).toFixed(1) + "%" } }))
         ) : null,

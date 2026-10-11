@@ -105,3 +105,18 @@ export function levelGlow(ctx, S) {
   const c = chestInRange(S);
   if (c && c.y != null) drawHint(ctx, c.x - S.scroll, c.y - 28, 'Tap A to open', S.t);
 }
+
+// (owner, v1.0.44) a thin health bar over each creature's head, over the dark (so it shows in the cave's black); the
+// boss has its big one across the top of the play area instead (AutoScreen's .abossbar)
+/** @param {CanvasRenderingContext2D} ctx @param {import('../../art/titlescene.js').TitleScene} S */
+export function levelBars(ctx, S) {
+  const L = levelState(S), boss = L && L.boss;
+  for (const f of S.foes) {
+    if (f === boss || !(f.hp > 0) || !(f.hpMax > 0)) continue;
+    const x = f.x - S.scroll;
+    if (x < -30 || x > TITLE_VW + 30) continue;
+    const w = Math.max(10, Math.min(22, f.r * 2.4)), bx = Math.round(x - w / 2), by = Math.round(f.ty - f.r - 7);
+    ctx.globalAlpha = 0.85; ctx.fillStyle = '#14090f'; ctx.fillRect(bx - 0.5, by - 0.5, w + 1, 2.5);
+    ctx.globalAlpha = 1; ctx.fillStyle = '#ff3c4e'; ctx.fillRect(bx, by, w * Math.min(1, f.hp / f.hpMax), 1.5);
+  }
+}

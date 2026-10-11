@@ -536,7 +536,7 @@ export function AutoScreen() {
     h('div', { className: 'aplay' + (drag && drag.over && drag.over.key === 'play' && drag.over.ok ? ' drop' : ''), onPointerDown: playTap },
       h('canvas', { ref: cvs, className: 'aplaycvs' }),
       blocked ? h('div', { className: 'ablocked' }, 'Path blocked') : null,
-      boss ? h('div', { className: 'abossbar' }, h('b', null, boss.name),
+      boss ? h('div', { className: 'abossbar' + (devOn ? ' dev' : '') }, h('b', null, boss.name),
         h('div', { className: 'abosstrack' }, h('i', { style: { width: (100 * boss.hp / Math.max(1, boss.max)).toFixed(1) + '%' } }))) : null,
       devOn ? h('button', { className: 'adevbtn', title: 'Dev', onPointerDown: tap(() => { SFX.fx('open'); setDevOpen(true); }) }, '⚙️') : null,
       h('button', { className: 'pausebtn', title: 'Pause (hold 5 s: dev mode)', onPointerDown: pauseDown }, '⏸')),
