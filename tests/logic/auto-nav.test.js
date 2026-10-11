@@ -52,5 +52,15 @@ r = row(n);
 check('back at the top, the tapped player still marked', n.level === 'players' && r.cells[1].sel && !r.cells[0].sel, r);
 check('a deeper level whose player is gone: shows the top', G.navRow({ level: 'perks', p: 3, g: 0, cat: 'hp' }, run, 4).cells.length === 4);
 
+// the helmet ring is his health (owner): hpFrac on the players row's cells
+{
+  const r2 = G.newRun(4), q = r2.players[0], mx = G.playerStats(q).maxHp;
+  q.hp = mx * 0.4;
+  const c = G.navRow({ level: 'players', p: 0, g: 0, cat: 'hp' }, r2, 4).cells[0];
+  check('players row: each helmet carries his health 0..1', Math.abs(c.hp - 0.4) < 1e-9, c.hp);
+  q.alive = false;
+  check('…fallen: 0', G.hpFrac(q) === 0);
+}
+
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
 process.exit(fails ? 1 : 0);

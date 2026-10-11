@@ -32,7 +32,7 @@ import { PERKS, STAT_PERKS } from '../../data/perks.js';
 import { BAG_SLOTS, EXO_STATS, MAX_PLAYERS, addPlayer, bagAdd, bagSlotOf, fitExo, fitGun, fitMod, fitPerk, healRun, levelCleared, levelFailed, levelSeed, kitMissing, newRun, bagMove, rowMove, rowToBag,
   scrapAt, setActive, spend, unfitExo, unfitMod, unfitPerk } from '../../auto/run.js';
 import { loadAutoRun, saveAutoRun } from '../../auto/save.js';
-import { EXO_NAMES, arcPick, gunArc, navBack, navOpen, navPath, navPick, navRow, navStart } from '../../auto/nav.js';
+import { EXO_NAMES, arcPick, gunArc, navBack, navOpen, navPath, navPick, navRow, navStart, hpFrac } from '../../auto/nav.js';
 import { meterTail, nextSpan, spanLabel } from '../../auto/meters.js';
 import { CARD_ICON, GunCard, ModCard, PerkCard } from '../cards.js';
 import { GunFire, GunIcon, GunStats, PULL_COL } from '../editor.js';
@@ -75,6 +75,7 @@ export function AutoScreen() {
   const [devOpen, setDevOpen] = useState(false);
   // (bug round 2) the player in manual mode (the camera's lock in a level; -1 none): his helmet in the nav wears the crosshair
   const [manual, setManual] = useState(-1);
+  const [, setHpKey] = useState('');   // the players' health (the helmet rings): redraw when it moves
   pausedRef.current = paused || devOpen;
   const cvs = useRef(null);
   /** @type {{ current: import('../../art/titlescene.js').TitleScene | null }} */
@@ -129,6 +130,7 @@ export function AutoScreen() {
       if (L && scene.current && cam.current) levelControl(scene.current, cam.current.lock, null);
       const pk = L && scene.current ? levelPicked(scene.current) : null;
       setManual(pk ? pk.id : -1);
+      setHpKey(run.players.map(q => q ? Math.round(hpFrac(q) * 100) : '').join());
       setBlocked(!!(L && L.blocked));
       if (L) setBagV(L.bagV);   // drops went into the bag: redraw it
       // stage 13: and save it, so a quit mid-level resumes in the hub with the bag kept
@@ -733,16 +735,17 @@ function NavRow({ row, level, cls, pick, open, down, drag, holdHelm, holdGun, me
     }
     const cls2 = 'anavc' + (c.dim ? ' locked' : ' on') + (c.sel ? ' sel' : '') + (c.gun ? ' gun' : '') + (c.helm && level === 'players' && i === manual ? ' manual' : '') + (over === 'g' + i || over === 'p' + i ? ' drop' : '') +
       (pick !== undefined && to === pick ? ' pick' : '');
-    const style = c.col && !c.dim ? { borderColor: c.col, boxShadow: '0 0 10px ' + (c.glow || c.col + '66') } : undefined;
+    const ring = c.helm && c.hp != null;   // a player: the ring round his helmet is his health (owner), in his colour, from the top clockwise
+    const style = c.col && !c.dim ? { borderColor: ring ? undefined : c.col, boxShadow: '0 0 10px ' + (c.glow || c.col + '66'), ...(ring ? { '--hp': (c.hp * 360).toFixed(1) + 'deg', '--hc': c.hp < 0.25 ? '#ff4a3a' : c.col } : {}) } : undefined;
     let inner = null;
     if (c.gun) inner = h(GunIcon, { gun: c.gun });
-    else if (c.helm && c.col) inner = h(HelmetIcon, { col: c.col, size: 35 });     // a player: his helmet (owner)
+    else if (c.helm && c.col) inner = [h(HelmetIcon, { key: 'h', col: c.col, size: 35 }), ring ? h('i', { key: 'r', className: 'ahp' + (c.hp < 0.25 ? ' low' : '') }) : null];     // a player: his helmet (owner)
     else if (c.icon) inner = h(PixIcon, { id: c.icon, size: 20, tint: level === 'exo' ? HUB_MACHINES.exo.hue : undefined });      // themed pixel icons, not emoji (owner)
     else if (c.glyph) inner = h('span', { className: 'anavg' }, c.glyph);
     else if (c.label) inner = h('span', { className: 'anavp', style: { background: c.col } }, c.label);
     const press = c.helm && level === 'players' ? hold : level === 'guns' && c.gun ? gunHold : go;
     return h('div', { key: c.key, className: cls2, 'data-player': level === 'players' ? i : undefined, 'data-open': c.open, 'data-gslot': level === 'guns' ? i : undefined, 'data-pslot': level === 'players' && !c.helm ? i : undefined,
-      title: c.glyph ? c.label : undefined, style, onPointerDown: press }, inner);
+      title: c.glyph ? c.label : undefined, style, onPointerDown: press }, ...(Array.isArray(inner) ? inner : [inner]));
   };
   return h('div', { className: 'anavrow ' + cls + ' l-' + level + (row.shape === 'slots' ? ' slots' : '') + (pick !== undefined ? ' picked' : '') + (slideIn ? ' slide' : ''), 'data-level': level,
     style: row.col ? { borderColor: row.col, boxShadow: '0 0 12px ' + row.col + '55' } : undefined },

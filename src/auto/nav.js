@@ -5,7 +5,7 @@
 // navOpen goes one level down (a tapped cell's `open`), navBack one up (B; at the top it does nothing). navRow says
 // what the row shows. Pure: the state is a plain object, every move returns a new one.
 
-import { EXO_CATS, EXO_GLYPH } from './run.js';
+import { EXO_CATS, EXO_GLYPH, playerStats } from './run.js';
 import { HUB_MACHINES } from './hub.js';
 import { gunHue } from '../spells/guns.js';
 
@@ -23,7 +23,7 @@ const gunCol = (g, a = 1) => 'hsla(' + gunHue(g) + ',85%,62%,' + a + ')';
  * does nothing); `item` a slot's fitted thing (a BagItem, the bag's tile look); `gun` a gun circle's gun.
  * @typedef {{ key: string, glyph?: string, label?: string, col?: string, gun?: Gun | null, item?: BagItem | null,
  *   dim?: boolean, sel?: boolean, open?: string | number,
- *   icon?: string, helm?: boolean, glow?: string }} NavCell
+ *   icon?: string, helm?: boolean, glow?: string, hp?: number }} NavCell
  */
 /** @typedef {{ shape: 'circles' | 'slots' | 'stats', cells: NavCell[], col: string | null }} NavRow */
 
@@ -97,12 +97,15 @@ export function navPick(nav, level) {
  * deeper levels fall back to the top if that player is gone (a new run under the same screen).
  * @param {NavState} nav @param {AutoRun} run @param {number} max the row's circles at the top (MAX_PLAYERS) @returns {NavRow}
  */
+// a player's health, 0..1 (owner: the ring round his helmet is his health bar); fallen: 0
+/** @param {RunPlayer} q */
+export const hpFrac = q => q.alive === false ? 0 : Math.max(0, Math.min(1, (q.hp == null ? 1 : q.hp / playerStats(q).maxHp)));
 export function navRow(nav, run, max) {
   const pl = run.players[nav.p];
   if (nav.level === 'players' || !pl) {
     return { shape: 'circles', col: null, cells: Array.from({ length: max }, (_, i) => {
       const q = run.players[i];
-      return q ? { key: 'p' + i, label: String(i + 1), helm: true, col: q.col, sel: i === nav.p, open: i } : { key: 'p' + i, dim: true };
+      return q ? { key: 'p' + i, label: String(i + 1), helm: true, col: q.col, sel: i === nav.p, open: i, hp: hpFrac(q) } : { key: 'p' + i, dim: true };
     }) };
   }
   const col = pl.col;
