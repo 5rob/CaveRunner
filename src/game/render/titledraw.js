@@ -28,7 +28,7 @@ import { hubState, hubStopX } from '../../auto/hub.js';
 import { MACH_H, hubPayAt, throwR } from '../../auto/throw.js';
 import { drawItemTile, tileItem } from '../../auto/itemtile.js';
 import { perkFront, perkGlow } from './perkdraw.js';
-import { drawGlowShot, drawSolidShot, shotLights } from './autolooks.js';
+import { drawBoom, drawGlowShot, drawSolidShot, shotLights } from './autolooks.js';
 // a pickup drawn as its bag tile: this many world units across
 export const LOOT_TILE = 13;
 
@@ -252,13 +252,7 @@ export function titleDraw(ctx, S, cw, ch, cam) {
     }
   });
   ctx.globalAlpha = 1;
-  for (const b of S.booms) {
-    const q = b.t / b.max;
-    const gr = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r * (0.4 + q));
-    gr.addColorStop(0, 'rgba(255,250,220,' + (1 - q) + ')'); gr.addColorStop(0.4, 'rgba(255,150,40,' + (0.8 * (1 - q)) + ')');
-    gr.addColorStop(1, 'rgba(200,30,0,0)');
-    ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(b.x, b.y, b.r * (0.4 + q), 0, Math.PI * 2); ctx.fill();
-  }
+  for (const b of S.booms) drawBoom(ctx, b);   // autolooks.js: a nuke's and meteor's far bigger
   // the lanterns' warm light (art/props.js propGlow, as the game adds it after the fog)
   for (const p of S.props) if (p.k === 'lamp' && p.x > -60 && p.x < TITLE_VW + 60) {
     /** @type {any} */

@@ -17,6 +17,7 @@ export const SG_LIFE_MAX = 4;
 export const SG_SIZE_MAX = 8;         // the biggest a shot draws (world units)
 export const SG_EXPLODE_MAX = 40;     // the biggest blast (the title's cap)
 export const SG_PIT_MAX = 10;
+export const SG_BEAM_MAX = 200;      // the longest beam (Plasma Beam's 320 is most of the screen)
 export const SG_PELLETS = 12;         // at most this many of one shot at once
 
 // Mods the bridge can't do yet: each fires (or is carried) as nothing, or as if it weren't there. Kept honest
@@ -82,7 +83,8 @@ export function shotsOf(sh, ang, x, y, R, by) {
       fire: sh.fire || 0, bounce: sh.bounce || 0, bounceE: sh.bounceE || 0.92, pierce: sh.pierce || 0, dmg: sh.dmg || 0,
       homing: sh.sid === 'missile' ? Math.max(1, sh.homing || 0) : sh.homing || 0, homeR: sh.sid === 'missile' ? 400 : 0, accel: sh.accel || 0, vmax: (sh.vmax || 0) * SP, chain: sh.chain || 0,
       real: true, by: by == null ? -1 : by, trig: sh.trig || null, timer: sh.timer || 0, pay: sh.payload && sh.payload.length ? sh.payload : null, age: 0,
-      sid: sh.sid || '', light: sh.light || '', lightR: sh.lightR || 0 });
+      sid: sh.sid || '', light: sh.light || '', lightR: sh.lightR || 0,
+      beam: Math.min(SG_BEAM_MAX, sh.beam || 0), ang: a, pull: sh.pull || 0 });
   }
   return out;
 }
