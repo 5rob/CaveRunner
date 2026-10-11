@@ -5,6 +5,20 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.50 — CaveRunner Auto: tall levels, curving zones, faster vine fire (branch `autobattler`)
+Released 2026-10-11 on the branch. Agents `cr-tall` and `cr-zones` (both a little past the box) + PM.
+- Levels are made at the grown play area's height (about twice as tall); with the UI open the camera follows the pack up
+  and down (`camPack`, `TitleCam.view/pack`; scenecanvas re-reads the height each frame). The band is `min(vh*0.24, 50)`
+  to `vh - min(vh*0.08, 20)`; `bandK` scales roof/floor waves and the winding tunnel above the old height; in tall levels a
+  flyer keeps within `TITLE_PACKY` of the team. The hub is unchanged.
+- Zones by warped noise (the old game's level.js way): `titleZoneLook(wx, y)` pushes x by a domain-warped fbm field plus
+  islands, so a zone's skin, moss and bricks curve across the height. Knobs "Auto: level" `autoZoneWarp/Scale/Rag/Isle/Open`
+  (`autoZoneOpen` 0: the caves' shapes still follow x; on, it stalled the autopilot). Tall mines stack up to 5 more tunnels.
+- Vines and silk burn up in a level at `autoVineFire` (1) × the old game's speed (was 0.1: too slow to see).
+- Suites: `auto-tall`, `auto-zones`, `auto-vinefire`; `auto-control` clears vines in its let-go check. Shots `tools/tallshots.js`.
+- Open: props (vines, webs) still follow x zones; `autoZoneOpen` needs the stall found; some seeds with only the starter gun
+  stop at "Path blocked" (seen before this too).
+
 ## v1.0.49 — CaveRunner Auto: the bag grows (branch `autobattler`)
 Released 2026-10-11 on the branch. PM alone (owner's ask).
 - The bag always has `BAG_EXTRA` (3) empty rows after the lowest row holding something (`run.js bagSize`/`bagFit`: `bagAdd`,
