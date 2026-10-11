@@ -21,7 +21,7 @@ check('the scene knows the tier', S.tier === 6);
 until(S, s => s.foes.length > 0, 900);
 const f0 = S.foes.find(f => !f.k.elite && !f.k.boss);
 check('a creature came in', !!f0);
-if (f0) check('it has its kind\'s tier-6 health and damage', f0.hpMax === G.enemyFor(f0.k.id, 6).hp && f0.k.dmg === G.enemyFor(f0.k.id, 6).dmg,
+if (f0) check('it has its kind\'s tier-6 health and damage', f0.hpMax === G.autoFoe(f0.k.id, 6).hp && f0.k.dmg === G.autoFoe(f0.k.id, 6).dmg,
   [f0.hpMax, G.enemyFor(f0.k.id, 6).hp, G.enemyFor(f0.k.id, 1).hp]);
 const Sm = G.titleScene(190, 21);
 until(Sm, s => s.foes.length > 0, 600);
@@ -84,7 +84,7 @@ G.titleStep(S4, dt);
 const B = L4.boss;
 check('the boss comes in, hunting', !!B && B.aggro === true && S4.foes.includes(B));
 if (B) {
-  const base = G.enemyFor(B.k.id, 3);
+  const base = G.autoFoe(B.k.id, 3);
   check('scaled: size ×4, health ×12, damage ×3', Math.abs(B.r - base.r * D.autoBossSize) < 1e-9 && B.hpMax === Math.round(base.hp * D.autoBossHp)
     && B.k.dmg === Math.round(base.dmg * D.autoBossDmg), [B.k.id, B.r, B.hpMax, B.k.dmg]);
   check('its kind is the floor\'s', G.TITLE_KINDS.includes(B.k.id));
@@ -96,5 +96,19 @@ if (B) {
 }
 
 D.autoLvlMin = keep.m; D.autoFoeElites = keep.e; D.autoFoeDmg = keep.d; D.autoLvlBossT = keep.b;
+
+// (v1.0.53, owner: a level 10 team one-shot the boss) Auto's own scaling: health × autoTierHp a level (compounding),
+// steeper than the old game's +35% a floor; the boss and the level's creatures use it
+{
+  const h1 = G.autoFoe('rotta', 1).hp, h10 = G.autoFoe('rotta', 10).hp, old10 = G.enemyFor('rotta', 10).hp;
+  check('level 1 as the old game', h1 === G.enemyFor('rotta', 1).hp, h1);
+  check('level 10: health × autoTierHp^9, far past the old game’s', Math.abs(h10 - h1 * Math.pow(D.autoTierHp, 9)) <= 1 && h10 > 4 * old10, { h1, h10, old10 });
+  check('the boss scales the same', G.bossKind('rotta', 10).hp === Math.round(h10 * D.autoBossHp), G.bossKind('rotta', 10).hp);
+  check('more bite too', G.autoFoe('rotta', 10).dmg > G.autoFoe('rotta', 1).dmg);
+  const S = G.levelScene(200, 3, 1, undefined, undefined, 10);
+  let f = null;
+  for (let i = 0; i < 30 * 40 && !f; i++) { G.titleStep(S, 1 / 30); f = S.foes.find(q => !q.k.elite && !q.k.boss) || null; }
+  check('a level at tier 10: its creatures at autoFoe’s health', !!f && f.hpMax === G.autoFoe(f.k.id, 10).hp, f && [f.k.id, f.hpMax]);
+}
 console.log(fails ? `${fails} FAILED` : 'all passed');
 process.exit(fails ? 1 : 0);

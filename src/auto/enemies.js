@@ -41,10 +41,18 @@ function homeKind(S, x) {
   return home[0][0];
 }
 
-// the boss's kind: enemyFor(id, tier), huge
+// (owner, v1.0.53: a level 10 team one-shot the boss for six levels; the old game's +35% health a floor is too gentle for
+// Auto's growing guns) a creature at the run's tier: the old game's kind at tier 1, its health × DEV.autoTierHp and its
+// bite × autoTierDmg for each level past 1 (compounding); gold as the old game's tier. Pure
+/** @param {string} id @param {number} tier @returns {CreatureKind} */
+export function autoFoe(id, tier) {
+  const k = enemyFor(id, tier), b = enemyFor(id, 1), n = Math.max(0, tier - 1);
+  return Object.assign(k, { hp: Math.max(1, Math.round(b.hp * Math.pow(DEV.autoTierHp, n))), dmg: Math.max(1, Math.round(b.dmg * Math.pow(DEV.autoTierDmg, n))) });
+}
+// the boss's kind: autoFoe(id, tier), huge
 /** @param {string} id @param {number} tier @returns {CreatureKind} */
 export function bossKind(id, tier) {
-  const k = enemyFor(id, tier);
+  const k = autoFoe(id, tier);
   return Object.assign({}, k, { boss: true, r: k.r * DEV.autoBossSize, hp: Math.round(k.hp * DEV.autoBossHp),
     dmg: Math.max(1, Math.round(k.dmg * DEV.autoBossDmg)) });
 }
@@ -84,7 +92,7 @@ export function levelFoes(S, L, teamX) {
     if (!e.f) {
       if (e.x - S.scroll < TITLE_VW + 16 && e.x < S.gen * TCELL - 6) {
         const id = e.id || (e.id = homeKind(S, e.x));
-        e.f = titleFoeAt(S, eliteOf(enemyFor(id, tier), e.u == null ? 0.5 : e.u), e.x);
+        e.f = titleFoeAt(S, eliteOf(autoFoe(id, tier), e.u == null ? 0.5 : e.u), e.x);
       }
       continue;
     }

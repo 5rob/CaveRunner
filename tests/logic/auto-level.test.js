@@ -51,12 +51,14 @@ const P = G.levelPlan(11, undefined, 0), S = G.levelScene(190, 11, 4, P), L = G.
 check('a short level for the run', P.len < 800, P.len);
 check('the team on the start pad, hidden till it comes through, nothing moving', L.phase === 'arrive' && S.runners.every(r => r.hide) && S.pace === 0);
 const dt = 1 / 30, BUDGET = 60 * 30;
-let f = 0, seenArena = -1, arenaStill = true, arenaX = 0, windows = [], lastX = G.levelTeamX(S), stuck = 0, longDig = 0;
+let f = 0, seenArena = -1, arenaStill = true, arenaX = 0, windows = [], lastX = G.levelTeamX(S), stuck = 0, longDig = 0, still3 = false;
 const digT = S.runners.map(() => 0);
 for (; f < BUDGET && !G.levelDone(S); f++) {
   G.titleStep(S, dt);
   if (L.phase === 'arena') { if (seenArena < 0) { seenArena = f; arenaX = G.levelTeamX(S); } else if (Math.abs(G.levelTeamX(S) - arenaX) > 0.01) arenaStill = false; }
-  if (f % 90 === 89) { if (L.phase === 'run' || L.phase === 'out') windows.push(+(G.levelTeamX(S) - lastX).toFixed(1)); lastX = G.levelTeamX(S); }
+  const going = L.phase === 'run' || L.phase === 'out';
+  if (!going) still3 = true;   // (a window that took in a stop: the arena, LEVEL CLEARED, isn't counted)
+  if (f % 90 === 89) { if (going && !still3) windows.push(+(G.levelTeamX(S) - lastX).toFixed(1)); lastX = G.levelTeamX(S); still3 = false; }
   S.runners.forEach((r, i) => { digT[i] = r.dig ? digT[i] + dt : 0; if (digT[i] > 8) longDig++; });
   if (f === 90) check('they came through the pad', L.arrived.every(a => a) && S.runners.every(r => !r.hide));
 }

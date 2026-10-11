@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v1.0.52</title>
-<!-- VERSION = 'v1000052' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v1.0.53</title>
+<!-- VERSION = 'v1000053' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -1096,7 +1096,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v1.0.52';</script>
+<script>const VERSION = 'v1.0.53';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -2057,7 +2057,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "autoGhostRange", g: "autoperks", label: "Angry Ghost: range (units)", min: 20, max: 400, step: 5 }
   );
   DEV_GROUPS.push(["autoperks", "Auto: perks"]);
-  Object.assign(DEV_DEFAULTS, { autoFoeGap0: 4, autoFoeGap1: 1.5, autoFoeCap0: 3, autoFoeCap1: 10, autoFoeDmg: 0.5, autoFoeElites: 2, autoBossSize: 4, autoBossHp: 12, autoBossDmg: 3 });
+  Object.assign(DEV_DEFAULTS, { autoFoeGap0: 4, autoFoeGap1: 1.5, autoFoeCap0: 3, autoFoeCap1: 10, autoFoeDmg: 0.5, autoFoeElites: 2, autoBossSize: 4, autoBossHp: 12, autoBossDmg: 3, autoTierHp: 1.45, autoTierDmg: 1.15 });
   DEV_META.push(
     { k: "autoFoeGap0", g: "autofoes", label: "A new creature every … s, at the level’s start (a trickle)", min: 0.2, max: 20, step: 0.1 },
     { k: "autoFoeGap1", g: "autofoes", label: "… easing to every … s by the boss", min: 0.2, max: 20, step: 0.1 },
@@ -2065,14 +2065,19 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "autoFoeCap1", g: "autofoes", label: "… easing to at most … by the boss", min: 0, max: 24, step: 1 },
     { k: "autoFoeDmg", g: "autofoes", label: "Creatures hurt the players (× their damage)", min: 0, max: 5, step: 0.05 },
     { k: "autoFoeElites", g: "autofoes", label: "Elites a level", min: 0, max: 12, step: 1 },
+    { k: "autoTierHp", g: "autofoes", label: "Creatures’ health × this for each level past 1 (compounding; level 10 ≈ 28× at 1.45)", min: 1, max: 3, step: 0.05 },
+    { k: "autoTierDmg", g: "autofoes", label: "Creatures’ bite × this for each level past 1 (compounding)", min: 1, max: 2, step: 0.01 },
     { k: "autoBossSize", g: "autofoes", label: "Boss size (× a normal one)", min: 1, max: 8, step: 0.25 },
     { k: "autoBossHp", g: "autofoes", label: "Boss health (× a normal one)", min: 1, max: 200, step: 1 },
     { k: "autoBossDmg", g: "autofoes", label: "Boss damage (× a normal one)", min: 0.5, max: 10, step: 0.25 }
   );
   DEV_GROUPS.push(["autofoes", "Auto: enemies"]);
-  Object.assign(DEV_DEFAULTS, { autoMoveK: 0.55, autoJetTilt: 1, autoJetSmoke: 1, autoDeathStop: 1.5, autoTpBlink: 1, autoTpBoomWait: 0.6, autoTpBoomR: 60, autoFuelDrain: 1, autoFuelRegen: 1, autoCtlWait: 3, autoVineFire: 3 });
+  Object.assign(DEV_DEFAULTS, { autoMoveK: 0.55, autoJetTilt: 1, autoJetSmoke: 1, autoDeathStop: 1.5, autoTpBlink: 1, autoTpBoomWait: 0.6, autoTpBoomR: 60, autoFuelDrain: 1, autoFuelRegen: 1, autoCtlWait: 3, autoVineFire: 3, autoVineSpread: 5, autoFireJump: 14, autoFireJumpP: 0.3 });
   DEV_META.push(
     { k: "autoVineFire", g: "autodeath", label: "Auto levels: vines and silk burn up at this × the old game speed (the title menu: 0.1)", min: 0.1, max: 5, step: 0.1 },
+    { k: "autoVineSpread", g: "autodeath", label: "Auto levels: the flames climb a vine this × faster than it burns away (1: only the tip burns)", min: 1, max: 20, step: 0.5 },
+    { k: "autoFireJump", g: "autodeath", label: "Auto levels: fire jumps sideways from a burning vine or strand to vines and webs this near (units)", min: 2, max: 40, step: 1 },
+    { k: "autoFireJumpP", g: "autodeath", label: "… at this chance a fire tick, from each burning stretch", min: 0, max: 1, step: 0.05 },
     { k: "autoCtlWait", g: "autodeath", label: "Manual mode: seconds of the stick at rest before the autopilot takes him back", min: 0, max: 10, step: 0.25 },
     { k: "autoMoveK", g: "autodeath", label: "Hand-steered speed (× the old game’s walk, jet, their pushes; hub and steering a player; the hub’s followers too)", min: 0.2, max: 1.5, step: 0.05 },
     { k: "autoJetTilt", g: "autodeath", label: "Jet flame: the autopilot’s tilt with its speed across (at most)", min: 0, max: 1.5, step: 0.05 },
@@ -12950,7 +12955,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const ex = wx + i * (8 + R() * 8);
       if (i && titleZone(ex, S2) !== titleZone(wx, S2)) break;
       if (ex >= S2.gen * TCELL - 6) break;
-      titleFoeAt(S2, enemyFor(id, S2.tier || 1), ex);
+      titleFoeAt(S2, S2.lvl && S2.lvl.kind ? S2.lvl.kind(id, S2.tier || 1) : enemyFor(id, S2.tier || 1), ex);
     }
   }
   function titleFoeAt(S2, k, ex) {
@@ -14756,16 +14761,31 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         cutArch(S2, p, ((p.u0 || 0.5) + (p.u1 || 0.5)) / 2, true);
         continue;
       }
-      const vf = S2.lvl ? DEV.autoVineFire : TITLE_FIRESPEED;
-      p.len -= kr("firePlant", R) * vf * (p.st === "silk" ? TITLE_WEBFIRE : 1) * dt;
+      const vf = S2.lvl ? DEV.autoVineFire : TITLE_FIRESPEED, rate = kr("firePlant", R) * vf * (p.st === "silk" ? TITLE_WEBFIRE : 1);
+      p.len -= rate * dt;
+      p.lit = Math.max(0, Math.min(p.len, (p.lit ?? p.len) - rate * (S2.lvl ? DEV.autoVineSpread : 1) * dt));
       const pa = p;
-      const tip = p.sw || p.tl ? vinePt(pa, Math.max(0, p.len)) : { x: 0, y: Math.max(0, p.len) }, tx = p.ox + tip.x, ty = p.y + tip.y;
-      if (R() < dt * 30) flameAt(S2, tx - S2.scroll + (R() - 0.5) * 4, ty);
-      if (R() < dt * 4) fireSmoke(S2, tx - S2.scroll, ty);
-      if (ticks) {
-        lightArea(S2, tx, ty, 5, 0.3 * TITLE_FIRESPEED);
-        spreadFrom(S2, tx, ty);
-        for (const o of S2.props) if (!o.burn && !o.gone && !o.arc && burns(o) && Math.abs(o.ox - tx) < 10 && ty > o.y - 4 && ty < o.y + o.len + 4 && R() < 0.25 * Math.min(1, vf)) catchPlant(S2, o);
+      const at = (k) => {
+        const q = p.sw || p.tl ? vinePt(pa, Math.max(0, k)) : { x: 0, y: Math.max(0, k) };
+        return { x: p.ox + q.x, y: p.y + q.y };
+      };
+      const T2 = at(p.len), F2 = at(p.lit), tx = T2.x, ty = T2.y, span = Math.max(0, p.len - p.lit);
+      for (let n = R() < dt * (30 + span * 1.5) ? 1 + Math.floor(span / 25) : 0; n > 0; n--) {
+        const q = at(p.lit + R() * span);
+        flameAt(S2, q.x - S2.scroll + (R() - 0.5) * 4, q.y);
+      }
+      if (R() < dt * (4 + span * 0.2)) {
+        const q = at(p.lit + R() * span);
+        fireSmoke(S2, q.x - S2.scroll, q.y);
+      }
+      const pts = [T2];
+      if (span > 4) pts.push(F2);
+      if (S2.lvl && span > 8) for (let k = 1, n = Math.min(8, Math.floor(span / 8)); k < n; k++) pts.push(at(p.lit + span * k / n));
+      if (ticks) for (const E of pts) {
+        if (E === T2 || E === F2) lightArea(S2, E.x, E.y, 5, 0.3 * TITLE_FIRESPEED);
+        if (S2.lvl) spreadFrom(S2, E.x, E.y, DEV.autoFireJump, DEV.autoFireJumpP);
+        else spreadFrom(S2, E.x, E.y);
+        for (const o of S2.props) if (!o.burn && !o.gone && !o.arc && burns(o) && Math.abs(o.ox - E.x) < 10 && E.y > o.y - 4 && E.y < o.y + o.len + 4 && R() < 0.25 * Math.min(1, vf)) catchPlant(S2, o);
       }
       if (p.len < 3) {
         p.gone = true;
@@ -14775,17 +14795,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     for (const L of S2.webs.slice()) if (L.fu) cutWeb(S2, L, (L.fu[0] + L.fu[1]) / 2, true);
   }
   var burns = (p) => !!FLAMMABLE[p.st] || p.st === "silk";
-  function spreadFrom(S2, wx, y) {
-    const R = S2.rnd, J = TITLE_JUMP;
+  function spreadFrom(S2, wx, y, J = TITLE_JUMP, P2 = TITLE_JUMPP) {
+    const R = S2.rnd;
     for (const p of S2.props) {
-      if (p.burn || p.gone || !burns(p) || R() > TITLE_JUMPP) continue;
+      if (p.burn || p.gone || !burns(p) || R() > P2) continue;
       if (p.arc) {
         const k = archK(p, wx, y, J - 3);
         if (k >= 0) catchArch(S2, p, k / (p.arc.length - 1));
       } else if (Math.abs(p.ox - wx) < J + 1 && y > p.y - J && y < p.y + p.len + J) catchPlant(S2, p);
     }
     for (const L of S2.webs.slice()) {
-      if (L.fu || R() > TITLE_JUMPP) continue;
+      if (L.fu || R() > P2) continue;
       for (let i = 0; i <= 8; i++) {
         const w = titleWebAt(L, i / 8);
         if (Math.hypot(w.x - wx, w.y - y) < J) {
@@ -16643,8 +16663,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     return home[0][0];
   }
+  function autoFoe(id, tier) {
+    const k = enemyFor(id, tier), b = enemyFor(id, 1), n = Math.max(0, tier - 1);
+    return Object.assign(k, { hp: Math.max(1, Math.round(b.hp * Math.pow(DEV.autoTierHp, n))), dmg: Math.max(1, Math.round(b.dmg * Math.pow(DEV.autoTierDmg, n))) });
+  }
   function bossKind(id, tier) {
-    const k = enemyFor(id, tier);
+    const k = autoFoe(id, tier);
     return Object.assign({}, k, {
       boss: true,
       r: k.r * DEV.autoBossSize,
@@ -16686,7 +16710,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (!e.f) {
         if (e.x - S2.scroll < TITLE_VW + 16 && e.x < S2.gen * TCELL - 6) {
           const id = e.id || (e.id = homeKind(S2, e.x));
-          e.f = titleFoeAt(S2, eliteOf(enemyFor(id, tier), e.u == null ? 0.5 : e.u), e.x);
+          e.f = titleFoeAt(S2, eliteOf(autoFoe(id, tier), e.u == null ? 0.5 : e.u), e.x);
         }
         continue;
       }
@@ -16888,6 +16912,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         L.bagV++;
         return true;
       },
+      kind: autoFoe,
       lootCol,
       blockCell,
       blockCol,

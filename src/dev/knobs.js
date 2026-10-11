@@ -684,7 +684,7 @@ DEV_META.push(
   { k: 'autoGhostRange', g: 'autoperks', label: 'Angry Ghost: range (units)', min: 20, max: 400, step: 5 });
 DEV_GROUPS.push(['autoperks', 'Auto: perks']);
 // the level's enemies (auto/enemies.js, stage 6): how hard they hit, the elites, the boss
-Object.assign(DEV_DEFAULTS, { autoFoeGap0: 4, autoFoeGap1: 1.5, autoFoeCap0: 3, autoFoeCap1: 10, autoFoeDmg: 0.5, autoFoeElites: 2, autoBossSize: 4, autoBossHp: 12, autoBossDmg: 3 });
+Object.assign(DEV_DEFAULTS, { autoFoeGap0: 4, autoFoeGap1: 1.5, autoFoeCap0: 3, autoFoeCap1: 10, autoFoeDmg: 0.5, autoFoeElites: 2, autoBossSize: 4, autoBossHp: 12, autoBossDmg: 3, autoTierHp: 1.45, autoTierDmg: 1.15 });
 DEV_META.push(
   { k: 'autoFoeGap0',   g: 'autofoes', label: 'A new creature every … s, at the level’s start (a trickle)', min: 0.2, max: 20, step: 0.1 },
   { k: 'autoFoeGap1',   g: 'autofoes', label: '… easing to every … s by the boss', min: 0.2, max: 20, step: 0.1 },
@@ -692,15 +692,20 @@ DEV_META.push(
   { k: 'autoFoeCap1',   g: 'autofoes', label: '… easing to at most … by the boss', min: 0, max: 24, step: 1 },
   { k: 'autoFoeDmg',    g: 'autofoes', label: 'Creatures hurt the players (× their damage)', min: 0, max: 5, step: 0.05 },
   { k: 'autoFoeElites', g: 'autofoes', label: 'Elites a level', min: 0, max: 12, step: 1 },
+  { k: 'autoTierHp',    g: 'autofoes', label: 'Creatures’ health × this for each level past 1 (compounding; level 10 ≈ 28× at 1.45)', min: 1, max: 3, step: 0.05 },
+  { k: 'autoTierDmg',   g: 'autofoes', label: 'Creatures’ bite × this for each level past 1 (compounding)', min: 1, max: 2, step: 0.01 },
   { k: 'autoBossSize',  g: 'autofoes', label: 'Boss size (× a normal one)', min: 1, max: 8, step: 0.25 },
   { k: 'autoBossHp',    g: 'autofoes', label: 'Boss health (× a normal one)', min: 1, max: 200, step: 1 },
   { k: 'autoBossDmg',   g: 'autofoes', label: 'Boss damage (× a normal one)', min: 0.5, max: 10, step: 0.25 });
 DEV_GROUPS.push(['autofoes', 'Auto: enemies']);
 // the jetpack (art/titlescene.js jetStep, feedback round 2: the old game's flame and smoke) and a death (auto/death.js: the ragdoll,
 // the slow stop, Tap A, the helmet light, the blast, home)
-Object.assign(DEV_DEFAULTS, { autoMoveK: 0.55, autoJetTilt: 1, autoJetSmoke: 1, autoDeathStop: 1.5, autoTpBlink: 1, autoTpBoomWait: 0.6, autoTpBoomR: 60, autoFuelDrain: 1, autoFuelRegen: 1, autoCtlWait: 3, autoVineFire: 3 });
+Object.assign(DEV_DEFAULTS, { autoMoveK: 0.55, autoJetTilt: 1, autoJetSmoke: 1, autoDeathStop: 1.5, autoTpBlink: 1, autoTpBoomWait: 0.6, autoTpBoomR: 60, autoFuelDrain: 1, autoFuelRegen: 1, autoCtlWait: 3, autoVineFire: 3, autoVineSpread: 5, autoFireJump: 14, autoFireJumpP: 0.3 });
 DEV_META.push(
   { k: 'autoVineFire',   g: 'autodeath', label: 'Auto levels: vines and silk burn up at this × the old game speed (the title menu: 0.1)', min: 0.1, max: 5, step: 0.1 },
+  { k: 'autoVineSpread', g: 'autodeath', label: 'Auto levels: the flames climb a vine this × faster than it burns away (1: only the tip burns)', min: 1, max: 20, step: 0.5 },
+  { k: 'autoFireJump',   g: 'autodeath', label: 'Auto levels: fire jumps sideways from a burning vine or strand to vines and webs this near (units)', min: 2, max: 40, step: 1 },
+  { k: 'autoFireJumpP',  g: 'autodeath', label: '… at this chance a fire tick, from each burning stretch', min: 0, max: 1, step: 0.05 },
   { k: 'autoCtlWait',    g: 'autodeath', label: 'Manual mode: seconds of the stick at rest before the autopilot takes him back', min: 0, max: 10, step: 0.25 },
   { k: 'autoMoveK',      g: 'autodeath', label: 'Hand-steered speed (× the old game’s walk, jet, their pushes; hub and steering a player; the hub’s followers too)', min: 0.2, max: 1.5, step: 0.05 },
   { k: 'autoJetTilt',    g: 'autodeath', label: 'Jet flame: the autopilot’s tilt with its speed across (at most)', min: 0, max: 1.5, step: 0.05 },

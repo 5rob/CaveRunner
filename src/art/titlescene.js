@@ -134,7 +134,7 @@ export const TITLE_HOME = {
 /** @typedef {{ x: number, y: number, r: number, t: number, max: number, sid?: string }} TBoom */
 /** @typedef {{ pts: { x: number, y: number }[], t: number, col: string }} TZap */
 // a prop: `ox` its world x (not `wx`: art/props.js reads that as an arch's or a vine's sideways bend)
-/** @typedef {{ k: string, st: string, ox: number, x: number, y: number, len: number, seed: number, side: number, burn: number, ac: number, ar: number,
+/** @typedef {{ k: string, st: string, ox: number, x: number, y: number, len: number, seed: number, side: number, burn: number, ac: number, ar: number, lit?: number,
  *   arc?: number[][], thick?: number, t?: number, span?: number, host?: TProp, gone?: boolean, u0?: number, u1?: number, alen?: number, u?: number,
  *   fall?: boolean, vy?: number, sw?: number, swv?: number, sj?: number, tl?: number[], tq?: number[], wx?: number, wy?: number, wvx?: number,
  *   wvy?: number, wu?: number, on?: TProp | null, drop?: boolean, links?: number }} TProp */
@@ -150,7 +150,7 @@ export const TITLE_HOME = {
 // a finite level in the scrolling ring (CaveRunner Auto, auto/level.js levelScene): zp its plan (made whole up front); step runs
 // after titleStep's own; data is the level's own state. S.pace (0..) scales the scroll (auto/pilot.js)
 // hurt(S, i, dmg): a creature hit player i for dmg (its kind's damage; auto/enemies.js levelHurt)
-/** @typedef {{ zp: TitlePlan, step?: (S: TitleScene, dt: number) => void, data?: any, hurt?: (S: TitleScene, i: number, dmg: number) => void,
+/** @typedef {{ zp: TitlePlan, kind?: (id: string, tier: number) => CreatureKind, step?: (S: TitleScene, dt: number) => void, data?: any, hurt?: (S: TitleScene, i: number, dmg: number) => void,
  *   loot?: (S: TitleScene, f: Enemy) => BagItem[], fits?: (S: TitleScene, it: BagItem) => boolean, take?: (S: TitleScene, it: BagItem) => boolean, lootCol?: (it: BagItem) => string,
  *   blockCell?: (B: import('../auto/blocked.js').ZoneBlock, wx: number, y: number, cy: number, fy: number, cur: number) => number,
  *   blockCol?: (S: TitleScene, B: import('../auto/blocked.js').ZoneBlock, c: number, wx: number, cy: number, fy: number) => void, blockKind?: (S: TitleScene, wx: number) => string, free?: (S: TitleScene, r?: TRunner) => boolean, fuel?: (S: TitleScene, r: TRunner) => { fuel: number, refuel: number } | null, spawn?: (S: TitleScene) => { gap: number, cap: number } }} TitleLevel */
@@ -743,7 +743,7 @@ function addFoe(S, x, cap = TITLE_FOES) {
     const ex = wx + i * (8 + R() * 8);
     if (i && titleZone(ex, S) !== titleZone(wx, S)) break;          // a swarm stops at its zone's end
     if (ex >= S.gen * TCELL - 6) break;                               // … and where the terrain isn't made yet
-    titleFoeAt(S, enemyFor(id, S.tier || 1), ex);
+    titleFoeAt(S, S.lvl && S.lvl.kind ? S.lvl.kind(id, S.tier || 1) : enemyFor(id, S.tier || 1), ex);   // (a level: its own scaling, auto/enemies.js autoFoe)
   }
 }
 // one creature of kind k (enemyFor, or an elite / a boss: CaveRunner Auto) at world x: a jellyfish in the open, a spider
@@ -2175,17 +2175,28 @@ function stepFire(S, dt) {
     if (p.arc) { cutArch(S, p, ((p.u0 || 0.5) + (p.u1 || 0.5)) / 2, true); continue; }   // lit by hand: cut there
     // up from its tip (silk TITLE_WEBFIRE × faster), at TITLE_FIRESPEED × the game's (a CaveRunner Auto level: DEV.autoVineFire ×,
     // owner v1.0.50: it was too slow to see); a swinging one's tip where it hangs
-    const vf = S.lvl ? DEV.autoVineFire : TITLE_FIRESPEED;
-    p.len -= kr('firePlant', R) * vf * (p.st === 'silk' ? TITLE_WEBFIRE : 1) * dt;
+    const vf = S.lvl ? DEV.autoVineFire : TITLE_FIRESPEED, rate = kr('firePlant', R) * vf * (p.st === 'silk' ? TITLE_WEBFIRE : 1);
+    p.len -= rate * dt;
+    // (Auto's level, owner v1.0.53: the fire didn't climb till the bit below burnt away) the flames run up ahead of the burnt
+    // part: alight from p.lit (from the root) down to the tip, the front climbing at DEV.autoVineSpread × the burn (the title: 1,
+    // only the tip as ever)
+    p.lit = Math.max(0, Math.min(p.len, (p.lit ?? p.len) - rate * (S.lvl ? DEV.autoVineSpread : 1) * dt));
     /** @type {any} */
     const pa = p;
-    const tip = p.sw || p.tl ? vinePt(pa, Math.max(0, p.len)) : { x: 0, y: Math.max(0, p.len) }, tx = p.ox + tip.x, ty = p.y + tip.y;
-    if (R() < dt * 30) flameAt(S, tx - S.scroll + (R() - 0.5) * 4, ty);
-    if (R() < dt * 4) fireSmoke(S, tx - S.scroll, ty);
-    if (ticks) {
-      lightArea(S, tx, ty, 5, 0.3 * TITLE_FIRESPEED);
-      spreadFrom(S, tx, ty);
-      for (const o of S.props) if (!o.burn && !o.gone && !o.arc && burns(o) && Math.abs(o.ox - tx) < 10 && ty > o.y - 4 && ty < o.y + o.len + 4 && R() < 0.25 * Math.min(1, vf)) catchPlant(S, o);
+    /** @param {number} k a point k along it from the root, world */
+    const at = k => { const q = p.sw || p.tl ? vinePt(pa, Math.max(0, k)) : { x: 0, y: Math.max(0, k) }; return { x: p.ox + q.x, y: p.y + q.y }; };
+    const T = at(p.len), F = at(p.lit), tx = T.x, ty = T.y, span = Math.max(0, p.len - p.lit);
+    for (let n = R() < dt * (30 + span * 1.5) ? 1 + Math.floor(span / 25) : 0; n > 0; n--) { const q = at(p.lit + R() * span); flameAt(S, q.x - S.scroll + (R() - 0.5) * 4, q.y); }
+    if (R() < dt * (4 + span * 0.2)) { const q = at(p.lit + R() * span); fireSmoke(S, q.x - S.scroll, q.y); }
+    // (Auto's level, owner v1.0.53) the whole burning stretch lights what's beside it, sideways too: a point every 8 along it
+    // (at most 8), jumping DEV.autoFireJump at autoFireJumpP a tick; the title: the tip and the front, as ever
+    const pts = [T];
+    if (span > 4) pts.push(F);
+    if (S.lvl && span > 8) for (let k = 1, n = Math.min(8, Math.floor(span / 8)); k < n; k++) pts.push(at(p.lit + span * k / n));
+    if (ticks) for (const E of pts) {
+      if (E === T || E === F) lightArea(S, E.x, E.y, 5, 0.3 * TITLE_FIRESPEED);
+      if (S.lvl) spreadFrom(S, E.x, E.y, DEV.autoFireJump, DEV.autoFireJumpP); else spreadFrom(S, E.x, E.y);
+      for (const o of S.props) if (!o.burn && !o.gone && !o.arc && burns(o) && Math.abs(o.ox - E.x) < 10 && E.y > o.y - 4 && E.y < o.y + o.len + 4 && R() < 0.25 * Math.min(1, vf)) catchPlant(S, o);
     }
     if (p.len < 3) { p.gone = true; lightArea(S, tx, ty, 6, 0.5); }
   }
@@ -2198,16 +2209,16 @@ const burns = p => !!FLAMMABLE[p.st] || p.st === 'silk';
 
 // Fire jumps across (owner, v0.0.164): a flame at world point (wx, y) lights any vine, arch or web line
 // within TITLE_JUMP of it, at TITLE_JUMPP a fire tick
-/** @param {TitleScene} S @param {number} wx @param {number} y */
-function spreadFrom(S, wx, y) {
-  const R = S.rnd, J = TITLE_JUMP;
+/** @param {TitleScene} S @param {number} wx @param {number} y @param {number} [J] how near @param {number} [P] the chance a tick */
+function spreadFrom(S, wx, y, J = TITLE_JUMP, P = TITLE_JUMPP) {
+  const R = S.rnd;
   for (const p of S.props) {
-    if (p.burn || p.gone || !burns(p) || R() > TITLE_JUMPP) continue;
+    if (p.burn || p.gone || !burns(p) || R() > P) continue;
     if (p.arc) { const k = archK(p, wx, y, J - 3); if (k >= 0) catchArch(S, p, k / (p.arc.length - 1)); }
     else if (Math.abs(p.ox - wx) < J + 1 && y > p.y - J && y < p.y + p.len + J) catchPlant(S, p);
   }
   for (const L of S.webs.slice()) {
-    if (L.fu || R() > TITLE_JUMPP) continue;
+    if (L.fu || R() > P) continue;
     for (let i = 0; i <= 8; i++) { const w = titleWebAt(L, i / 8); if (Math.hypot(w.x - wx, w.y - y) < J) { catchWeb(S, L, i / 8); break; } }
   }
 }

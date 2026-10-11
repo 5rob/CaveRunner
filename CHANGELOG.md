@@ -5,6 +5,21 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.53 — CaveRunner Auto: fire climbs vines and webs and jumps sideways; steeper level scaling (branch `autobattler`)
+Released 2026-10-12 on the branch. PM alone.
+- Owner: a vine's fire didn't climb till the bit below had burnt. A burning plant now has a flame front `p.lit` (from the
+  root) running up `autoVineSpread` (5) × faster than it burns away (`autoVineFire` 3, as before): alight from `lit` to
+  the tip, flames and smoke along it. Webs: a lit web line is cut into hanging silk strands (as before), which burn the same way.
+- Sideways: in a level the whole burning stretch (a point every 8, at most 8) lights vines, arches and web lines within
+  `autoFireJump` (14) at `autoFireJumpP` (0.3) a fire tick (`spreadFrom` takes the reach and chance). The title: as ever.
+- Level scaling (owner: a level 10 team one-shot the boss for six levels): the old game's +35% health a floor (level 10:
+  ~4×) is gone from Auto; `autoFoe(id, tier)` (auto/enemies.js; the scene's `S.lvl.kind`) is the tier 1 kind with health ×
+  `autoTierHp` (1.45) and bite × `autoTierDmg` (1.15) a level past 1, compounding (level 10: ~28× health, the boss 48 → 336
+  on a rat). The boss, elites and the trickle all use it. Suite `auto-enemies` checks it.
+- `auto-level`: a 3 s window that took in a stop (arena, LEVEL CLEARED) isn't counted as stuck (the faster fire shifted one onto the restart).
+- Suite `auto-vinefire` (flames ahead of the burnt part; a vine 12 off and a web line beside catch); shots
+  `tools/vinefireshots.js`.
+
 ## v1.0.52 — CaveRunner Auto: the bottom of a level holds against blasts (branch `autobattler`)
 Released 2026-10-12 on the branch. PM alone.
 - Owner: strong guns blasted the cave away and the team ran along the bottom edge. `deepK` (art/titlescene.js): a blast
