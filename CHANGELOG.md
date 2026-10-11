@@ -5,6 +5,12 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.47 — CaveRunner Auto: the play area grows over the nav and bag (branch `autobattler`)
+Released 2026-10-11 on the branch. PM alone (owner's ask).
+- A double tap on the play area (`BIG_TAP`) grows it down to the bag's bottom edge, over the nav and the bag (`bigPlay`:
+  a bigger flex-basis taken back by a negative bottom margin, animated; `.aplay.big`); again, or B, back. The stick and
+  A/B stay on top. Known: the scene keeps its height (dark space under the floor); the owner will say. Browser `auto-bigbag`.
+
 ## v1.0.46 — CaveRunner Auto: the bag grows over the play area (branch `autobattler`)
 Released 2026-10-11 on the branch. PM alone (owner's ask).
 - A double tap on an empty bag slot (`BIG_TAP` 350 ms) grows the bag up over the nav and the play area (`.abag.big`, a
