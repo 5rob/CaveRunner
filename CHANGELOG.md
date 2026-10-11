@@ -5,6 +5,12 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.49 — CaveRunner Auto: the bag grows (branch `autobattler`)
+Released 2026-10-11 on the branch. PM alone (owner's ask).
+- The bag always has `BAG_EXTRA` (3) empty rows after the lowest row holding something (`run.js bagSize`/`bagFit`: `bagAdd`,
+  `newRun` and the screen's render fit it), up to `BAG_MAX` (100 rows; only then full). The big bag is opaque.
+  Suites: `auto-run` (grow/shrink/full), `auto-loot` and `auto-run` fill to BAG_MAX, browser `auto-screen` (91 slots).
+
 ## v1.0.48 — CaveRunner Auto: the camera after the grown play area (branch `autobattler`)
 Released 2026-10-11 on the branch. PM alone (owner's bug).
 - A scene made while the play area was grown (the hub to a level, or back) took the grown height, so shrunk back its camera

@@ -377,6 +377,7 @@ chest slow ×0.5. Grab radius 35% of a tile.
 | feedback round 2 (f) | done | v1.0.30 | PM: B hides the nav (a play tap shows it), one fixed camera (no gestures), jet thrust by the stick's height, auto-loot race. Agent (~13 min, worktree `cr-roam`): hold a helmet in a level → manual mode (scroll stops, damped follow forward/back, team behind, B lets go). Open: the view doesn't follow inside the arena; followers can trail the wrong side backing up. |
 | feedback round 2 (g) | done | v1.0.31 | PM alone. Owner: the jetpack way too fast and strong → `autoJetK` 0.55 (climb, sideways, push). |
 | gun drag | done | v1.0.43 | PM alone. Owner: drag a gun out of the nav's Guns row into the bag (`gunToBag`, `gunMove`; slide off a gun circle before the hold). |
+| growing bag | done | v1.0.49 | PM alone. Owner: 3 empty rows always after the last item, auto expanding (`bagSize`, `bagFit`, `BAG_EXTRA`, `BAG_MAX` 700). |
 | big play fix | done | v1.0.48 | PM alone. Owner: the camera didn't come back to the players; a scene made while grown used the grown height (`make` uses `hh - bigPlay`). |
 | big play | done | v1.0.47 | PM alone. Owner: double tap the play area grows it down over the nav and bag; again or B back (`bigPlay`). Open: the scene doesn't fill the extra room (owner to say). |
 | big bag | done | v1.0.46 | PM alone. Owner: double tap an empty bag slot grows the bag over the play area; again or B back (`bigBag`, `.abag.big`). |

@@ -14,7 +14,7 @@ art, …), never `game/`, `ui/` or `main.js`. Everything here is pure: the logic
 - `run.js` — the run model (stage 1).
   - `newRun(seed?)` → `AutoRun` `{ tier: 1, players: [newPlayer(0)], bag, seed }` (between levels, stage 4b: `levelSeed(run)`, `healRun(run)` to each player's `maxHp`, `levelCleared(run)` tier + 1 and heal); `newPlayer(i)` → `RunPlayer` (colour
     `TITLE_COLS[i]`, `guns` ×4, `active`, `exo` { hp, speed, jet, carrot } ×5 slots each, `perks` ×6, `hp`, `alive`).
-  - The bag: `BAG_SLOTS` = 70 (10 rows × 7), `null` = empty. Items are `BagItem` `{ kind, n, … }`: `gun` (`gun`, never
+  - The bag: 7 across, `null` = empty; it grows (v1.0.49): `bagFit` keeps `BAG_EXTRA` (3) empty rows after the lowest row holding something, up to `BAG_MAX` (700; only then full; `BAG_SLOTS` 70 is only the old size). Items are `BagItem` `{ kind, n, … }`: `gun` (`gun`, never
     stacks), `mod` (`id`, stacks by `stackKey`), `exo` (`cat`, `tier`, stacks by both), `perk` (`id`, stacks by id),
     `gold` / `red` / `green` (stacks without limit). `itemKey`, `bagCount(run, kind)`, `bagAdd(run, item)` (onto its
     stack, else the first empty slot; returns what didn't fit, null if it all did), `spend(run, kind, n)`.
