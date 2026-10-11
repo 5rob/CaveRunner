@@ -1,5 +1,5 @@
 // CaveRunner Auto's screen (stage 2): the title's ▶ opens it; the four sections with their counts (4 nav
-// circles, 70 bag slots, 4 buttons); the play area's scene animates with the run's players; the bag scrolls;
+// circles, the bag's rows (the items' row + 3, v1.0.49), 4 buttons); the play area's scene animates with the run's players; the bag scrolls;
 // the saved run's items show with their counts; ⏸ opens the pause menu, and holds the scene.
 const { launch } = require('../chromium');
 const path = require('path');
@@ -24,6 +24,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     bagAdd(run, { kind: 'mod', id: 'bolt', n: 3 });
     run.players[0].guns[0] = scratchPistol();   // (stage 8a: a gun with a mod fitted, Bolt in slot 1 of 3)
     run.players[0].guns[1] = null;
+    run.bag.length = 70; run.bag[69] = { kind: 'red', n: 1 };   // (row 10: the bag grows 3 rows past it, v1.0.49, and scrolls)
     saveAutoRun(run);
   });
   check('the title has ▶ and ⚙ only (no slots)', !!(await page.$('.tstart')) && !!(await page.$('.tgear')) && !(await page.$('.tslot')));
@@ -41,13 +42,13 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
     gold: (document.querySelector('.aslot.k-gold') || {}).textContent, mod: Array.from(document.querySelectorAll('.aslot.k-mod')).map(e => e.textContent).join('|'),
     gun: !!document.querySelector('.aslot.k-gun canvas'),
   }));
-  check('four sections: play area, 4 nav circles (2 players), 70 bag slots; the stick (a dome at the left end), B, A',
-    n.play === 1 && n.nav === 4 && n.players === 2 && n.slots === 70 && n.btns === 'astick|abtn ab|abtn aa', n);
+  check('four sections: play area, 4 nav circles (2 players), 13 bag rows (the last item at row 10, + 3); the stick (a dome at the left end), B, A',
+    n.play === 1 && n.nav === 4 && n.players === 2 && n.slots === 91 && n.btns === 'astick|abtn ab|abtn aa', n);
   const pill = await page.evaluate(() => { const p = document.querySelector('.astick').getBoundingClientRect(), b = document.querySelector('.abtns').getBoundingClientRect(), k = document.querySelector('.apill').getBoundingClientRect(), cs = getComputedStyle(document.querySelector('.astick'));
     return { left: p.left - b.left, rise: b.top - p.top, w: p.width, kmid: k.top + k.height / 2 - document.querySelector('.abtn.ab').getBoundingClientRect().top, ta: cs.touchAction }; });
   check('(bug round 1) the stick: the bar\'s left end rising over it, the knob level with the buttons\' top, touch-action none', pill.left <= 0 && pill.rise > 30 && pill.w > 120 && Math.abs(pill.kmid) < 3 && pill.ta === 'none', pill);
   // (stage 5a: each player's starter kit puts a Buzzsaw in the bag: 2 players, a stack of 2)
-  check('the bag shows the run: gun icon, gold 120, mod ×3, the Buzzsaws', n.full === 4 && n.gun && /120/.test(n.gold) && /3/.test(n.mod), n);
+  check('the bag shows the run: gun icon, gold 120, mod ×3, the Buzzsaws, the red at row 10', n.full === 5 && n.gun && /120/.test(n.gold) && /3/.test(n.mod), n);
   const order = await page.evaluate(() => ['.aplay', '.anav', '.abag', '.abtns'].map(s => document.querySelector(s).getBoundingClientRect().top));
   check('top to bottom: play, nav, bag, buttons', order.every((v, i) => !i || v > order[i - 1]), order);
   const ph = await page.evaluate(() => document.querySelector('.aplay').getBoundingClientRect().height / innerHeight);

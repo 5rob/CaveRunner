@@ -14,6 +14,21 @@ import { mapCleared, mapFailed, mapsOf } from './maps.js';
 import { resetGun } from '../spells/guns.js';
 
 export const BAG_COLS = 7, BAG_ROWS = 10, BAG_SLOTS = BAG_COLS * BAG_ROWS;
+// (owner, v1.0.49) the bag grows: always BAG_EXTRA empty rows after the lowest row holding something (bagFit), up to
+// BAG_MAX slots (only then is it full)
+export const BAG_EXTRA = 3, BAG_MAX = BAG_COLS * 100;
+/** the bag's slots now: its rows down to the lowest one holding something, + BAG_EXTRA @param {AutoRun} run */
+export function bagSize(run) {
+  let last = -1;
+  for (let i = run.bag.length - 1; i >= 0; i--) if (run.bag[i]) { last = i; break; }
+  return Math.min(BAG_MAX, (Math.floor(last / BAG_COLS) + 1 + BAG_EXTRA) * BAG_COLS);
+}
+/** pad or trim the bag to bagSize (only empty slots go) @param {AutoRun} run */
+export function bagFit(run) {
+  const want = bagSize(run);
+  if (run.bag.length > want) run.bag.length = want;
+  while (run.bag.length < want) run.bag.push(null);
+}
 export const MAX_PLAYERS = 4, GUN_SLOTS = 4, EXO_SLOTS = 5, PERK_SLOTS = 6, CARROT_MAX = 5;
 /** @type {ExoCat[]} */
 export const EXO_CATS = ['hp', 'speed', 'jet'];   // owner (v1.0.35): Carrot binned (run.exo.carrot stays for old saves)
@@ -80,6 +95,7 @@ export function newRun(seed) {
   const run = { tier: 1, players: [newPlayer(0)], bag: Array(BAG_SLOTS).fill(null), seed: seed || 1 + Math.floor(Math.random() * 1e6) };
   mapsOf(run);
   giveKit(run, run.players[0]);
+  bagFit(run);
   return run;
 }
 
@@ -125,11 +141,13 @@ export function bagAdd(run, item) {
     const s = run.bag.find(it => it && itemKey(it) === key);
     if (s) { s.n += item.n; return null; }
   }
+  bagFit(run);
   const i = run.bag.indexOf(null);
   if (i < 0) return item;
-  if (key) { run.bag[i] = item; return null; }
+  if (key) { run.bag[i] = item; bagFit(run); return null; }
   // a gun (n is always 1): one slot each
   run.bag[i] = Object.assign({}, item, { n: 1 });
+  bagFit(run);
   return item.n > 1 ? Object.assign({}, item, { n: item.n - 1 }) : null;
 }
 

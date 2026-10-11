@@ -47,6 +47,7 @@ until(S, s => !s.coins.length, 300);
 check('the gold too', G.bagCount(run, 'gold') > gold0, G.bagCount(run, 'gold'));
 
 // ---- a full bag: they wait ----
+run.bag.length = G.BAG_MAX;
 for (let i = 0; i < run.bag.length; i++) run.bag[i] = { kind: 'perk', id: 'x' + i, n: 1 };
 const f2 = G.titleFoeAt(S, G.enemyFor('rotta', 2), S.scroll + r0.x + 160);     // well ahead: a drop left behind off-screen is lost
 G.titleKill(S, f2);

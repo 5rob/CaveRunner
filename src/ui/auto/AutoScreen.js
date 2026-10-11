@@ -31,7 +31,7 @@ import { levelBoss } from '../../auto/enemies.js';
 import { MODS, famCol } from '../../spells/mods.js';
 import { HUB_MACHINES } from '../../auto/hub.js';
 import { PERKS, STAT_PERKS } from '../../data/perks.js';
-import { BAG_SLOTS, EXO_STATS, MAX_PLAYERS, addPlayer, bagAdd, bagSlotOf, fitExo, fitGun, fitMod, fitPerk, healRun, levelCleared, levelFailed, levelSeed, kitMissing, newRun, bagMove, rowMove, rowToBag, gunToBag, gunMove, unfitGun,
+import { bagFit, EXO_STATS, MAX_PLAYERS, addPlayer, bagAdd, bagSlotOf, fitExo, fitGun, fitMod, fitPerk, healRun, levelCleared, levelFailed, levelSeed, kitMissing, newRun, bagMove, rowMove, rowToBag, gunToBag, gunMove, unfitGun,
   bagCount, scrapAt, setActive, spend, unfitExo, unfitMod, unfitPerk } from '../../auto/run.js';
 import { loadAutoRun, saveAutoRun } from '../../auto/save.js';
 import { EXO_NAMES, arcPick, gunArc, navBack, navOpen, navPath, navPick, navRow, navStart, hpFrac } from '../../auto/nav.js';
@@ -604,7 +604,7 @@ export function AutoScreen() {
       h('button', { className: 'pausebtn', title: 'Pause (hold 5 s: dev mode)', onPointerDown: pauseDown }, '⏸')),
     h(NavStack, { nav, run, openAt, down, drag, holdHelm, holdGun, meters, pins, metersOf, pinNav, hidden: navHidden, manual }),
     h('div', { className: 'abag' + (bigBag ? ' big' : '') + (drag && drag.over && drag.over.key === 'bag' && drag.over.ok ? ' drop' : ''), style: { marginTop: -bigBag + 'px' } },
-      ...Array.from({ length: BAG_SLOTS }, (_, i) => h(BagSlot, { key: i, i, it: flies.some(f => f.fresh && f.slot === i) ? null : run.bag[i], down, empty: emptyDown,
+      ...Array.from({ length: (bagFit(run), run.bag.length) }, (_, i) => h(BagSlot, { key: i, i, it: flies.some(f => f.fresh && f.slot === i) ? null : run.bag[i], down, empty: emptyDown,
         lift: !!drag && drag.src.from === 'bag' && drag.src.i === i,
         drop: !!drag && !!drag.over && drag.over.ok && drag.over.key === 's' + i }))),
     h('div', { className: 'abtns' },

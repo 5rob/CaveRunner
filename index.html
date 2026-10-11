@@ -1016,7 +1016,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .abag{position:relative;flex:1 1 0;min-height:0;transition:margin-top .28s cubic-bezier(.3,.8,.3,1);overflow-y:auto;overflow-x:hidden;touch-action:pan-y;-webkit-overflow-scrolling:touch;
   display:grid;grid-template-columns:repeat(7,1fr);grid-auto-rows:min-content;gap:6px;padding:8px;overscroll-behavior:contain}
 /* (owner, v1.0.46) grown up over the play area: above the nav and the play area's buttons */
-.abag.big{z-index:8;background:rgba(14,9,26,0.98)}
+.abag.big{z-index:8;background:#0e091a}
 .abag.big+.abtns{z-index:9}   /* the stick's dome still over it */
 .aslot{position:relative;aspect-ratio:1;border-radius:10px;background:#1d1531;border:2px solid rgba(255,255,255,0.1);
   box-sizing:border-box;display:flex;align-items:center;justify-content:center;overflow:hidden}
@@ -14910,6 +14910,20 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 
   // src/auto/run.js
   var BAG_COLS = 7, BAG_ROWS = 10, BAG_SLOTS = BAG_COLS * BAG_ROWS;
+  var BAG_EXTRA = 3, BAG_MAX = BAG_COLS * 100;
+  function bagSize(run) {
+    let last = -1;
+    for (let i = run.bag.length - 1; i >= 0; i--) if (run.bag[i]) {
+      last = i;
+      break;
+    }
+    return Math.min(BAG_MAX, (Math.floor(last / BAG_COLS) + 1 + BAG_EXTRA) * BAG_COLS);
+  }
+  function bagFit(run) {
+    const want = bagSize(run);
+    if (run.bag.length > want) run.bag.length = want;
+    while (run.bag.length < want) run.bag.push(null);
+  }
   var MAX_PLAYERS = 4, GUN_SLOTS = 4, EXO_SLOTS = 5, PERK_SLOTS = 6, CARROT_MAX = 5;
   var EXO_CATS = ["hp", "speed", "jet"];
   var EXO_STATS = { hp: ["hp"], speed: ["walk"], jet: ["fuel", "refuel"], carrot: ["carrot"] };
@@ -14968,6 +14982,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const run = { tier: 1, players: [newPlayer(0)], bag: Array(BAG_SLOTS).fill(null), seed: seed || 1 + Math.floor(Math.random() * 1e6) };
     mapsOf(run);
     giveKit(run, run.players[0]);
+    bagFit(run);
     return run;
   }
   function healRun(run) {
@@ -15003,13 +15018,16 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         return null;
       }
     }
+    bagFit(run);
     const i = run.bag.indexOf(null);
     if (i < 0) return item;
     if (key) {
       run.bag[i] = item;
+      bagFit(run);
       return null;
     }
     run.bag[i] = Object.assign({}, item, { n: 1 });
+    bagFit(run);
     return item.n > 1 ? Object.assign({}, item, { n: item.n - 1 }) : null;
   }
   function bagSlotOf(run, item) {
@@ -33313,7 +33331,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       h(
         "div",
         { className: "abag" + (bigBag ? " big" : "") + (drag && drag.over && drag.over.key === "bag" && drag.over.ok ? " drop" : ""), style: { marginTop: -bigBag + "px" } },
-        ...Array.from({ length: BAG_SLOTS }, (_, i) => h(BagSlot, {
+        ...Array.from({ length: (bagFit(run), run.bag.length) }, (_, i) => h(BagSlot, {
           key: i,
           i,
           it: flies.some((f) => f.fresh && f.slot === i) ? null : run.bag[i],

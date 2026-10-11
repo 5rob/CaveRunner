@@ -15,8 +15,8 @@ let run = G.newRun();
 const p0 = run.players[0];
 // (stage 5a: a new run comes with the starter kit, a gun in slot 1 and a Buzzsaw in the bag; the checks after these
 // clear both, so they run on the empty run they were written for)
-check('newRun: tier 1, one player, 70 bag slots, only the Buzzsaw in it', run.tier === 1 && run.players.length === 1
-  && run.bag.length === 70 && G.BAG_SLOTS === 70 && filled(run) === 1 && run.bag[0].kind === 'mod' && run.bag[0].id === 'saw');
+check('newRun: tier 1, one player, 4 rows of bag slots (the Buzzsaw row + 3), only the Buzzsaw in it', run.tier === 1 && run.players.length === 1
+  && run.bag.length === 28 && filled(run) === 1 && run.bag[0].kind === 'mod' && run.bag[0].id === 'saw');
 check('the player: blue, the starter gun in slot 1 (active), 3 empty, 6 perk slots, 5 per exo category, alive at full health',
   p0.col === G.TITLE_COLS[0] && p0.guns.length === 4 && !!p0.guns[0] && p0.active === 0 && p0.guns.slice(1).every(g => g === null) && p0.perks.length === 6
   && G.EXO_CATS.every(c => p0.exo[c].length === 5) && p0.alive && p0.hp === G.PLAYER_HP);
@@ -48,12 +48,12 @@ check('spend: the last of a stack empties its slot', G.spend(run, 'red', 5) && !
 // ---- bag overflow ----
 {
   const r = G.newRun();
-  for (let i = 0; i < 70; i++) G.bagAdd(r, { kind: 'gun', gun: gun(), n: 1 });
+  for (let i = 0; i < G.BAG_MAX; i++) G.bagAdd(r, { kind: 'gun', gun: gun(), n: 1 });   // (v1.0.49: the bag grows to BAG_MAX)
   const g = { kind: 'gun', gun: gun(), n: 1 };
-  check('a full bag hands back what did not fit', filled(r) === 70 && G.bagAdd(r, g) === g);
+  check('a full bag hands back what did not fit', filled(r) === G.BAG_MAX && G.bagAdd(r, g) === g);
   const m = { kind: 'mod', id: 'spark', n: 4 };
   check('a new stack has no room either', G.bagAdd(r, m) === m);
-  r.bag[69] = { kind: 'gold', n: 1 };
+  r.bag[G.BAG_MAX - 1] = { kind: 'gold', n: 1 };
   check('…but a full bag still takes onto a stack it has', G.bagAdd(r, { kind: 'gold', n: 9 }) === null && G.bagCount(r, 'gold') === 10);
 }
 
@@ -90,7 +90,7 @@ check('unfitMod refuses an empty slot', !G.unfitMod(run, 0, 2, 0));
   const r = G.newRun();
   const g = gun(); g.slots = ['spark', null];
   r.players[0].guns[0] = g;
-  for (let i = 0; i < 70; i++) r.bag[i] = { kind: 'gun', gun: gun(), n: 1 };
+  for (let i = 0; i < G.BAG_MAX; i++) r.bag[i] = { kind: 'gun', gun: gun(), n: 1 };
   check('unfitMod refuses into a full bag (the mod stays)', !G.unfitMod(r, 0, 0, 0) && g.slots[0] === 'spark');
   r.bag[5] = { kind: 'mod', id: 'bounce', n: 2 };
   check('fitMod refuses when the swapped-out mod has no room, nothing changes', !G.fitMod(r, 5, 0, 0, 0)
@@ -252,6 +252,18 @@ check('the Auto tab holds the auto group', G.DEV_TABS.some(t => t[0] === 'auto' 
   check('gunMove: swap, the firing gun follows', G.gunMove(run, 0, 2, 1) && pl.guns[1] === g0 && !pl.guns[2] && pl.active === 1);
   pl.guns[3] = g1;
   check('out of the bag goes the firing one: another fitted gun fires', G.gunToBag(run, 0, 1, run.bag.findIndex(b => !b)) && pl.active === 3);
+}
+// (owner, v1.0.49) the bag grows: always 3 empty rows after the lowest row holding something, up to BAG_MAX
+{
+  const run = G.newRun();
+  run.bag.fill(null); G.bagFit(run);
+  check('an empty bag: 3 empty rows', run.bag.length === 21, run.bag.length);
+  for (let i = 0; i < 30; i++) G.bagAdd(run, { kind: 'perk', id: 'p' + i, n: 1 });
+  check('30 things in (5 rows: the last row part full): 5 + 3 rows', run.bag.length === 56 && run.bag.filter(Boolean).length === 30, run.bag.length);
+  run.bag[29] = null; run.bag[28] = null; G.bagFit(run);
+  check('the last row emptied: it shrinks to the rows left + 3', run.bag.length === 49, run.bag.length);
+  run.bag.length = G.BAG_MAX; run.bag.fill({ kind: 'perk', id: 'z', n: 1 });
+  check('at BAG_MAX: full, a new thing comes back', !!G.bagAdd(run, { kind: 'perk', id: 'new', n: 1 }) && run.bag.length === G.BAG_MAX);
 }
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
 process.exit(fails ? 1 : 0);
