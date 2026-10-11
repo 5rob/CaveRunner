@@ -95,6 +95,16 @@ export function levelSpawn(S, L) {
   return { gap: DEV.autoFoeGap0 + (DEV.autoFoeGap1 - DEV.autoFoeGap0) * p, cap: Math.round(DEV.autoFoeCap0 + (DEV.autoFoeCap1 - DEV.autoFoeCap0) * p) };
 }
 
+// (owner, v1.0.54: blasts dug out the ground under the exit pad) where blasts stop biting at world x (titlescene.js deepK):
+// DEV.autoHardEdge over the bottom edge, rising to the exit pad's floor over its flat stretch, sloping down HARD_RAMP either side
+const HARD_RAMP = 50;
+/** @param {import('../art/titlescene.js').TitleScene} S @param {LevelPlan} P @param {number} wx */
+export function levelHardY(S, P, wx) {
+  const low = S.vh - DEV.autoHardEdge, e0 = P.arena.x1, e1 = e0 + LVL_EXITW;
+  const d = wx < e0 ? e0 - wx : wx > e1 ? wx - e1 : 0, t = Math.max(0, 1 - d / HARD_RAMP);
+  return t > 0 ? low + (Math.min(low, titleFloor(P.exitX, S)) - low) * t : low;
+}
+
 // nothing blocks yet: arriving, or the team still short of the level's wall; with r, that runner's own front (he flies
 // ahead of the team: he mustn't start a free dig into the wall)
 /** @param {import('../art/titlescene.js').TitleScene} S @param {LevelState} L @param {import('../art/titlescene.js').TRunner} [r] */
@@ -136,7 +146,7 @@ export function levelScene(vh, seed, n, plan = levelPlan(seed), team, tier = 1, 
     loot: (S, f) => killLoot(f.k.boss ? 'boss' : f.k.elite ? 'elite' : 'foe', S.tier || 1, S.rnd, f.k.gold),
     fits: (_S, it) => !L.run || bagFits(L.run, it),
     take: (_S, it) => { if (L.run && bagAdd(L.run, it)) return false; L.bagV++; return true; },
-    kind: autoFoe, lootCol, blockCell, blockCol, blockKind, free: (S, r) => levelFree(S, L, r), fuel: (_S, r) => (team && team[r.id] ? playerStats(team[r.id]) : null), spawn: S => levelSpawn(S, L) }, team, tier });
+    kind: autoFoe, hardY: (S, wx) => levelHardY(S, plan, wx), lootCol, blockCell, blockCol, blockKind, free: (S, r) => levelFree(S, L, r), fuel: (_S, r) => (team && team[r.id] ? playerStats(team[r.id]) : null), spawn: S => levelSpawn(S, L) }, team, tier });
   L.elites = elitePlan(plan, S.rnd);
   L.chests = chestPlan(plan);
   L.meters = S.runners.map(() => ({ dmg: meterNew(), hp: meterNew(), dealt: 0 }));

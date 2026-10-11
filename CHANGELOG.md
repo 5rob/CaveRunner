@@ -5,6 +5,13 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.54 — CaveRunner Auto: the ground under the exit pad holds (branch `autobattler`)
+Released 2026-10-12 on the branch. PM alone.
+- Owner: players blasted out the ground under the exit teleporter. The blast's hard line (`deepK(S, y, wx)`) is now the
+  level's own, `S.lvl.hardY` = auto/level.js `levelHardY`: `autoHardEdge` over the bottom edge, rising to the exit pad's
+  floor over its flat stretch and sloping back down `HARD_RAMP` (50) either side.
+- Suite `auto-deep` checks it.
+
 ## v1.0.53 — CaveRunner Auto: fire climbs vines and webs and jumps sideways; steeper level scaling (branch `autobattler`)
 Released 2026-10-12 on the branch. PM alone.
 - Owner: a vine's fire didn't climb till the bit below had burnt. A burning plant now has a flame front `p.lit` (from the

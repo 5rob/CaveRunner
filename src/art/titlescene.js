@@ -66,10 +66,12 @@ export const TM = { AIR: 0, ROCK: 1, MOSS: 2, BRICK: 3, WOOD: 4, CHAR: 5, BEAM: 
 export const TITLE_SOLID = [0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1];
 const SOLID = TITLE_SOLID;
 // (Auto's level, owner v1.0.52: strong guns blasted the cave away down to the bottom edge) a blast bites less toward the
-// play area's bottom (a tall level: the old height's stay as they were): × 1 down to DEV.autoHardDeep above the bottom edge, easing to 0 at autoHardEdge above it (pure)
-/** @param {{ lvl?: unknown, vh: number, top: number, bot: number }} S @param {number} y */
-export const deepK = (S, y) => (!S.lvl || DEV.autoHardDeep <= 0 || S.bot - S.top <= MINE_TALL ? 1
-  : Math.max(0, Math.min(1, (S.vh - DEV.autoHardEdge - y) / DEV.autoHardDeep)));
+// play area's bottom (a tall level: the old height's stay as they were): × 1 down to DEV.autoHardDeep above the hard line,
+// easing to 0 at it: autoHardEdge above the bottom edge, or the level's own (S.lvl.hardY at world x wx: auto/level.js raises it
+// under the exit pad, v1.0.54) (pure)
+/** @param {{ lvl?: { hardY?: (S: any, wx: number) => number }, vh: number, top: number, bot: number }} S @param {number} y @param {number} [wx] */
+export const deepK = (S, y, wx) => (!S.lvl || DEV.autoHardDeep <= 0 || S.bot - S.top <= MINE_TALL ? 1
+  : Math.max(0, Math.min(1, ((S.lvl.hardY && wx != null ? S.lvl.hardY(S, wx) : S.vh - DEV.autoHardEdge) - y) / DEV.autoHardDeep)));
 const FUEL = [0, 0, 2, 0, 3, 0, 3, 3, 1, 0, 1, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 1, 1];   // the fuel kind each burns as (world/fire.js: 1 grass, 2 moss, 3 timber)
 export const FRAME_GAP = 72;          // the built-up layers: a timber frame every this far (world units)
 export const FRAME_W = 36;            // its width, post to post
@@ -150,7 +152,7 @@ export const TITLE_HOME = {
 // a finite level in the scrolling ring (CaveRunner Auto, auto/level.js levelScene): zp its plan (made whole up front); step runs
 // after titleStep's own; data is the level's own state. S.pace (0..) scales the scroll (auto/pilot.js)
 // hurt(S, i, dmg): a creature hit player i for dmg (its kind's damage; auto/enemies.js levelHurt)
-/** @typedef {{ zp: TitlePlan, kind?: (id: string, tier: number) => CreatureKind, step?: (S: TitleScene, dt: number) => void, data?: any, hurt?: (S: TitleScene, i: number, dmg: number) => void,
+/** @typedef {{ zp: TitlePlan, kind?: (id: string, tier: number) => CreatureKind, hardY?: (S: TitleScene, wx: number) => number, step?: (S: TitleScene, dt: number) => void, data?: any, hurt?: (S: TitleScene, i: number, dmg: number) => void,
  *   loot?: (S: TitleScene, f: Enemy) => BagItem[], fits?: (S: TitleScene, it: BagItem) => boolean, take?: (S: TitleScene, it: BagItem) => boolean, lootCol?: (it: BagItem) => string,
  *   blockCell?: (B: import('../auto/blocked.js').ZoneBlock, wx: number, y: number, cy: number, fy: number, cur: number) => number,
  *   blockCol?: (S: TitleScene, B: import('../auto/blocked.js').ZoneBlock, c: number, wx: number, cy: number, fy: number) => void, blockKind?: (S: TitleScene, wx: number) => string, free?: (S: TitleScene, r?: TRunner) => boolean, fuel?: (S: TitleScene, r: TRunner) => { fuel: number, refuel: number } | null, spawn?: (S: TitleScene) => { gap: number, cap: number } }} TitleLevel */
@@ -814,7 +816,7 @@ export function titleCarve(S, sx, y, r, rim = true) {
   let n = 0;
   for (let c = Math.max(c0, S.gen - S.ncol); c <= Math.min(c1, S.gen - 1); c++) for (let rr = r0; rr <= r1; rr++) {
     const d = Math.hypot((c + 0.5) * TCELL - wx, (rr + 0.5) * TCELL - y), i = ci(S, c, rr), m = S.cells[i];
-    const reach = rim ? r * deepK(S, (rr + 0.5) * TCELL) : r;   // (a blast: less toward the bottom edge; the saw: as ever)
+    const reach = rim ? r * deepK(S, (rr + 0.5) * TCELL, (c + 0.5) * TCELL) : r;   // (a blast: less toward the bottom edge; the saw: as ever)
     if (d <= reach) { if (m !== TM.AIR) { S.cells[i] = TM.AIR; n++; S.burning.delete(c * S.rows + rr); } }
     else if (rim && d <= reach + 2 && SOLID[m] && m !== TM.CHAR) S.cells[i] = TM.CHAR;
   }

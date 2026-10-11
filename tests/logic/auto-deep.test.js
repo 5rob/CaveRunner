@@ -29,5 +29,12 @@ hole(S.vh - 4);
 check('… and never into the bottom edge', [...Array(Math.floor(D.autoHardEdge / T)).keys()].every(k => G.titleCell(S, c0, S.rows - 1 - k) !== G.TM.AIR));
 const saw = hole(edge - 30, false);
 check('the saw cuts down there as ever', saw >= 20, saw);
+// (v1.0.54, owner: the ground under the exit pad got blasted out) the hard line rises to the exit pad's floor
+{
+  const P = G.levelState(S).plan, fx = P.exitX, fy = G.titleFloor(fx, S);
+  check('under the exit pad: nothing bites at its floor or below', G.deepK(S, fy, fx) === 0 && G.deepK(S, fy + 30, fx) === 0, G.deepK(S, fy, fx));
+  check('… a little over it, less than out in the level', G.deepK(S, fy - 20, fx) < G.deepK(S, fy - 20, P.z0 + 200), [G.deepK(S, fy - 20, fx), G.deepK(S, fy - 20, P.z0 + 200)]);
+  check('… sloping back down past it', G.levelHardY(S, P, P.arena.x1 - 25) > fy && G.levelHardY(S, P, P.arena.x1 - 25) < S.vh - D.autoHardEdge && G.levelHardY(S, P, P.arena.x1 - 200) === S.vh - D.autoHardEdge);
+}
 console.log(fails ? `${fails} FAILED` : 'all passed');
 process.exit(fails ? 1 : 0);

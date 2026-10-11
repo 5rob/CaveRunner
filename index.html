@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v1.0.53</title>
-<!-- VERSION = 'v1000053' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v1.0.54</title>
+<!-- VERSION = 'v1000054' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -1096,7 +1096,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v1.0.53';</script>
+<script>const VERSION = 'v1.0.54';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -12241,7 +12241,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   };
   var TITLE_SOLID = [0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1];
   var SOLID = TITLE_SOLID;
-  var deepK = (S2, y) => !S2.lvl || DEV.autoHardDeep <= 0 || S2.bot - S2.top <= MINE_TALL ? 1 : Math.max(0, Math.min(1, (S2.vh - DEV.autoHardEdge - y) / DEV.autoHardDeep));
+  var deepK = (S2, y, wx) => !S2.lvl || DEV.autoHardDeep <= 0 || S2.bot - S2.top <= MINE_TALL ? 1 : Math.max(0, Math.min(1, ((S2.lvl.hardY && wx != null ? S2.lvl.hardY(S2, wx) : S2.vh - DEV.autoHardEdge) - y) / DEV.autoHardDeep));
   var FUEL = [0, 0, 2, 0, 3, 0, 3, 3, 1, 0, 1, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 1, 1];
   var FRAME_GAP = 72;
   var FRAME_W = 36;
@@ -13051,7 +13051,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     let n = 0;
     for (let c = Math.max(c0, S2.gen - S2.ncol); c <= Math.min(c1, S2.gen - 1); c++) for (let rr2 = r0; rr2 <= r1; rr2++) {
       const d = Math.hypot((c + 0.5) * TCELL - wx, (rr2 + 0.5) * TCELL - y), i = ci(S2, c, rr2), m = S2.cells[i];
-      const reach2 = rim ? r * deepK(S2, (rr2 + 0.5) * TCELL) : r;
+      const reach2 = rim ? r * deepK(S2, (rr2 + 0.5) * TCELL, (c + 0.5) * TCELL) : r;
       if (d <= reach2) {
         if (m !== TM.AIR) {
           S2.cells[i] = TM.AIR;
@@ -16874,6 +16874,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const p = Math.max(0, Math.min(1, (levelTeamX(S2) - L.plan.z0) / Math.max(1, L.plan.len)));
     return { gap: DEV.autoFoeGap0 + (DEV.autoFoeGap1 - DEV.autoFoeGap0) * p, cap: Math.round(DEV.autoFoeCap0 + (DEV.autoFoeCap1 - DEV.autoFoeCap0) * p) };
   }
+  var HARD_RAMP = 50;
+  function levelHardY(S2, P2, wx) {
+    const low = S2.vh - DEV.autoHardEdge, e0 = P2.arena.x1, e1 = e0 + LVL_EXITW;
+    const d = wx < e0 ? e0 - wx : wx > e1 ? wx - e1 : 0, t = Math.max(0, 1 - d / HARD_RAMP);
+    return t > 0 ? low + (Math.min(low, titleFloor(P2.exitX, S2)) - low) * t : low;
+  }
   function levelFree(S2, L, r) {
     if (L.phase === "arrive") return true;
     return levelTeamX(S2) < L.plan.wallX - WALL_FREE && (!r || r.x + PW + S2.scroll + 6 < L.plan.wallX);
@@ -16913,6 +16919,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         return true;
       },
       kind: autoFoe,
+      hardY: (S3, wx) => levelHardY(S3, plan, wx),
       lootCol,
       blockCell,
       blockCol,
