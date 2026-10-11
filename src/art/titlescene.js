@@ -118,7 +118,7 @@ export const TITLE_HOME = {
  *   nav: { F: any, fx: number, fy: number, t: number }, stepT?: number, sawS?: number, rst?: { t?: number }, rub?: string, rubWas?: boolean,
  *   hide?: boolean, out?: boolean, outT?: number, stand?: boolean, dealt?: number, shieldT?: number, fuel?: number, empty?: boolean, jetSt?: { cut: number, onT: number, start: boolean, gap?: number }, sputN?: number, dry?: boolean, shieldHit?: number, ghost?: { x: number, y: number, cd: number, fired: number } | null, clr?: { p: number, g: number } | null, clrT?: number,
  *   ctl?: RunnerCtl | null, ctlWas?: boolean, cvx?: number, jetIn?: { nx: number, ny: number } | null, jx?: number, jy?: number, smokeAcc?: number, smokeN?: number, rag?: import('../world/ragdoll.js').Ragdoll | null, lamp?: boolean,
- *   hang?: TProp | WebLine | null, hangGo?: number, swing?: number, ctlIdle?: number }} TRunner */
+ *   hang?: TProp | WebLine | null, hangGo?: number, swing?: number, ctlIdle?: number, navT?: number }} TRunner */
 /** a player steered by hand (CaveRunner Auto, feedback round 2: the selected player in a level): the pill stick's push
  * @typedef {{ active: boolean, nx: number, ny: number, mag: number }} RunnerCtl */
 // a fixed strip in place of the scrolling ring (CaveRunner Auto's hub, auto/hub.js): w columns, each cell's material from
@@ -136,7 +136,7 @@ export const TITLE_HOME = {
 /** @typedef {{ x: number, y: number, r: number, t: number, max: number, sid?: string }} TBoom */
 /** @typedef {{ pts: { x: number, y: number }[], t: number, col: string }} TZap */
 // a prop: `ox` its world x (not `wx`: art/props.js reads that as an arch's or a vine's sideways bend)
-/** @typedef {{ k: string, st: string, ox: number, x: number, y: number, len: number, seed: number, side: number, burn: number, ac: number, ar: number, lit?: number,
+/** @typedef {{ k: string, st: string, ox: number, x: number, y: number, len: number, seed: number, side: number, burn: number, ac: number, ar: number, lit?: number, ch?: number,
  *   arc?: number[][], thick?: number, t?: number, span?: number, host?: TProp, gone?: boolean, u0?: number, u1?: number, alen?: number, u?: number,
  *   fall?: boolean, vy?: number, sw?: number, swv?: number, sj?: number, tl?: number[], tq?: number[], wx?: number, wy?: number, wvx?: number,
  *   wvy?: number, wu?: number, on?: TProp | null, drop?: boolean, links?: number }} TProp */
@@ -1340,6 +1340,7 @@ function pickTarget(S, r) {
 // rock in his way: out comes the Buzzsaw (TITLE_SAW), and he cuts through until he's in the open again
 /** @param {TitleScene} S @param {TRunner} r @param {number} dx @param {number} dy @param {string} why (counted in S.digWhy) */
 function startDig(S, r, dx, dy, why) {
+  if (navAround(S, r, dx, dy, why)) return;
   // CaveRunner Auto's level (stage 5b, the clearing rule): his own best clearing gun, else a teammate's; no gun in play
   // can clear rock: he doesn't dig (the scroll's push: blocked, the pilot stops the team; his own aim: somewhere else)
   // (feedback round 1: early in a level, S.lvl.free, nothing blocks: he digs through as on the title)
@@ -1359,6 +1360,52 @@ function startDig(S, r, dx, dy, why) {
   if (!r.dig) { r.keep = r.kit; r.kit = kitOf('saw', [], TITLE_SAW); r.swap = 0.2; S.digs++; r.digY = r.y; S.digWhy[why] = (S.digWhy[why] || 0) + 1; }
   const d = Math.hypot(dx, dy) || 1;
   r.dig = Math.max(r.dig, 1e-3); r.clearT = 0; r.dx = dx / d; r.dy = dy / d;
+}
+// Round it before sawing it (CaveRunner Auto's level, owner v1.0.55: the saws dug out the ground under the exit pad): the
+// rock's average normal where he meets it (rockNormal) against the way on (+x); facing back at him less than DEV.autoNavCut
+// (dot product), a floor or slope he rises over, a roof he dips under; steeper, or tried for autoNavGive s: he saws (as ever).
+// Not by hand, not the title
+/** @param {TitleScene} S @param {TRunner} r @param {number} dx @param {number} dy @param {string} why */
+function navAround(S, r, dx, dy, why) {
+  if (!S.lvl || r.dig || ctlOn(r) || why === 'down' || (r.navT || 0) > DEV.autoNavGive) return false;
+  const n = rockNormal(S, r, dx, dy);
+  if (!n || -n.x > DEV.autoNavCut || Math.abs(n.y) < 0.2) return false;
+  r.navT = (r.navT || 0) + 2 * (1 / 30);
+  // over: open air above it he can reach (jetOver: the fuel wait too); under: a gap below as tall as he is; neither: he saws
+  if (n.y < 0) {
+    // (dry in the air: the tank fills only on the ground) out of the rock and down he drops to land, not hung waiting up there
+    if (fuelOn(S) && !r.ground && (r.empty || !fuelCan(r))) {
+      let k = 1;
+      while (k <= 4 && boxRock(S, r.x, r.y - k)) k++;
+      if (k <= 4) { r.y -= k; r.vy = Math.max(r.vy, 0); r.modeT = Math.min(r.modeT, 0); return true; }
+    }
+    return jetOver(S, r);
+  }
+  const sx = r.x + PW / 2 + 10;
+  let run = 0;
+  for (let y = r.y; y < S.bot + 6; y += TCELL) {
+    if (titleSolid(S, sx, y) || titleSolid(S, sx + 8, y)) { run = 0; continue; }
+    if ((run += TCELL) >= PH + 4) {
+      if (!boxRock(S, r.x, r.y + 2)) r.y += 2;
+      setMode(S, r, 'fly', 1); r.ground = false; r.burst = false;
+      r.tx = r.x + 12; r.ty = y - PH; r.retarget = 0.8; r.vy = Math.max(r.vy, 40);
+      return true;
+    }
+  }
+  return false;
+}
+// the average normal (unit, pointing out of the rock) of the rock round where he meets it: 9 out from his middle the way he
+// was going (dx, dy), the free-to-solid ring of radius 10 summed; null: no rock there
+/** @param {TitleScene} S @param {TRunner} r @param {number} dx @param {number} dy */
+export function rockNormal(S, r, dx, dy) {
+  const d = Math.hypot(dx, dy) || 1, cx = r.x + PW / 2 + 9 * dx / d, cy = r.y + PH / 2 + 9 * dy / d;
+  let sx = 0, sy = 0, n = 0;
+  for (let i = 0; i < 24; i++) {
+    const a = i * Math.PI / 12, ux = Math.cos(a), uy = Math.sin(a);
+    if (titleSolid(S, cx + ux * 10, cy + uy * 10)) { sx -= ux; sy -= uy; n++; }
+  }
+  const m = Math.hypot(sx, sy);
+  return n && m > 1e-6 ? { x: sx / m, y: sy / m } : null;
 }
 // a wall ahead he can't clear (CaveRunner Auto's level): open air above it, tall enough for him, within reach? Up he
 // jets to it (flying, aimed just over it). false: there's none (blocked all the way)
@@ -1393,6 +1440,7 @@ function setMode(S, r, mode, t) {
 function stepRunnerMove(S, r, dt) {
   // (the picked one keeps the whole screen, steered or not: never snapped back inside 0.62; on the autopilot he walks back)
   r.modeT -= dt; r.retarget -= dt;
+  r.navT = Math.max(0, (r.navT || 0) - dt / 2);   // (navAround's tries: they wear off once he's moving freely)
   // (bug round 2) semi-automatic: the picked player (r.ctl) plays by himself till the stick is pushed; let go, he's back on
   // the autopilot from where he is (a fresh target; in the air, flying)
   const on = ctlOn(r);
@@ -2178,23 +2226,29 @@ function stepFire(S, dt) {
     // up from its tip (silk TITLE_WEBFIRE × faster), at TITLE_FIRESPEED × the game's (a CaveRunner Auto level: DEV.autoVineFire ×,
     // owner v1.0.50: it was too slow to see); a swinging one's tip where it hangs
     const vf = S.lvl ? DEV.autoVineFire : TITLE_FIRESPEED, rate = kr('firePlant', R) * vf * (p.st === 'silk' ? TITLE_WEBFIRE : 1);
-    p.len -= rate * dt;
-    // (Auto's level, owner v1.0.53: the fire didn't climb till the bit below burnt away) the flames run up ahead of the burnt
-    // part: alight from p.lit (from the root) down to the tip, the front climbing at DEV.autoVineSpread × the burn (the title: 1,
-    // only the tip as ever)
-    p.lit = Math.max(0, Math.min(p.len, (p.lit ?? p.len) - rate * (S.lvl ? DEV.autoVineSpread : 1) * dt));
+    // Auto's level (owner v1.0.55: only the tip looked alight) three states along it: unburnt from the root to p.lit, burning
+    // p.lit..p.ch (alight all along, drawn so: titledraw), charred and crumbling p.ch..p.len (DEV.autoVineAsh long), its end
+    // falling away as ash; the title: burning at the tip, as ever (p.ch = p.len)
+    const was = p.len;
+    if (S.lvl) { p.ch = (p.ch ?? p.len) - rate * dt; p.len = Math.min(p.len, p.ch + DEV.autoVineAsh); } else p.ch = p.len -= rate * dt;
+    const top = Math.max(0, p.ch);
+    // the flames run up ahead of it: the front climbing at DEV.autoVineSpread × the burn (the title: 1, only the tip); in a level
+    // (owner v1.0.55: not so even) spurting and stalling by noise along it and in time, ± DEV.autoVineJitter
+    const lit0 = p.lit ?? top, jit = S.lvl ? 1 + DEV.autoVineJitter * (2 * titleNoise(lit0 * 0.12 + p.seed * 97, p.seed * 31 + S.t * 1.5) - 1) : 1;
+    p.lit = Math.max(0, Math.min(top, lit0 - rate * (S.lvl ? DEV.autoVineSpread * jit : 1) * dt));
     /** @type {any} */
     const pa = p;
     /** @param {number} k a point k along it from the root, world */
     const at = k => { const q = p.sw || p.tl ? vinePt(pa, Math.max(0, k)) : { x: 0, y: Math.max(0, k) }; return { x: p.ox + q.x, y: p.y + q.y }; };
-    const T = at(p.len), F = at(p.lit), tx = T.x, ty = T.y, span = Math.max(0, p.len - p.lit);
+    const T = at(top), F = at(p.lit), tx = T.x, ty = T.y, span = Math.max(0, top - p.lit);
+    if (S.lvl && was > p.len && R() < dt * 25) { const q = at(p.len); burst(S, q.x - S.scroll, q.y, 1, R() < 0.3 ? '#ff7a2a' : '#2a201a', 15, 'chunk', 0.7); }
     for (let n = R() < dt * (30 + span * 1.5) ? 1 + Math.floor(span / 25) : 0; n > 0; n--) { const q = at(p.lit + R() * span); flameAt(S, q.x - S.scroll + (R() - 0.5) * 4, q.y); }
     if (R() < dt * (4 + span * 0.2)) { const q = at(p.lit + R() * span); fireSmoke(S, q.x - S.scroll, q.y); }
-    // (Auto's level, owner v1.0.53) the whole burning stretch lights what's beside it, sideways too: a point every 8 along it
-    // (at most 8), jumping DEV.autoFireJump at autoFireJumpP a tick; the title: the tip and the front, as ever
+    // (Auto's level, owner v1.0.53/55) the whole burning stretch lights what's beside it, sideways too: a point every 6 along it
+    // (at most 16), jumping DEV.autoFireJump at autoFireJumpP a tick; the title: the tip and the front, as ever
     const pts = [T];
     if (span > 4) pts.push(F);
-    if (S.lvl && span > 8) for (let k = 1, n = Math.min(8, Math.floor(span / 8)); k < n; k++) pts.push(at(p.lit + span * k / n));
+    if (S.lvl && span > 6) for (let k = 1, n = Math.min(16, Math.floor(span / 6)); k < n; k++) pts.push(at(p.lit + span * k / n));
     if (ticks) for (const E of pts) {
       if (E === T || E === F) lightArea(S, E.x, E.y, 5, 0.3 * TITLE_FIRESPEED);
       if (S.lvl) spreadFrom(S, E.x, E.y, DEV.autoFireJump, DEV.autoFireJumpP); else spreadFrom(S, E.x, E.y);

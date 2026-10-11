@@ -162,15 +162,24 @@ export function titleDraw(ctx, S, cw, ch, cam) {
   const gx = Math.floor(S.scroll) - S.scroll - 50;
   pixelSprite(ctx, gx, 0, TITLE_VW + 100, S.vh, 1, false, c => worldLayer(c, S));
   // a burning vine or piece of silk: its burning stretch drawn as the burning cells are (the fire's colours in
-  // the terrain's grid, a new flicker each fire tick), the very tip as embers
+  // the terrain's grid, a new flicker each fire tick), the very tip as embers. Auto's level (owner v1.0.55): alight all the
+  // way from p.lit to p.ch, and past it to the end the charred stretch, dark with a few embers, crumbling (titlescene stepFire)
   for (const p of S.props) {
     if (!p.burn || p.gone || p.arc || p.x < -20 || p.x > TITLE_VW + 20) continue;
     /** @type {any} */
     const pr = p, bent = p.sw || p.tl, reach = p.st === 'silk' ? 3 : 7;
+    const top = S.lvl ? Math.max(0, Math.min(p.len, p.ch ?? p.len)) : p.len, from = S.lvl ? Math.min(top, p.lit ?? top) : Math.max(0, p.len - reach);
+    /** @param {number} k */
+    const at = k => bent ? vinePt(pr, k) : { x: 0, y: k };
     ctx.save(); ctx.translate(-S.scroll, 0);
-    for (let k = Math.max(0, p.len - reach); k <= p.len; k += TCELL * 0.75) {
-      const q = bent ? vinePt(pr, k) : { x: 0, y: k };
-      crackleAt(ctx, p.ox + q.x, p.y + q.y, TCELL, S.fireN, p.len - k < 1.5);
+    for (let k = from; k <= top; k += TCELL * 0.75) {
+      const q = at(k);
+      crackleAt(ctx, p.ox + q.x, p.y + q.y, TCELL, S.fireN, !S.lvl && p.len - k < 1.5);
+    }
+    if (S.lvl) for (let k = top + TCELL * 0.75; k <= p.len; k += TCELL * 0.75) {
+      const q = at(k), c = Math.floor((p.ox + q.x) / TCELL), r = Math.floor((p.y + q.y) / TCELL);
+      ctx.fillStyle = (c * 7 + r * 13 + S.fireN) % 6 === 0 ? FIRE_COLS[3] : (c + r) & 1 ? '#2a201a' : '#3a2e26';
+      ctx.fillRect(c * TCELL, r * TCELL, TCELL, TCELL);
     }
     ctx.restore();
   }

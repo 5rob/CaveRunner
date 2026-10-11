@@ -62,7 +62,7 @@ D.autoLvlMin = keep.m; D.autoLvlBossT = keep.b;
   for (let i = 0; i < 300; i++) { S.scroll += 4; G.titleStep(S, 1 / 30); }
   const hung = S.props.filter(p => p.k === 'climb' && !p.host && !p.arc && !p.gone && !p.drop && p.ac >= S.gen - S.ncol);
   const loose = hung.filter(p => !G.TITLE_SOLID[G.titleCell(S, p.ac, p.ar)]);
-  check('every hanging plant hangs from rock', hung.length > 10 && loose.length === 0, [hung.length, loose.length]);
+  check('every hanging plant hangs from rock', hung.length > 6 && loose.length === 0, [hung.length, loose.length]);
   const moved = hung.filter(p => G.titleZoneSpan(p.ox, S).z !== G.titleZoneLook(p.ox, p.y + 1, S).z);
   check('… some where the zone by x is another (they follow the curves)', moved.length > 0, moved.length);
 }

@@ -88,9 +88,13 @@ function plantWall(P, zs, seed) {
   return Z.blk.x0;
 }
 // The level's creatures (owner, feedback round 1: too many; start with a trickle): a new one every DEV.autoFoeGap0 s with at
-// most autoFoeCap0 alive at the start, easing to autoFoeGap1 s and autoFoeCap1 by the arena (the level's progress)
+// most autoFoeCap0 alive at the start, easing to autoFoeGap1 s and autoFoeCap1 by the arena (the level's progress). None once
+// the scene's right edge (where they come in, a swarm trailing SPAWN_TAIL) nears the arena (owner v1.0.55: one spawned past
+// the boss wiped a team waiting at the exit)
+const SPAWN_TAIL = 100;
 /** @param {import('../art/titlescene.js').TitleScene} S @param {LevelState} L @returns {{ gap: number, cap: number }} */
 export function levelSpawn(S, L) {
+  if (S.scroll + TITLE_VW + 16 + SPAWN_TAIL >= L.plan.arena.x0) return { gap: 1, cap: 0 };
   const p = Math.max(0, Math.min(1, (levelTeamX(S) - L.plan.z0) / Math.max(1, L.plan.len)));
   return { gap: DEV.autoFoeGap0 + (DEV.autoFoeGap1 - DEV.autoFoeGap0) * p, cap: Math.round(DEV.autoFoeCap0 + (DEV.autoFoeCap1 - DEV.autoFoeCap0) * p) };
 }

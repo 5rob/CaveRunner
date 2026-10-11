@@ -1,5 +1,6 @@
 // CaveRunner Auto (owner, v1.0.50): a vine lit in a level burns up from its tip fast enough to see (DEV.autoVineFire ×
-// the old game's speed; the title menu stays at TITLE_FIRESPEED); the flames climb it DEV.autoVineSpread × faster (v1.0.53). Every loop has a frame cap.
+// the old game's speed; the title menu stays at TITLE_FIRESPEED); the flames climb it DEV.autoVineSpread × faster (v1.0.53). Three states
+// (v1.0.55): unburnt to p.lit, burning p.lit..p.ch, charred and crumbling p.ch..p.len (DEV.autoVineAsh). Every loop has a frame cap.
 const G = require('../load');
 G.DEV.autoFoeDmg = 0; G.DEV.autoWallMin = G.DEV.autoWallMax = 0;
 let fails = 0;
@@ -24,12 +25,13 @@ if (v) {
   const L = { ax: v.ox - 6, ay: v.y, bx: v.ox - 20, by: my + 20, a0x: v.ox - 6, a0y: v.y, b0x: v.ox - 20, b0y: my + 20, ain: { x: v.ox - 6, y: v.y - 1 }, bin: { x: v.ox - 20, y: my + 21 }, owner: null, sag: 0 };
   S.webs.push(L);
   v.burn = 1;
-  let t = 0, ahead = 0;
-  for (; t < 8 && !v.gone; t += dt) { G.titleStep(S, dt); S.foes.length = 0; if (t < 0.5) ahead = Math.max(ahead, v.len - (v.lit ?? v.len)); }
+  let t = 0, ahead = 0, ash = 0;
+  for (; t < 8 && !v.gone; t += dt) { G.titleStep(S, dt); S.foes.length = 0; if (t < 0.5) ahead = Math.max(ahead, (v.ch ?? v.len) - (v.lit ?? v.len)); ash = Math.max(ash, v.len - (v.ch ?? v.len)); }
   // (v1.0.53, owner: the fire climbs faster) the flames run up ahead of the burnt part: alight well above the tip early on
   check('fire spreads sideways: the vine beside it catches', !!nb.burn || !!nb.gone);
   check('… and the web line beside it', !!L.out);
   check('the flames climb ahead of the burnt part', ahead > Math.min(15, len0 * 0.4), +ahead.toFixed(1));
+  check('(v1.0.55) a charred stretch at its end, autoVineAsh long', Math.abs(ash - G.DEV.autoVineAsh) < 1.5, +ash.toFixed(1));
   check('lit: it burns away within a few seconds (len0 / t, units a second)', v.gone && t < len0 / 4, { len0: Math.round(len0), t: +t.toFixed(2) });
 }
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');

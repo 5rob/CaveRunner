@@ -700,10 +700,14 @@ DEV_META.push(
 DEV_GROUPS.push(['autofoes', 'Auto: enemies']);
 // the jetpack (art/titlescene.js jetStep, feedback round 2: the old game's flame and smoke) and a death (auto/death.js: the ragdoll,
 // the slow stop, Tap A, the helmet light, the blast, home)
-Object.assign(DEV_DEFAULTS, { autoMoveK: 0.55, autoJetTilt: 1, autoJetSmoke: 1, autoDeathStop: 1.5, autoTpBlink: 1, autoTpBoomWait: 0.6, autoTpBoomR: 60, autoFuelDrain: 1, autoFuelRegen: 1, autoCtlWait: 3, autoVineFire: 3, autoVineSpread: 5, autoFireJump: 14, autoFireJumpP: 0.3 });
+Object.assign(DEV_DEFAULTS, { autoMoveK: 0.55, autoJetTilt: 1, autoJetSmoke: 1, autoDeathStop: 1.5, autoTpBlink: 1, autoTpBoomWait: 0.6, autoTpBoomR: 60, autoFuelDrain: 1, autoFuelRegen: 1, autoCtlWait: 3, autoVineFire: 3, autoVineSpread: 24, autoVineJitter: 0.8, autoVineAsh: 6, autoFireJump: 14, autoFireJumpP: 0.5, autoNavCut: 0.8, autoNavGive: 1.2 });
 DEV_META.push(
   { k: 'autoVineFire',   g: 'autodeath', label: 'Auto levels: vines and silk burn up at this × the old game speed (the title menu: 0.1)', min: 0.1, max: 5, step: 0.1 },
-  { k: 'autoVineSpread', g: 'autodeath', label: 'Auto levels: the flames climb a vine this × faster than it burns away (1: only the tip burns)', min: 1, max: 20, step: 0.5 },
+  { k: 'autoVineSpread', g: 'autodeath', label: 'Auto levels: the flames climb a vine this × faster than it burns away (1: only the tip burns)', min: 1, max: 40, step: 0.5 },
+  { k: 'autoNavCut',     g: 'autodeath', label: 'Auto levels: rock facing back at a player more than this (its normal · the way on) he saws; less, he goes over or under', min: 0, max: 1, step: 0.05 },
+  { k: 'autoNavGive',    g: 'autodeath', label: '… and saws anyway once he has tried going round it this long (s)', min: 0.2, max: 5, step: 0.1 },
+  { k: 'autoVineJitter', g: 'autodeath', label: 'Auto levels: the flames climbing a vine spurt and stall by this much either way (0: even)', min: 0, max: 1, step: 0.05 },
+  { k: 'autoVineAsh',    g: 'autodeath', label: 'Auto levels: the charred, crumbling end of a burning vine or strand is this long (units)', min: 0, max: 20, step: 1 },
   { k: 'autoFireJump',   g: 'autodeath', label: 'Auto levels: fire jumps sideways from a burning vine or strand to vines and webs this near (units)', min: 2, max: 40, step: 1 },
   { k: 'autoFireJumpP',  g: 'autodeath', label: '… at this chance a fire tick, from each burning stretch', min: 0, max: 1, step: 0.05 },
   { k: 'autoCtlWait',    g: 'autodeath', label: 'Manual mode: seconds of the stick at rest before the autopilot takes him back', min: 0, max: 10, step: 0.25 },

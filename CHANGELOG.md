@@ -5,6 +5,23 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.55 — CaveRunner Auto: vines burn all along; players go round rock before sawing; no spawns past the boss (branch `autobattler`)
+Released 2026-10-12 on the branch. PM alone, owner OK'd the vine shots.
+- Vine fire (owner: only the end pixel looked alight): the flames already ran up `p.lit` but only the tip was drawn. A burning
+  plant or silk strand in a level now has three states: unburnt to `p.lit`, burning `p.lit..p.ch` (drawn alight all along,
+  `titledraw.js`), charred and crumbling `p.ch..p.len` (`autoVineAsh` 6, dark with embers, ash falling). The climb doubled
+  (`autoVineSpread` 12 → 24) and spurts by noise (`autoVineJitter` 0.8); sideways spread from a point every 6 (at most 16) at
+  `autoFireJumpP` 0.5. The title as before.
+- Saws (owner: they sawed out the exit pad's ground and couldn't reach the teleporter): before sawing, `navAround` reads the
+  rock's average normal (`rockNormal`) against the way on (+x): facing back less than `autoNavCut` (0.8), a floor or slope
+  he goes over (`jetOver`, only with open air above), a roof under (only with a gap below); steeper, or tried for `autoNavGive`
+  (1.2 s), he saws. Not by hand, not the title. A dry player stuck in rock mid-air drops to land (he used to hold the team
+  in a fuel wait forever; `auto-wall` caught it about 1 run in 6).
+- Spawns (owner: a jellyfish spawned past the boss wiped a team waiting at the exit): `levelSpawn` gives none once the
+  scene's right edge (+ `SPAWN_TAIL` 100) reaches the arena.
+- Suites: `auto-exitnav` (new: the normal, the spawn stop, 4 short levels keep the pad's ground), `auto-vinefire` (the
+  charred stretch); `auto-tall`'s plant count floor 10 → 6 (the rolls shifted; the "hangs from rock" check unchanged).
+
 ## v1.0.54 — CaveRunner Auto: the ground under the exit pad holds (branch `autobattler`)
 Released 2026-10-12 on the branch. PM alone.
 - Owner: players blasted out the ground under the exit teleporter. The blast's hard line (`deepK(S, y, wx)`) is now the
