@@ -11,6 +11,7 @@ this folder only shows them and takes the taps.
     **Top bar** (v1.0.44, `.atop`, a column over the play area): the active map's name and level (`mapInfo`, `auto/maps.js`),
     the journey box `.ajourney` in a level (`journeyDraw`, from `runScene`'s `over` each frame: the level at its own
     width-to-height shape, the players' helmets where they are; a tap toggles it hidden, its place stays tappable), the boss bar.
+    **Big bag** (v1.0.46): a double tap on an empty slot (`emptyDown`, `BIG_TAP`) sets `bigBag` (px): the bag's top margin pulled up to the play area's top (`.abag.big`, over the nav; `.abtns` stays above it); again, or B, back.
     ⏸ (`.pausebtn`) opens `ui/pause.js` `PauseMenu` (label `Tier n`; Save / Exit write the run) and holds the scene.
     **Stage 4a (test only, till 4b wires it):** `window.__AUTO_LEVEL = seed` makes `make` open a level instead (`auto/level.js levelScene`, default camera); in a level the pill stick's sideways push (past `DEAD`) goes to `levelHold` (right hurries, left slows, never stops; up does nothing). `tools/levelshots.js` uses it.
   - **context nav** `.anav`: 4 circles (`.anavc`, `data-player`), a player's colour ring (`TITLE_COLS`) and number
