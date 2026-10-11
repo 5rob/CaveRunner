@@ -5,6 +5,18 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.40 — CaveRunner Auto: shot looks, part 2; Black Hole pulls, White Hole works (branch `autobattler`)
+Released 2026-10-11 on the branch (owner OK'd `tools/shotlookshots.js` sheets s5–s8). Agent ~10 min (worktree `cr-shots2`) + PM.
+- Energy Orb an undulating energy blob, Energy Sphere the same hollow; Lightning the old v62 jagged bolt (`drawBolt`,
+  re-kinked each frame) forking at creatures near it (looks only); Chain Bolt a black-purple crackling ball, a streak on
+  each leap; Black Hole the old look and motes, drawn twice its size (`VOID_K`), and now it pulls (`holePull`, the old
+  game's: DEV.bhPull, enemy shots swallowed); Plasma Beam / Luminous Drill fire as real beams (`traceBeam`, `castBeam`:
+  they never hit before), plasma purple and burning, the drill green, short, tip fading; Death Cross sparkles; Nuke and
+  Meteor big blasts (flash, shockwave, mushroom, debris; looks only, gameplay radius unchanged), Meteor's long fire tail.
+- White Hole (vacfield) is cast in Auto (was GUN_TODO): still, `WH_AHEAD` along the aim, pulling creatures and enemy shots
+  (`vacPull`, harmless); the game's look at half size, motes spawned over its reach fly onto it and are sucked in (a part's `to`).
+- All looks use `Math.random`. Suite `auto-shotfx` (pull, white hole, a level plasma hit). Known flakes: `auto-steer`.
+
 ## v1.0.39 — CaveRunner Auto: shot looks, part 1 (branch `autobattler`)
 Released 2026-10-11 on the branch (owner OK'd `tools/shotlookshots.js`, close-ups too). Agent ~11 min (worktree `cr-shots1`) + PM.
 - The owner's audit, [stage: shots] first half, by spell id (`s.sid`): Bolt a pink dart with the old pink trail; Spark a

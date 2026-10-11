@@ -87,15 +87,17 @@ export function autoTrail(s, dt, R) {
       break;
     case 'vacfield': { // White Hole: pale-blue motes drawn in from its reach to the core, a white twinkle at the middle
       const rv = s.vac || 64;
-      for (let k = 0; k < 3; k++) if (ch(30)) {
-        const a = R() * 6.28, d = rv * rr(0.5, 1), v = rr(70, 130);
-        out.push(P(R() < 0.3 ? '#ffffff' : R() < 0.6 ? '#c8ecff' : '#7cc4ff', s.x + Math.cos(a) * d, s.y + Math.sin(a) * d, -Math.cos(a) * v, -Math.sin(a) * v, Math.min(0.6, d / v), rr(0.5, 1), 'glow'));
+      // owner (v1.0.40): spawned over its whole reach, they fly onto it and are sucked in (titlescene.js steps a part with `to`)
+      for (let k = 0; k < 3; k++) if (ch(40)) {
+        const a = R() * 6.28, d = rv * rr(0.45, 1), v = rr(10, 30);
+        const p = P(R() < 0.3 ? '#ffffff' : R() < 0.6 ? '#c8ecff' : '#7cc4ff', s.x + Math.cos(a) * d, s.y + Math.sin(a) * d, -Math.sin(a) * v, Math.cos(a) * v, 2.5, rr(0.8, 1.4), 'glow');
+        p.to = s; out.push(p);
       }
       break;
     }
     case 'void': {    // the old game's black-hole trail: purple motes drifting round its rim (as bullets.js, ~0.9 a frame)
       const n = Math.min(3, Math.round(dt * 54 + R() * 0.5));
-      for (let k = 0; k < n; k++) { const a = rr(0, 6.283), q = s.size * rr(0.6, 1.1);
+      for (let k = 0; k < n; k++) { const a = rr(0, 6.283), q = s.size * 2 * rr(0.6, 1.1);   // round the doubled look (autolooks.js VOID_K)
         out.push(P(R() < 0.3 ? '#f0e0ff' : R() < 0.6 ? '#c58cff' : '#8a5cff', s.x + Math.cos(a) * q, s.y + Math.sin(a) * q,
           rr(-10, 10) - Math.sin(a) * 14, rr(-10, 10) + Math.cos(a) * 14, rr(0.6, 1.3), rr(0.8, 1.6), 'glow')); }
       break;

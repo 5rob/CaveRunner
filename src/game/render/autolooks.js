@@ -37,7 +37,7 @@ export function drawSolidShot(c, s, W) {
   } else if (s.sid === 'blast' || s.sid === 'missile') {   // the bomb and the rocket, now painted solid (dark metal shows)
     drawLook(w, g, b);
   } else if (s.sid === 'void') {        // Black Hole, as the game draws it: purple haze, a starry black core
-    const r = s.size, core = r * 0.78, beat = 1 + 0.06 * Math.sin(W.time * 6 + s.spin);
+    const r = s.size * VOID_K, core = r * 0.78, beat = 1 + 0.06 * Math.sin(W.time * 6 + s.spin);
     const gr = c.createRadialGradient(s.x, s.y, core * 0.8, s.x, s.y, r * 1.55 * beat);
     gr.addColorStop(0, 'rgba(197,140,255,0.75)'); gr.addColorStop(0.3, 'rgba(150,90,255,0.35)'); gr.addColorStop(1, 'rgba(110,50,220,0)');
     c.globalAlpha = 1; c.fillStyle = gr; c.beginPath(); c.arc(s.x, s.y, r * 1.55 * beat, 0, 6.283); c.fill();
@@ -81,6 +81,9 @@ export function drawSolidShot(c, s, W) {
 
 // the bright ones (added light)
 /** @param {CanvasRenderingContext2D} c @param {TShot} s @param {{ time: number }} W */
+// Black Hole drawn this many times its (capped) shot size (owner, v1.0.40: double)
+export const VOID_K = 2;
+
 export function drawGlowShot(c, s, W) {
   const sp = Math.hypot(s.vx, s.vy) || 1, ux = s.vx / sp, uy = s.vy / sp;
   if (s.sid === 'slug' || s.sid === 'disc' || s.sid === 'missile' || s.sid === 'void') return true;   // drawn solid
@@ -88,7 +91,7 @@ export function drawGlowShot(c, s, W) {
   const G2 = { ctx: c };
   if (s.sid === 'vacfield') {           // White Hole: the game's look (white core, wheeling blue stars), bigger, and a faint rim at its reach
     /** @type {any} */
-    const f = { x: s.x, y: s.y, r: (s.vac || 64) * 1.6, life: s.life, max: s.max || 1.2 };
+    const f = { x: s.x, y: s.y, r: (s.vac || 64) * 0.8, life: s.life, max: s.max || 1.2 };   // owner (v1.0.40): half the first try's size
     /** @type {any} */
     const Wt = W;
     drawWhiteHole(Wt, G2, f);

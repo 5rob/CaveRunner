@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v1.0.39</title>
-<!-- VERSION = 'v1000039' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v1.0.40</title>
+<!-- VERSION = 'v1000040' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -1078,7 +1078,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v1.0.39';</script>
+<script>const VERSION = 'v1.0.40';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -11524,16 +11524,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         break;
       case "vacfield": {
         const rv = s.vac || 64;
-        for (let k = 0; k < 3; k++) if (ch(30)) {
-          const a = R() * 6.28, d = rv * rr2(0.5, 1), v = rr2(70, 130);
-          out.push(P(R() < 0.3 ? "#ffffff" : R() < 0.6 ? "#c8ecff" : "#7cc4ff", s.x + Math.cos(a) * d, s.y + Math.sin(a) * d, -Math.cos(a) * v, -Math.sin(a) * v, Math.min(0.6, d / v), rr2(0.5, 1), "glow"));
+        for (let k = 0; k < 3; k++) if (ch(40)) {
+          const a = R() * 6.28, d = rv * rr2(0.45, 1), v = rr2(10, 30);
+          const p = P(R() < 0.3 ? "#ffffff" : R() < 0.6 ? "#c8ecff" : "#7cc4ff", s.x + Math.cos(a) * d, s.y + Math.sin(a) * d, -Math.sin(a) * v, Math.cos(a) * v, 2.5, rr2(0.8, 1.4), "glow");
+          p.to = s;
+          out.push(p);
         }
         break;
       }
       case "void": {
         const n = Math.min(3, Math.round(dt * 54 + R() * 0.5));
         for (let k = 0; k < n; k++) {
-          const a = rr2(0, 6.283), q = s.size * rr2(0.6, 1.1);
+          const a = rr2(0, 6.283), q = s.size * 2 * rr2(0.6, 1.1);
           out.push(P(
             R() < 0.3 ? "#f0e0ff" : R() < 0.6 ? "#c58cff" : "#8a5cff",
             s.x + Math.cos(a) * q,
@@ -13211,6 +13213,20 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         p.vx *= 1 - 2.5 * dt;
         p.vy = p.vy * (1 - 2.5 * dt) - 12 * dt;
         p.r += 5 * dt;
+        continue;
+      }
+      if (p.to) {
+        const dx = p.to.x - p.x, dy = p.to.y - p.y, d = Math.hypot(dx, dy) || 1, a = 260 + 2600 / (d + 4);
+        p.vx += (dx / d * a - dy / d * 60) * dt;
+        p.vy += (dy / d * a + dx / d * 60) * dt;
+        const sp2 = Math.hypot(p.vx, p.vy), top = 40 + 1400 / (d + 6);
+        if (sp2 > top) {
+          p.vx *= top / sp2;
+          p.vy *= top / sp2;
+        }
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        if (d < 2.5 || p.to.life <= 0) p.life = 0;
         continue;
       }
       if (p.kind === "spore") {
@@ -30419,7 +30435,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     } else if (s.sid === "blast" || s.sid === "missile") {
       drawLook(w, g, b);
     } else if (s.sid === "void") {
-      const r = s.size, core = r * 0.78, beat = 1 + 0.06 * Math.sin(W.time * 6 + s.spin);
+      const r = s.size * VOID_K, core = r * 0.78, beat = 1 + 0.06 * Math.sin(W.time * 6 + s.spin);
       const gr = c.createRadialGradient(s.x, s.y, core * 0.8, s.x, s.y, r * 1.55 * beat);
       gr.addColorStop(0, "rgba(197,140,255,0.75)");
       gr.addColorStop(0.3, "rgba(150,90,255,0.35)");
@@ -30491,12 +30507,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     c.globalAlpha = 1;
     return true;
   }
+  var VOID_K = 2;
   function drawGlowShot(c, s, W) {
     const sp = Math.hypot(s.vx, s.vy) || 1, ux = s.vx / sp, uy = s.vy / sp;
     if (s.sid === "slug" || s.sid === "disc" || s.sid === "missile" || s.sid === "void") return true;
     const G2 = { ctx: c };
     if (s.sid === "vacfield") {
-      const f = { x: s.x, y: s.y, r: (s.vac || 64) * 1.6, life: s.life, max: s.max || 1.2 };
+      const f = { x: s.x, y: s.y, r: (s.vac || 64) * 0.8, life: s.life, max: s.max || 1.2 };
       const Wt = W;
       drawWhiteHole(Wt, G2, f);
       const fade = Math.min(1, (f.max - s.life) * 8, s.life * 5);

@@ -122,7 +122,7 @@ export const TITLE_HOME = {
  *   real?: boolean, by?: number, trig?: string | null, timer?: number, pay?: Shot[] | null, age?: number,
  *   sid?: string, tr?: number[], homeR?: number, light?: string, lightR?: number,
  *   beam?: number, ang?: number, bx?: number, by2?: number, pull?: number, vac?: number, max?: number, hopT?: number, hx?: number, hy?: number }} TShot */
-/** @typedef {{ x: number, y: number, vx: number, vy: number, life: number, max: number, r: number, col: string, kind: string }} TPart */
+/** @typedef {{ x: number, y: number, vx: number, vy: number, life: number, max: number, r: number, col: string, kind: string, to?: { x: number, y: number, life: number } }} TPart */
 /** @typedef {{ x: number, y: number, r: number, t: number, max: number, sid?: string }} TBoom */
 /** @typedef {{ pts: { x: number, y: number }[], t: number, col: string }} TZap */
 // a prop: `ox` its world x (not `wx`: art/props.js reads that as an arch's or a vine's sideways bend)
@@ -1064,6 +1064,15 @@ export function titleStep(S, dt) {
     }
     if (p.kind === 'fsmoke' || p.kind === 'jsmoke') {         // game/systems/particles.js smoke (the jetpack's too)
       p.x += (p.vx - sv(S)) * dt; p.y += p.vy * dt; p.vx *= 1 - 2.5 * dt; p.vy = p.vy * (1 - 2.5 * dt) - 12 * dt; p.r += 5 * dt;
+      continue;
+    }
+    if (p.to) {                       // White Hole motes (v1.0.40): pulled onto it, faster the closer, swirling a little; gone at its core
+      const dx = p.to.x - p.x, dy = p.to.y - p.y, d = Math.hypot(dx, dy) || 1, a = 260 + 2600 / (d + 4);
+      p.vx += (dx / d * a - dy / d * 60) * dt; p.vy += (dy / d * a + dx / d * 60) * dt;
+      const sp = Math.hypot(p.vx, p.vy), top = 40 + 1400 / (d + 6);
+      if (sp > top) { p.vx *= top / sp; p.vy *= top / sp; }
+      p.x += p.vx * dt; p.y += p.vy * dt;
+      if (d < 2.5 || p.to.life <= 0) p.life = 0;
       continue;
     }
     if (p.kind === 'spore') { p.x += (p.vx + Math.sin(S.t * 1.7 + p.max * 9) * 3 - sv(S)) * dt; p.y += p.vy * dt; continue; }
