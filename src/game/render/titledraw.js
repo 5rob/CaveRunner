@@ -24,7 +24,7 @@ import { visPoly } from '../../world/vision.js';
 import { drawBolt, drawLook } from './looks.js';
 import { hubBack, hubGlow, hubLight } from './hubdraw.js';
 import { levelBack, levelBars, levelGlow, levelLight } from './leveldraw.js';
-import { hubState, hubStopX } from '../../auto/hub.js';
+import { hubMapA, hubState, hubStopX } from '../../auto/hub.js';
 import { MACH_H, hubPayAt, throwR } from '../../auto/throw.js';
 import { drawItemTile, tileItem } from '../../auto/itemtile.js';
 import { perkFront, perkGlow } from './perkdraw.js';
@@ -382,13 +382,15 @@ function worldLayer(c, S) {
 function drawPayHint(c, S) {
   const H = hubState(S), id = hubPayAt(S);
   if (!H || !id) return;
+  const ma = id === 'map' ? hubMapA(S) : 'pay';   // the map machine: A plays an owned map, pays the next, else no hint
+  if (ma === 'no') return;
   const x = hubStopX(id) - S.scroll, y = H.fy - MACH_H - 9 + Math.sin(S.t * 4) * 1.2, w = 40, hh = 11;
   c.fillStyle = 'rgba(14,9,26,0.9)'; c.strokeStyle = '#4ef08a'; c.lineWidth = 1;
   c.beginPath(); c.roundRect(x - w / 2, y - hh / 2, w, hh, hh / 2); c.fill(); c.stroke();
   c.fillStyle = '#18c464'; c.beginPath(); c.arc(x - w / 2 + 6, y, 4, 0, Math.PI * 2); c.fill();
   c.font = 'bold 6px monospace'; c.textAlign = 'center'; c.textBaseline = 'middle';
   c.fillStyle = '#fff'; c.fillText('A', x - w / 2 + 6, y + 0.3);
-  c.fillStyle = '#f1ecff'; c.fillText('to Pay', x + 4, y + 0.3);
+  c.fillStyle = '#f1ecff'; c.fillText(ma === 'pick' ? 'to Play' : 'to Pay', x + 4, y + 0.3);
   c.textBaseline = 'alphabetic';
 }
 

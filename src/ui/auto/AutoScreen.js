@@ -19,7 +19,8 @@ import { SFX } from '../../audio/sfx.js';
 import { TITLE_VW, camAt, camTo, titleCam } from '../../art/titlescene.js';
 import { DEAD } from '../../core/consts.js';
 import { chestOpen } from '../../auto/chests.js';
-import { HUB_W, hubExit, hubLeft, hubScene, hubState, hubStick, hubStopX } from '../../auto/hub.js';
+import { HUB_W, hubExit, hubLeft, hubMapA, hubMapPick, hubScene, hubState, hubStick, hubStopX } from '../../auto/hub.js';
+import { mapLabel } from '../../auto/maps.js';
 import { THROW_TAKES, hubPayAt, hubPayOne, payVel } from '../../auto/throw.js';
 import { levelClearedAge, levelControl, levelDeathPrompt, levelDone, levelHold, levelLost, levelPicked, levelScene, levelState, levelTeleportHome } from '../../auto/level.js';
 import { clearedText } from '../../art/cleared.js';
@@ -193,7 +194,7 @@ export function AutoScreen() {
           return { S, C, warm: 0 };
         }
         // the hub: the strip, the players teleporting in, the camera on player 1
-        const S = hubScene(vh, seed, run.players.length, run.tier, run.paid || (run.paid = {}));
+        const S = hubScene(vh, seed, run.players.length, run.tier, run.paid || (run.paid = {}), run);
         scene.current = S;
         S.onTake = (it, x, y) => flyIn(it, x, y);
         if (window.__TEST_TITLE) window.__autoHub = S;   // tests and shot scripts reach the hub (stage 12)
@@ -266,6 +267,8 @@ export function AutoScreen() {
     SFX.unlock();
     const S = scene.current, at = S && !S.lvl ? hubPayAt(S) : null;
     if (!S || !at) { pressA(); return; }
+    // the map machine (auto/maps.js): A picks an owned map, pays the next locked one, else nothing
+    if (at === 'map') { const a = hubMapA(S); if (a === 'pick') { if (hubMapPick(S)) { SFX.fx('open'); saveAutoRun(run); setV(n => n + 1); } return; } if (a === 'no') { SFX.ui('tap'); return; } }
     const kind = THROW_TAKES[at], id = e.pointerId, x0 = e.clientX, y0 = e.clientY;
     let dx = 0, dy = 0, stream = false, acc = 0, t0 = 0, last = performance.now();
     const one = () => {
@@ -568,7 +571,7 @@ export function AutoScreen() {
     flies.map(f => h(FlyTile, { key: f.k, f, done: () => setFlies(fs => fs.filter(q => q.k !== f.k)) })),
     card ? h(CardPop, { it: card, close: () => setCard(null) }) : null,
     devOpen ? h(DevPanel, { input, refresh: () => setV(v => v + 1), close: () => { SFX.fx('close'); setDevOpen(false); } }) : null,
-    paused ? h(PauseMenu, { input, label: 'Tier ' + run.tier, onNew: freshRun, close:() => { SFX.fx('close'); setPaused(false); } }) : null);
+    paused ? h(PauseMenu, { input, label: mapLabel(run), onNew: freshRun, close:() => { SFX.fx('close'); setPaused(false); } }) : null);
 }
 
 // PillState: as the old game's left stick (ui/hud.js Stick): active while held; dx, dy the finger from the middle as a

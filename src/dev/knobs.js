@@ -605,6 +605,13 @@ DEV_META.push(
   { k: 'autoHubSpace', g: 'autohub', label: 'Players line up this far apart (world units)', min: 4, max: 40, step: 1 },
   { k: 'autoHubDemoNear', g: 'autohub', label: 'A crystal machine plays its demo with you this near (world units; the old shop’s 100)', min: 20, max: 240, step: 5 });
 DEV_GROUPS.push(['autohub', 'Auto: hub']);
+// CaveRunner Auto's maps (auto/maps.js): the map machine's prices, and how much harder each map starts
+Object.assign(DEV_DEFAULTS, { autoMapPrice: 1000000, autoMapGrow: 1, autoMapStep: 5 });
+DEV_META.push(
+  { k: 'autoMapPrice', g: 'automaps', label: 'Map machine: the second map’s price (gold)', min: 1000, max: 10000000, step: 1000 },
+  { k: 'autoMapGrow',  g: 'automaps', label: 'Map machine: price × each map after the second', min: 1, max: 10, step: 0.1 },
+  { k: 'autoMapStep',  g: 'automaps', label: 'Each map starts this many tiers harder than the one before', min: 0, max: 50, step: 1 });
+DEV_GROUPS.push(['automaps', 'Auto: maps']);
 // CaveRunner Auto's level (auto/level.js, auto/pilot.js, stage 4a): its length and the team's pace
 Object.assign(DEV_DEFAULTS, { autoLvlMin: 5, autoLvlPace: 1, autoLvlHurry: 1.6, autoLvlSlow: 0.3, autoLvlElite: 0.4, autoLvlChest: 0.5,
   autoLvlEliteR: 120, autoLvlChestR: 50, autoLvlBossT: 120, autoLvlEase: 1.5, autoClearT: 3, autoClearWait: 4 });
@@ -743,7 +750,7 @@ DEV_META.push(
   { k: 'autoStreamRamp',  g: 'autothrow', label: 'Stream: ramps up over (s)', min: 0.1, max: 6, step: 0.1 });
 DEV_GROUPS.push(['autothrow', 'Auto: throw']);
 // before the last tab: that one also takes any group in no tab
-DEV_TABS.splice(DEV_TABS.length - 1, 0, ['auto', 'Auto', ['auto', 'autohub', 'autolevel', 'autoblocks', 'autoguns', 'autoperks', 'autofoes', 'autodeath', 'autoloot', 'autochests', 'autobag', 'autothrow']]);
+DEV_TABS.splice(DEV_TABS.length - 1, 0, ['auto', 'Auto', ['auto', 'autohub', 'automaps', 'autolevel', 'autoblocks', 'autoguns', 'autoperks', 'autofoes', 'autodeath', 'autoloot', 'autochests', 'autobag', 'autothrow']]);
 export const DEV_KEY = 'caverunner-dev';
 /** @type {DevKnobs} */
 export const DEV = Object.assign({}, DEV_DEFAULTS);

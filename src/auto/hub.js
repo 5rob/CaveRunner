@@ -16,7 +16,8 @@ import { STAT_PERKS } from '../data/perks.js';
 import { LIGHT_RUN, LIGHT_WAIT, tubeLevel } from '../world/shoplights.js';
 import { TCELL, TM, jetLift, jetStep, jetThrottle, titleScene } from '../art/titlescene.js';
 import { EXO_CATS, EXO_GLYPH, autoExoPrice, autoGunPrice } from './run.js';
-import { stepThrown } from './throw.js';
+import { hubPayAt, stepThrown } from './throw.js';
+import { mapState, mapsOf, payMap, selectMap } from './maps.js';
 import { stepPay } from './payout.js';
 
 // (owner, feedback round 2: the old shop's room) the old layout's numbers: the way in's pad as far from the end wall as
@@ -31,9 +32,9 @@ export const HUB_FLASH = 0.4;         // the flash as he comes through (s)
 export const HUB_ZAP = 1.4;           // the pad crackles this long after (s)
 export const HUB_PAD = 14;            // the exit pad: the leader's middle within this of its middle (world units)
 
-/** @typedef {'enter' | 'gun' | 'exo' | 'mod' | 'perk' | 'exit'} HubStopId */
+/** @typedef {'enter' | 'gun' | 'exo' | 'mod' | 'perk' | 'map' | 'exit'} HubStopId */
 /** @type {HubStopId[]} */
-const STOP_IDS = ['enter', 'gun', 'exo', 'mod', 'perk', 'exit'];
+const STOP_IDS = ['enter', 'gun', 'exo', 'mod', 'perk', 'map', 'exit'];
 /** @type {{ id: HubStopId, x: number }[]} the stops, left to right: each its middle (world x) */
 export const HUB_STOPS = STOP_IDS.map((id, i) => ({ id, x: HUB_EDGE + i * HUB_GAP }));
 export const HUB_W = HUB_EDGE * 2 + (HUB_STOPS.length - 1) * HUB_GAP;   // the strip's width (world units)
@@ -48,6 +49,7 @@ export const HUB_MACHINES = {
   exo: { hue: '#3fe6d6', icon: 'exo' },
   mod: { hue: '#ff3a4a', icon: '⚙️', takes: 'red' },
   perk: { hue: '#3dff7a', icon: '✦', takes: 'green' },
+  map: { hue: '#c89bff', icon: 'map' },   // the map machine (auto/maps.js): its front is painted by hubdraw.js drawMapFront
 };
 // the exo machine's hologram: each category's glyph (STAT_PERKS), one after another
 export const HUB_EXO_GLYPHS = EXO_CATS.map(c => EXO_GLYPH[c]);
@@ -75,7 +77,8 @@ const hubCell = fy => (c, r) => {
 /** @typedef {{ fy: number, roof: number, on: number[], zap: number, arrived: boolean[], tier: number,
  *   lx: number, dir: number, exitT: number, stick: HubStick, thrown: import('./throw.js').HubThrow[],
  *   paid: Record<string, number>, back: { kind: import('./throw.js').Cash, n: number }[],
- *   vend: Record<string, number>, paidV: number, demo: Record<string, HubDemo> }} HubState */
+ *   vend: Record<string, number>, paidV: number, demo: Record<string, HubDemo>,
+ *   run?: AutoRun, mapSel: number, mapFlick: number, mapT: number }} HubState */
 // a crystal machine's hologram demo (the old shop's stepDemo): t s into it, the side of the machine it plays on
 /** @typedef {{ t: number, side: number }} HubDemo */
 /** @param {import('../art/titlescene.js').TitleScene} S @returns {HubState} */
@@ -83,13 +86,13 @@ export const hubState = S => (S.hub && S.hub.data);
 
 // The hub's scene: titleScene with the strip, n players. They wait (hidden) until the enter pad has charged,
 // then each comes through it in turn (HUB_ARRIVE, then 0.5 s apart) and stands on the floor
-/** @param {number} vh @param {number} seed @param {number} n players @param {number} [tier] the run's (the prices) @param {Record<string, number>} [paid] the run's run.paid (kept: what's been thrown in) @returns {import('../art/titlescene.js').TitleScene} */
-export function hubScene(vh, seed, n, tier = 1, paid = {}) {
+/** @param {number} vh @param {number} seed @param {number} n players @param {number} [tier] the run's (the prices) @param {Record<string, number>} [paid] the run's run.paid (kept: what's been thrown in) @param {AutoRun} [run] the run (the map machine's maps) @returns {import('../art/titlescene.js').TitleScene} */
+export function hubScene(vh, seed, n, tier = 1, paid = {}, run) {
   const fy = hubFloor(vh);
   /** @type {HubState} */
   const H = { fy, roof: fy - HUB_ROOM, on: HUB_STOPS.map(() => -1), zap: -99, arrived: [], tier,
     lx: hubStopX('enter'), dir: 1, exitT: -99, stick: { active: false, nx: 0, ny: 0, mag: 0, dy: 0 },
-    thrown: [], paid, back: [], vend: {}, paidV: 0, demo: {} };
+    thrown: [], paid, back: [], vend: {}, paidV: 0, demo: {}, run, mapSel: run ? run.map || 0 : 0, mapFlick: 0, mapT: -99 };
   const S = titleScene(vh, seed, fy - HUB_ROOM, fy, { runners: n, hub: { w: HUB_W / TCELL, cell: hubCell(fy), step: hubStep, data: H } });
   S.runners.forEach((r, i) => {
     r.x = hubStopX('enter') - PW / 2 - i * 18; r.y = fy - PH; r.vx = r.vy = 0;
@@ -125,6 +128,7 @@ export function hubStep(S, dt) {
   hubMove(S, H, dt);
   stepThrown(S, H, dt);
   stepPay(S, H);
+  stepMap(S, H);
   stepHubDemo(H, S.runners[0] && H.arrived[0] ? S.runners[0].x + PW / 2 : -999, dt);
   // the tubes: the enter pad's LIGHT_WAIT after the start, then the next along every LIGHT_RUN × 1.6
   for (let i = 0; i < H.on.length; i++) {
@@ -198,7 +202,7 @@ const IN_L = HUB_WALL * TCELL + PW / 2, IN_R = HUB_W - HUB_WALL * TCELL - PW / 2
 function hubMove(S, H, dt) {
   const L = S.runners[0];
   if (!L || !H.arrived[0]) return;
-  const st = H.stick, m = push(st), jet = m > 0 && st.dy < 0, mv = DEV.move;
+  const st = H.stick, br = mapBrowsing(S, H), m = br ? 0 : push(st), jet = m > 0 && st.dy < 0, mv = DEV.move;
   if (jet) {
     L.vx = approach(L.vx, st.nx * m * JET * DEV.autoMoveK * mv, JET_ACC * DEV.autoMoveK * dt);
     const ty = jetLift(st.ny, m) * mv;
@@ -279,6 +283,55 @@ export function hubLeft(S) {
 export function hubExitFlash(S) {
   const H = hubState(S);
   return H ? Math.max(0, Math.min(1, 1 - (S.t - H.exitT) / HUB_FLASH)) : 0;
+}
+
+// ---- the map machine (auto/maps.js) ----
+// At it (hubPayAt: player 1 within DEV.autoPayReach), the stick pushed mostly up or down browses the maps on its front
+// (H.mapSel), one map per flick (past MAP_FLICK; back under it, or the other way, before the next), and he doesn't move while it's pushed
+// that way. Gold paid in (H.paid.map, by A or thrown) goes to the next locked map (payMap); the change flies back.
+export const MAP_FLICK = 0.55;         // the stick's push (0-1) that browses
+const MAP_UPRIGHT = 0.7;               // how upright the push must be (|ny|)
+/** is the stick browsing the map machine? @param {import('../art/titlescene.js').TitleScene} S @param {HubState} H */
+function mapBrowsing(S, H) {
+  const st = H.stick;
+  return !!H.run && st.active && st.mag > DEAD && Math.abs(st.ny) > MAP_UPRIGHT && hubPayAt(S) === 'map';
+}
+/** @param {import('../art/titlescene.js').TitleScene} S @param {HubState} H */
+function stepMap(S, H) {
+  const run = H.run;
+  if (!run) return;
+  const ms = mapsOf(run);
+  const n = H.paid.map || 0;
+  if (n > 0) {
+    const was = ms.filter(m => m.owned).length, ch = payMap(run, n);
+    H.paid.map = 0; H.paidV++;
+    if (ch > 0) H.back.push({ kind: 'gold', n: ch });
+    if (ms.filter(m => m.owned).length > was) { H.mapT = S.t; S.flash = Math.max(S.flash, 0.4); S.snd.push({ k: 'arc', x: hubStopX('map'), y: H.fy - 40 }); }
+  }
+  const st = H.stick, flick = mapBrowsing(S, H) && st.mag >= MAP_FLICK ? (st.ny < 0 ? -1 : 1) : 0;
+  if (flick && flick !== H.mapFlick) {
+    const to = Math.max(0, Math.min(ms.length - 1, H.mapSel + flick));
+    if (to !== H.mapSel) { H.mapSel = to; S.snd.push({ k: 'coinland', x: hubStopX('map'), y: H.fy - 40 }); }
+  }
+  H.mapFlick = flick;
+}
+// what A does at the map machine now: 'pick' (an owned map: make it the active one), 'pay' (the next locked map), 'no'
+/** @param {import('../art/titlescene.js').TitleScene} S @returns {'pick' | 'pay' | 'no'} */
+export function hubMapA(S) {
+  const H = hubState(S);
+  if (!H || !H.run) return 'no';
+  const s = mapState(H.run, H.mapSel);
+  return s === 'owned' ? 'pick' : s === 'buy' ? 'pay' : 'no';
+}
+// A on an owned map: it's the active one now (the exit takes the team there; the machines' prices follow at once)
+/** @param {import('../art/titlescene.js').TitleScene} S @returns {boolean} */
+export function hubMapPick(S) {
+  const H = hubState(S);
+  if (!H || !H.run || !selectMap(H.run, H.mapSel)) return false;
+  H.tier = H.run.tier; H.mapT = S.t; H.paidV++;
+  S.flash = Math.max(S.flash, 0.3);
+  S.snd.push({ k: 'arc', x: hubStopX('map'), y: H.fy - 40 });
+  return true;
 }
 
 // ---- prices (stage 3b) ----
