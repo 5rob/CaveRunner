@@ -5,6 +5,19 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.57 — CaveRunner Auto: the Dev panel shows what works in Auto; burning vines and webs burn through (branch `autobattler`)
+Released 2026-10-12 on the branch. PM alone, owner OK'd the shots. (A per-material burn time for vines/webs was built and
+scrapped by the owner: grass, moss and timber already have theirs, the Fire group's "… burns for (s)".)
+- Dev colours (owner: didn't know the panel worked for Auto): `tools/autoknobs.js` (run by `tools/build.js` every build)
+  bundles `src/main.js` tree-shaken, drops the knob tables and the panel's UI, and lists each knob read in what's left
+  (`DEV.key`, or its name as a string; a range knob by its base) into `src/dev/autouse.js` `AUTO_KNOBS` (328 of 722).
+  `devpanel.js`: a row's `.devauto` green bar / `.devold` dimmed; a group's count green (all) / amber (`.devsome`) / grey;
+  a key `.devkey` on each tab. Suite `autoknobs` (current, real names, known ones).
+- Burn through (owner): a burning vine or silk strand (Auto's rules) burns through at `autoBurnCut` (0.015) a fire tick
+  somewhere along its burning stretch; the rest drops (`drop`, still alight), turning at `rv` up to `autoBurnSpin` (2.5 rad/s)
+  either way (`rot`, about its middle: `titleTumbleLow` lands it on its lower end; titledraw `tumble`). Suite
+  `auto-firelab`; shots `node tools/vinefireshots.js <out> 0 <cut>`.
+
 ## v1.0.56 — CaveRunner Auto: Dev → Fire sim page; leaves burn and pass fire on; full fire knobs (branch `autobattler`)
 Released 2026-10-12 on the branch. PM alone (no agent: the PM had the fire code loaded), owner OK'd the shots.
 - Leaves (owner: they didn't burn): `titledraw.js` draws them alight along the burning stretch and charred past it (where

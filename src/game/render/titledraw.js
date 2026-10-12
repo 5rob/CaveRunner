@@ -173,6 +173,7 @@ export function titleDraw(ctx, S, cw, ch, cam) {
     /** @param {number} k */
     const at = k => bent ? vinePt(pr, k) : { x: 0, y: k };
     ctx.save(); ctx.translate(-S.scroll, 0);
+    if (p.rot) tumble(ctx, p.ox, p, 1);
     for (let k = from; k <= top; k += TCELL * 0.75) {
       const q = at(k);
       crackleAt(ctx, p.ox + q.x, p.y + q.y, TCELL, S.fireN, !autoOn(S) && p.len - k < 1.5);
@@ -352,6 +353,9 @@ function drawTitleRunner(ctx, S, r) {
   }
 }
 
+// turn the canvas about a falling piece's middle (x its top's x in these units)
+/** @param {CanvasRenderingContext2D} c @param {number} x @param {import('../../art/titlescene.js').TProp} p @param {number} _k */
+function tumble(c, x, p, _k) { const my = p.y + p.len / 2; c.translate(x, my); c.rotate(p.rot || 0); c.translate(-x, -my); }
 // The plants, decorations, web lines, the spiders' strings and the gold, for the pixel layer (titleDraw): silk drawn
 // solid (the layer is solid or clear), in the grey the see-through silk showed as over the dark
 /** @param {CanvasRenderingContext2D} c @param {import('../../art/titlescene.js').TitleScene} S */
@@ -363,14 +367,15 @@ function worldLayer(c, S) {
     if (p.gone || p.x + (p.span || 0) < -40 || p.x > TITLE_VW + 40) continue;
     /** @type {any} */
     const pr = p;
+    const turn = !!p.rot;              // a burnt-through piece tumbling down (titlescene.js): turned about its middle
+    if (turn) { c.save(); tumble(c, p.x, p, 1); }
     if (p.st === 'silk') {             // a cut web line's piece: silk hanging from its end, as the lines are drawn
       c.strokeStyle = SILK; c.lineWidth = 0.9;
       c.beginPath(); c.moveTo(p.x, p.y);
       for (let k = 2; k <= p.len + 1.9; k += 2) { const q = vinePt(pr, Math.min(k, p.len)); c.lineTo(p.x + q.x, p.y + q.y); }
       c.stroke();
-      continue;
-    }
-    drawProp(c, pr, S.t, T);
+    } else drawProp(c, pr, S.t, T);
+    if (turn) c.restore();
   }
   // the spiders' web lines, silk as the game draws it (render: game/creatures/spider.js drawSilk)
   c.strokeStyle = SILK; c.lineWidth = 0.9; c.globalAlpha = 1;

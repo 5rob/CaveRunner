@@ -59,6 +59,7 @@ function bundle() {
 }
 
 function build() {
+  require('./autoknobs').write();   // src/dev/autouse.js: which Dev knobs Auto reads (the panel colours by it)
   const v = version();
   const files = { 'main.js': bundle() };
   let html = read(path.join(SRC, 'shell.html'))

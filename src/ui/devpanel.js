@@ -20,6 +20,7 @@ import {
 import { auditText, loadAudit } from '../save/audit.js';
 import { loadPresets, presetGun, removePreset, savePresets } from '../save/presets.js';
 import { gunColor } from '../spells/guns.js';
+import { AUTO_KNOBS } from '../dev/autouse.js';
 import { FireSim } from './firesim.js';
 import { h, useEffect, useRef, useState } from './h.js';
 
@@ -470,13 +471,16 @@ export function RampEditor() {
 // value, its default shown as the placeholder. Committing an empty box restores the
 // default; anything else is parsed, clamped to the knob's range and saved at once.
 /** @param {{ meta: DevRow }} props */
+// (owner v1.0.57) green: CaveRunner Auto reads this knob; grey: only the old game (tools/autoknobs.js, src/dev/autouse.js)
+/** @param {string} k */
+const autoCls = k => (AUTO_KNOBS.has(k) ? 'devauto' : 'devold');
 export function DevRow({ meta }) {
   const [val, setVal] = useState(String(DEV[meta.k]));
   if (meta.type === 'curve' || meta.type === 'grad' || meta.type === 'ramp') return null;   // shaped on their editors, not typed
   if (meta.type === 'slider') {
     // a slider: changes live as you drag, the number beside the label; ↺ puts the default back
     const set = v => { devSet(meta.k, v); setVal(String(v)); };
-    return h('div', { className: 'devrow' },
+    return h('div', { className: 'devrow ' + autoCls(meta.k) },
       h('label', null, meta.label, h('span', { className: 'devval' }, String(DEV[meta.k]))),
       h('input', { type: 'range', min: meta.min, max: meta.max, step: meta.step, value: DEV[meta.k],
         onChange: e => set(parseFloat(e.target.value)) }),
@@ -485,7 +489,7 @@ export function DevRow({ meta }) {
   if (meta.type === 'color') {
     // a colour: changes live as you pick; ↺ puts the default back
     const set = v => { devSet(meta.k, v); setVal(v); };
-    return h('div', { className: 'devrow' },
+    return h('div', { className: 'devrow ' + autoCls(meta.k) },
       h('label', null, meta.label),
       h('input', { type: 'color', value: DEV[meta.k], onChange: e => set(e.target.value) }),
       h('button', { className: 'devreset', 'aria-label': 'Default', onPointerDown: () => set(DEV_DEFAULTS[meta.k]) }, '↺'));
@@ -499,7 +503,7 @@ export function DevRow({ meta }) {
     devSet(meta.k, v);
     setVal(String(v));
   };
-  return h('div', { className: 'devrow' },
+  return h('div', { className: 'devrow ' + autoCls(meta.k) },
     h('label', null, meta.label),
     h('input', { type: 'number', inputMode: 'decimal', step: meta.step,
       value: val, placeholder: String(DEV_DEFAULTS[meta.k]),
@@ -511,14 +515,14 @@ export function DevRow({ meta }) {
 
 // A group's header: a tap opens or shuts the group (a finger that scrolls the panel gets no
 // click, so scrolling can't flip one). Shows how many knobs it holds and how many you've changed.
-/** @param {{ g: string, name: string, shut: boolean, toggle: (g: string) => void, n: number, changed: number, tab?: string }} props */
-export function DevGroupHead({ g, name, shut, toggle, n, changed, tab }) {
+/** @param {{ g: string, name: string, shut: boolean, toggle: (g: string) => void, n: number, changed: number, tab?: string, auto: number }} props */
+export function DevGroupHead({ g, name, shut, toggle, n, changed, tab, auto }) {
   return h('button', { className: 'devghead' + (shut ? '' : ' open'), 'data-g': g, 'aria-expanded': !shut,
     onClick: () => toggle(g) },
     h('span', { className: 'devcaret' }, '›'),
     h('span', { className: 'devgname' }, name, tab ? h('span', { className: 'devgtab' }, tab) : null),
     changed ? h('span', { className: 'devgchg', title: 'changed from default' }, changed + ' changed') : null,
-    h('span', { className: 'devgn' }, String(n)));
+    h('span', { className: 'devgn ' + (auto === n ? 'devauto' : auto ? 'devsome' : 'devold'), title: auto + ' of ' + n + ' work in Auto' }, String(n)));
 }
 
 // what a group draws besides its rows: the previews and editors that shape its knobs
@@ -630,13 +634,14 @@ export function DevPanel({ input, refresh, close, onRestart, onSpawnGun, onSpawn
               'aria-selected': t === tab, onClick: () => setTab(t) }, name, chg ? h('i', { className: 'devdot' }) : null);
           }))),
       h('div', { className: 'devbody' },
+        h('p', { className: 'devkey' }, h('i', { className: 'devauto' }), 'works in Auto ', h('i', { className: 'devsome' }), 'some ', h('i', { className: 'devold' }), 'old game only'),
         !needle && tab === 'firesim' ? h(FireSim, null) : null,
         shown.length ? null : h('p', { className: 'devnote' }, 'No knob matches “' + q.trim() + '”.'),
         shown.map(({ g, name, rows, hits, nameHit }) => {
           const shut = needle ? false : !isOpen(g);
           const changed = rows.filter(m => DEV[m.k] !== DEV_DEFAULTS[m.k]).length;
           return h('div', { key: g, className: 'devgroup' + (shut ? '' : ' open') },
-            h(DevGroupHead, { g, name, shut, toggle: toggleG, n: rows.filter(m => m.type !== 'curve').length, changed,
+            h(DevGroupHead, { g, name, shut, toggle: toggleG, n: rows.filter(m => m.type !== 'curve').length, auto: rows.filter(m => m.type !== 'curve' && AUTO_KNOBS.has(m.k)).length, changed,
               tab: needle ? tabName(devTabOf(g)) : '' }),
             shut ? null : h('div', { className: 'devvars' },
               !needle || nameHit ? groupExtras(g) : null,

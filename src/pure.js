@@ -60,6 +60,7 @@ export * from './art/ramps.js';
 export * from './art/gunart.js';
 export * from './art/titlescene.js';
 export * from './art/firelab.js';
+export * from './dev/autouse.js';
 export * from './art/cleared.js';
 export * from './auto/run.js';
 export * from './auto/maps.js';

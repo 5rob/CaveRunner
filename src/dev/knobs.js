@@ -722,11 +722,13 @@ DEV_META.push(
   { k: 'autoFuelRegen',  g: 'autodeath', label: 'Jet fuel: refill on the ground (× the old game’s)', min: 0.1, max: 3, step: 0.05 });
 DEV_GROUPS.push(['autodeath', 'Auto: jetpack and death']);
 // (owner v1.0.56: full controls for fire in Auto) the level's own fire knobs; the old game's (burn times, creatures) show here too
-Object.assign(DEV_DEFAULTS, { autoFireSpread: 0.1, autoWebFire: 3, autoVineCatch: 0.25, autoLeafReach: 5, autoLeafLight: 0.15 });
+Object.assign(DEV_DEFAULTS, { autoFireSpread: 0.1, autoWebFire: 3, autoVineCatch: 0.25, autoLeafReach: 5, autoLeafLight: 0.15, autoBurnCut: 0.015, autoBurnSpin: 2.5 });
 DEV_META.push(
   { k: 'autoFireSpread', g: 'autofire', label: 'Auto levels: fire spreads cell to cell, and onto vines and webs from burning ground, at this × the old game', min: 0, max: 3, step: 0.05 },
   { k: 'autoWebFire',    g: 'autofire', label: 'Auto levels: silk burns up this × faster than vines', min: 0.1, max: 10, step: 0.1 },
   { k: 'autoVineCatch',  g: 'autofire', label: 'Auto levels: a vine beside a burning one catches at this chance a fire tick', min: 0, max: 1, step: 0.05 },
+  { k: 'autoBurnCut',    g: 'autofire', label: 'Vines and webs on fire burn right through at this chance a fire tick: the rest falls away', min: 0, max: 0.3, step: 0.005 },
+  { k: 'autoBurnSpin',   g: 'autofire', label: '… a falling piece turns at up to this either way (rad/s)', min: 0, max: 10, step: 0.1 },
   { k: 'autoLeafReach',  g: 'autofire', label: 'Auto levels: a burning stem or leaf lights moss, grass and timber this near (units)', min: 0, max: 20, step: 0.5 },
   { k: 'autoLeafLight',  g: 'autofire', label: '… each of those cells at this chance a fire tick', min: 0, max: 1, step: 0.01 });
 DEV_GROUPS.push(['autofire', 'Auto: fire']);

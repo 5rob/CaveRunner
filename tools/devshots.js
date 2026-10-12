@@ -24,15 +24,20 @@ require('../tests/build')();
   await page.locator('.adevbtn').dispatchEvent('pointerdown');
   await page.waitForTimeout(400);
   await page.screenshot({ path: path.join(OUT, 'dev-b-panel.png') });
-  // c: the Auto tab, its fire group open (v1.0.56)
-  await page.getByText('Auto', { exact: true }).first().click();
+  // c: (v1.0.57) the Creatures tab, Spider open: green bars on the knobs Auto reads, dimmed ones only the old game's
+  await page.locator('.devtab[data-t=creatures]').click();
   await page.waitForTimeout(200);
-  await page.getByText('Auto: fire', { exact: true }).first().click();
+  await page.locator('.devghead[data-g=spider]').click();
   await page.waitForTimeout(200);
-  await page.getByText('Auto: fire', { exact: true }).first().scrollIntoViewIfNeeded();
-  await page.evaluate(() => { const e = [...document.querySelectorAll('*')].find(n => n.textContent === 'Auto: fire'); if (e) e.scrollIntoView({ block: 'start' }); });
+  await page.locator('.devghead[data-g=spider]').evaluate(e => e.scrollIntoView({ block: 'start' }));
   await page.waitForTimeout(200);
-  await page.screenshot({ path: path.join(OUT, 'dev-c-fire.png') });
-  console.log('dev-a-gear.png  the Dev ⚙️ beside ⏸ (dev mode on)\ndev-b-panel.png  the Dev panel open, Auto tab\ndev-c-fire.png  Auto: fire open');
+  await page.screenshot({ path: path.join(OUT, 'dev-c-auto.png') });
+  // d: the Creatures tab's groups shut: each count coloured (green all, amber some, grey none in Auto)
+  await page.locator('.devghead[data-g=spider]').click();
+  await page.waitForTimeout(200);
+  await page.locator('.devbody').evaluate(e => { e.scrollTop = 0; });
+  await page.waitForTimeout(200);
+  await page.screenshot({ path: path.join(OUT, 'dev-d-groups.png') });
+  console.log('dev-a-gear.png  the Dev ⚙️ beside ⏸ (dev mode on)\ndev-b-panel.png  the Dev panel open, Auto tab\ndev-c-auto.png  Spider open, coloured\ndev-d-groups.png  Creatures groups');
   await browser.close();
 })().catch(e => { console.log(e); process.exit(1); });

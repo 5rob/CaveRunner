@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v1.0.56</title>
-<!-- VERSION = 'v1000056' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v1.0.57</title>
+<!-- VERSION = 'v1000057' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -581,6 +581,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .lvlpick .lvlgo.on{border-color:#3a8ee0;box-shadow:inset 0 0 0 1px #3a8ee0}
 .devrow{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:40px}
 .devrow label{font-size:13px;color:var(--text);flex:1 1 auto;line-height:1.3}
+/* (v1.0.57) green bar: CaveRunner Auto reads this knob; dimmed: only the old game (src/dev/autouse.js) */
+.devrow.devauto{box-shadow:inset 3px 0 0 #3fbf6a;padding-left:9px}
+.devrow.devold{box-shadow:inset 3px 0 0 #4a4f58;padding-left:9px}
+.devrow.devold label{color:var(--muted);opacity:.7}
+.devgn.devauto{color:#3fbf6a;box-shadow:inset 0 0 0 1px #3fbf6a}
+.devgn.devsome{color:#e0b040;box-shadow:inset 0 0 0 1px #e0b040}
+.devgn.devold{opacity:.55}
+.devkey{display:flex;align-items:center;gap:6px;margin:2px 4px 8px;font:12px system-ui,sans-serif;color:var(--muted)}
+.devkey i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-left:6px}
+.devkey i.devauto{background:#3fbf6a}
+.devkey i.devold{background:#4a4f58}
+.devkey i.devsome{background:#e0b040}
 .devrow input[type=color]{width:56px;padding:2px 4px}
 .devrow input[type=range]{width:132px;height:36px;padding:0;border:0;background:none;accent-color:var(--acc)}
 .devval{display:inline-block;margin-left:8px;font:700 12px ui-monospace,monospace;color:var(--acc)}
@@ -1102,7 +1114,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v1.0.56';</script>
+<script>const VERSION = 'v1.0.57';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -2100,11 +2112,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "autoFuelRegen", g: "autodeath", label: "Jet fuel: refill on the ground (× the old game’s)", min: 0.1, max: 3, step: 0.05 }
   );
   DEV_GROUPS.push(["autodeath", "Auto: jetpack and death"]);
-  Object.assign(DEV_DEFAULTS, { autoFireSpread: 0.1, autoWebFire: 3, autoVineCatch: 0.25, autoLeafReach: 5, autoLeafLight: 0.15 });
+  Object.assign(DEV_DEFAULTS, { autoFireSpread: 0.1, autoWebFire: 3, autoVineCatch: 0.25, autoLeafReach: 5, autoLeafLight: 0.15, autoBurnCut: 0.015, autoBurnSpin: 2.5 });
   DEV_META.push(
     { k: "autoFireSpread", g: "autofire", label: "Auto levels: fire spreads cell to cell, and onto vines and webs from burning ground, at this × the old game", min: 0, max: 3, step: 0.05 },
     { k: "autoWebFire", g: "autofire", label: "Auto levels: silk burns up this × faster than vines", min: 0.1, max: 10, step: 0.1 },
     { k: "autoVineCatch", g: "autofire", label: "Auto levels: a vine beside a burning one catches at this chance a fire tick", min: 0, max: 1, step: 0.05 },
+    { k: "autoBurnCut", g: "autofire", label: "Vines and webs on fire burn right through at this chance a fire tick: the rest falls away", min: 0, max: 0.3, step: 5e-3 },
+    { k: "autoBurnSpin", g: "autofire", label: "… a falling piece turns at up to this either way (rad/s)", min: 0, max: 10, step: 0.1 },
     { k: "autoLeafReach", g: "autofire", label: "Auto levels: a burning stem or leaf lights moss, grass and timber this near (units)", min: 0, max: 20, step: 0.5 },
     { k: "autoLeafLight", g: "autofire", label: "… each of those cells at this chance a fire tick", min: 0, max: 1, step: 0.01 }
   );
@@ -13509,8 +13523,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (p.drop) {
         p.vy = (p.vy || 0) + GRAVITY * 0.5 * dt;
         p.y += p.vy * dt;
+        if (p.rv != null) p.rot = (p.rot || 0) + p.rv * dt;
+        const lo = p.rv != null ? titleTumbleLow(p) : { x: p.x, y: p.y + 1 };
         if (p.y > S2.vh) p.gone = true;
-        else if (titleSolid(S2, p.x, p.y + 1)) {
+        else if (titleSolid(S2, lo.x, lo.y)) {
           p.gone = true;
           burst(S2, p.x, p.y, 3, p.st === "silk" ? "#eef0f6" : "#5a8a3a", 40, "chunk", 0.6);
           snd(S2, "rustle", p.x, p.y, { st: p.st === "silk" ? "myc" : "vine", v: 0.4 });
@@ -14881,6 +14897,32 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         else spreadFrom(S2, E.x, E.y);
         for (const o of S2.props) if (!o.burn && !o.gone && !o.arc && burns(o) && Math.abs(o.ox - E.x) < 10 && E.y > o.y - 4 && E.y < o.y + o.len + 4 && R() < (autoOn(S2) ? DEV.autoVineCatch : 0.25 * Math.min(1, vf))) catchPlant(S2, o);
       }
+      if (autoOn(S2) && ticks && !p.drop && span > 6 && p.len - p.lit > 8 && R() < 1 - Math.pow(1 - DEV.autoBurnCut, ticks)) {
+        const k = p.lit + 2 + R() * (span - 4), q = at(k);
+        const piece = {
+          k: "climb",
+          st: p.st,
+          ox: q.x,
+          x: q.x - S2.scroll,
+          y: q.y,
+          len: p.len - k,
+          seed: R(),
+          side: 1,
+          burn: 1,
+          ac: p.ac,
+          ar: p.ar,
+          lit: 0,
+          ch: Math.max(0, (p.ch ?? p.len) - k),
+          drop: true,
+          vy: 0,
+          rot: 0,
+          rv: (R() * 2 - 1) * DEV.autoBurnSpin
+        };
+        S2.props.push(piece);
+        p.len = k;
+        p.ch = Math.min(p.ch ?? k, k);
+        snd(S2, "rustle", q.x - S2.scroll, q.y, { st: p.st === "silk" ? "myc" : "vine", v: 0.3 });
+      }
       if (p.len < 3) {
         p.gone = true;
         lightArea(S2, tx, ty, 6, 0.5);
@@ -14890,6 +14932,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   var autoOn = (S2) => !!(S2.lvl || S2.lab);
   var fireK = (S2) => autoOn(S2) ? DEV.autoFireSpread : TITLE_FIRESPEED;
+  var titleTumbleLow = (p) => {
+    const h3 = p.len / 2, s = Math.sin(p.rot || 0) * h3, c = Math.cos(p.rot || 0) * h3, e = c >= 0 ? 1 : -1;
+    return { x: p.x - s * e, y: p.y + h3 + c * e };
+  };
   var LEAFY = (st) => !["silk", "root", "chain", "myc", "icefall"].includes(st);
   var burns = (p) => !!FLAMMABLE[p.st] || p.st === "silk";
   function spreadFrom(S2, wx, y, J = TITLE_JUMP, P2 = TITLE_JUMPP) {
@@ -29476,6 +29522,340 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   var lutAt = (L, t) => L[Math.max(0, Math.min(LUT_N, Math.round(t * LUT_N)))];
 
+  // src/dev/autouse.js
+  var AUTO_KNOBS = /* @__PURE__ */ new Set([
+    "aggro",
+    "amb",
+    "arClearHi",
+    "arClearLo",
+    "arClimbHi",
+    "arClimbLo",
+    "arClusterHi",
+    "arClusterLo",
+    "arGrabHi",
+    "arGrabLo",
+    "arSlackHi",
+    "arSlackLo",
+    "arSpanHi",
+    "arSpanLo",
+    "arStrandLenHi",
+    "arStrandLenLo",
+    "arStrandsHi",
+    "arStrandsLo",
+    "arThickHi",
+    "arThickLo",
+    "autoArcR",
+    "autoBlockFull",
+    "autoBlockMax",
+    "autoBlockMin",
+    "autoBlockN",
+    "autoBlockThin",
+    "autoBlockWide",
+    "autoBossDmg",
+    "autoBossHp",
+    "autoBossSize",
+    "autoBurnCut",
+    "autoBurnSpin",
+    "autoChestExo",
+    "autoChestGold",
+    "autoChestGoldN",
+    "autoChestGreen",
+    "autoChestMod",
+    "autoChestN",
+    "autoChestPerk",
+    "autoChestR",
+    "autoChestRed",
+    "autoClearFire",
+    "autoClearGap",
+    "autoClearMin",
+    "autoClearT",
+    "autoClearWait",
+    "autoCtlWait",
+    "autoDeathStop",
+    "autoExoPrice",
+    "autoFireJump",
+    "autoFireJumpP",
+    "autoFireSpread",
+    "autoFoeCap0",
+    "autoFoeCap1",
+    "autoFoeDmg",
+    "autoFoeElites",
+    "autoFoeGap0",
+    "autoFoeGap1",
+    "autoFuelDrain",
+    "autoFuelRegen",
+    "autoGhostCd",
+    "autoGhostDmg",
+    "autoGhostRange",
+    "autoGrab",
+    "autoGreen",
+    "autoGunBase",
+    "autoGunDelay",
+    "autoGunGrow",
+    "autoGunMana",
+    "autoGunRech",
+    "autoGunRegen",
+    "autoGunSpread",
+    "autoHardDeep",
+    "autoHardEdge",
+    "autoHoldMs",
+    "autoHubDemoNear",
+    "autoHubSpace",
+    "autoHubWalk",
+    "autoJetSmoke",
+    "autoJetTilt",
+    "autoLeafLight",
+    "autoLeafReach",
+    "autoLootBossGold",
+    "autoLootEliteGold",
+    "autoLootExo",
+    "autoLootMod",
+    "autoLootRed",
+    "autoLvlBossT",
+    "autoLvlChest",
+    "autoLvlChestR",
+    "autoLvlEase",
+    "autoLvlElite",
+    "autoLvlEliteR",
+    "autoLvlHurry",
+    "autoLvlMin",
+    "autoLvlPace",
+    "autoLvlSlow",
+    "autoMapGrow",
+    "autoMapPrice",
+    "autoMapStep",
+    "autoModGold",
+    "autoMoveK",
+    "autoNavCut",
+    "autoNavGive",
+    "autoPayHold",
+    "autoPayK",
+    "autoPayReach",
+    "autoPickMin",
+    "autoPickReach",
+    "autoRed",
+    "autoRoamBack",
+    "autoRoamCam",
+    "autoScrap",
+    "autoShieldT",
+    "autoStreamBigN",
+    "autoStreamBigT",
+    "autoStreamGrow",
+    "autoStreamMedN",
+    "autoStreamMedT",
+    "autoStreamRamp",
+    "autoStreamRate0",
+    "autoStreamRate1",
+    "autoThrowBack",
+    "autoThrowPull",
+    "autoThrowSuck",
+    "autoTierDmg",
+    "autoTierHp",
+    "autoTpBlink",
+    "autoTpBoomR",
+    "autoTpBoomWait",
+    "autoVineAsh",
+    "autoVineCatch",
+    "autoVineFire",
+    "autoVineJitter",
+    "autoVineSpread",
+    "autoWallMax",
+    "autoWallMin",
+    "autoWebFire",
+    "autoWebHalt",
+    "autoWebSlow",
+    "autoZoneIsle",
+    "autoZoneOpen",
+    "autoZoneRag",
+    "autoZoneScale",
+    "autoZoneWarp",
+    "bagSpeed",
+    "beamDeg",
+    "beamGlow",
+    "beamNear",
+    "beamReach",
+    "bendDamp",
+    "bendDip",
+    "bendGrab",
+    "bendK",
+    "bendMax",
+    "bendPush",
+    "bhPull",
+    "caAggroHi",
+    "caAggroLo",
+    "elDmgHi",
+    "elDmgLo",
+    "elHpHi",
+    "elHpLo",
+    "elScaleHi",
+    "elScaleLo",
+    "elTintAmtHi",
+    "elTintAmtLo",
+    "elTintHi",
+    "elTintLo",
+    "fireBurnHi",
+    "fireBurnLo",
+    "fireDpsHi",
+    "fireDpsLo",
+    "fireGrassHi",
+    "fireGrassLo",
+    "fireMossHi",
+    "fireMossLo",
+    "firePlantHi",
+    "firePlantLo",
+    "fireSpreadHi",
+    "fireSpreadLo",
+    "fireWoodHi",
+    "fireWoodLo",
+    "fogDim",
+    "jeAimTolHi",
+    "jeAimTolLo",
+    "jeBounceHi",
+    "jeBounceLo",
+    "jeColGlowHi",
+    "jeColGlowLo",
+    "jeDragHi",
+    "jeDragLo",
+    "jeGlowRHi",
+    "jeGlowRLo",
+    "jeHuntPushHi",
+    "jeHuntPushLo",
+    "jeHuntRestHi",
+    "jeHuntRestLo",
+    "jePlantGlowHi",
+    "jePlantGlowLo",
+    "jePlantReachHi",
+    "jePlantReachLo",
+    "jePlantSizeHi",
+    "jePlantSizeLo",
+    "jePlantTopHi",
+    "jePlantTopLo",
+    "jePlantTwinkleHi",
+    "jePlantTwinkleLo",
+    "jePushTHi",
+    "jePushTLo",
+    "jePushTolHi",
+    "jePushTolLo",
+    "jeRangeHi",
+    "jeRangeLo",
+    "jeRoamPushHi",
+    "jeRoamPushLo",
+    "jeRoamRestHi",
+    "jeRoamRestLo",
+    "jeSagHi",
+    "jeSagLo",
+    "jeShotCdHi",
+    "jeShotCdLo",
+    "jeShotSizeHi",
+    "jeShotSizeLo",
+    "jeShotSpdHi",
+    "jeShotSpdLo",
+    "jeSinkHi",
+    "jeSinkLo",
+    "jeSpreadHi",
+    "jeSpreadLo",
+    "jeSquashHi",
+    "jeSquashLo",
+    "jeTentLenHi",
+    "jeTentLenLo",
+    "jeTentsHi",
+    "jeTentsLo",
+    "jeThinHi",
+    "jeThinLo",
+    "jeTurnHi",
+    "jeTurnLo",
+    "jeVertsHi",
+    "jeVertsLo",
+    "jeWaveHi",
+    "jeWaveLo",
+    "jetVol",
+    "killGrow",
+    "loseAggro",
+    "move",
+    "raArriveHi",
+    "raArriveLo",
+    "raDotHi",
+    "raDotLo",
+    "raHuntOffHi",
+    "raHuntOffLo",
+    "raHuntOnHi",
+    "raHuntOnLo",
+    "raJumpHi",
+    "raJumpLo",
+    "raJumpRHi",
+    "raJumpRLo",
+    "raNestRestHi",
+    "raNestRestLo",
+    "raRoamOffHi",
+    "raRoamOffLo",
+    "raRoamOnHi",
+    "raRoamOnLo",
+    "raSpeedHi",
+    "raSpeedLo",
+    "raSpreadHi",
+    "raSpreadLo",
+    "runnerLine",
+    "runnerPx",
+    "spArriveHi",
+    "spArriveLo",
+    "spDotHi",
+    "spDotLo",
+    "spGrabHi",
+    "spGrabLo",
+    "spHuntOffHi",
+    "spHuntOffLo",
+    "spHuntOnHi",
+    "spHuntOnLo",
+    "spHuntWebHi",
+    "spHuntWebLo",
+    "spLineSpdHi",
+    "spLineSpdLo",
+    "spMaxLinesHi",
+    "spMaxLinesLo",
+    "spRoamOffHi",
+    "spRoamOffLo",
+    "spRoamOnHi",
+    "spRoamOnLo",
+    "spRoamWebHi",
+    "spRoamWebLo",
+    "spSilkCdHi",
+    "spSilkCdLo",
+    "spSilkHi",
+    "spSilkLo",
+    "spSilkSpdHi",
+    "spSilkSpdLo",
+    "spSpeedHi",
+    "spSpeedLo",
+    "spWebHi",
+    "spWebLo",
+    "sputDip",
+    "torch",
+    "vBoom",
+    "vDrip",
+    "vEnemy",
+    "vEnemyFire",
+    "vHit",
+    "vSpell",
+    "vStep",
+    "vUi",
+    "vWorld",
+    "vineDamp",
+    "vineGrav",
+    "vineLinks",
+    "vineMax",
+    "vinePush",
+    "vineTailDamp",
+    "vol",
+    "webClimbHi",
+    "webClimbLo",
+    "webGrabHi",
+    "webGrabLo",
+    "webSag",
+    "webSlowHi",
+    "webSlowLo",
+    "zoom"
+  ]);
+
   // src/art/firelab.js
   var LAB_W = 1500;
   var LAB_ROOF = 14;
@@ -30666,6 +31046,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const at = (k2) => bent ? vinePt(pr, k2) : { x: 0, y: k2 };
       ctx.save();
       ctx.translate(-S2.scroll, 0);
+      if (p.rot) tumble(ctx, p.ox, p, 1);
       for (let k2 = from; k2 <= top; k2 += TCELL * 0.75) {
         const q = at(k2);
         crackleAt(ctx, p.ox + q.x, p.y + q.y, TCELL, S2.fireN, !autoOn(S2) && p.len - k2 < 1.5);
@@ -30865,12 +31246,23 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       });
     }
   }
+  function tumble(c, x, p, _k) {
+    const my = p.y + p.len / 2;
+    c.translate(x, my);
+    c.rotate(p.rot || 0);
+    c.translate(-x, -my);
+  }
   function worldLayer(c, S2) {
     const SILK = "#9fa2ad";
     c.lineCap = "round";
     for (const p of S2.props) {
       if (p.gone || p.x + (p.span || 0) < -40 || p.x > TITLE_VW + 40) continue;
       const pr = p;
+      const turn2 = !!p.rot;
+      if (turn2) {
+        c.save();
+        tumble(c, p.x, p, 1);
+      }
       if (p.st === "silk") {
         c.strokeStyle = SILK;
         c.lineWidth = 0.9;
@@ -30881,9 +31273,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           c.lineTo(p.x + q.x, p.y + q.y);
         }
         c.stroke();
-        continue;
-      }
-      drawProp(c, pr, S2.t, T);
+      } else drawProp(c, pr, S2.t, T);
+      if (turn2) c.restore();
     }
     c.strokeStyle = SILK;
     c.lineWidth = 0.9;
@@ -32669,6 +33060,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       )
     );
   }
+  var autoCls = (k) => AUTO_KNOBS.has(k) ? "devauto" : "devold";
   function DevRow({ meta }) {
     const [val, setVal] = useState(String(DEV[meta.k]));
     if (meta.type === "curve" || meta.type === "grad" || meta.type === "ramp") return null;
@@ -32679,7 +33071,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       };
       return h(
         "div",
-        { className: "devrow" },
+        { className: "devrow " + autoCls(meta.k) },
         h("label", null, meta.label, h("span", { className: "devval" }, String(DEV[meta.k]))),
         h("input", {
           type: "range",
@@ -32699,7 +33091,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       };
       return h(
         "div",
-        { className: "devrow" },
+        { className: "devrow " + autoCls(meta.k) },
         h("label", null, meta.label),
         h("input", { type: "color", value: DEV[meta.k], onChange: (e) => set(e.target.value) }),
         h("button", { className: "devreset", "aria-label": "Default", onPointerDown: () => set(DEV_DEFAULTS[meta.k]) }, "↺")
@@ -32722,7 +33114,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     };
     return h(
       "div",
-      { className: "devrow" },
+      { className: "devrow " + autoCls(meta.k) },
       h("label", null, meta.label),
       h("input", {
         type: "number",
@@ -32741,7 +33133,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       })
     );
   }
-  function DevGroupHead({ g, name, shut, toggle, n, changed, tab }) {
+  function DevGroupHead({ g, name, shut, toggle, n, changed, tab, auto }) {
     return h(
       "button",
       {
@@ -32753,7 +33145,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       h("span", { className: "devcaret" }, "›"),
       h("span", { className: "devgname" }, name, tab ? h("span", { className: "devgtab" }, tab) : null),
       changed ? h("span", { className: "devgchg", title: "changed from default" }, changed + " changed") : null,
-      h("span", { className: "devgn" }, String(n))
+      h("span", { className: "devgn " + (auto === n ? "devauto" : auto ? "devsome" : "devold"), title: auto + " of " + n + " work in Auto" }, String(n))
     );
   }
   var groupExtras = (g) => [
@@ -32928,6 +33320,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         h(
           "div",
           { className: "devbody" },
+          h("p", { className: "devkey" }, h("i", { className: "devauto" }), "works in Auto ", h("i", { className: "devsome" }), "some ", h("i", { className: "devold" }), "old game only"),
           !needle && tab === "firesim" ? h(FireSim, null) : null,
           shown.length ? null : h("p", { className: "devnote" }, "No knob matches “" + q.trim() + "”."),
           shown.map(({ g, name, rows, hits, nameHit }) => {
@@ -32942,6 +33335,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
                 shut,
                 toggle: toggleG,
                 n: rows.filter((m) => m.type !== "curve").length,
+                auto: rows.filter((m) => m.type !== "curve" && AUTO_KNOBS.has(m.k)).length,
                 changed,
                 tab: needle ? tabName(devTabOf(g)) : ""
               }),

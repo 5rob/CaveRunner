@@ -572,6 +572,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .lvlpick .lvlgo.on{border-color:#3a8ee0;box-shadow:inset 0 0 0 1px #3a8ee0}
 .devrow{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:40px}
 .devrow label{font-size:13px;color:var(--text);flex:1 1 auto;line-height:1.3}
+/* (v1.0.57) green bar: CaveRunner Auto reads this knob; dimmed: only the old game (src/dev/autouse.js) */
+.devrow.devauto{box-shadow:inset 3px 0 0 #3fbf6a;padding-left:9px}
+.devrow.devold{box-shadow:inset 3px 0 0 #4a4f58;padding-left:9px}
+.devrow.devold label{color:var(--muted);opacity:.7}
+.devgn.devauto{color:#3fbf6a;box-shadow:inset 0 0 0 1px #3fbf6a}
+.devgn.devsome{color:#e0b040;box-shadow:inset 0 0 0 1px #e0b040}
+.devgn.devold{opacity:.55}
+.devkey{display:flex;align-items:center;gap:6px;margin:2px 4px 8px;font:12px system-ui,sans-serif;color:var(--muted)}
+.devkey i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-left:6px}
+.devkey i.devauto{background:#3fbf6a}
+.devkey i.devold{background:#4a4f58}
+.devkey i.devsome{background:#e0b040}
 .devrow input[type=color]{width:56px;padding:2px 4px}
 .devrow input[type=range]{width:132px;height:36px;padding:0;border:0;background:none;accent-color:var(--acc)}
 .devval{display:inline-block;margin-left:8px;font:700 12px ui-monospace,monospace;color:var(--acc)}

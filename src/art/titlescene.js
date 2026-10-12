@@ -136,7 +136,7 @@ export const TITLE_HOME = {
 /** @typedef {{ x: number, y: number, r: number, t: number, max: number, sid?: string }} TBoom */
 /** @typedef {{ pts: { x: number, y: number }[], t: number, col: string }} TZap */
 // a prop: `ox` its world x (not `wx`: art/props.js reads that as an arch's or a vine's sideways bend)
-/** @typedef {{ k: string, st: string, ox: number, x: number, y: number, len: number, seed: number, side: number, burn: number, ac: number, ar: number, lit?: number, ch?: number,
+/** @typedef {{ k: string, st: string, ox: number, x: number, y: number, len: number, seed: number, side: number, burn: number, ac: number, ar: number, lit?: number, ch?: number, rot?: number, rv?: number,
  *   arc?: number[][], thick?: number, t?: number, span?: number, host?: TProp, gone?: boolean, u0?: number, u1?: number, alen?: number, u?: number,
  *   fall?: boolean, vy?: number, sw?: number, swv?: number, sj?: number, tl?: number[], tq?: number[], wx?: number, wy?: number, wvx?: number,
  *   wvy?: number, wu?: number, on?: TProp | null, drop?: boolean, links?: number }} TProp */
@@ -1198,8 +1198,10 @@ export function titleStep(S, dt) {
     if (p.gone) continue;
     if (p.drop) {                       // falling: down until it hits rock (a burning one lights it) or leaves
       p.vy = (p.vy || 0) + GRAVITY * 0.5 * dt; p.y += p.vy * dt;
+      if (p.rv != null) p.rot = (p.rot || 0) + p.rv * dt;
+      const lo = p.rv != null ? titleTumbleLow(p) : { x: p.x, y: p.y + 1 };
       if (p.y > S.vh) p.gone = true;
-      else if (titleSolid(S, p.x, p.y + 1)) {
+      else if (titleSolid(S, lo.x, lo.y)) {
         p.gone = true; burst(S, p.x, p.y, 3, p.st === 'silk' ? '#eef0f6' : '#5a8a3a', 40, 'chunk', 0.6);
         snd(S, 'rustle', p.x, p.y, { st: p.st === 'silk' ? 'myc' : 'vine', v: 0.4 });
         if (p.burn) lightArea(S, p.ox, p.y, 6, 0.8);
@@ -2261,6 +2263,17 @@ function stepFire(S, dt) {
       if (autoOn(S)) spreadFrom(S, E.x, E.y, DEV.autoFireJump, DEV.autoFireJumpP); else spreadFrom(S, E.x, E.y);
       for (const o of S.props) if (!o.burn && !o.gone && !o.arc && burns(o) && Math.abs(o.ox - E.x) < 10 && E.y > o.y - 4 && E.y < o.y + o.len + 4 && R() < (autoOn(S) ? DEV.autoVineCatch : 0.25 * Math.min(1, vf))) catchPlant(S, o);
     }
+    // (Auto's rules, owner v1.0.57) now and then it burns right through somewhere along the burning stretch: the rest below
+    // drops away, still burning, turning as it falls (DEV.autoBurnCut a fire tick, spin up to autoBurnSpin rad/s either way)
+    if (autoOn(S) && ticks && !p.drop && span > 6 && p.len - p.lit > 8 && R() < 1 - Math.pow(1 - DEV.autoBurnCut, ticks)) {
+      const k = p.lit + 2 + R() * (span - 4), q = at(k);
+      /** @type {TProp} */
+      const piece = { k: 'climb', st: p.st, ox: q.x, x: q.x - S.scroll, y: q.y, len: p.len - k, seed: R(), side: 1, burn: 1, ac: p.ac, ar: p.ar,
+        lit: 0, ch: Math.max(0, (p.ch ?? p.len) - k), drop: true, vy: 0, rot: 0, rv: (R() * 2 - 1) * DEV.autoBurnSpin };
+      S.props.push(piece);
+      p.len = k; p.ch = Math.min(p.ch ?? k, k);
+      snd(S, 'rustle', q.x - S.scroll, q.y, { st: p.st === 'silk' ? 'myc' : 'vine', v: 0.3 });
+    }
     if (p.len < 3) { p.gone = true; lightArea(S, tx, ty, 6, 0.5); }
   }
   // a web line lit by hand (fu): it's cut there
@@ -2272,6 +2285,9 @@ export const autoOn = S => !!(S.lvl || S.lab);
 // how fast fire spreads cell to cell and onto plants and webs: the title TITLE_FIRESPEED × the game's, a level DEV.autoFireSpread
 /** @param {TitleScene} S */
 const fireK = S => autoOn(S) ? DEV.autoFireSpread : TITLE_FIRESPEED;
+// a burnt-through piece turning as it falls (rot about its middle): its lower end, screen x
+/** @param {TProp} p */
+export const titleTumbleLow = p => { const h = p.len / 2, s = Math.sin(p.rot || 0) * h, c = Math.cos(p.rot || 0) * h, e = c >= 0 ? 1 : -1; return { x: p.x - s * e, y: p.y + h + c * e }; };
 // a hanging plant drawn with leaves either side of its stem (art/props.js drawProp; titledraw.js lights them)
 /** @param {string} st */
 export const LEAFY = st => !['silk', 'root', 'chain', 'myc', 'icefall'].includes(st);

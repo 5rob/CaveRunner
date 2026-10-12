@@ -44,5 +44,21 @@ const leafTest = light => {
 };
 check('a burning vine\'s leaves light timber beside it', leafTest(0.3) > 0);
 check('… not with autoLeafLight 0', leafTest(0) === 0);
+// (v1.0.57) burning through: with autoBurnCut a lit vine drops pieces below the cut, turning as they fall, and they land
+const cutTest = P => {
+  const keep = D.autoBurnCut; D.autoBurnCut = P;
+  const { S } = G.labScene(VH, 3);
+  S.props.length = 0; S.webs.length = 0;
+  S.props.push({ k: 'climb', st: 'vine', ox: 300, x: 0, y: G.LAB_ROOF, len: 80, seed: 0.3, side: 1, burn: 1, ac: Math.floor(300 / G.TCELL), ar: Math.floor((G.LAB_ROOF - 1) / G.TCELL) });
+  S.scroll = G.labClamp(190);
+  const seen = new Set();
+  for (let i = 0; i < 30 * 6; i++) { G.titleStep(S, dt); for (const p of S.props) if (p.drop && p.rv != null) seen.add(p); }
+  D.autoBurnCut = keep;
+  return [...seen];
+};
+const cut = cutTest(0.5), none = cutTest(0);
+check('burns through: pieces fall away, each turning its own way', cut.length >= 2 && new Set(cut.map(p => p.rv.toFixed(3))).size === cut.length && cut.some(p => Math.abs(p.rot) > 0.05), cut.length);
+check('… and land (gone)', cut.every(p => p.gone));
+check('… none with autoBurnCut 0', none.length === 0);
 console.log(fails ? `${fails} FAILED` : 'all passed');
 process.exit(fails ? 1 : 0);

@@ -7,7 +7,7 @@ const path = require('path');
 const fs = require('fs');
 
 const OUT = path.resolve(process.argv[2] || path.join(__dirname, '..', 'tests', 'build', 'vinefire'));
-const SPREAD = process.argv[3] ? +process.argv[3] : null;
+const SPREAD = process.argv[3] ? +process.argv[3] : null, CUT = process.argv[4] ? +process.argv[4] : null;   // [cut]: DEV.autoBurnCut for the shot (v1.0.57)
 fs.mkdirSync(OUT, { recursive: true });
 require('./build')();
 require('../tests/build')();
@@ -20,7 +20,7 @@ require('../tests/build')();
   page.on('pageerror', e => console.log('PAGEERROR', e.message));
   await page.goto('file://' + path.join(__dirname, '..', 'tests', 'build', 'test.html'));
   await page.waitForTimeout(400);
-  await page.evaluate(sp => { Object.assign(DEV, { autoFoeDmg: 0, autoWallMin: 999, autoWallMax: 999, autoBlockN: 0 }); if (sp) DEV.autoVineSpread = sp; saveAutoRun(newRun(4)); }, SPREAD);
+  await page.evaluate(([sp, cut]) => { Object.assign(DEV, { autoFoeDmg: 0, autoWallMin: 999, autoWallMax: 999, autoBlockN: 0 }); if (sp) DEV.autoVineSpread = sp; if (cut != null) DEV.autoBurnCut = cut; saveAutoRun(newRun(4)); }, [SPREAD, CUT]);
   await page.locator('.tstart').dispatchEvent('pointerdown');
   await page.waitForTimeout(3000);
   // a vine of our own (the cave's may hang out of view): a rock ledge across the view's upper part, a 70-long vine off it, lit
