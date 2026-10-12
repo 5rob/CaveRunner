@@ -2194,7 +2194,7 @@ function stepShots(S, dt) {
     if (s.accel) { const sp = Math.hypot(s.vx, s.vy) || 1, k = Math.min(1 + s.accel * dt, (s.vmax || 600) / sp); if (k > 1) { s.vx *= k; s.vy *= k; } }
     s.vy += s.grav * dt;
     if (s.drag) { const k = Math.exp(-s.drag * dt); s.vx *= k; s.vy *= k; }
-    if (s.follow && !s.beam) shotFollow(S, s, dt);   // Follow Me: pulled back to its caster
+    if (s.follow && !s.beam && !s.heal) shotFollow(S, s, dt);   // Follow Me: pulled back to its caster (a field: fieldFollow)
     s.x += s.vx * dt; s.y += s.vy * dt; s.life -= dt; s.spin += dt * 10;
     if (s.pay && s.trig === 'timer' && s.age >= (s.timer || 0)) release(S, s);
     // each shot's own trail (auto/shotfx.js); the old flame specks for the shots it doesn't know
