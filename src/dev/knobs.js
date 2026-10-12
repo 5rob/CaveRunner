@@ -858,9 +858,68 @@ DEV_META.push(
   { k: 'autoStreamBigN',  g: 'autothrow', label: 'Gold stream: a big nugget is worth at first', min: 10, max: 10000, step: 10 },
   { k: 'autoStreamGrow',  g: 'autothrow', label: 'Gold stream: big nuggets double in worth every (s)', min: 0.2, max: 10, step: 0.1 });
 DEV_GROUPS.push(['autothrow', 'Auto: throw']);
+// (Part A of the purple trajectory mods) CaveRunner Auto's own sizes for Orbiting Arc, Spiral Arc, Boomerang and Ping-Pong Path
+// (auto/traj.js trajStep, flown by art/titlescene.js stepShots), each mod a group, and how its trail and glow look. The mod
+// card's dev-only Edit button (ui/auto/TrajEdit.js) lists its group: TRAJ_GROUP. Sizes in the scene's units (the window is ~160 wide)
+/** @type {Record<string, string>} a trajectory mod's id → its Dev group */
+export const TRAJ_GROUP = { orbit: 'trajorbit', spiral: 'trajspiral', boomer: 'trajboomer', pong: 'trajpong' };
+/** @param {string} g @param {string} kp @param {number} trail @param {number} glow */
+const trajLook = (g, kp, trail, glow) => {
+  Object.assign(DEV_DEFAULTS, { [kp + 'Trail']: trail, [kp + 'TrailA']: 0.55, [kp + 'TrailW']: 0.8, [kp + 'Glow']: glow, [kp + 'GlowA']: 0.18, [kp + 'Tint']: 0.5 });
+  DEV_META.push(
+    { k: kp + 'Trail',  g, label: 'Look: light trail behind it (points; 0: none)', min: 0, max: 60, step: 1, type: 'slider' },
+    { k: kp + 'TrailA', g, label: 'Look: trail brightness at the shot (fades to 0 at its end)', min: 0, max: 1, step: 0.05, type: 'slider' },
+    { k: kp + 'TrailW', g, label: 'Look: trail width (× the shot’s size)', min: 0.2, max: 3, step: 0.1, type: 'slider' },
+    { k: kp + 'Glow',   g, label: 'Look: glow round the shot (radius; 0: none)', min: 0, max: 40, step: 1, type: 'slider' },
+    { k: kp + 'GlowA',  g, label: 'Look: glow strength', min: 0, max: 0.6, step: 0.01, type: 'slider' },
+    { k: kp + 'Tint',   g, label: 'Look: trail and glow colour (0: the shot’s, 1: the mod’s purple)', min: 0, max: 1, step: 0.05, type: 'slider' });
+};
+Object.assign(DEV_DEFAULTS, { trOrbR: 20, trOrbIn: 0.25, trOrbW: 7, trOrbLife: 1, trOrbRock: 1 });
+DEV_META.push(
+  { k: 'trOrbR',    g: 'trajorbit', label: 'Orbit distance (radius round the caster, units)', min: 4, max: 70, step: 1, type: 'slider' },
+  { k: 'trOrbIn',   g: 'trajorbit', label: 'Swings out to it over (s)', min: 0, max: 2, step: 0.05, type: 'slider' },
+  { k: 'trOrbW',    g: 'trajorbit', label: 'Orbit speed (rad/s, one Orbiting Arc; stacked copies go faster)', min: 0.5, max: 25, step: 0.5, type: 'slider' },
+  { k: 'trOrbLife', g: 'trajorbit', label: 'Lifetime (× the shot’s)', min: 0.2, max: 4, step: 0.1, type: 'slider' },
+  { k: 'trOrbRock', g: 'trajorbit', label: 'Passes through rock while orbiting (1 yes, 0 it dies on the wall)', min: 0, max: 1, step: 1, type: 'slider' });
+trajLook('trajorbit', 'trOrb', 16, 10);
+Object.assign(DEV_DEFAULTS, { trSpHz: 2.5, trSpGrow: 7, trSpMax: 16, trSpLife: 1 });
+DEV_META.push(
+  { k: 'trSpHz',   g: 'trajspiral', label: 'Swings side to side this often (a second)', min: 0.2, max: 10, step: 0.1, type: 'slider' },
+  { k: 'trSpGrow', g: 'trajspiral', label: 'Each swing wider by (units a second, one Spiral Arc)', min: 0, max: 60, step: 0.5, type: 'slider' },
+  { k: 'trSpMax',  g: 'trajspiral', label: 'Widest swing (units either side)', min: 1, max: 60, step: 1, type: 'slider' },
+  { k: 'trSpLife', g: 'trajspiral', label: 'Lifetime (× the shot’s)', min: 0.2, max: 4, step: 0.1, type: 'slider' });
+trajLook('trajspiral', 'trSp', 14, 0);
+Object.assign(DEV_DEFAULTS, { trBoDist: 55, trBoRock: 1, trBoOut: 0.35, trBoTurn: 10, trBoCatch: 8, trBoMax: 3, trBoLife: 1 });
+DEV_META.push(
+  { k: 'trBoDist',  g: 'trajboomer', label: 'Turns for home this far from its caster (units) …', min: 10, max: 150, step: 1, type: 'slider' },
+  { k: 'trBoOut',   g: 'trajboomer', label: '… or after this × its lifetime, whichever is first', min: 0.05, max: 1, step: 0.05, type: 'slider' },
+  { k: 'trBoTurn',  g: 'trajboomer', label: 'Turn rate on the way back (rad/s)', min: 0.5, max: 30, step: 0.5, type: 'slider' },
+  { k: 'trBoCatch', g: 'trajboomer', label: 'Caught (gone) this near its caster (units)', min: 2, max: 40, step: 1, type: 'slider' },
+  { k: 'trBoMax',   g: 'trajboomer', label: 'Gives up after (× its lifetime) if not back', min: 1, max: 6, step: 0.5, type: 'slider' },
+  { k: 'trBoRock',  g: 'trajboomer', label: 'Passes through rock on its way back (1 yes, 0 it dies on the wall)', min: 0, max: 1, step: 1, type: 'slider' },
+  { k: 'trBoLife',  g: 'trajboomer', label: 'Lifetime (× the shot’s)', min: 0.2, max: 4, step: 0.1, type: 'slider' });
+trajLook('trajboomer', 'trBo', 12, 0);
+Object.assign(DEV_DEFAULTS, { trPoOut: 0.3, trPoBack: 0.5, trPoLife: 1 });
+DEV_META.push(
+  { k: 'trPoOut',  g: 'trajpong', label: 'Flies out for (s)', min: 0.05, max: 2, step: 0.01, type: 'slider' },
+  { k: 'trPoBack', g: 'trajpong', label: '… then back for (× the out time)', min: 0, max: 1.5, step: 0.05, type: 'slider' },
+  { k: 'trPoLife', g: 'trajpong', label: 'Lifetime (× the shot’s)', min: 0.2, max: 4, step: 0.1, type: 'slider' });
+trajLook('trajpong', 'trPo', 10, 0);
+DEV_GROUPS.push(['trajorbit', 'Trajectory: Orbiting Arc'], ['trajspiral', 'Trajectory: Spiral Arc'], ['trajboomer', 'Trajectory: Boomerang'], ['trajpong', 'Trajectory: Ping-Pong Path']);
+// one group's changed knobs, in Copy Dev settings' shape (the mod card's Edit → Copy)
+/** @param {string} g @param {string} name */
+export function devReportOf(g, name) {
+  const rows = DEV_META.filter(m => m.g === g), changed = rows.filter(m => DEV[m.k] !== DEV_DEFAULTS[m.k]);
+  const lines = ['CaveRunner ' + VERSION + ' dev settings (' + name + ') — please make these the new defaults:', ''];
+  if (!changed.length) lines.push('(nothing changed — everything is at its default)');
+  for (const m of changed)
+    lines.push('- ' + m.label + ' (DEV.' + m.k + '): ' + DEV[m.k] + '   [default ' + DEV_DEFAULTS[m.k] + ']');
+  return lines.join('\n');
+}
 // before the last tab: that one also takes any group in no tab
 // (owner v1.0.56) every fire knob on its own page, under the fire sim's window (ui/firesim.js)
 DEV_TABS.splice(DEV_TABS.length - 1, 0, ['firesim', 'Fire sim', ['firelab', 'firefx', 'autofire', 'firesilk', 'fire']]);
+DEV_TABS.splice(DEV_TABS.length - 2, 0, ['traj', 'Trajectory', ['trajorbit', 'trajspiral', 'trajboomer', 'trajpong']]);
 DEV_TABS.splice(DEV_TABS.length - 2, 0, ['auto', 'Auto', ['auto', 'autohub', 'automaps', 'autolevel', 'autoblocks', 'autoguns', 'autoperks', 'autofoes', 'autodeath', 'autoloot', 'autochests', 'autobag', 'autothrow']]);
 export const DEV_KEY = 'caverunner-dev';
 /** @type {DevKnobs} */

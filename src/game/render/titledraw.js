@@ -29,6 +29,7 @@ import { hubMapA, hubState, hubStopX } from '../../auto/hub.js';
 import { MACH_H, hubPayAt, throwR } from '../../auto/throw.js';
 import { drawItemTile, tileItem } from '../../auto/itemtile.js';
 import { perkFront, perkGlow } from './perkdraw.js';
+import { trajLook, trajRgb } from '../../auto/traj.js';
 import { drawBoom, drawGlowShot, drawSolidShot, shotLights } from './autolooks.js';
 // a pickup drawn as its bag tile: this many world units across
 export const LOOT_TILE = 13;
@@ -217,12 +218,22 @@ export function titleDraw(ctx, S, cw, ch, cam) {
   if (S.lvl) levelGlow(ctx, S);
   perkGlow(ctx, S);   // CaveRunner Auto's perks: the shield, the laser, the ghost's halo (perkdraw.js)
   shotLights(ctx, S.shots);   // the light the shots throw (the bubble's blue, pollen's glow)
+  // the purple trajectory mods' glow round the shot (auto/traj.js trajLook, DEV.tr…Glow)
+  for (const s of S.shots) { const L = trajLook(s); if (L && L.glow > 0 && L.glowA > 0) glowAt(ctx, s.x, s.y, L.glow, L.glowA, trajRgb(s.col, L.tint)); }
   // the shots and lightning in the pixel look too (owner, v0.0.171): one layer on the world's grid, added as before
   if (S.shots.length || S.zaps.length) pixelSprite(ctx, gx, 0, TITLE_VW + 100, S.vh, 1, false, c => {
     /** @type {any} */
     const G2 = { ctx: c };
     c.globalCompositeOperation = 'lighter';
     for (const z of S.zaps) drawBolt(G2, z.pts, z.col, 1, z.t / 0.16);
+    // their light trails: a line along the way they came, fading to nothing at its end
+    for (const s of S.shots) if (s.ptr && s.ptr.length >= 4) {
+      const L = trajLook(s), p = s.ptr, n = p.length / 2;
+      if (!L) continue;
+      c.strokeStyle = 'rgb(' + trajRgb(s.col, L.tint) + ')'; c.lineWidth = Math.max(0.5, s.size * L.width); c.lineCap = 'round';
+      for (let i = 1; i < n; i++) { c.globalAlpha = L.alpha * (1 - i / n); c.beginPath(); c.moveTo(p[i * 2 - 2], p[i * 2 - 1]); c.lineTo(p[i * 2], p[i * 2 + 1]); c.stroke(); }
+    }
+    c.globalAlpha = 1;
     for (const s of S.shots) {
       /** @type {any} */
       const b = s;

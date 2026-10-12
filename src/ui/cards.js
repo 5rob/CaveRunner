@@ -10,6 +10,8 @@ import { gunColor, gunLvCol } from '../spells/guns.js';
 import { MODS, famCol, famOf } from '../spells/mods.js';
 import { targetIcon } from '../spells/discrim.js';
 import { devShown } from './devmode.js';
+import { TRAJ_GROUP } from '../dev/knobs.js';
+import { TrajEdit } from './trajedit.js';
 import { auditGet, auditNotes, auditToggle, loadAudit, saveAudit } from '../save/audit.js';
 import { h, useState } from './h.js';
 
@@ -168,6 +170,8 @@ export const tgtBadge = id => id && MODS[id] && MODS[id].tgt ? h('span', { class
 export function ModCard({ id, onClose, ingame, top, flow, act }) {
   const m = MODS[id];
   const au = useAudit('mod:' + id);
+  const [edit, setEdit] = useState(false);   // dev only: the mod's knobs (ui/trajedit.js)
+  const eg = !ingame && devShown() ? TRAJ_GROUP[id] : '';
   const kind = famOf(id).name + (m.kind === 'passive' ? ' \u00b7 always on' : '');
   const rows = modPreview(id).rows;
   // the examples' mods: the Bag's square tiles too (v0.0.144, owner)
@@ -253,6 +257,8 @@ export function ModCard({ id, onClose, ingame, top, flow, act }) {
         onPointerDown: e => { e.preventDefault(); onClose(); } }, '\u00d7') : null
     ),
     m.info ? h('p', { className: 'pinfo' }, m.info) : null,
+    eg && !edit ? h('button', { className: 'pact pedit', onPointerDown: e => { e.preventDefault(); setEdit(true); } }, 'Edit') : null,
+    eg && edit ? h(TrajEdit, { g: eg, onDone: () => setEdit(false) }) : null,
     act ? h('button', { className: 'pact', onPointerDown: e => { e.preventDefault(); act.run(); } }, act.label) : null,
     timing ? h('p', { className: 'pnote' }, timing) : null,
     rows.length ? h('div', { className: 'prows' },
