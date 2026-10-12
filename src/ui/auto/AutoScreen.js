@@ -17,7 +17,9 @@
 
 import { SFX } from '../../audio/sfx.js';
 import { TITLE_VW, camAt, camPack, camTo, titleCam } from '../../art/titlescene.js';
-import { DEAD } from '../../core/consts.js';
+/** @typedef {import('../../art/titlescene.js').TitleCam} TitleCam */
+import { DEAD, PH, PW } from '../../core/consts.js';
+import { holoPass } from '../../game/render/guide.js';
 import { chestOpen } from '../../auto/chests.js';
 import { HUB_W, hubExit, hubLeft, hubMapA, hubMapPick, hubScene, hubState, hubStick, hubStopX } from '../../auto/hub.js';
 import { MAP_NAMES, mapLabel, mapsOf } from '../../auto/maps.js';
@@ -37,15 +39,16 @@ import { loadAutoRun, saveAutoRun } from '../../auto/save.js';
 import { EXO_NAMES, arcPick, gunArc, navBack, navOpen, navPath, navPick, navRow, navStart, hpFrac } from '../../auto/nav.js';
 import { meterTail, nextSpan, spanLabel } from '../../auto/meters.js';
 import { CARD_ICON, GunCard, ModCard, PerkCard } from '../cards.js';
-import { GunFire, GunIcon, GunStats, PULL_COL } from '../editor.js';
-import { fireSimNew, fireSimStep, pullSteps } from '../../spells/bagsim.js';
+import { GunIcon, GunStats, PULL_COL } from '../editor.js';
+import { fireSimNew, pullSteps } from '../../spells/bagsim.js';
+import { PV_GRAPH_N, PV_HIT_T, previewScene, previewState, pvSim } from '../../auto/preview.js';
 import { GlyphIcon, HelmetIcon, PixIcon } from './icons.js';
 import { PauseMenu } from '../pause.js';
 import { DevPanel } from '../devpanel.js';
 import { DEV_HOLD_MS, devShown, setDevShown } from '../devmode.js';
 import { runScene } from '../scenecanvas.js';
 import { leaveItem } from '../../art/titlescene.js';
-import { helmetIcon } from '../../art/sprites.js';
+import { drawRunner, helmetIcon } from '../../art/sprites.js';
 import { sceneAddRunner } from '../../auto/addrunner.js';
 import { bagFits, lootCol } from '../../auto/loot.js';
 import { itemEdgeCol } from '../../auto/itemtile.js';
@@ -734,7 +737,7 @@ function NavStack({ nav, run, openAt, down, drag, holdHelm, holdGun, meters, pin
     if (it.panel) {
       const g = run.players[it.s.p] && run.players[it.s.p].guns[it.s.g];
       return g ? h(GunPanel, { gun: g, sig: it.s.p + '|' + it.s.g + '|' + g.slots.join() + '|' + g.multi + '|' + g.shuffle + '|' + g.castDelay + '|' + g.recharge,
-        col: MACHINE_EDGE, onLit: cls === 'anavout' ? undefined : setLit, cls }) : null;
+        col: MACHINE_EDGE, onLit: cls === 'anavout' ? undefined : setLit, cls, pl: run.players[it.s.p], gi: it.s.g }) : null;
     }
     const s = it.s;
     /** @param {string | number} w */
@@ -754,32 +757,105 @@ function NavStack({ nav, run, openAt, down, drag, holdHelm, holdGun, meters, pin
 const MACHINE_EDGE = HUB_MACHINES.mod.hue;
 
 // The gun panel (owner, feedback round 2): the old Bag's top (ui/editor.js) in the auto screen's colours: the gun's stats
-// on the left (the live cast/recharge/mana bars), the firing window on the right. Its own fire preview (fireSimStep at
-// DEV.bagSpeed, as SlotGrid) drives both and lights the mod slots below in each pull's colour (onLit).
-/** @param {{ gun: Gun, sig: string, col: string, onLit?: (lit: any) => void, cls: string }} props */
-function GunPanel({ gun, sig, col, onLit, cls }) {
+// on the left (the live cast/recharge/mana bars), the firing window on the right. (owner: "matching the real game 1 for 1") The
+// window is the level's own scene (auto/preview.js previewScene, run by runScene: quiet, still): the player fires the gun at a
+// target that never dies, by the level's code at the level's speed and scale (PreviewWindow). Its step feeds the stat bars
+// (pvSim), the damage per second over the target and its graph, and lights the mod slots below in each pull's colour (onLit).
+// (owner, round 2) A double tap on the window grows it left over the stats (.big: the stats hidden), again shrinks it back; the
+// room is made again at the new size, the player at its new left edge.
+/** @param {{ gun: Gun, sig: string, col: string, onLit?: (lit: any) => void, cls: string, pl: RunPlayer, gi: number }} props */
+function GunPanel({ gun, sig, col, onLit, cls, pl, gi }) {
   /** @type {{ current: import('../../spells/bagsim.js').FireSim & { sig?: string } | null }} */
   const sim = useRef(null);
   if (!sim.current || sim.current.sig !== sig) sim.current = Object.assign(fireSimNew(gun), { sig });
+  const [big, setBig] = useState(false);
+  const flip = () => setBig(b => !b);
+  return h('div', { className: 'agunpanel ' + cls + (big ? ' big' : ''), style: { '--pc': col } },
+    h(GunStats, { gun, sim, sig }),
+    h(PreviewWindow, { sim, sig, onLit, pl, gi, flip }));
+}
+
+// the firing window: the preview scene on a canvas, at the play area's scale (css px per world unit, as the level is drawn)
+// the hologram (the old window's dummy you, ui/editor.js GunFire): its own little layer, HOLO_P px a world unit, through the
+// guide's hologram look (render/guide.js holoPass); dark at rest, lit and glitching for PV_HIT_T after a hit
+const HOLO_P = 3;
+/** @param {{ sim: { current: import('../../spells/bagsim.js').FireSim | null }, sig: string, onLit?: (lit: any) => void, pl: RunPlayer, gi: number, flip: () => void }} props */
+function PreviewWindow({ sim, sig, onLit, pl, gi, flip }) {
+  const tapT = useRef(0);
+  /** a second tap within BIG_TAP ms: grow / shrink @param {any} e */
+  const tap = e => { e.preventDefault(); const t = performance.now(); if (t - tapT.current < BIG_TAP) { tapT.current = 0; flip(); } else tapT.current = t; };
+  /** @type {{ current: HTMLCanvasElement | null }} */
+  const ref = useRef(null);
   const litFn = useRef(onLit);
   litFn.current = onLit;
   useEffect(() => {
-    let raf = 0, last = performance.now(), prev = null;
-    /** @param {number} now */
-    const loop = now => {
-      raf = requestAnimationFrame(loop);
-      const S = sim.current, dt = Math.min(0.1, (now - last) / 1000) * DEV.bagSpeed;
-      last = now;
-      if (!S) return;
-      for (let t = dt; t > 0; t -= 0.01) fireSimStep(S, Math.min(0.01, t));
-      if (S.lit !== prev) { prev = S.lit; if (litFn.current) litFn.current(S.lit); }
-    };
-    raf = requestAnimationFrame(loop);
-    return () => { cancelAnimationFrame(raf); if (litFn.current) litFn.current(null); };
-  }, []);
-  return h('div', { className: 'agunpanel ' + cls, style: { '--pc': col } },
-    h(GunStats, { gun, sim, sig }),
-    h(GunFire, { gun, sim }));
+    const c = ref.current;
+    if (!c) return undefined;
+    /** @type {TitleCam | null} */
+    let cam = null;
+    let prev = null;
+    const DL = document.createElement('canvas'), dlx = DL.getContext('2d', { willReadFrequently: true });
+    const DLW = Math.ceil((PW + 8) * HOLO_P), DLH = Math.ceil((PH + 6) * HOLO_P);
+    DL.width = DLW; DL.height = DLH;
+    // the level's scale: the play area's canvas is TITLE_VW world units across
+    const play = document.querySelector('.aplaycvs');
+    const kpx = () => Math.max(1, (play && play.clientWidth) || window.innerWidth) / TITLE_VW;
+    const stop = runScene(c, {
+      size: () => ({ w: c.clientWidth, hh: c.clientHeight }),
+      make: (w, hh, seed) => {
+        const k = kpx(), vw = w / k, vh = hh / k, S = previewScene(vw, vh, pl, gi, seed);
+        // the camera: the whole room, at k px a unit (titleDraw draws w / TITLE_VW × C.z px a unit)
+        const z = TITLE_VW / vw, C = titleCam(vh * z / 2, vh);
+        C.z = C.zmin = z; C.w = vw; C.x = vw / 2; C.y = vh / 2; C.lock = -1;
+        cam = C;
+        return { S, C, warm: 20 };
+      },
+      quiet: true, still: true,
+      step: S => {
+        const pv = previewState(S), p = S.team && S.team[0], g = p && p.guns[p.active];
+        if (sim.current && g) pvSim(sim.current, g);
+        if (pv && pv.lit !== prev) { prev = pv.lit; if (litFn.current) litFn.current(pv.lit); }
+      },
+      over: (ctx, S, w) => {
+        const pv = previewState(S);
+        if (!pv || !cam) return;
+        const k = w / TITLE_VW, z = cam.z * k, at = camTo(cam, pv.dx - PW / 2, pv.dy - PH / 2), hx = at.x * k, hy = at.y * k;
+        // the hologram you, facing the gun, over the scene (the dark included: it glows)
+        if (dlx) {
+          const hurt = pv.hitT > 0, fl = hurt && Math.floor(pv.hitT * 30) % 2 === 0;
+          dlx.setTransform(1, 0, 0, 1, 0, 0); dlx.clearRect(0, 0, DLW, DLH);
+          dlx.setTransform(HOLO_P, 0, 0, HOLO_P, 4 * HOLO_P, 3 * HOLO_P);
+          drawRunner(dlx, 0, 0, PW, PH, -1, null, false, 0, fl);
+          dlx.setTransform(1, 0, 0, 1, 0, 0);
+          holoPass(dlx, DLW, DLH, S.t, hurt ? 0.4 + pv.hitT / PV_HIT_T * 0.6 : 0);
+          ctx.save();
+          ctx.globalAlpha = hurt ? (fl ? 1 : 0.6) : 0.4;    // dark at rest, lit when hit
+          ctx.imageSmoothingEnabled = false;
+          ctx.drawImage(DL, hx - 4 * z, hy - 3 * z, DLW / HOLO_P * z, DLH / HOLO_P * z);
+          ctx.restore();
+        }
+        // its damage per second over its head (red, as the old window's; gone at 0), and the graph across the top third
+        if (pv.dps > 0) {
+          ctx.font = '700 11px ui-monospace,SFMono-Regular,Menlo,monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+          const txt = (pv.dps >= 10 ? Math.round(pv.dps) : pv.dps.toFixed(1)) + ' dps', gw0 = c.clientWidth;
+          const tx = Math.min(hx + PW * z / 2, gw0 - ctx.measureText(txt).width / 2 - 2), ty = Math.max(12, hy - 2);
+          ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,0.8)'; ctx.strokeText(txt, tx, ty);
+          ctx.fillStyle = '#ff4a4a'; ctx.fillText(txt, tx, ty); ctx.textBaseline = 'alphabetic';
+        }
+        const vals = pv.graph, peak = Math.max(...vals, 0), H = c.clientHeight, gw = c.clientWidth;
+        if (vals.length > 1 && peak > 0) {
+          const top = 4, bot = H / 3, step = gw / (PV_GRAPH_N - 1), x0 = gw - (vals.length - 1) * step;
+          ctx.strokeStyle = '#ff4a4a'; ctx.lineWidth = 1.2; ctx.globalAlpha = 0.7; ctx.beginPath();
+          vals.forEach((v, i) => { const x = x0 + i * step, y = bot - (v / peak) * (bot - top); if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); });
+          ctx.stroke(); ctx.globalAlpha = 1;
+        }
+        c.dataset.hit = pv.hitT > 0 ? '1' : '0'; c.dataset.big = String(Math.round(cam.w || 0));
+        c.dataset.pulls = String(pv.pulls); c.dataset.dps = pv.dps.toFixed(1); c.dataset.shots = String(S.shots.length);
+      },
+    });
+    return () => { stop(); if (litFn.current) litFn.current(null); };
+  }, [sig]);
+  return h('canvas', { ref, className: 'gfire apv', onPointerDown: tap });
 }
 
 // One row of the nav (auto/nav.js navRow): circles for choices (a player's ring and number, a menu glyph, a gun's

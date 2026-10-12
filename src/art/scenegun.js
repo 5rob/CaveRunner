@@ -58,6 +58,7 @@ export function gunPull(g, others) {
   if ((g.mana || 0) < plan.cost) { g.idx = plan.start; g.delayT = 0.12; return null; }
   g.mana = (g.mana || 0) - plan.cost;
   g.delayT = g.delayMax = plan.delay;
+  g.pulls = (g.pulls || 0) + 1;
   if ((plan.acts || []).includes('refresh')) g.skipRech = true;
   if (plan.wrap) wrap();
   return plan;

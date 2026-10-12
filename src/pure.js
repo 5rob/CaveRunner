@@ -85,6 +85,7 @@ export * from './auto/nav.js';
 export * from './auto/itemtile.js';
 export * from './auto/perks.js';
 export * from './auto/shotfx.js';
+export * from './auto/preview.js';
 export * from './art/itemicon.js';
 export * from './art/scenegun.js';
 export * from './audio/recipes.js';

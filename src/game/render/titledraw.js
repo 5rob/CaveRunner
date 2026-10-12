@@ -191,6 +191,7 @@ export function titleDraw(ctx, S, cw, ch, cam) {
   for (const f of S.foes) {
     const sx = f.x - S.scroll;
     if (sx < -60 || sx > TITLE_VW + 60) continue;
+    if (S.hub && S.hub.pv && f === S.hub.pv.foe) continue;   // the gun panel's target: the panel paints its hologram (auto/preview.js)
     const e = f.r * 3 + 20;
     pixelSprite(ctx, sx - e, f.ty - e, 2 * e, 2 * e + 30, 1, false, c => { c.translate(-S.scroll, 0); drawEnemy(c, f, S.t); });
     if (f.burn > 0) { ctx.save(); ctx.translate(-S.scroll, 0); crackleBody(ctx, f.x, f.ty, f.r * 0.85, TCELL, S.fireN); ctx.restore(); }   // on fire: the burning pixels' crackle over it

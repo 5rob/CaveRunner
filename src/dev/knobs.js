@@ -826,6 +826,10 @@ DEV_GROUPS.push(['autochests', 'Auto: chests']);
 Object.assign(DEV_DEFAULTS, { autoGrab: 0.45 });   // (owner, feedback round 2: was 0.35, too hard to pick up)
 DEV_META.push(
   { k: 'autoGrab', g: 'autobag', label: 'Grab radius: a touch picks up an item this near its centre (× the tile width); elsewhere it scrolls', min: 0.1, max: 0.5, step: 0.01 });
+// the gun panel's firing window (auto/preview.js, owner round 2): the floor and walls a blast ate grow back this many cells a second
+Object.assign(DEV_DEFAULTS, { autoPvRegrow: 40 });
+DEV_META.push(
+  { k: 'autoPvRegrow', g: 'autobag', label: 'Gun preview: blasted floor and walls grow back this many cells (pixels) a second', min: 0, max: 400, step: 5 });
 // stage 9: hold a helmet this long for its gun arc; the arc's radius (px)
 Object.assign(DEV_DEFAULTS, { autoHoldMs: 350, autoArcR: 110 });
 DEV_META.push(

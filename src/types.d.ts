@@ -79,6 +79,7 @@ interface Gun {
   delayMax?: number;          // the cast delay last set (the right stick's ring)
   rechLen?: number;           // the recharge last started (the "ready" click)
   skipRech?: boolean;
+  pulls?: number;             // pulls fired so far (art/scenegun.js gunPull; the gun panel's preview lights its slots by it)
   old?: boolean;              // swapped out on the ground: no "never held" glow
   art?: string;               // a GUN_ART sprite id (art/gunart.js), picked in the Bag; none = the drawn gun
 }
