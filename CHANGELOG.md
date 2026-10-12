@@ -5,6 +5,13 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.66 — CaveRunner Auto: Circle of Vigour works, and with Follow Me stays with its caster (branch `autobattler`)
+Released 2026-10-13 on the branch. PM alone, owner OK'd the shots.
+- Vigour is cast in a level (`vigourCircle` in art/scenegun.js): it stays on the ground (back with the scroll) and heals a living
+  player inside 4 every 0.4 s × his heal perks, to his max (titlescene.js `vigourStep`, the heal tick sound). With Follow Me it
+  steers to its caster and stays with him (`fieldFollow`). Drawn with the game's field look: render/looks.js `drawField` (factored out
+  of `drawFields`). Off `GUN_TODO`. Suite `auto-vigour`; shots `tools/shotlookshots.js` s9, s10 (a `+` joins mods).
+
 ## v1.0.65 — CaveRunner Auto: Questions Later works on the players (branch `autobattler`)
 Released 2026-10-12 on the branch. PM alone (owner's note).
 - In a level a gun with Questions Later fires with nothing in sight, aimed ahead (`stepRunnerGun`; not in the hub). Off `GUN_TODO`;

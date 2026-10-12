@@ -6,7 +6,7 @@
 // shotLights: the light a shot throws round it. What they shed as they fly is auto/shotfx.js.
 
 import { glowAt } from '../../art/sprites.js';
-import { drawBolt, drawLook, drawWhiteHole } from './looks.js';
+import { drawBolt, drawField, drawLook, drawWhiteHole } from './looks.js';
 import { jagPts } from '../../auto/shotfx.js';
 
 /** @typedef {import('../../art/titlescene.js').TShot} TShot */
@@ -89,6 +89,14 @@ export function drawGlowShot(c, s, W) {
   if (s.sid === 'slug' || s.sid === 'disc' || s.sid === 'missile' || s.sid === 'void') return true;   // drawn solid
   /** @type {any} */
   const G2 = { ctx: c };
+  if (s.sid === 'vigour') {             // Circle of Vigour: the game's own field look (rising sparkles and plus signs, a faint dashed ring, the cross)
+    /** @type {any} */
+    const f = { x: s.x, y: s.y, r: s.heal || 36, life: s.life, max: s.max || 5, col: s.col, field: 'heal' };
+    /** @type {any} */
+    const Wt = W;
+    drawField(Wt, G2, f);
+    return true;
+  }
   if (s.sid === 'vacfield') {           // White Hole: the game's look (white core, wheeling blue stars), bigger, and a faint rim at its reach
     /** @type {any} */
     const f = { x: s.x, y: s.y, r: (s.vac || 64) * 0.8, life: s.life, max: s.max || 1.2 };   // owner (v1.0.40): half the first try's size

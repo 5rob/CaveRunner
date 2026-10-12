@@ -293,6 +293,29 @@ function drawFieldMotes(W, G, f) {
   G.ctx.globalAlpha = 1;
 }
 
+// One static field (CaveRunner Auto draws its Circle of Vigour with it too: render/autolooks.js)
+/** @param {World} W @param {GameCtx} G @param {Field} f */
+export function drawField(W, G, f) {
+  if (f.field === 'vacuum') { drawWhiteHole(W, G, f); return; }   // no circle: its motes show its reach
+  const t = f.life / f.max;
+  const beat = 0.75 + 0.25 * Math.sin(W.time * (f.field === 'mine' ? 7 : 3));
+  if (f.field === 'mine' || f.field === 'dormant') {   // the crystals keep their small disc
+    G.ctx.globalAlpha = 0.28 * beat;
+    G.ctx.fillStyle = f.col;
+    G.ctx.beginPath(); G.ctx.arc(f.x, f.y, f.r * (f.field === 'mine' ? 0.35 : 1), 0, Math.PI * 2); G.ctx.fill();
+  } else drawFieldMotes(W, G, f);         // no disc: stacked circles made a solid blob
+  const circle = f.field !== 'mine' && f.field !== 'dormant';   // owner: a circle's ring faint and thin
+  G.ctx.globalAlpha = circle ? 0.1 : 0.55 * beat;
+  G.ctx.strokeStyle = f.col;
+  G.ctx.lineWidth = circle ? 0.5 : 1.5;
+  G.ctx.setLineDash([5, 4]);
+  G.ctx.lineDashOffset = -W.time * 14;
+  G.ctx.beginPath(); G.ctx.arc(f.x, f.y, f.r * (0.4 + 0.6 * t), 0, Math.PI * 2); G.ctx.stroke();
+  G.ctx.setLineDash([]);
+  G.ctx.globalAlpha = 1;
+  if (!drawFieldLook(W, G, f, beat)) { G.ctx.fillStyle = f.col; G.ctx.beginPath(); G.ctx.arc(f.x, f.y, 3.5, 0, Math.PI * 2); G.ctx.fill(); }
+}
+
 // Static fields: a pulsing disc, a dashed ring shrinking as it runs out, and what sits in the
 // middle (drawFieldLook, or a plain dot)
 /** @param {World} W @param {GameCtx} G @param {DrawFrame} F */
@@ -301,24 +324,7 @@ export function drawFields(W, G, F) {
   // static fields
   for (const f of W.fields) {
     if (f.y > W.camY + vh + f.r || f.y < W.camY - f.r) continue;
-    if (f.field === 'vacuum') { drawWhiteHole(W, G, f); continue; }   // no circle: its motes show its reach
-    const t = f.life / f.max;
-    const beat = 0.75 + 0.25 * Math.sin(W.time * (f.field === 'mine' ? 7 : 3));
-    if (f.field === 'mine' || f.field === 'dormant') {   // the crystals keep their small disc
-      G.ctx.globalAlpha = 0.28 * beat;
-      G.ctx.fillStyle = f.col;
-      G.ctx.beginPath(); G.ctx.arc(f.x, f.y, f.r * (f.field === 'mine' ? 0.35 : 1), 0, Math.PI * 2); G.ctx.fill();
-    } else drawFieldMotes(W, G, f);         // no disc: stacked circles made a solid blob
-    const circle = f.field !== 'mine' && f.field !== 'dormant';   // owner: a circle's ring faint and thin
-    G.ctx.globalAlpha = circle ? 0.1 : 0.55 * beat;
-    G.ctx.strokeStyle = f.col;
-    G.ctx.lineWidth = circle ? 0.5 : 1.5;
-    G.ctx.setLineDash([5, 4]);
-    G.ctx.lineDashOffset = -W.time * 14;
-    G.ctx.beginPath(); G.ctx.arc(f.x, f.y, f.r * (0.4 + 0.6 * t), 0, Math.PI * 2); G.ctx.stroke();
-    G.ctx.setLineDash([]);
-    G.ctx.globalAlpha = 1;
-    if (!drawFieldLook(W, G, f, beat)) { G.ctx.fillStyle = f.col; G.ctx.beginPath(); G.ctx.arc(f.x, f.y, 3.5, 0, Math.PI * 2); G.ctx.fill(); }
+    drawField(W, G, f);
   }
   G.ctx.globalAlpha = 1;
   G.ctx.globalAlpha = 1;

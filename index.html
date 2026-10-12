@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v1.0.65</title>
-<!-- VERSION = 'v1000065' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v1.0.66</title>
+<!-- VERSION = 'v1000066' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -1121,7 +1121,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v1.0.65';</script>
+<script>const VERSION = 'v1.0.66';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -9745,6 +9745,108 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return { rech, rechMul, manaMax, manaRegen, auto };
   }
 
+  // src/spells/paths.js
+  var BOOM_TURN = 9;
+  var BOOM_CATCH = 10;
+  var BOOM_MAX = 3;
+  var PONG_T = 0.28;
+  var SPIRAL_HZ = 3;
+  var SPIRAL_GROW = 6;
+  var ORBIT_R = 26;
+  var ORBIT_IN = 0.2;
+  var ORBIT_W = 14;
+  var FOLLOW_AHEAD = 34;
+  var FOLLOW_PULL = 250;
+  var FIELD_SPEED = 150;
+  var SEEK_ACC = 7;
+  var hasPath = (o) => !!(o.boomer || o.pong || o.spiral || o.orbit || o.follow || o.followAim || o.still && o.homing);
+  var spiralOff = (k, t) => k * SPIRAL_GROW * t * Math.sin(t * SPIRAL_HZ * 2 * Math.PI);
+  function pathStep(o, dt, env) {
+    let ex = 0, ey = 0;
+    const age = o.age;
+    const head = (tx, ty, rate) => {
+      const dx = tx - o.x, dy = ty - o.y, d = Math.hypot(dx, dy) || 1;
+      if (o.still) {
+        const want = Math.min(FIELD_SPEED, d * 5), k = Math.min(1, SEEK_ACC * dt);
+        o.vx += (dx / d * want - o.vx) * k;
+        o.vy += (dy / d * want - o.vy) * k;
+        return d;
+      }
+      const sp = Math.hypot(o.vx, o.vy) || 1, a = Math.atan2(o.vy, o.vx);
+      const b = a + Math.max(-rate * dt, Math.min(rate * dt, angDiff(Math.atan2(dy, dx), a)));
+      o.vx = Math.cos(b) * sp;
+      o.vy = Math.sin(b) * sp;
+      return d;
+    };
+    if (o.boomer) {
+      if (!o.back && age >= (o.born || 1) * 0.5) o.back = 1;
+      if (o.back) {
+        const d = head(env.home.x, env.home.y, BOOM_TURN * o.boomer / 3.2);
+        if (d < BOOM_CATCH) o.caught = 1;
+        else if (o.life != null && o.life < 0.05 && age < (o.born || 1) * BOOM_MAX) o.life = 0.05;
+      }
+    }
+    const pull = (t, k) => {
+      if (o.still) {
+        head(t.x, t.y, k);
+        return;
+      }
+      const dx = t.x - o.x, dy = t.y - o.y, d = Math.hypot(dx, dy) || 1;
+      const sp0 = o.sp0 || (o.sp0 = Math.hypot(o.vx, o.vy) || 1), a = FOLLOW_PULL * k * dt;
+      o.vx += dx / d * a;
+      o.vy += dy / d * a;
+      const sp = Math.hypot(o.vx, o.vy);
+      if (sp > sp0) {
+        o.vx *= sp0 / sp;
+        o.vy *= sp0 / sp;
+      }
+    };
+    if (o.follow) pull(env.home, o.follow);
+    if (o.followAim) pull(env.ahead, o.followAim);
+    if (o.still && o.homing && env.enemies) {
+      let best = null, bd = o.homeR || 260;
+      for (const e of env.enemies) {
+        const d = Math.hypot(e.x - o.x, e.ty - o.y);
+        if (d < bd) {
+          bd = d;
+          best = e;
+        }
+      }
+      if (best) head(best.x, best.ty, o.homing);
+    }
+    if (o.pong) {
+      const want = age % (PONG_T * 1.5) < PONG_T ? 1 : -1;
+      if (want !== (o.pdir || 1)) {
+        o.vx = -o.vx;
+        o.vy = -o.vy;
+      }
+      o.pdir = want;
+    }
+    if (o.spiral) {
+      const sp = Math.hypot(o.vx, o.vy), a = sp > 1 ? Math.atan2(o.vy, o.vx) : o.ang || 0;
+      const s = spiralOff(o.spiral, age) - spiralOff(o.spiral, Math.max(0, age - dt));
+      ex += -Math.sin(a) * s;
+      ey += Math.cos(a) * s;
+    }
+    if (o.orbit) {
+      const c = env.anchor || env.home;
+      if (o.oa == null) {
+        o.oa = Math.atan2(o.y - c.y, o.x - c.x);
+        o.or0 = Math.hypot(o.x - c.x, o.y - c.y);
+        o.osp = Math.max(o.still ? FIELD_SPEED : 0, Math.hypot(o.vx, o.vy));
+      }
+      const r = o.or0 + (ORBIT_R - o.or0) * Math.min(1, age / ORBIT_IN);
+      const w = Math.min(ORBIT_W, Math.max(o.orbit, (o.osp || 0) / ORBIT_R));
+      o.oa += w * dt;
+      const tx = c.x + Math.cos(o.oa) * r, ty = c.y + Math.sin(o.oa) * r;
+      o.vx = -Math.sin(o.oa) * w * r;
+      o.vy = Math.cos(o.oa) * w * r;
+      ex = tx - (o.x + o.vx * dt);
+      ey = ty - (o.y + o.vy * dt);
+    }
+    return [ex, ey];
+  }
+
   // src/art/pixfont.js
   var SRC = {
     A: "#####|#...#|#...#|#####|#...#|#...#|#...#",
@@ -11919,7 +12021,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     "dormant",
     "stillc",
     "shieldc",
-    "vigour",
     "storm",
     "glitter",
     // modifiers whose effect the scene's shot model has no field for yet
@@ -12024,6 +12125,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         out.push(whiteHole(sh, ang, x, y, by));
         continue;
       }
+      if (sh.sid === "vigour") {
+        out.push(vigourCircle(sh, x, y, by));
+        continue;
+      }
       if (!sh.still) for (const s of shotsOf(sh, ang, x, y, R, by)) out.push(s);
     }
     return out;
@@ -12070,6 +12175,532 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       pull: 0,
       vac: sh.r || 64
     };
+  }
+  var VIG_HP = 4, VIG_TICK = 0.4;
+  function vigourCircle(sh, x, y, by) {
+    const life = Math.max(0.3, sh.life || 5);
+    return {
+      x,
+      y,
+      vx: 0,
+      vy: 0,
+      size: 2,
+      col: sh.col || "#46c48c",
+      look: "",
+      life,
+      max: life,
+      foe: false,
+      spin: 0,
+      grav: 0,
+      drag: 0,
+      explode: 0,
+      pit: 0,
+      fire: 0,
+      bounce: 0,
+      bounceE: 0,
+      pierce: 0,
+      dmg: 0,
+      homing: 0,
+      accel: 0,
+      vmax: 0,
+      chain: 0,
+      real: true,
+      by: by == null ? -1 : by,
+      trig: null,
+      timer: 0,
+      pay: null,
+      age: 0,
+      sid: "vigour",
+      light: "70,196,140",
+      lightR: 30,
+      beam: 0,
+      ang: 0,
+      pull: 0,
+      heal: sh.r || 36,
+      tick: 0,
+      follow: sh.follow || 0
+    };
+  }
+
+  // src/spells/collection.js
+  function modTiers() {
+    return [1, 2, 3, 4].map((tier) => ({ tier, ids: ALL_IDS.filter((id) => tierOf(id) === tier) }));
+  }
+  function crystalRoll(rnd2, floor, owned) {
+    const have = new Set(owned);
+    const left = ALL_IDS.filter((id) => !have.has(id));
+    if (!left.length) return null;
+    let total = 0;
+    for (const id of left) total += modWeight(id, floor);
+    if (total <= 0) return left[Math.floor(rnd2() * left.length)];
+    let r = rnd2() * total;
+    for (const id of left) {
+      r -= modWeight(id, floor);
+      if (r <= 0 && modWeight(id, floor) > 0) return id;
+    }
+    return left.filter((id) => modWeight(id, floor) > 0).pop() || left[0];
+  }
+  function perkRoll(rnd2, owned) {
+    const left = PERK_IDS.filter((id) => !owned.includes(id) && (!PERKS[id].tier || PERKS[id].tier === 1 || owned.includes("st_" + PERKS[id].stat + (PERKS[id].tier - 1))));
+    return left.length ? left[Math.floor(rnd2() * left.length)] : null;
+  }
+  function stackKey(entry) {
+    return entry;
+  }
+  function stackBag(bag) {
+    const by = /* @__PURE__ */ new Map();
+    bag.forEach((id, i) => {
+      const key = stackKey(id);
+      const s = by.get(key);
+      if (s) s.n++;
+      else by.set(key, { key, id, i, n: 1 });
+    });
+    return [...by.values()];
+  }
+
+  // src/auto/maps.js
+  var MAP_NAMES = THEMES.map((t) => t.name.replace(/\b\w/g, (c) => c.toUpperCase()));
+  var fresh = (i) => ({ level: 1, best: 0, beaten: false, paid: 0, owned: i === 0 });
+  function mapsOf(run) {
+    if (!Array.isArray(run.maps)) {
+      const t = Math.max(1, run.tier | 0 || 1);
+      run.maps = [{ level: t, best: t - 1, beaten: t > 1, paid: 0, owned: true }];
+      run.map = 0;
+    }
+    while (run.maps.length < MAP_NAMES.length) run.maps.push(fresh(run.maps.length));
+    if (!(run.map >= 0 && run.map < run.maps.length && run.maps[run.map].owned)) run.map = 0;
+    return run.maps;
+  }
+  function mapTier(run) {
+    const m = mapsOf(run)[run.map || 0];
+    return m.level + (run.map || 0) * DEV.autoMapStep;
+  }
+  function syncTier(run) {
+    run.tier = mapTier(run);
+    return run.tier;
+  }
+  var mapPrice = (i) => i <= 0 ? 0 : Math.round(DEV.autoMapPrice * Math.pow(DEV.autoMapGrow, i - 1));
+  var nextLocked = (run) => mapsOf(run).findIndex((m) => !m.owned);
+  function mapState(run, i) {
+    const ms = mapsOf(run), m = ms[i];
+    if (!m) return "locked";
+    if (m.owned) return "owned";
+    if (i !== nextLocked(run)) return "locked";
+    return ms[i - 1] && ms[i - 1].beaten ? "buy" : "beat";
+  }
+  function payMap(run, n) {
+    const i = nextLocked(run);
+    if (i < 0 || mapState(run, i) !== "buy" || n <= 0) return Math.max(0, n);
+    const m = run.maps[i], price = mapPrice(i), take = Math.min(n, price - m.paid);
+    m.paid += take;
+    if (m.paid >= price) {
+      m.owned = true;
+      m.paid = price;
+    }
+    return n - take;
+  }
+  function selectMap(run, i) {
+    const m = mapsOf(run)[i];
+    if (!m || !m.owned) return false;
+    run.map = i;
+    syncTier(run);
+    return true;
+  }
+  function mapCleared(run) {
+    const m = mapsOf(run)[run.map || 0];
+    m.best = Math.max(m.best, m.level);
+    m.level++;
+    m.beaten = true;
+    syncTier(run);
+  }
+  function mapFailed(run) {
+    mapsOf(run)[run.map || 0].level = 1;
+    syncTier(run);
+  }
+  var mapLabel = (run) => MAP_NAMES[run.map || 0] + " Lv " + mapsOf(run)[run.map || 0].level;
+
+  // src/auto/run.js
+  var BAG_COLS = 7, BAG_ROWS = 10, BAG_SLOTS = BAG_COLS * BAG_ROWS;
+  var BAG_EXTRA = 3, BAG_MAX = BAG_COLS * 100;
+  function bagSize(run) {
+    let last = -1;
+    for (let i = run.bag.length - 1; i >= 0; i--) if (run.bag[i]) {
+      last = i;
+      break;
+    }
+    return Math.min(BAG_MAX, (Math.floor(last / BAG_COLS) + 1 + BAG_EXTRA) * BAG_COLS);
+  }
+  function bagFit(run) {
+    const want = bagSize(run);
+    if (run.bag.length > want) run.bag.length = want;
+    while (run.bag.length < want) run.bag.push(null);
+  }
+  var MAX_PLAYERS = 4, GUN_SLOTS = 4, EXO_SLOTS = 5, PERK_SLOTS = 6, CARROT_MAX = 5;
+  var EXO_CATS = ["hp", "speed", "jet"];
+  var EXO_STATS = { hp: ["hp"], speed: ["walk"], jet: ["fuel", "refuel"], carrot: ["carrot"] };
+  var EXO_GLYPH = { hp: "♥", speed: "➤", jet: "🚀", carrot: "⌖" };
+  var five = (v) => Math.max(5, Math.round(v / 5) * 5);
+  var autoGunPrice = (tier) => five(DEV.autoGunBase * Math.pow(DEV.autoGunGrow, Math.max(0, tier - 1)));
+  var autoExoPrice = (tier) => five(autoGunPrice(tier) * DEV.autoExoPrice / 100);
+  var exoMod = (cat, tier) => ({ kind: "exo", cat, tier: Math.max(1, Math.min(EXO_SLOTS, tier | 0)), n: 1 });
+  function newPlayer(i) {
+    return {
+      col: TITLE_COLS[i % TITLE_COLS.length],
+      guns: [null, null, null, null],
+      active: 0,
+      exo: {
+        hp: [null, null, null, null, null],
+        speed: [null, null, null, null, null],
+        jet: [null, null, null, null, null],
+        carrot: [null, null, null, null, null]
+      },
+      perks: [null, null, null, null, null, null],
+      hp: PLAYER_HP,
+      alive: true
+    };
+  }
+  var STARTER_SHOTS = Object.keys(MODS).filter((k) => MODS[k].kind === "shot" && tierOf(k) === 1 && !MODS[k].off && !MODS[k].trig && !MODS[k].bore && !MODS[k].tele && k !== "saw");
+  function starterKit(rnd2 = Math.random) {
+    const shot = STARTER_SHOTS[Math.floor(rnd2() * STARTER_SHOTS.length)];
+    const gun = resetGun({
+      name: "Starter " + MODS[shot].name,
+      cap: 3,
+      castDelay: DEV.autoGunDelay,
+      recharge: DEV.autoGunRech,
+      manaMax: DEV.autoGunMana,
+      manaRegen: DEV.autoGunRegen,
+      spread: DEV.autoGunSpread,
+      multi: 1,
+      shuffle: false,
+      speedMul: 1,
+      mana: DEV.autoGunMana,
+      slots: [shot, null, null],
+      hue: Math.floor(rnd2() * 360)
+    });
+    return { gun, saw: { kind: "mod", id: "saw", n: 1 } };
+  }
+  function giveKit(run, pl, rnd2) {
+    const k = starterKit(rnd2);
+    pl.guns[0] = k.gun;
+    pl.active = 0;
+    bagAdd(run, k.saw);
+  }
+  function kitMissing(run, rnd2) {
+    for (const pl of run.players) if (pl.guns.every((g) => !g)) giveKit(run, pl, rnd2);
+    return run;
+  }
+  function newRun(seed) {
+    const run = { tier: 1, players: [newPlayer(0)], bag: Array(BAG_SLOTS).fill(null), seed: seed || 1 + Math.floor(Math.random() * 1e6) };
+    mapsOf(run);
+    giveKit(run, run.players[0]);
+    bagFit(run);
+    return run;
+  }
+  function healRun(run) {
+    for (const p of run.players) {
+      p.hp = playerStats(p).maxHp;
+      p.alive = true;
+    }
+  }
+  var levelSeed = (run) => 1 + ((run.seed || 1) * 7919 + run.tier * 104729 + (run.map || 0) * 15485863) % 999983;
+  function levelFailed(run) {
+    mapFailed(run);
+    healRun(run);
+  }
+  function levelCleared(run) {
+    mapCleared(run);
+    healRun(run);
+  }
+  function itemKey(it) {
+    if (it.kind === "gold" || it.kind === "red" || it.kind === "green") return it.kind;
+    if (it.kind === "mod") return "mod:" + stackKey(it.id || "");
+    if (it.kind === "exo") return "exo:" + it.cat + ":" + it.tier;
+    if (it.kind === "perk") return "perk:" + it.id;
+    return null;
+  }
+  var bagCount = (run, kind) => run.bag.reduce((s, it) => s + (it && it.kind === kind ? it.n : 0), 0);
+  function bagAdd(run, item) {
+    if (!item || item.n <= 0) return null;
+    const key = itemKey(item);
+    if (key) {
+      const s = run.bag.find((it) => it && itemKey(it) === key);
+      if (s) {
+        s.n += item.n;
+        return null;
+      }
+    }
+    bagFit(run);
+    const i = run.bag.indexOf(null);
+    if (i < 0) return item;
+    if (key) {
+      run.bag[i] = item;
+      bagFit(run);
+      return null;
+    }
+    run.bag[i] = Object.assign({}, item, { n: 1 });
+    bagFit(run);
+    return item.n > 1 ? Object.assign({}, item, { n: item.n - 1 }) : null;
+  }
+  function bagSlotOf(run, item) {
+    const key = itemKey(item);
+    if (key) return run.bag.findIndex((it) => !!it && itemKey(it) === key);
+    return run.bag.findIndex((it) => !!it && it.kind === item.kind && !!item.gun && it.gun === item.gun);
+  }
+  function takeOne(run, i) {
+    const it = run.bag[i];
+    if (!it) return null;
+    if (it.n > 1) {
+      it.n--;
+      return Object.assign({}, it, { n: 1 });
+    }
+    run.bag[i] = null;
+    return it;
+  }
+  function spend(run, kind, n) {
+    if (n <= 0) return true;
+    if (bagCount(run, kind) < n) return false;
+    for (let i = 0; i < run.bag.length && n > 0; i++) {
+      const it = run.bag[i];
+      if (!it || it.kind !== kind) continue;
+      const t = Math.min(n, it.n);
+      it.n -= t;
+      n -= t;
+      if (it.n <= 0) run.bag[i] = null;
+    }
+    return true;
+  }
+  function scrap(item, tier) {
+    if (!item) return 0;
+    const share = DEV.autoScrap / 100, n = item.n || 1;
+    let each;
+    switch (item.kind) {
+      case "gold":
+        return n;
+      case "red":
+        each = DEV.autoRed * goldScale(tier);
+        break;
+      case "green":
+        each = DEV.autoGreen * goldScale(tier);
+        break;
+      case "mod":
+        each = DEV.autoModGold * goldScale(tier);
+        break;
+      case "gun":
+        each = autoGunPrice(tier) * share;
+        break;
+      case "exo":
+        each = autoExoPrice(item.tier || tier) * share;
+        break;
+      case "perk":
+        each = perkPrice(item.id || "") * share;
+        break;
+      default:
+        each = 0;
+    }
+    return Math.max(1, Math.round(each)) * n;
+  }
+  function scrapAt(run, i) {
+    const it = run.bag[i];
+    if (!it || it.kind === "gold") return 0;
+    const g = scrap(it, run.tier);
+    run.bag[i] = null;
+    bagAdd(run, { kind: "gold", n: g });
+    return g;
+  }
+  function fitMod(run, i, p, gi, si) {
+    const it = run.bag[i], pl = run.players[p], g = pl && pl.guns[gi];
+    if (!it || it.kind !== "mod" || !g || si < 0 || si >= g.slots.length) return false;
+    const old = g.slots[si];
+    const before = run.bag.slice(), n = it.n;
+    takeOne(run, i);
+    if (old && bagAdd(run, { kind: "mod", id: old, n: 1 })) {
+      run.bag = before;
+      it.n = n;
+      return false;
+    }
+    g.slots[si] = it.id || null;
+    return true;
+  }
+  function unfitMod(run, p, gi, si) {
+    const pl = run.players[p], g = pl && pl.guns[gi], id = g && g.slots[si];
+    if (!id || !g) return false;
+    if (bagAdd(run, { kind: "mod", id, n: 1 })) return false;
+    g.slots[si] = null;
+    return true;
+  }
+  function fitGun(run, i, p, gs) {
+    const it = run.bag[i], pl = run.players[p];
+    if (!it || it.kind !== "gun" || !it.gun || !pl || gs < 0 || gs >= GUN_SLOTS) return false;
+    const old = pl.guns[gs];
+    pl.guns[gs] = it.gun;
+    run.bag[i] = old ? { kind: "gun", gun: old, n: 1 } : null;
+    if (!pl.guns[pl.active]) pl.active = gs;
+    return true;
+  }
+  function fitExo(run, i, p, cat, s) {
+    const it = run.bag[i], pl = run.players[p];
+    if (!it || it.kind !== "exo" || it.cat !== cat || !pl || !pl.exo[cat] || s < 0 || s >= EXO_SLOTS) return false;
+    return fitInto(run, i, pl.exo[cat], s);
+  }
+  function fitPerk(run, i, p, s) {
+    const it = run.bag[i], pl = run.players[p];
+    if (!it || it.kind !== "perk" || !it.id || !PERKS[it.id] || PERKS[it.id].stat || !pl || s < 0 || s >= PERK_SLOTS) return false;
+    return fitInto(run, i, pl.perks, s);
+  }
+  function fitInto(run, i, arr, s) {
+    const it = run.bag[i];
+    if (!it) return false;
+    const old = arr[s], before = run.bag.slice(), n = it.n;
+    const one = takeOne(run, i);
+    if (old && bagAdd(run, old)) {
+      run.bag = before;
+      it.n = n;
+      return false;
+    }
+    arr[s] = one;
+    return true;
+  }
+  function unfitGun(run, p, gs) {
+    const pl = run.players[p], g = pl && pl.guns[gs];
+    if (!g || bagAdd(run, { kind: "gun", gun: g, n: 1 })) return false;
+    pl.guns[gs] = null;
+    gunsActive(pl);
+    return true;
+  }
+  function unfitExo(run, p, cat, s) {
+    const pl = run.players[p], it = pl && pl.exo[cat] && pl.exo[cat][s];
+    if (!it || bagAdd(run, it)) return false;
+    pl.exo[cat][s] = null;
+    return true;
+  }
+  function unfitPerk(run, p, s) {
+    const pl = run.players[p], it = pl && pl.perks[s];
+    if (!it || bagAdd(run, it)) return false;
+    pl.perks[s] = null;
+    return true;
+  }
+  function bagMove(run, i, j) {
+    const a = run.bag[i], b = run.bag[j];
+    if (i === j || !a || j < 0 || j >= run.bag.length) return false;
+    const k = itemKey(a);
+    if (b && k && k === itemKey(b)) {
+      b.n += a.n;
+      run.bag[i] = null;
+      return true;
+    }
+    run.bag[j] = a;
+    run.bag[i] = b || null;
+    return true;
+  }
+  function rowOf(pl, row) {
+    if (row.gun != null) {
+      const g = pl.guns[row.gun];
+      return g ? g.slots : null;
+    }
+    if (row.cat) return pl.exo[row.cat] || null;
+    return row.perks ? pl.perks : null;
+  }
+  function rowFits(row, it) {
+    if (!it) return false;
+    if (row.gun != null) return it.kind === "mod" && !!it.id;
+    if (row.cat) return it.kind === "exo" && it.cat === row.cat;
+    return it.kind === "perk" && !!it.id && !!PERKS[it.id] && !PERKS[it.id].stat;
+  }
+  function rowMove(run, p, row, a, b) {
+    const pl = run.players[p], arr = pl && rowOf(pl, row);
+    if (!arr || a === b || a < 0 || b < 0 || a >= arr.length || b >= arr.length || !arr[a]) return false;
+    const t = arr[a];
+    arr[a] = arr[b];
+    arr[b] = t;
+    return true;
+  }
+  function rowToBag(run, p, row, s, j) {
+    const pl = run.players[p], arr = pl && rowOf(pl, row);
+    if (!arr || !arr[s] || j < 0 || j >= run.bag.length) return false;
+    const mod = row.gun != null, out = mod ? { kind: "mod", id: arr[s], n: 1 } : arr[s], b = run.bag[j];
+    if (!b) {
+      run.bag[j] = out;
+      arr[s] = null;
+      return true;
+    }
+    if (itemKey(b) && itemKey(b) === itemKey(out)) {
+      b.n += 1;
+      arr[s] = null;
+      return true;
+    }
+    if (b.n === 1 && rowFits(row, b)) {
+      arr[s] = mod ? b.id : b;
+      run.bag[j] = out;
+      return true;
+    }
+    return false;
+  }
+  function gunToBag(run, p, gs, j) {
+    const pl = run.players[p], g = pl && pl.guns[gs], b = run.bag[j];
+    if (!g || j < 0 || j >= run.bag.length) return false;
+    if (b && !(b.kind === "gun" && b.gun && b.n === 1)) return false;
+    run.bag[j] = { kind: "gun", gun: g, n: 1 };
+    pl.guns[gs] = b && b.gun ? b.gun : null;
+    gunsActive(pl);
+    return true;
+  }
+  function gunMove(run, p, a, b) {
+    const pl = run.players[p];
+    if (!pl || a === b || a < 0 || b < 0 || a >= pl.guns.length || b >= pl.guns.length || !pl.guns[a]) return false;
+    const t = pl.guns[a];
+    pl.guns[a] = pl.guns[b];
+    pl.guns[b] = t;
+    if (pl.active === a) pl.active = b;
+    else if (pl.active === b) pl.active = a;
+    return true;
+  }
+  function gunsActive(pl) {
+    if (pl.guns[pl.active]) return;
+    const k = pl.guns.findIndex((g) => !!g);
+    if (k >= 0) pl.active = k;
+  }
+  function setActive(run, p, gs) {
+    const pl = run.players[p];
+    if (!pl || !pl.guns[gs]) return false;
+    pl.active = gs;
+    return true;
+  }
+  function addPlayer(run) {
+    if (run.players.length >= MAX_PLAYERS || !spend(run, "green", 1)) return null;
+    const pl = newPlayer(run.players.length);
+    run.players.push(pl);
+    giveKit(run, pl);
+    return pl;
+  }
+  function exoBonus(pl) {
+    const b = { hpAdd: 0, walk: 1, fuel: 1, refuel: 1, carrot: 0 };
+    for (const cat of EXO_CATS) {
+      for (const it of pl.exo[cat] || []) {
+        if (!it || !it.tier) continue;
+        for (const st of EXO_STATS[cat]) {
+          const S2 = STAT_PERKS[st], v = S2.vals[it.tier - 1];
+          if (st === "hp") b.hpAdd += v;
+          else if (st === "carrot") b.carrot += v;
+          else if (st === "walk") b.walk += v - 1;
+          else if (st === "fuel") b.fuel += v - 1;
+          else if (st === "refuel") b.refuel += v - 1;
+        }
+      }
+    }
+    b.carrot = Math.min(CARROT_MAX, b.carrot);
+    return b;
+  }
+  function playerStats(pl) {
+    const ids = [];
+    for (const it of pl.perks) if (it && it.id && !ids.includes(it.id)) ids.push(it.id);
+    const P2 = perkBag(ids), e = exoBonus(pl);
+    P2.hpAdd += e.hpAdd;
+    P2.walk *= e.walk;
+    P2.fuel *= e.fuel;
+    P2.refuel *= e.refuel;
+    P2.carrot = Math.min(CARROT_MAX, P2.carrot + e.carrot);
+    P2.maxHp = Math.max(10, Math.round((PLAYER_HP + P2.hpAdd) * P2.hpMul));
+    return P2;
   }
 
   // src/auto/clear.js
@@ -14445,6 +15076,34 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     burst(S2, gx, gy, 3, K.col, 40, "spark", 0.12);
     snd(S2, "cast", gx, gy, K);
   }
+  function fieldFollow(S2, s, dt) {
+    const r = S2.runners[s.by];
+    if (!r || r.out) {
+      s.vx = s.vy = 0;
+      return;
+    }
+    const dx = r.x + PW / 2 - s.x, dy = r.y + PH / 2 - s.y, d = Math.hypot(dx, dy) || 1;
+    const want = Math.min(FIELD_SPEED * 2, d * 5), k = Math.min(1, SEEK_ACC * dt);
+    s.vx += (dx / d * want - s.vx) * k;
+    s.vy += (dy / d * want - s.vy) * k;
+  }
+  function vigourStep(S2, s, dt) {
+    if ((s.tick = (s.tick || 0) - dt) > 0 || !S2.team) return;
+    let healed = false;
+    for (const r of S2.runners) {
+      const pl = S2.team[r.id], cx = r.x + PW / 2, cy = r.y + PH / 2;
+      if (!pl || pl.alive === false || r.out || Math.hypot(cx - s.x, cy - s.y) > (s.heal || 0)) continue;
+      const st = playerStats(pl);
+      if (pl.hp >= st.maxHp) continue;
+      pl.hp = Math.min(st.maxHp, pl.hp + VIG_HP * (st.heal || 1));
+      healed = true;
+      burst(S2, cx, r.y + 2, 3, "#9dff9a", 30, "spark", 0.35);
+    }
+    if (healed) {
+      s.tick = VIG_TICK;
+      snd(S2, "healtick", s.x, s.y);
+    }
+  }
   function zapArc(S2, x0, y0, x1, y1, col) {
     const R = S2.rnd, pts = [{ x: x0, y: y0 }];
     for (let i = 1; i < 7; i++) {
@@ -14801,6 +15460,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (s.pull && !s.foe) for (const a of holePull(s, S2.foes, S2.scroll, S2.shots, dt, DEV.bhPull * s.pull / 70)) burst(S2, a.x, a.y, 3, "#c58cff", 40, "spark", 0.25);
       if (s.vac) {
         vacPull(s, S2.foes, S2.scroll, S2.shots, dt, VAC_PULL);
+        continue;
+      }
+      if (s.heal) {
+        if (!S2.hub) s.x -= sv(S2) * dt;
+        if (s.follow) fieldFollow(S2, s, dt);
+        vigourStep(S2, s, dt);
         continue;
       }
       if (s.sid === "zap" && S2.zaps.length < 24) {
@@ -15233,487 +15898,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   var titlePx = (cw) => Math.max(4, Math.floor(Math.min(cw * 0.92 / pixWidth("RUNNER", 1, 1), 15)));
   var titleBottom = (cw, top) => top + titlePx(cw) * 16 + Math.ceil(titlePx(cw) * 2.2) + 20;
-
-  // src/spells/collection.js
-  function modTiers() {
-    return [1, 2, 3, 4].map((tier) => ({ tier, ids: ALL_IDS.filter((id) => tierOf(id) === tier) }));
-  }
-  function crystalRoll(rnd2, floor, owned) {
-    const have = new Set(owned);
-    const left = ALL_IDS.filter((id) => !have.has(id));
-    if (!left.length) return null;
-    let total = 0;
-    for (const id of left) total += modWeight(id, floor);
-    if (total <= 0) return left[Math.floor(rnd2() * left.length)];
-    let r = rnd2() * total;
-    for (const id of left) {
-      r -= modWeight(id, floor);
-      if (r <= 0 && modWeight(id, floor) > 0) return id;
-    }
-    return left.filter((id) => modWeight(id, floor) > 0).pop() || left[0];
-  }
-  function perkRoll(rnd2, owned) {
-    const left = PERK_IDS.filter((id) => !owned.includes(id) && (!PERKS[id].tier || PERKS[id].tier === 1 || owned.includes("st_" + PERKS[id].stat + (PERKS[id].tier - 1))));
-    return left.length ? left[Math.floor(rnd2() * left.length)] : null;
-  }
-  function stackKey(entry) {
-    return entry;
-  }
-  function stackBag(bag) {
-    const by = /* @__PURE__ */ new Map();
-    bag.forEach((id, i) => {
-      const key = stackKey(id);
-      const s = by.get(key);
-      if (s) s.n++;
-      else by.set(key, { key, id, i, n: 1 });
-    });
-    return [...by.values()];
-  }
-
-  // src/auto/maps.js
-  var MAP_NAMES = THEMES.map((t) => t.name.replace(/\b\w/g, (c) => c.toUpperCase()));
-  var fresh = (i) => ({ level: 1, best: 0, beaten: false, paid: 0, owned: i === 0 });
-  function mapsOf(run) {
-    if (!Array.isArray(run.maps)) {
-      const t = Math.max(1, run.tier | 0 || 1);
-      run.maps = [{ level: t, best: t - 1, beaten: t > 1, paid: 0, owned: true }];
-      run.map = 0;
-    }
-    while (run.maps.length < MAP_NAMES.length) run.maps.push(fresh(run.maps.length));
-    if (!(run.map >= 0 && run.map < run.maps.length && run.maps[run.map].owned)) run.map = 0;
-    return run.maps;
-  }
-  function mapTier(run) {
-    const m = mapsOf(run)[run.map || 0];
-    return m.level + (run.map || 0) * DEV.autoMapStep;
-  }
-  function syncTier(run) {
-    run.tier = mapTier(run);
-    return run.tier;
-  }
-  var mapPrice = (i) => i <= 0 ? 0 : Math.round(DEV.autoMapPrice * Math.pow(DEV.autoMapGrow, i - 1));
-  var nextLocked = (run) => mapsOf(run).findIndex((m) => !m.owned);
-  function mapState(run, i) {
-    const ms = mapsOf(run), m = ms[i];
-    if (!m) return "locked";
-    if (m.owned) return "owned";
-    if (i !== nextLocked(run)) return "locked";
-    return ms[i - 1] && ms[i - 1].beaten ? "buy" : "beat";
-  }
-  function payMap(run, n) {
-    const i = nextLocked(run);
-    if (i < 0 || mapState(run, i) !== "buy" || n <= 0) return Math.max(0, n);
-    const m = run.maps[i], price = mapPrice(i), take = Math.min(n, price - m.paid);
-    m.paid += take;
-    if (m.paid >= price) {
-      m.owned = true;
-      m.paid = price;
-    }
-    return n - take;
-  }
-  function selectMap(run, i) {
-    const m = mapsOf(run)[i];
-    if (!m || !m.owned) return false;
-    run.map = i;
-    syncTier(run);
-    return true;
-  }
-  function mapCleared(run) {
-    const m = mapsOf(run)[run.map || 0];
-    m.best = Math.max(m.best, m.level);
-    m.level++;
-    m.beaten = true;
-    syncTier(run);
-  }
-  function mapFailed(run) {
-    mapsOf(run)[run.map || 0].level = 1;
-    syncTier(run);
-  }
-  var mapLabel = (run) => MAP_NAMES[run.map || 0] + " Lv " + mapsOf(run)[run.map || 0].level;
-
-  // src/auto/run.js
-  var BAG_COLS = 7, BAG_ROWS = 10, BAG_SLOTS = BAG_COLS * BAG_ROWS;
-  var BAG_EXTRA = 3, BAG_MAX = BAG_COLS * 100;
-  function bagSize(run) {
-    let last = -1;
-    for (let i = run.bag.length - 1; i >= 0; i--) if (run.bag[i]) {
-      last = i;
-      break;
-    }
-    return Math.min(BAG_MAX, (Math.floor(last / BAG_COLS) + 1 + BAG_EXTRA) * BAG_COLS);
-  }
-  function bagFit(run) {
-    const want = bagSize(run);
-    if (run.bag.length > want) run.bag.length = want;
-    while (run.bag.length < want) run.bag.push(null);
-  }
-  var MAX_PLAYERS = 4, GUN_SLOTS = 4, EXO_SLOTS = 5, PERK_SLOTS = 6, CARROT_MAX = 5;
-  var EXO_CATS = ["hp", "speed", "jet"];
-  var EXO_STATS = { hp: ["hp"], speed: ["walk"], jet: ["fuel", "refuel"], carrot: ["carrot"] };
-  var EXO_GLYPH = { hp: "♥", speed: "➤", jet: "🚀", carrot: "⌖" };
-  var five = (v) => Math.max(5, Math.round(v / 5) * 5);
-  var autoGunPrice = (tier) => five(DEV.autoGunBase * Math.pow(DEV.autoGunGrow, Math.max(0, tier - 1)));
-  var autoExoPrice = (tier) => five(autoGunPrice(tier) * DEV.autoExoPrice / 100);
-  var exoMod = (cat, tier) => ({ kind: "exo", cat, tier: Math.max(1, Math.min(EXO_SLOTS, tier | 0)), n: 1 });
-  function newPlayer(i) {
-    return {
-      col: TITLE_COLS[i % TITLE_COLS.length],
-      guns: [null, null, null, null],
-      active: 0,
-      exo: {
-        hp: [null, null, null, null, null],
-        speed: [null, null, null, null, null],
-        jet: [null, null, null, null, null],
-        carrot: [null, null, null, null, null]
-      },
-      perks: [null, null, null, null, null, null],
-      hp: PLAYER_HP,
-      alive: true
-    };
-  }
-  var STARTER_SHOTS = Object.keys(MODS).filter((k) => MODS[k].kind === "shot" && tierOf(k) === 1 && !MODS[k].off && !MODS[k].trig && !MODS[k].bore && !MODS[k].tele && k !== "saw");
-  function starterKit(rnd2 = Math.random) {
-    const shot = STARTER_SHOTS[Math.floor(rnd2() * STARTER_SHOTS.length)];
-    const gun = resetGun({
-      name: "Starter " + MODS[shot].name,
-      cap: 3,
-      castDelay: DEV.autoGunDelay,
-      recharge: DEV.autoGunRech,
-      manaMax: DEV.autoGunMana,
-      manaRegen: DEV.autoGunRegen,
-      spread: DEV.autoGunSpread,
-      multi: 1,
-      shuffle: false,
-      speedMul: 1,
-      mana: DEV.autoGunMana,
-      slots: [shot, null, null],
-      hue: Math.floor(rnd2() * 360)
-    });
-    return { gun, saw: { kind: "mod", id: "saw", n: 1 } };
-  }
-  function giveKit(run, pl, rnd2) {
-    const k = starterKit(rnd2);
-    pl.guns[0] = k.gun;
-    pl.active = 0;
-    bagAdd(run, k.saw);
-  }
-  function kitMissing(run, rnd2) {
-    for (const pl of run.players) if (pl.guns.every((g) => !g)) giveKit(run, pl, rnd2);
-    return run;
-  }
-  function newRun(seed) {
-    const run = { tier: 1, players: [newPlayer(0)], bag: Array(BAG_SLOTS).fill(null), seed: seed || 1 + Math.floor(Math.random() * 1e6) };
-    mapsOf(run);
-    giveKit(run, run.players[0]);
-    bagFit(run);
-    return run;
-  }
-  function healRun(run) {
-    for (const p of run.players) {
-      p.hp = playerStats(p).maxHp;
-      p.alive = true;
-    }
-  }
-  var levelSeed = (run) => 1 + ((run.seed || 1) * 7919 + run.tier * 104729 + (run.map || 0) * 15485863) % 999983;
-  function levelFailed(run) {
-    mapFailed(run);
-    healRun(run);
-  }
-  function levelCleared(run) {
-    mapCleared(run);
-    healRun(run);
-  }
-  function itemKey(it) {
-    if (it.kind === "gold" || it.kind === "red" || it.kind === "green") return it.kind;
-    if (it.kind === "mod") return "mod:" + stackKey(it.id || "");
-    if (it.kind === "exo") return "exo:" + it.cat + ":" + it.tier;
-    if (it.kind === "perk") return "perk:" + it.id;
-    return null;
-  }
-  var bagCount = (run, kind) => run.bag.reduce((s, it) => s + (it && it.kind === kind ? it.n : 0), 0);
-  function bagAdd(run, item) {
-    if (!item || item.n <= 0) return null;
-    const key = itemKey(item);
-    if (key) {
-      const s = run.bag.find((it) => it && itemKey(it) === key);
-      if (s) {
-        s.n += item.n;
-        return null;
-      }
-    }
-    bagFit(run);
-    const i = run.bag.indexOf(null);
-    if (i < 0) return item;
-    if (key) {
-      run.bag[i] = item;
-      bagFit(run);
-      return null;
-    }
-    run.bag[i] = Object.assign({}, item, { n: 1 });
-    bagFit(run);
-    return item.n > 1 ? Object.assign({}, item, { n: item.n - 1 }) : null;
-  }
-  function bagSlotOf(run, item) {
-    const key = itemKey(item);
-    if (key) return run.bag.findIndex((it) => !!it && itemKey(it) === key);
-    return run.bag.findIndex((it) => !!it && it.kind === item.kind && !!item.gun && it.gun === item.gun);
-  }
-  function takeOne(run, i) {
-    const it = run.bag[i];
-    if (!it) return null;
-    if (it.n > 1) {
-      it.n--;
-      return Object.assign({}, it, { n: 1 });
-    }
-    run.bag[i] = null;
-    return it;
-  }
-  function spend(run, kind, n) {
-    if (n <= 0) return true;
-    if (bagCount(run, kind) < n) return false;
-    for (let i = 0; i < run.bag.length && n > 0; i++) {
-      const it = run.bag[i];
-      if (!it || it.kind !== kind) continue;
-      const t = Math.min(n, it.n);
-      it.n -= t;
-      n -= t;
-      if (it.n <= 0) run.bag[i] = null;
-    }
-    return true;
-  }
-  function scrap(item, tier) {
-    if (!item) return 0;
-    const share = DEV.autoScrap / 100, n = item.n || 1;
-    let each;
-    switch (item.kind) {
-      case "gold":
-        return n;
-      case "red":
-        each = DEV.autoRed * goldScale(tier);
-        break;
-      case "green":
-        each = DEV.autoGreen * goldScale(tier);
-        break;
-      case "mod":
-        each = DEV.autoModGold * goldScale(tier);
-        break;
-      case "gun":
-        each = autoGunPrice(tier) * share;
-        break;
-      case "exo":
-        each = autoExoPrice(item.tier || tier) * share;
-        break;
-      case "perk":
-        each = perkPrice(item.id || "") * share;
-        break;
-      default:
-        each = 0;
-    }
-    return Math.max(1, Math.round(each)) * n;
-  }
-  function scrapAt(run, i) {
-    const it = run.bag[i];
-    if (!it || it.kind === "gold") return 0;
-    const g = scrap(it, run.tier);
-    run.bag[i] = null;
-    bagAdd(run, { kind: "gold", n: g });
-    return g;
-  }
-  function fitMod(run, i, p, gi, si) {
-    const it = run.bag[i], pl = run.players[p], g = pl && pl.guns[gi];
-    if (!it || it.kind !== "mod" || !g || si < 0 || si >= g.slots.length) return false;
-    const old = g.slots[si];
-    const before = run.bag.slice(), n = it.n;
-    takeOne(run, i);
-    if (old && bagAdd(run, { kind: "mod", id: old, n: 1 })) {
-      run.bag = before;
-      it.n = n;
-      return false;
-    }
-    g.slots[si] = it.id || null;
-    return true;
-  }
-  function unfitMod(run, p, gi, si) {
-    const pl = run.players[p], g = pl && pl.guns[gi], id = g && g.slots[si];
-    if (!id || !g) return false;
-    if (bagAdd(run, { kind: "mod", id, n: 1 })) return false;
-    g.slots[si] = null;
-    return true;
-  }
-  function fitGun(run, i, p, gs) {
-    const it = run.bag[i], pl = run.players[p];
-    if (!it || it.kind !== "gun" || !it.gun || !pl || gs < 0 || gs >= GUN_SLOTS) return false;
-    const old = pl.guns[gs];
-    pl.guns[gs] = it.gun;
-    run.bag[i] = old ? { kind: "gun", gun: old, n: 1 } : null;
-    if (!pl.guns[pl.active]) pl.active = gs;
-    return true;
-  }
-  function fitExo(run, i, p, cat, s) {
-    const it = run.bag[i], pl = run.players[p];
-    if (!it || it.kind !== "exo" || it.cat !== cat || !pl || !pl.exo[cat] || s < 0 || s >= EXO_SLOTS) return false;
-    return fitInto(run, i, pl.exo[cat], s);
-  }
-  function fitPerk(run, i, p, s) {
-    const it = run.bag[i], pl = run.players[p];
-    if (!it || it.kind !== "perk" || !it.id || !PERKS[it.id] || PERKS[it.id].stat || !pl || s < 0 || s >= PERK_SLOTS) return false;
-    return fitInto(run, i, pl.perks, s);
-  }
-  function fitInto(run, i, arr, s) {
-    const it = run.bag[i];
-    if (!it) return false;
-    const old = arr[s], before = run.bag.slice(), n = it.n;
-    const one = takeOne(run, i);
-    if (old && bagAdd(run, old)) {
-      run.bag = before;
-      it.n = n;
-      return false;
-    }
-    arr[s] = one;
-    return true;
-  }
-  function unfitGun(run, p, gs) {
-    const pl = run.players[p], g = pl && pl.guns[gs];
-    if (!g || bagAdd(run, { kind: "gun", gun: g, n: 1 })) return false;
-    pl.guns[gs] = null;
-    gunsActive(pl);
-    return true;
-  }
-  function unfitExo(run, p, cat, s) {
-    const pl = run.players[p], it = pl && pl.exo[cat] && pl.exo[cat][s];
-    if (!it || bagAdd(run, it)) return false;
-    pl.exo[cat][s] = null;
-    return true;
-  }
-  function unfitPerk(run, p, s) {
-    const pl = run.players[p], it = pl && pl.perks[s];
-    if (!it || bagAdd(run, it)) return false;
-    pl.perks[s] = null;
-    return true;
-  }
-  function bagMove(run, i, j) {
-    const a = run.bag[i], b = run.bag[j];
-    if (i === j || !a || j < 0 || j >= run.bag.length) return false;
-    const k = itemKey(a);
-    if (b && k && k === itemKey(b)) {
-      b.n += a.n;
-      run.bag[i] = null;
-      return true;
-    }
-    run.bag[j] = a;
-    run.bag[i] = b || null;
-    return true;
-  }
-  function rowOf(pl, row) {
-    if (row.gun != null) {
-      const g = pl.guns[row.gun];
-      return g ? g.slots : null;
-    }
-    if (row.cat) return pl.exo[row.cat] || null;
-    return row.perks ? pl.perks : null;
-  }
-  function rowFits(row, it) {
-    if (!it) return false;
-    if (row.gun != null) return it.kind === "mod" && !!it.id;
-    if (row.cat) return it.kind === "exo" && it.cat === row.cat;
-    return it.kind === "perk" && !!it.id && !!PERKS[it.id] && !PERKS[it.id].stat;
-  }
-  function rowMove(run, p, row, a, b) {
-    const pl = run.players[p], arr = pl && rowOf(pl, row);
-    if (!arr || a === b || a < 0 || b < 0 || a >= arr.length || b >= arr.length || !arr[a]) return false;
-    const t = arr[a];
-    arr[a] = arr[b];
-    arr[b] = t;
-    return true;
-  }
-  function rowToBag(run, p, row, s, j) {
-    const pl = run.players[p], arr = pl && rowOf(pl, row);
-    if (!arr || !arr[s] || j < 0 || j >= run.bag.length) return false;
-    const mod = row.gun != null, out = mod ? { kind: "mod", id: arr[s], n: 1 } : arr[s], b = run.bag[j];
-    if (!b) {
-      run.bag[j] = out;
-      arr[s] = null;
-      return true;
-    }
-    if (itemKey(b) && itemKey(b) === itemKey(out)) {
-      b.n += 1;
-      arr[s] = null;
-      return true;
-    }
-    if (b.n === 1 && rowFits(row, b)) {
-      arr[s] = mod ? b.id : b;
-      run.bag[j] = out;
-      return true;
-    }
-    return false;
-  }
-  function gunToBag(run, p, gs, j) {
-    const pl = run.players[p], g = pl && pl.guns[gs], b = run.bag[j];
-    if (!g || j < 0 || j >= run.bag.length) return false;
-    if (b && !(b.kind === "gun" && b.gun && b.n === 1)) return false;
-    run.bag[j] = { kind: "gun", gun: g, n: 1 };
-    pl.guns[gs] = b && b.gun ? b.gun : null;
-    gunsActive(pl);
-    return true;
-  }
-  function gunMove(run, p, a, b) {
-    const pl = run.players[p];
-    if (!pl || a === b || a < 0 || b < 0 || a >= pl.guns.length || b >= pl.guns.length || !pl.guns[a]) return false;
-    const t = pl.guns[a];
-    pl.guns[a] = pl.guns[b];
-    pl.guns[b] = t;
-    if (pl.active === a) pl.active = b;
-    else if (pl.active === b) pl.active = a;
-    return true;
-  }
-  function gunsActive(pl) {
-    if (pl.guns[pl.active]) return;
-    const k = pl.guns.findIndex((g) => !!g);
-    if (k >= 0) pl.active = k;
-  }
-  function setActive(run, p, gs) {
-    const pl = run.players[p];
-    if (!pl || !pl.guns[gs]) return false;
-    pl.active = gs;
-    return true;
-  }
-  function addPlayer(run) {
-    if (run.players.length >= MAX_PLAYERS || !spend(run, "green", 1)) return null;
-    const pl = newPlayer(run.players.length);
-    run.players.push(pl);
-    giveKit(run, pl);
-    return pl;
-  }
-  function exoBonus(pl) {
-    const b = { hpAdd: 0, walk: 1, fuel: 1, refuel: 1, carrot: 0 };
-    for (const cat of EXO_CATS) {
-      for (const it of pl.exo[cat] || []) {
-        if (!it || !it.tier) continue;
-        for (const st of EXO_STATS[cat]) {
-          const S2 = STAT_PERKS[st], v = S2.vals[it.tier - 1];
-          if (st === "hp") b.hpAdd += v;
-          else if (st === "carrot") b.carrot += v;
-          else if (st === "walk") b.walk += v - 1;
-          else if (st === "fuel") b.fuel += v - 1;
-          else if (st === "refuel") b.refuel += v - 1;
-        }
-      }
-    }
-    b.carrot = Math.min(CARROT_MAX, b.carrot);
-    return b;
-  }
-  function playerStats(pl) {
-    const ids = [];
-    for (const it of pl.perks) if (it && it.id && !ids.includes(it.id)) ids.push(it.id);
-    const P2 = perkBag(ids), e = exoBonus(pl);
-    P2.hpAdd += e.hpAdd;
-    P2.walk *= e.walk;
-    P2.fuel *= e.fuel;
-    P2.refuel *= e.refuel;
-    P2.carrot = Math.min(CARROT_MAX, P2.carrot + e.carrot);
-    P2.maxHp = Math.max(10, Math.round((PLAYER_HP + P2.hpAdd) * P2.hpMul));
-    return P2;
-  }
 
   // src/spells/gunshop.js
   var GUN_OFFER = 3;
@@ -25234,40 +25418,43 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     G.ctx.globalAlpha = 1;
   }
+  function drawField(W, G, f) {
+    if (f.field === "vacuum") {
+      drawWhiteHole(W, G, f);
+      return;
+    }
+    const t = f.life / f.max;
+    const beat = 0.75 + 0.25 * Math.sin(W.time * (f.field === "mine" ? 7 : 3));
+    if (f.field === "mine" || f.field === "dormant") {
+      G.ctx.globalAlpha = 0.28 * beat;
+      G.ctx.fillStyle = f.col;
+      G.ctx.beginPath();
+      G.ctx.arc(f.x, f.y, f.r * (f.field === "mine" ? 0.35 : 1), 0, Math.PI * 2);
+      G.ctx.fill();
+    } else drawFieldMotes(W, G, f);
+    const circle = f.field !== "mine" && f.field !== "dormant";
+    G.ctx.globalAlpha = circle ? 0.1 : 0.55 * beat;
+    G.ctx.strokeStyle = f.col;
+    G.ctx.lineWidth = circle ? 0.5 : 1.5;
+    G.ctx.setLineDash([5, 4]);
+    G.ctx.lineDashOffset = -W.time * 14;
+    G.ctx.beginPath();
+    G.ctx.arc(f.x, f.y, f.r * (0.4 + 0.6 * t), 0, Math.PI * 2);
+    G.ctx.stroke();
+    G.ctx.setLineDash([]);
+    G.ctx.globalAlpha = 1;
+    if (!drawFieldLook(W, G, f, beat)) {
+      G.ctx.fillStyle = f.col;
+      G.ctx.beginPath();
+      G.ctx.arc(f.x, f.y, 3.5, 0, Math.PI * 2);
+      G.ctx.fill();
+    }
+  }
   function drawFields(W, G, F2) {
     const { vh } = F2;
     for (const f of W.fields) {
       if (f.y > W.camY + vh + f.r || f.y < W.camY - f.r) continue;
-      if (f.field === "vacuum") {
-        drawWhiteHole(W, G, f);
-        continue;
-      }
-      const t = f.life / f.max;
-      const beat = 0.75 + 0.25 * Math.sin(W.time * (f.field === "mine" ? 7 : 3));
-      if (f.field === "mine" || f.field === "dormant") {
-        G.ctx.globalAlpha = 0.28 * beat;
-        G.ctx.fillStyle = f.col;
-        G.ctx.beginPath();
-        G.ctx.arc(f.x, f.y, f.r * (f.field === "mine" ? 0.35 : 1), 0, Math.PI * 2);
-        G.ctx.fill();
-      } else drawFieldMotes(W, G, f);
-      const circle = f.field !== "mine" && f.field !== "dormant";
-      G.ctx.globalAlpha = circle ? 0.1 : 0.55 * beat;
-      G.ctx.strokeStyle = f.col;
-      G.ctx.lineWidth = circle ? 0.5 : 1.5;
-      G.ctx.setLineDash([5, 4]);
-      G.ctx.lineDashOffset = -W.time * 14;
-      G.ctx.beginPath();
-      G.ctx.arc(f.x, f.y, f.r * (0.4 + 0.6 * t), 0, Math.PI * 2);
-      G.ctx.stroke();
-      G.ctx.setLineDash([]);
-      G.ctx.globalAlpha = 1;
-      if (!drawFieldLook(W, G, f, beat)) {
-        G.ctx.fillStyle = f.col;
-        G.ctx.beginPath();
-        G.ctx.arc(f.x, f.y, 3.5, 0, Math.PI * 2);
-        G.ctx.fill();
-      }
+      drawField(W, G, f);
     }
     G.ctx.globalAlpha = 1;
     G.ctx.globalAlpha = 1;
@@ -27857,108 +28044,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   var removePreset = (list, i) => list.filter((_, k) => k !== i);
   var presetGun = (p) => storeGun(p.gun);
-
-  // src/spells/paths.js
-  var BOOM_TURN = 9;
-  var BOOM_CATCH = 10;
-  var BOOM_MAX = 3;
-  var PONG_T = 0.28;
-  var SPIRAL_HZ = 3;
-  var SPIRAL_GROW = 6;
-  var ORBIT_R = 26;
-  var ORBIT_IN = 0.2;
-  var ORBIT_W = 14;
-  var FOLLOW_AHEAD = 34;
-  var FOLLOW_PULL = 250;
-  var FIELD_SPEED = 150;
-  var SEEK_ACC = 7;
-  var hasPath = (o) => !!(o.boomer || o.pong || o.spiral || o.orbit || o.follow || o.followAim || o.still && o.homing);
-  var spiralOff = (k, t) => k * SPIRAL_GROW * t * Math.sin(t * SPIRAL_HZ * 2 * Math.PI);
-  function pathStep(o, dt, env) {
-    let ex = 0, ey = 0;
-    const age = o.age;
-    const head = (tx, ty, rate) => {
-      const dx = tx - o.x, dy = ty - o.y, d = Math.hypot(dx, dy) || 1;
-      if (o.still) {
-        const want = Math.min(FIELD_SPEED, d * 5), k = Math.min(1, SEEK_ACC * dt);
-        o.vx += (dx / d * want - o.vx) * k;
-        o.vy += (dy / d * want - o.vy) * k;
-        return d;
-      }
-      const sp = Math.hypot(o.vx, o.vy) || 1, a = Math.atan2(o.vy, o.vx);
-      const b = a + Math.max(-rate * dt, Math.min(rate * dt, angDiff(Math.atan2(dy, dx), a)));
-      o.vx = Math.cos(b) * sp;
-      o.vy = Math.sin(b) * sp;
-      return d;
-    };
-    if (o.boomer) {
-      if (!o.back && age >= (o.born || 1) * 0.5) o.back = 1;
-      if (o.back) {
-        const d = head(env.home.x, env.home.y, BOOM_TURN * o.boomer / 3.2);
-        if (d < BOOM_CATCH) o.caught = 1;
-        else if (o.life != null && o.life < 0.05 && age < (o.born || 1) * BOOM_MAX) o.life = 0.05;
-      }
-    }
-    const pull = (t, k) => {
-      if (o.still) {
-        head(t.x, t.y, k);
-        return;
-      }
-      const dx = t.x - o.x, dy = t.y - o.y, d = Math.hypot(dx, dy) || 1;
-      const sp0 = o.sp0 || (o.sp0 = Math.hypot(o.vx, o.vy) || 1), a = FOLLOW_PULL * k * dt;
-      o.vx += dx / d * a;
-      o.vy += dy / d * a;
-      const sp = Math.hypot(o.vx, o.vy);
-      if (sp > sp0) {
-        o.vx *= sp0 / sp;
-        o.vy *= sp0 / sp;
-      }
-    };
-    if (o.follow) pull(env.home, o.follow);
-    if (o.followAim) pull(env.ahead, o.followAim);
-    if (o.still && o.homing && env.enemies) {
-      let best = null, bd = o.homeR || 260;
-      for (const e of env.enemies) {
-        const d = Math.hypot(e.x - o.x, e.ty - o.y);
-        if (d < bd) {
-          bd = d;
-          best = e;
-        }
-      }
-      if (best) head(best.x, best.ty, o.homing);
-    }
-    if (o.pong) {
-      const want = age % (PONG_T * 1.5) < PONG_T ? 1 : -1;
-      if (want !== (o.pdir || 1)) {
-        o.vx = -o.vx;
-        o.vy = -o.vy;
-      }
-      o.pdir = want;
-    }
-    if (o.spiral) {
-      const sp = Math.hypot(o.vx, o.vy), a = sp > 1 ? Math.atan2(o.vy, o.vx) : o.ang || 0;
-      const s = spiralOff(o.spiral, age) - spiralOff(o.spiral, Math.max(0, age - dt));
-      ex += -Math.sin(a) * s;
-      ey += Math.cos(a) * s;
-    }
-    if (o.orbit) {
-      const c = env.anchor || env.home;
-      if (o.oa == null) {
-        o.oa = Math.atan2(o.y - c.y, o.x - c.x);
-        o.or0 = Math.hypot(o.x - c.x, o.y - c.y);
-        o.osp = Math.max(o.still ? FIELD_SPEED : 0, Math.hypot(o.vx, o.vy));
-      }
-      const r = o.or0 + (ORBIT_R - o.or0) * Math.min(1, age / ORBIT_IN);
-      const w = Math.min(ORBIT_W, Math.max(o.orbit, (o.osp || 0) / ORBIT_R));
-      o.oa += w * dt;
-      const tx = c.x + Math.cos(o.oa) * r, ty = c.y + Math.sin(o.oa) * r;
-      o.vx = -Math.sin(o.oa) * w * r;
-      o.vy = Math.cos(o.oa) * w * r;
-      ex = tx - (o.x + o.vx * dt);
-      ey = ty - (o.y + o.vy * dt);
-    }
-    return [ex, ey];
-  }
 
   // src/ui/gunart.js
   var TW = 112, TH = 54;
@@ -30887,6 +30972,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const sp = Math.hypot(s.vx, s.vy) || 1, ux = s.vx / sp, uy = s.vy / sp;
     if (s.sid === "slug" || s.sid === "disc" || s.sid === "missile" || s.sid === "void") return true;
     const G2 = { ctx: c };
+    if (s.sid === "vigour") {
+      const f = { x: s.x, y: s.y, r: s.heal || 36, life: s.life, max: s.max || 5, col: s.col, field: "heal" };
+      const Wt = W;
+      drawField(Wt, G2, f);
+      return true;
+    }
     if (s.sid === "vacfield") {
       const f = { x: s.x, y: s.y, r: (s.vac || 64) * 0.8, life: s.life, max: s.max || 1.2 };
       const Wt = W;

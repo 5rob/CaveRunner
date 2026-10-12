@@ -26,11 +26,13 @@ import { archCurve, archNear } from '../world/decorate.js';
 import { bendPush, swingStep, swings, tailStep, vinePt, webAt, webNearU } from '../world/sway.js';
 import { MODS, VAC_PULL } from '../spells/mods.js';
 import { gunPassives } from '../spells/cast.js';
+import { FIELD_SPEED, SEEK_ACC } from '../spells/paths.js';
 import { rustleStep } from '../audio/recipes.js';
 import { pixText, pixWidth } from './pixfont.js';
 import { GUN_HELD, gunMuzzle } from './sprites.js';
 import { GUN_ART } from './gunart.js';
-import { gunPull, gunTick, perkDmg, planShots, shotsOf } from './scenegun.js';
+import { VIG_HP, VIG_TICK, gunPull, gunTick, perkDmg, planShots, shotsOf } from './scenegun.js';
+import { playerStats } from '../auto/run.js';
 import { FX_ROOM, MISSILE_TURN, MISSILE_WAIT, fireSpray, keepTrail, muzzleFx, nearestFoe, autoTrail, steerTo, zapFork, traceBeam, bigBoomFx, boomLook, holePull, vacPull } from '../auto/shotfx.js';
 import { teamClearer } from '../auto/clear.js';
 import { FUEL_TAKEOFF, fuelCan, fuelForClimb, fuelTick } from '../auto/fuel.js';
@@ -132,7 +134,7 @@ export const TITLE_HOME = {
  *   homing?: number, accel?: number, vmax?: number, chain?: number, hitFoe?: boolean,
  *   real?: boolean, by?: number, trig?: string | null, timer?: number, pay?: Shot[] | null, age?: number,
  *   sid?: string, tr?: number[], homeR?: number, light?: string, lightR?: number,
- *   beam?: number, ang?: number, bx?: number, by2?: number, pull?: number, vac?: number, max?: number, hopT?: number, hx?: number, hy?: number }} TShot */
+ *   beam?: number, ang?: number, bx?: number, by2?: number, pull?: number, vac?: number, heal?: number, tick?: number, follow?: number, max?: number, hopT?: number, hx?: number, hy?: number }} TShot */
 /** @typedef {{ x: number, y: number, vx: number, vy: number, life: number, max: number, r: number, col: string, kind: string, to?: { x: number, y: number, life: number }, fx?: boolean, u?: number, a?: number, g?: number }} TPart */
 /** @typedef {{ x: number, y: number, r: number, t: number, max: number, sid?: string }} TBoom */
 /** @typedef {{ pts: { x: number, y: number }[], t: number, col: string }} TZap */
@@ -1865,6 +1867,33 @@ function stepRunnerGun(S, r, dt) {
   snd(S, 'cast', gx, gy, K);
 }
 
+// Follow Me on a field (owner v1.0.66, the old game's spells/paths.js rule): it steers to its caster's middle, slowing as it
+// arrives, and stays with him (none left: it stays put)
+/** @param {TitleScene} S @param {TShot} s @param {number} dt */
+function fieldFollow(S, s, dt) {
+  const r = S.runners[s.by];
+  if (!r || r.out) { s.vx = s.vy = 0; return; }
+  const dx = r.x + PW / 2 - s.x, dy = r.y + PH / 2 - s.y, d = Math.hypot(dx, dy) || 1;
+  const want = Math.min(FIELD_SPEED * 2, d * 5), k = Math.min(1, SEEK_ACC * dt);
+  s.vx += (dx / d * want - s.vx) * k; s.vy += (dy / d * want - s.vy) * k;
+}
+// Circle of Vigour (owner v1.0.66; art/scenegun.js vigourCircle): each living player inside, under his max, heals VIG_HP (× his
+// heal perks) every VIG_TICK s, a green sparkle and the old game's heal tick
+/** @param {TitleScene} S @param {TShot} s @param {number} dt */
+function vigourStep(S, s, dt) {
+  if ((s.tick = (s.tick || 0) - dt) > 0 || !S.team) return;
+  let healed = false;
+  for (const r of S.runners) {
+    const pl = S.team[r.id], cx = r.x + PW / 2, cy = r.y + PH / 2;
+    if (!pl || pl.alive === false || r.out || Math.hypot(cx - s.x, cy - s.y) > (s.heal || 0)) continue;
+    const st = playerStats(pl);
+    if (pl.hp >= st.maxHp) continue;
+    pl.hp = Math.min(st.maxHp, pl.hp + VIG_HP * (st.heal || 1)); healed = true;
+    burst(S, cx, r.y + 2, 3, '#9dff9a', 30, 'spark', 0.35);
+  }
+  if (healed) { s.tick = VIG_TICK; snd(S, 'healtick', s.x, s.y); }
+}
+
 // a lightning arc from one point to another (drawn with the game's drawBolt)
 /** @param {TitleScene} S @param {number} x0 @param {number} y0 @param {number} x1 @param {number} y1 @param {string} col */
 export function zapArc(S, x0, y0, x1, y1, col) {
@@ -2160,6 +2189,7 @@ function stepShots(S, dt) {
     if (s.sid) { if (S.parts.length < TITLE_PARTS - FX_ROOM) for (const p of autoTrail(s, dt, Math.random)) S.parts.push(p); }
     if (s.pull && !s.foe) for (const a of holePull(s, S.foes, S.scroll, S.shots, dt, DEV.bhPull * s.pull / 70)) burst(S, a.x, a.y, 3, '#c58cff', 40, 'spark', 0.25);
     if (s.vac) { vacPull(s, S.foes, S.scroll, S.shots, dt, VAC_PULL); continue; }   // White Hole: hangs, pulls, hits nothing
+    if (s.heal) { if (!S.hub) s.x -= sv(S) * dt; if (s.follow) fieldFollow(S, s, dt); vigourStep(S, s, dt); continue; }   // Circle of Vigour: stays on the ground, heals, hits nothing
     if (s.sid === 'zap' && S.zaps.length < 24) { const fk = zapFork(s, S.foes, S.scroll, dt, Math.random); if (fk) S.zaps.push({ pts: fk, t: 0.12, col: s.col }); }
     if (s.hopT) s.hopT = Math.max(0, s.hopT - dt);
     else if (s.look === 'flame' && S.rnd() < dt * 20) burst(S, s.x, s.y, 1, '#ff7a1a', 15, 'fire', 0.3);

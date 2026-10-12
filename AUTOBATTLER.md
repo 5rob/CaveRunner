@@ -377,6 +377,7 @@ chest slow ×0.5. Grab radius 35% of a tile.
 | feedback round 2 (f) | done | v1.0.30 | PM: B hides the nav (a play tap shows it), one fixed camera (no gestures), jet thrust by the stick's height, auto-loot race. Agent (~13 min, worktree `cr-roam`): hold a helmet in a level → manual mode (scroll stops, damped follow forward/back, team behind, B lets go). Open: the view doesn't follow inside the arena; followers can trail the wrong side backing up. |
 | feedback round 2 (g) | done | v1.0.31 | PM alone. Owner: the jetpack way too fast and strong → `autoJetK` 0.55 (climb, sideways, push). |
 | gun drag | done | v1.0.43 | PM alone. Owner: drag a gun out of the nav's Guns row into the bag (`gunToBag`, `gunMove`; slide off a gun circle before the hold). |
+| vigour | done | v1.0.66 | PM alone. Owner: Circle of Vigour works in Auto (stays on the ground, heals; `vigourCircle`/`vigourStep`), with Follow Me it follows its caster (`fieldFollow`). Suite `auto-vigour`. |
 | questions later | done | v1.0.65 | PM alone. Owner: Questions Later works on the Auto players: in a level the gun fires with nothing in sight (`stepRunnerGun`, suite `auto-qlater`). |
 | dev crystals | done | v1.0.64 | PM alone. Owner: Dev buttons "+1 red crystal" / "+1 green crystal" (into the bag, one a tap; `onGem`). |
 | falling ropes | done | v1.0.63 | PM alone. Burnt-off vine and silk pieces fall as loose ropes and burn away where they lie (`ropeStep`). Committed, not pushed. |

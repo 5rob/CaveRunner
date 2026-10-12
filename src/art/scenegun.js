@@ -26,7 +26,7 @@ export const SG_PELLETS = 12;         // at most this many of one shot at once
 /** @type {string[]} */
 export const GUN_TODO = [
   // statics and fields (they don't fly: planShots leaves them out)
-  'boom', 'brim', 'crystal', 'dormant', 'stillc', 'shieldc', 'vigour', 'storm', 'glitter',
+  'boom', 'brim', 'crystal', 'dormant', 'stillc', 'shieldc', 'storm', 'glitter',
   // modifiers whose effect the scene's shot model has no field for yet
   'knock', 'damper', 'crit', 'spiral', 'follow', 'autoaim', 'discrim', 'gpower', 'cluster',
 ];
@@ -96,6 +96,7 @@ export function planShots(plan, ang, x, y, R, by) {
   const out = [];
   for (const sh of plan.shots) {
     if (sh.sid === 'vacfield') { out.push(whiteHole(sh, ang, x, y, by)); continue; }
+    if (sh.sid === 'vigour') { out.push(vigourCircle(sh, x, y, by)); continue; }
     if (!sh.still) for (const s of shotsOf(sh, ang, x, y, R, by)) out.push(s);
   }
   return out;
@@ -111,4 +112,15 @@ export function whiteHole(sh, ang, x, y, by) {
     foe: false, spin: 0, grav: 0, drag: 0, explode: 0, pit: 0, fire: 0, bounce: 0, bounceE: 0, pierce: 0, dmg: 0, homing: 0, accel: 0, vmax: 0, chain: 0,
     real: true, by: by == null ? -1 : by, trig: null, timer: 0, pay: null, age: 0, sid: 'vacfield', light: '159,216,255', lightR: 30,
     beam: 0, ang, pull: 0, vac: sh.r || 64 };
+}
+// Circle of Vigour (owner, v1.0.66): cast at the gun, it stays put on the ground for its life (titlescene.js stepShots moves it
+// back with the scroll; with Follow Me it comes to its caster and stays with him, v1.0.66; vigourStep: a living player inside heals VIG_HP every VIG_TICK s, × his heal perks, as the old game); harmless
+export const VIG_HP = 4, VIG_TICK = 0.4;
+/** @param {Shot} sh @param {number} x @param {number} y @param {number} [by] @returns {SceneShot} */
+export function vigourCircle(sh, x, y, by) {
+  const life = Math.max(0.3, sh.life || 5);
+  return { x, y, vx: 0, vy: 0, size: 2, col: sh.col || '#46c48c', look: '', life, max: life,
+    foe: false, spin: 0, grav: 0, drag: 0, explode: 0, pit: 0, fire: 0, bounce: 0, bounceE: 0, pierce: 0, dmg: 0, homing: 0, accel: 0, vmax: 0, chain: 0,
+    real: true, by: by == null ? -1 : by, trig: null, timer: 0, pay: null, age: 0, sid: 'vigour', light: '70,196,140', lightR: 30,
+    beam: 0, ang: 0, pull: 0, heal: sh.r || 36, tick: 0, follow: sh.follow || 0 };
 }

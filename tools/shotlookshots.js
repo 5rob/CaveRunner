@@ -24,9 +24,11 @@ const SHEETS = [
   ['s6', ['void', 'plasma', 'ldrill', 'cross']],
   ['s7', ['nuke', 'meteor', 'nuke!', 'meteor!']],
   ['s8', ['void', 'vacfield', 'void', 'vacfield']],   // Black Hole pulling, White Hole (v1.0.40)
+  ['s9', ['vigour', 'bolt', 'vigour', 'bolt']],       // Circle of Vigour (v1.0.66)
+  ['s10', ['follow+vigour', 'bolt', 'follow+vigour', 'bolt']],   // ... with Follow Me: it stays with its caster (a '+': several mods, the last one's shot cut)
 ];
 const ONLY = process.argv[3] ? process.argv[3].split(',') : null;   // node tools/shotlookshots.js <outdir> s5,s6
-const BOX = { vacfield: 150, void: 110, plasma: 120, ldrill: 80, 'nuke!': 120, 'meteor!': 110, meteor: 64, nuke: 64 };   // close-up box (world units)
+const BOX = { vigour: 100, vacfield: 150, void: 110, plasma: 120, ldrill: 80, 'nuke!': 120, 'meteor!': 110, meteor: 64, nuke: 64 };   // close-up box (world units)
 
 (async () => {
   const browser = await launch();
@@ -44,7 +46,7 @@ const BOX = { vacfield: 150, void: 110, plasma: 120, ldrill: 80, 'nuke!': 120, '
       const run = newRun();
       bagAdd(run, { kind: 'green', n: 3 });
       addPlayer(run); addPlayer(run); addPlayer(run);
-      run.players.forEach((p, i) => { const id = ms[i].replace('!', ''), g = p.guns[p.active]; g.slots = [id, null, null]; g.name = id; g.manaMax = g.mana = 2000; g.manaRegen = 2000; resetGun(g); });
+      run.players.forEach((p, i) => { const ids = ms[i].replace('!', '').split('+'), id = ids[ids.length - 1], g = p.guns[p.active]; g.slots = [...ids, null, null]; g.name = id; g.manaMax = g.mana = 2000; g.manaRegen = 2000; resetGun(g); });
       saveAutoRun(run);
     }, mods);
     await page.locator('.tstart').dispatchEvent('pointerdown');
@@ -74,7 +76,7 @@ const BOX = { vacfield: 150, void: 110, plasma: 120, ldrill: 80, 'nuke!': 120, '
       for (let i = 0; i < 200; i++) {
         const got = await page.evaluate(([m, last, B]) => {
           const S = window.__autoScene, C = window.__autoCam.current, cv = document.querySelector('.aplaycvs');
-          const blast = m.endsWith('!'), id = m.replace('!', '');
+          const blast = m.endsWith('!'), id = m.replace('!', '').split('+').pop();
           /** the spot to cut round: a shot in flight (a beam: its middle, once cast), or a nuke's / meteor's blast */
           let s = null;
           if (blast) { const b = S.booms.find(q => q.sid === id && q.t > 0.08); if (b) s = b; }
@@ -85,7 +87,7 @@ const BOX = { vacfield: 150, void: 110, plasma: 120, ldrill: 80, 'nuke!': 120, '
           if (s) { const v = camTo(C, s.x, s.y), x = c.getContext('2d'); x.imageSmoothingEnabled = false; x.drawImage(cv, v.x * k - B / 2 * k, v.y * k - B / 2 * k, B * k, B * k, 0, 0, 192, 192); }
           w.appendChild(c); document.getElementById('zoomsheet').appendChild(w);
           return true;
-        }, [m, i === 199, BOX[m] || 48]);
+        }, [m, i === 199, BOX[m.split('+').pop()] || 48]);
         if (got) break;
         if (i % 25 === 24) await page.evaluate(() => { const S = window.__autoScene; const f = titleFoeAt(S, enemyFor('rotta', 1), levelTeamX(S) + 90); f.hp = f.hpMax = 9999; });
         await page.waitForTimeout(40);
