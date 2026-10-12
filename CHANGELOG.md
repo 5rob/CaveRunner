@@ -5,6 +5,16 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.62 — CaveRunner Auto: the fire sim's window twice as tall, sticking at the top as the page scrolls; spots inset (branch `autobattler`)
+Released 2026-10-12 on the branch. PM alone, owner OK'd the shots.
+- Layout (owner): the sim's window and buttons sit outside the knobs (`.firesimtop`); on the Fire sim tab the whole panel scrolls
+  (`.devpanel.fsmode`: the header goes up out of the way, the window sticks at the top, open group heads don't stick there).
+  The window 420 px tall (was 210); the room is as tall as the window, so the timber spot's mine is half the room (at least
+  `MINE_H`).
+- Spots (owner): what burns keeps `LAB_IN` (10%) of a spot's width in from each side (`labScene`: x0..x1 inside the spot s0;
+  the mine's rock roof still spans it).
+- Suite `auto-firelab` (nothing that burns in the 10% margins).
+
 ## v1.0.61 — CaveRunner Auto: silk's own fire knobs and smoke; the fire sim keeps what's behind the view (branch `autobattler`)
 Released 2026-10-12 on the branch. PM alone, owner approved the shot.
 - Silk (owner: separate controls, no smoke seen): group `firesilk` "Fire: webs (silk)": `autoWebFire` moved in, and silk's

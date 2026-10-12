@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v1.0.61</title>
-<!-- VERSION = 'v1000061' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v1.0.62</title>
+<!-- VERSION = 'v1000062' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -535,8 +535,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .devtabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;margin:0 -14px;padding:0 10px}
 .devtabs::-webkit-scrollbar{display:none}
 /* Dev → Fire sim (ui/firesim.js): the test room window, drag sideways to pan (the panel still scrolls up and down) */
-.firesim{margin:4px 0 10px}
-.firesimcvs{display:block;width:100%;height:210px;border-radius:10px;border:1px solid #3a3530;background:#000;touch-action:pan-y}
+.firesim{margin:0}
+.firesimtop{flex:0 0 auto;padding:8px 10px 6px;border-bottom:1px solid var(--ring)}
+.firesimtop .devnote{margin:6px 2px 0}
+/* (v1.0.62) the Fire sim tab scrolls as one: the header goes up, the window sticks at the top, the knobs scroll under it */
+.devpanel.fsmode{overflow-y:auto;-webkit-overflow-scrolling:touch}
+.devpanel.fsmode .devtop,.devpanel.fsmode .devbody{flex:0 0 auto;overflow:visible}
+.devpanel.fsmode .firesimtop{position:sticky;top:0;z-index:5;background:#11151c}
+.devpanel.fsmode .devgroup.open .devghead{position:static}
+.firesimcvs{display:block;width:100%;height:420px;border-radius:10px;border:1px solid #3a3530;background:#000;touch-action:pan-y}
 .firesimbtns{display:flex;gap:8px;margin-top:8px}
 .firesimbtns .dbg{flex:1}
 .firesimbtns .firego{background:#c8501a;color:#fff}
@@ -1114,7 +1121,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v1.0.61';</script>
+<script>const VERSION = 'v1.0.62';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -30006,28 +30013,29 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var LAB_FLOOR = 16;
   var LAB_SPOT = Math.round(TITLE_VW * 2 / 3);
   var LAB_GAP = 50;
+  var LAB_IN = 0.1;
   var EDGE2 = 40;
   var LAB_KINDS = ["vines", "webs", "timber", "moss", "grass"];
   var LAB_SPOTS = LAB_KINDS.map((kind, i) => ({ kind, x0: EDGE2 + i * (LAB_SPOT + LAB_GAP) }));
   var LAB_W = EDGE2 * 2 + LAB_KINDS.length * LAB_SPOT + (LAB_KINDS.length - 1) * LAB_GAP;
   var MINE_H = 46;
   function labScene(vh, seed) {
-    const R = titleRng(seed), fy = vh - LAB_FLOOR, roof = LAB_ROOF, room = fy - roof, mroof = fy - MINE_H;
+    const R = titleRng(seed), fy = vh - LAB_FLOOR, roof = LAB_ROOF, room = fy - roof, mroof = fy - Math.max(MINE_H, room * 0.5);
     const pts = [];
     const paint3 = [];
     const vines = [];
     const webs = [];
     const arches = [];
     const lamps = [];
-    for (const { kind, x0 } of LAB_SPOTS) {
-      const x1 = x0 + LAB_SPOT;
+    for (const { kind, x0: s0 } of LAB_SPOTS) {
+      const x0 = s0 + LAB_SPOT * LAB_IN, x1 = s0 + LAB_SPOT * (1 - LAB_IN), SP3 = x1 - x0;
       if (kind === "vines") {
         for (let x = x0 + 3; x < x1 - 3; x += 3 + R() * 5) if (R() < 0.65) vines.push({ x, y: roof, len: room * (0.12 + R() * 0.62), st: "vine" });
         for (let i = 0; i < 3; i++) {
-          const span = 50 + R() * 45, ax = x0 + 4 + R() * (LAB_SPOT - span - 8);
+          const span = 50 + R() * 45, ax = x0 + 4 + R() * (SP3 - span - 8);
           arches.push({ ax, bx: ax + span, slack: 1.3 + R() * 0.7 });
         }
-        const mid = vines.filter((v) => v.x >= x0 && v.x < x1).reduce((b, v) => Math.abs(v.x - x0 - LAB_SPOT / 2) < Math.abs(b.x - x0 - LAB_SPOT / 2) ? v : b);
+        const mid = vines.filter((v) => v.x >= x0 && v.x < x1).reduce((b, v) => Math.abs(v.x - x0 - SP3 / 2) < Math.abs(b.x - x0 - SP3 / 2) ? v : b);
         pts.push({ x: mid.x, y: mid.y + mid.len - 1, kind });
       } else if (kind === "webs") {
         const wn = webs.length;
@@ -30039,7 +30047,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           const ax = x0 + 4 + R() * 40;
           webs.push({ ax, ay: roof + 0.5, bx: ax + 20 + R() * 25, by: roof + 0.5 });
         }
-        const hx = x0 + 70, hw = LAB_SPOT - 76;
+        const hx = x0 + SP3 * 0.45, hw = SP3 * 0.55 - 6;
         for (let i = 0; i < 8; i++) {
           const a = hx + i * hw / 8;
           webs.push({ ax: a, ay: roof + 0.5, bx: a + 26 + R() * 10, by: fy - 0.5 });
@@ -30056,10 +30064,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           w.ax = Math.max(x0 + 3, Math.min(x1 - 3, w.ax));
           w.bx = Math.max(x0 + 3, Math.min(x1 - 3, w.bx));
         }
-        pts.push({ x: x0 + LAB_SPOT / 2, y: fy - 2, kind });
+        pts.push({ x: x0 + SP3 / 2, y: fy - 2, kind });
       } else if (kind === "timber") {
-        paint3.push((x, y) => x >= x0 - 6 && x < x1 + 6 && y < mroof ? TM.ROCK : -1);
-        for (const left of [x0 + 18, x1 - 18 - FRAME_W]) {
+        paint3.push((x, y) => x >= s0 - 6 && x < s0 + LAB_SPOT + 6 && y < mroof ? TM.ROCK : -1);
+        for (const left of [x0 + 4, x1 - 4 - FRAME_W]) {
           paint3.push((x, y) => {
             const uc = x - left, under = y - mroof, post = uc >= 0 && uc < 4 || uc >= FRAME_W - 4 && uc < FRAME_W;
             if (y < mroof || y >= fy) return -1;
@@ -30072,9 +30080,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           lamps.push({ x: left + FRAME_W / 2, y: mroof + 4, len: 5 + R() * 6 });
         }
         lamps.push({ x: (x0 + x1) / 2, y: mroof, len: 8 + R() * 10 });
-        pts.push({ x: x0 + 20, y: fy - 2, kind });
+        pts.push({ x: x0 + 6, y: fy - 2, kind });
       } else if (kind === "moss") {
-        const mx = x0 + 30 + R() * 70, mw = 24 + R() * 16;
+        const mx = x0 + 25 + R() * (SP3 - 50), mw = 18 + R() * 12;
         paint3.push((x, y) => {
           if (x < x0 || x >= x1) return -1;
           if (y >= fy - 4 && y < fy + 3) return TM.MOSS;
@@ -33485,9 +33493,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         e.preventDefault();
         close();
       } }),
+      // (v1.0.62) the Fire sim tab: the whole panel scrolls, the header going up out of the way, the sim window sticking at the top
       h(
         "div",
-        { className: "devpanel scroll" },
+        { className: "devpanel scroll" + (!needle && tab === "firesim" ? " fsmode" : "") },
         h(
           "div",
           { className: "devtop" },
@@ -33554,11 +33563,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             })
           )
         ),
+        // (v1.0.62) the fire sim's window and buttons stay put over the knobs, which scroll under them
+        !needle && tab === "firesim" ? h("div", { className: "firesimtop" }, h(FireSim, null)) : null,
         h(
           "div",
           { className: "devbody" },
           h("p", { className: "devkey" }, h("i", { className: "devauto" }), "works in Auto ", h("i", { className: "devsome" }), "some ", h("i", { className: "devold" }), "old game only"),
-          !needle && tab === "firesim" ? h(FireSim, null) : null,
           shown.length ? null : h("p", { className: "devnote" }, "No knob matches “" + q.trim() + "”."),
           shown.map(({ g, name, rows, hits, nameHit }) => {
             const shut = needle ? false : !isOpen(g);

@@ -611,7 +611,8 @@ export function DevPanel({ input, refresh, close, onRestart, onSpawnGun, onSpawn
   }).filter(x => !needle || x.nameHit || x.hits.length);
   return h('div', { className: 'devwrap' },
     h('div', { className: 'devback', onPointerDown: e => { e.preventDefault(); close(); } }),
-    h('div', { className: 'devpanel scroll' },
+    // (v1.0.62) the Fire sim tab: the whole panel scrolls, the header going up out of the way, the sim window sticking at the top
+    h('div', { className: 'devpanel scroll' + (!needle && tab === 'firesim' ? ' fsmode' : '') },
       h('div', { className: 'devtop' },
         h('div', { className: 'devhead' },
           h('h2', null, 'Dev'),
@@ -641,9 +642,10 @@ export function DevPanel({ input, refresh, close, onRestart, onSpawnGun, onSpawn
             return h('button', { key: t, className: 'devtab' + (t === tab ? ' on' : ''), 'data-t': t, role: 'tab',
               'aria-selected': t === tab, onClick: () => setTab(t) }, name, chg ? h('i', { className: 'devdot' }) : null);
           }))),
+      // (v1.0.62) the fire sim's window and buttons stay put over the knobs, which scroll under them
+      !needle && tab === 'firesim' ? h('div', { className: 'firesimtop' }, h(FireSim, null)) : null,
       h('div', { className: 'devbody' },
         h('p', { className: 'devkey' }, h('i', { className: 'devauto' }), 'works in Auto ', h('i', { className: 'devsome' }), 'some ', h('i', { className: 'devold' }), 'old game only'),
-        !needle && tab === 'firesim' ? h(FireSim, null) : null,
         shown.length ? null : h('p', { className: 'devnote' }, 'No knob matches “' + q.trim() + '”.'),
         shown.map(({ g, name, rows, hits, nameHit }) => {
           const shut = needle ? false : !isOpen(g);

@@ -13,12 +13,13 @@ export const LAB_ROOF = 14;           // the roof's rock, down from the top
 export const LAB_FLOOR = 16;          // the floor's rock, up from the bottom
 export const LAB_SPOT = Math.round(TITLE_VW * 2 / 3);   // a test spot's width
 export const LAB_GAP = 50;            // bare room between spots
+export const LAB_IN = 0.1;            // what burns keeps this share of a spot's width in from each side (owner v1.0.62)
 const EDGE = 40;                      // bare room at each end
 export const LAB_KINDS = ['vines', 'webs', 'timber', 'moss', 'grass'];
 // each spot: its kind and left edge
 export const LAB_SPOTS = LAB_KINDS.map((kind, i) => ({ kind, x0: EDGE + i * (LAB_SPOT + LAB_GAP) }));
 export const LAB_W = EDGE * 2 + LAB_KINDS.length * LAB_SPOT + (LAB_KINDS.length - 1) * LAB_GAP;
-const MINE_H = 46;                    // the timber spot's low roof, this far over the floor
+const MINE_H = 46;                    // the timber spot's low roof, at least this far over the floor (else half the room)
 
 /** @typedef {{ x: number, y: number, kind: string }} LabPt */
 /** @typedef {{ x: number, h: number, t: number, max: number }} LabJet */
@@ -27,7 +28,7 @@ const MINE_H = 46;                    // the timber spot's low roof, this far ov
 // the room for a view vh tall
 /** @param {number} vh @param {number} seed @returns {Lab} */
 export function labScene(vh, seed) {
-  const R = titleRng(seed), fy = vh - LAB_FLOOR, roof = LAB_ROOF, room = fy - roof, mroof = fy - MINE_H;
+  const R = titleRng(seed), fy = vh - LAB_FLOOR, roof = LAB_ROOF, room = fy - roof, mroof = fy - Math.max(MINE_H, room * 0.5);   // (half the room: a tall window, v1.0.62)
   /** @type {LabPt[]} */
   const pts = [];
   /** @type {((x: number, y: number) => number)[]} cell painters, the first that answers wins (-1: not mine) */
@@ -40,13 +41,14 @@ export function labScene(vh, seed) {
   const arches = [];
   /** @type {{ x: number, y: number, len: number }[]} */
   const lamps = [];
-  for (const { kind, x0 } of LAB_SPOTS) {
-    const x1 = x0 + LAB_SPOT;
+  for (const { kind, x0: s0 } of LAB_SPOTS) {
+    // (owner v1.0.62) what burns keeps LAB_IN of the spot's width in from its sides: x0..x1, SP wide
+    const x0 = s0 + LAB_SPOT * LAB_IN, x1 = s0 + LAB_SPOT * (1 - LAB_IN), SP = x1 - x0;
     if (kind === 'vines') {
       // a cave's hanging vines, every few units, long and short; and arched ones roof to roof, crossing over
       for (let x = x0 + 3; x < x1 - 3; x += 3 + R() * 5) if (R() < 0.65) vines.push({ x, y: roof, len: room * (0.12 + R() * 0.62), st: 'vine' });
-      for (let i = 0; i < 3; i++) { const span = 50 + R() * 45, ax = x0 + 4 + R() * (LAB_SPOT - span - 8); arches.push({ ax, bx: ax + span, slack: 1.3 + R() * 0.7 }); }
-      const mid = vines.filter(v => v.x >= x0 && v.x < x1).reduce((b, v) => (Math.abs(v.x - x0 - LAB_SPOT / 2) < Math.abs(b.x - x0 - LAB_SPOT / 2) ? v : b));
+      for (let i = 0; i < 3; i++) { const span = 50 + R() * 45, ax = x0 + 4 + R() * (SP - span - 8); arches.push({ ax, bx: ax + span, slack: 1.3 + R() * 0.7 }); }
+      const mid = vines.filter(v => v.x >= x0 && v.x < x1).reduce((b, v) => (Math.abs(v.x - x0 - SP / 2) < Math.abs(b.x - x0 - SP / 2) ? v : b));
       pts.push({ x: mid.x, y: mid.y + mid.len - 1, kind });   // (the tip of the vine nearest its middle)
     } else if (kind === 'webs') {
       const wn = webs.length;
@@ -54,17 +56,17 @@ export function labScene(vh, seed) {
       for (let i = 0; i < 4; i++) { const ax = x0 + 6 + i * 14 + R() * 6; webs.push({ ax, ay: roof + 0.5, bx: ax + (R() - 0.5) * 40, by: fy - 0.5 }); }
       for (let i = 0; i < 2; i++) { const ax = x0 + 4 + R() * 40; webs.push({ ax, ay: roof + 0.5, bx: ax + 20 + R() * 25, by: roof + 0.5 }); }
       // a dense hatch on the right: lines slanting both ways across each other, and some across them
-      const hx = x0 + 70, hw = LAB_SPOT - 76;
+      const hx = x0 + SP * 0.45, hw = SP * 0.55 - 6;
       for (let i = 0; i < 8; i++) { const a = hx + i * hw / 8; webs.push({ ax: a, ay: roof + 0.5, bx: a + 26 + R() * 10, by: fy - 0.5 }); }
       for (let i = 0; i < 8; i++) { const a = hx + 30 + i * hw / 8; webs.push({ ax: a, ay: roof + 0.5, bx: a - 26 - R() * 10, by: fy - 0.5 }); }
       for (let i = 0; i < 4; i++) { const a = hx + R() * (hw - 30); webs.push({ ax: a, ay: roof + 0.5, bx: a + 24 + R() * 20, by: roof + 0.5 }); }
       for (const w of webs.slice(wn)) { w.ax = Math.max(x0 + 3, Math.min(x1 - 3, w.ax)); w.bx = Math.max(x0 + 3, Math.min(x1 - 3, w.bx)); }   // (all inside the spot)
-      pts.push({ x: x0 + LAB_SPOT / 2, y: fy - 2, kind });
+      pts.push({ x: x0 + SP / 2, y: fy - 2, kind });
     } else if (kind === 'timber') {
       // the mine: a low roof over the spot, two support frames (posts, cap, knee braces, footings: titlescene.js genCol's), a
       // lantern hanging from each cap, one from the rock between
-      paint.push((x, y) => (x >= x0 - 6 && x < x1 + 6 && y < mroof ? TM.ROCK : -1));
-      for (const left of [x0 + 18, x1 - 18 - FRAME_W]) {
+      paint.push((x, y) => (x >= s0 - 6 && x < s0 + LAB_SPOT + 6 && y < mroof ? TM.ROCK : -1));
+      for (const left of [x0 + 4, x1 - 4 - FRAME_W]) {
         paint.push((x, y) => {
           const uc = x - left, under = y - mroof, post = (uc >= 0 && uc < 4) || (uc >= FRAME_W - 4 && uc < FRAME_W);
           if (y < mroof || y >= fy) return -1;
@@ -77,10 +79,10 @@ export function labScene(vh, seed) {
         lamps.push({ x: left + FRAME_W / 2, y: mroof + 4, len: 5 + R() * 6 });
       }
       lamps.push({ x: (x0 + x1) / 2, y: mroof, len: 8 + R() * 10 });
-      pts.push({ x: x0 + 20, y: fy - 2, kind });
+      pts.push({ x: x0 + 6, y: fy - 2, kind });
     } else if (kind === 'moss') {
       // a mossy floor, a mound, and moss along the roof's underside
-      const mx = x0 + 30 + R() * 70, mw = 24 + R() * 16;
+      const mx = x0 + 25 + R() * (SP - 50), mw = 18 + R() * 12;
       paint.push((x, y) => {
         if (x < x0 || x >= x1) return -1;
         if (y >= fy - 4 && y < fy + 3) return TM.MOSS;

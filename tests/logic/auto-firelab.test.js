@@ -16,6 +16,12 @@ const D = G.DEV, dt = 1 / 30, VH = 120;
   for (let c = 0; c < Math.ceil(G.LAB_W / T); c++) for (let r = 0; r < S.rows; r++) { const m = G.titleCell(S, c, r); if ([G.TM.MOSS, G.TM.WOOD, G.TM.BEAM, G.TM.BEAMD, G.TM.GRASS].includes(m) && !inSpot((c + 0.5) * T)) stray++; }
   const strayP = S.props.filter(p => !inSpot(p.ox) || (p.arc && !inSpot(p.ox + p.span))).length, strayW = S.webs.filter(L => !inSpot(L.a0x) || !inSpot(L.b0x)).length;
   check('nothing that burns between the spots', !stray && !strayP && !strayW, { stray, strayP, strayW });
+  // (v1.0.62) and it keeps LAB_IN of the spot's width in from each side
+  const inner = x => G.LAB_SPOTS.some(q => x >= q.x0 + G.LAB_SPOT * G.LAB_IN - 1.5 && x <= q.x0 + G.LAB_SPOT * (1 - G.LAB_IN) + 1.5);
+  let edge = 0;
+  for (let c = 0; c < Math.ceil(G.LAB_W / T); c++) for (let r = 0; r < S.rows; r++) { const m = G.titleCell(S, c, r); if ([G.TM.MOSS, G.TM.WOOD, G.TM.BEAM, G.TM.BEAMD, G.TM.GRASS].includes(m) && !inner((c + 0.5) * T)) edge++; }
+  const edgeP = S.props.filter(p => !inner(p.ox) || (p.arc && !inner(p.ox + p.span))).length, edgeW = S.webs.filter(L => !inner(L.a0x) || !inner(L.b0x)).length;
+  check('… and keeps 10% in from each side of its spot', !edge && !edgeP && !edgeW, { edge, edgeP, edgeW });
   check('the vines spot: hanging vines and arches', S.props.filter(p => p.st === 'vine' && !p.arc && !p.host).length >= 8 && S.props.filter(p => p.arc).length === 3);
   check('the webs spot: single strands and a dense hatch', S.webs.length >= 20);
   check('the timber spot: lanterns hanging off it', S.props.filter(p => p.k === 'lamp').length === 3);
