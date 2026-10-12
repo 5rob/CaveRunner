@@ -12028,7 +12028,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     "damper",
     "crit",
     "spiral",
-    "follow",
     "autoaim",
     "discrim",
     "gpower",
@@ -12112,7 +12111,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         lightR: sh.lightR || 0,
         beam: Math.min(SG_BEAM_MAX, sh.beam || 0),
         ang: a,
-        pull: sh.pull || 0
+        pull: sh.pull || 0,
+        follow: sh.follow || 0
       });
     }
     return out;
@@ -15087,6 +15087,19 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     s.vx += (dx / d * want - s.vx) * k;
     s.vy += (dy / d * want - s.vy) * k;
   }
+  function shotFollow(S2, s, dt) {
+    const r = S2.runners[s.by];
+    if (!r || r.out) return;
+    const dx = r.x + PW / 2 - s.x, dy = r.y + PH / 2 - s.y, d = Math.hypot(dx, dy) || 1;
+    const sp0 = s.sp0 || (s.sp0 = Math.hypot(s.vx, s.vy) || 1), a = FOLLOW_PULL * (s.follow || 0) * SP2 * dt;
+    s.vx += dx / d * a;
+    s.vy += dy / d * a;
+    const sp = Math.hypot(s.vx, s.vy);
+    if (sp > sp0) {
+      s.vx *= sp0 / sp;
+      s.vy *= sp0 / sp;
+    }
+  }
   function vigourStep(S2, s, dt) {
     if ((s.tick = (s.tick || 0) - dt) > 0 || !S2.team) return;
     let healed = false;
@@ -15448,6 +15461,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         s.vx *= k;
         s.vy *= k;
       }
+      if (s.follow && !s.beam) shotFollow(S2, s, dt);
       s.x += s.vx * dt;
       s.y += s.vy * dt;
       s.life -= dt;

@@ -26,6 +26,7 @@ const SHEETS = [
   ['s8', ['void', 'vacfield', 'void', 'vacfield']],   // Black Hole pulling, White Hole (v1.0.40)
   ['s9', ['vigour', 'bolt', 'vigour', 'bolt']],       // Circle of Vigour (v1.0.66)
   ['s10', ['follow+vigour', 'bolt', 'follow+vigour', 'bolt']],   // ... with Follow Me: it stays with its caster (a '+': several mods, the last one's shot cut)
+  ['s11', ['follow+bolt', 'follow+fball', 'follow+disc', 'follow+spark']],   // Follow Me on shots: out, stop, back (v1.0.67)
 ];
 const ONLY = process.argv[3] ? process.argv[3].split(',') : null;   // node tools/shotlookshots.js <outdir> s5,s6
 const BOX = { vigour: 100, vacfield: 150, void: 110, plasma: 120, ldrill: 80, 'nuke!': 120, 'meteor!': 110, meteor: 64, nuke: 64 };   // close-up box (world units)

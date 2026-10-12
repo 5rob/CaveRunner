@@ -26,7 +26,7 @@ import { archCurve, archNear } from '../world/decorate.js';
 import { bendPush, swingStep, swings, tailStep, vinePt, webAt, webNearU } from '../world/sway.js';
 import { MODS, VAC_PULL } from '../spells/mods.js';
 import { gunPassives } from '../spells/cast.js';
-import { FIELD_SPEED, SEEK_ACC } from '../spells/paths.js';
+import { FIELD_SPEED, FOLLOW_PULL, SEEK_ACC } from '../spells/paths.js';
 import { rustleStep } from '../audio/recipes.js';
 import { pixText, pixWidth } from './pixfont.js';
 import { GUN_HELD, gunMuzzle } from './sprites.js';
@@ -134,7 +134,7 @@ export const TITLE_HOME = {
  *   homing?: number, accel?: number, vmax?: number, chain?: number, hitFoe?: boolean,
  *   real?: boolean, by?: number, trig?: string | null, timer?: number, pay?: Shot[] | null, age?: number,
  *   sid?: string, tr?: number[], homeR?: number, light?: string, lightR?: number,
- *   beam?: number, ang?: number, bx?: number, by2?: number, pull?: number, vac?: number, heal?: number, tick?: number, follow?: number, max?: number, hopT?: number, hx?: number, hy?: number }} TShot */
+ *   beam?: number, ang?: number, bx?: number, by2?: number, pull?: number, vac?: number, heal?: number, tick?: number, follow?: number, sp0?: number, max?: number, hopT?: number, hx?: number, hy?: number }} TShot */
 /** @typedef {{ x: number, y: number, vx: number, vy: number, life: number, max: number, r: number, col: string, kind: string, to?: { x: number, y: number, life: number }, fx?: boolean, u?: number, a?: number, g?: number }} TPart */
 /** @typedef {{ x: number, y: number, r: number, t: number, max: number, sid?: string }} TBoom */
 /** @typedef {{ pts: { x: number, y: number }[], t: number, col: string }} TZap */
@@ -1877,6 +1877,18 @@ function fieldFollow(S, s, dt) {
   const want = Math.min(FIELD_SPEED * 2, d * 5), k = Math.min(1, SEEK_ACC * dt);
   s.vx += (dx / d * want - s.vx) * k; s.vy += (dy / d * want - s.vy) * k;
 }
+// Follow Me on a shot (owner v1.0.67, the old game's spells/paths.js rule): a steady pull to its caster's middle, FOLLOW_PULL × its
+// strength, never faster than it set out, so it slows, stops and comes straight back (caster gone: it flies on)
+/** @param {TitleScene} S @param {TShot} s @param {number} dt */
+function shotFollow(S, s, dt) {
+  const r = S.runners[s.by];
+  if (!r || r.out) return;
+  const dx = r.x + PW / 2 - s.x, dy = r.y + PH / 2 - s.y, d = Math.hypot(dx, dy) || 1;
+  const sp0 = s.sp0 || (s.sp0 = Math.hypot(s.vx, s.vy) || 1), a = FOLLOW_PULL * (s.follow || 0) * SP * dt;
+  s.vx += dx / d * a; s.vy += dy / d * a;
+  const sp = Math.hypot(s.vx, s.vy);
+  if (sp > sp0) { s.vx *= sp0 / sp; s.vy *= sp0 / sp; }
+}
 // Circle of Vigour (owner v1.0.66; art/scenegun.js vigourCircle): each living player inside, under his max, heals VIG_HP (× his
 // heal perks) every VIG_TICK s, a green sparkle and the old game's heal tick
 /** @param {TitleScene} S @param {TShot} s @param {number} dt */
@@ -2181,6 +2193,7 @@ function stepShots(S, dt) {
     if (s.accel) { const sp = Math.hypot(s.vx, s.vy) || 1, k = Math.min(1 + s.accel * dt, (s.vmax || 600) / sp); if (k > 1) { s.vx *= k; s.vy *= k; } }
     s.vy += s.grav * dt;
     if (s.drag) { const k = Math.exp(-s.drag * dt); s.vx *= k; s.vy *= k; }
+    if (s.follow && !s.beam) shotFollow(S, s, dt);   // Follow Me: pulled back to its caster
     s.x += s.vx * dt; s.y += s.vy * dt; s.life -= dt; s.spin += dt * 10;
     if (s.pay && s.trig === 'timer' && s.age >= (s.timer || 0)) release(S, s);
     // each shot's own trail (auto/shotfx.js); the old flame specks for the shots it doesn't know
