@@ -128,7 +128,7 @@ export const TITLE_HOME = {
 // cell(c, r, rows); step runs after titleStep's own (the runners are its: S.still); data is the strip's own state;
 // fits / take: as the level's, for the machines' payouts (S.loot) going into the bag (CaveRunner Auto stage 10b)
 /** @typedef {{ w: number, cell: (c: number, r: number, rows: number) => number, step?: (S: TitleScene, dt: number) => void, data?: any,
- *   fits?: (S: TitleScene, it: BagItem) => boolean, take?: (S: TitleScene, it: BagItem) => boolean }} TitleHub */
+ *   fits?: (S: TitleScene, it: BagItem) => boolean, take?: (S: TitleScene, it: BagItem) => boolean, pv?: any }} TitleHub */
 /** @typedef {{ x: number, y: number, vx: number, vy: number, size: number, col: string, look: string, life: number, foe: boolean, spin: number,
  *   grav: number, drag: number, explode: number, pit: number, fire: number, bounce: number, bounceE: number, pierce: number, dmg: number,
  *   homing?: number, accel?: number, vmax?: number, chain?: number, hitFoe?: boolean,
@@ -1774,8 +1774,9 @@ export function titleAimPick(S, r) {
   }
   return best;
 }
+// (exported for the gun panel's preview, auto/preview.js: its one player fires by this, as in a level)
 /** @param {TitleScene} S @param {TRunner} r @param {number} dt */
-function stepRunnerGun(S, r, dt) {
+export function stepRunnerGun(S, r, dt) {
   const R = S.rnd, cx = () => r.x + PW / 2;
   r.swap = Math.max(0, r.swap - dt);
   if (r.dig) {

@@ -12064,6 +12064,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     g.mana = (g.mana || 0) - plan.cost;
     g.delayT = g.delayMax = plan.delay;
+    g.pulls = (g.pulls || 0) + 1;
     if ((plan.acts || []).includes("refresh")) g.skipRech = true;
     if (plan.wrap) wrap();
     return plan;
@@ -29364,6 +29365,118 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     );
   }
 
+  // src/auto/preview.js
+  var PV_HP = 1e9;
+  var PV_MEND = 1.2;
+  var PV_DPS_S = 2;
+  var PV_GRAPH_DT = 0.25;
+  var PV_GRAPH_N = 40;
+  var PV_FOE_X = 0.72;
+  function previewPlayer(pl, gi) {
+    const guns = pl.guns.map((g) => g ? resetGun(Object.assign({}, g, { slots: g.slots.slice(), mana: void 0, pulls: 0, skipRech: false })) : g);
+    return Object.assign({}, pl, { guns, active: gi, alive: true });
+  }
+  function previewScene(vw, vh, pl, gi, seed = 7) {
+    const nc = Math.max(8, Math.ceil(vw / TCELL)), fr = Math.max(4, Math.floor(vh / TCELL) - 2), fy = fr * TCELL;
+    const wallC = Math.max(4, Math.floor(vw / TCELL) - 2);
+    const cell = (c, r2) => r2 >= fr || r2 < 1 || c < 1 || c >= wallC ? TM.ROCK : TM.AIR;
+    const pv = {
+      dx: 0,
+      dy: 0,
+      cells: new Uint8Array(0),
+      carved: 0,
+      mendT: -1,
+      log: [],
+      dealt: 0,
+      graph: [],
+      graphT: 0,
+      dps: 0,
+      pulls: 0,
+      lit: null,
+      fy
+    };
+    const S2 = titleScene(vh, seed, TCELL, fy, { runners: 1, hub: { w: nc, cell, step: previewStep, pv }, team: [previewPlayer(pl, gi)] });
+    const r = S2.runners[0];
+    r.x = TCELL + 4;
+    r.y = fy - PH;
+    r.vx = r.vy = 0;
+    r.ground = true;
+    r.stand = true;
+    r.face = 1;
+    r.ang = 0;
+    r.flame = 0;
+    pv.dx = Math.min(wallC * TCELL - 16, Math.max(r.x + PW + 30, vw * PV_FOE_X));
+    pv.dy = Math.round((TCELL + fy) / 2);
+    pv.foe = titleFoeAt(S2, Object.assign({}, enemyFor("meduusa", 1), { hp: PV_HP }), pv.dx);
+    pinFoe(pv);
+    pv.cells = S2.cells.slice();
+    return S2;
+  }
+  var previewState = (S2) => S2.hub && S2.hub.pv || null;
+  function pinFoe(pv) {
+    const f = pv.foe;
+    if (!f) return;
+    f.x = f.hx = pv.dx;
+    f.y = f.ty = f.hy = pv.dy;
+    f.hp = f.hpMax = PV_HP;
+    f.aggro = false;
+  }
+  function pvLit(g, order, start) {
+    const end = (g.idx || 0) <= start ? order.length : g.idx || 0, slots = [];
+    for (let i = start; i < end; i++) if (g.slots[order[i]]) slots.push(order[i]);
+    const casts = (id) => !!MODS[id] && (MODS[id].kind === "shot" || MODS[id].kind === "static");
+    while (slots.length && !casts(g.slots[slots[slots.length - 1]])) slots.pop();
+    return slots;
+  }
+  function previewStep(S2, dt) {
+    const pv = previewState(S2), r = S2.runners[0], pl = S2.team && S2.team[0];
+    if (!pv || !r || !pl) return;
+    if (pv.foe && !S2.foes.includes(pv.foe)) S2.foes.push(pv.foe);
+    pinFoe(pv);
+    r.x = TCELL + 4;
+    r.y = pv.fy - PH;
+    r.vx = r.vy = 0;
+    r.ground = true;
+    const g = pl.guns[pl.active];
+    if (g) {
+      const order = (g.order || []).slice(), start = g.idx || 0, n0 = g.pulls || 0;
+      stepRunnerGun(S2, r, dt);
+      if ((g.pulls || 0) > n0) {
+        pv.lit = { slots: pvLit(g, order, start), pull: pv.pulls, t: Math.max(0.1, Math.min(g.delayMax || 0, 0.45)) };
+        pv.pulls++;
+      } else if (pv.lit && (pv.lit.t -= dt) <= 0) pv.lit = null;
+    }
+    const d = (r.dealt || 0) - pv.dealt;
+    pv.dealt = r.dealt || 0;
+    if (d > 0) pv.log.push([S2.t, d]);
+    pv.log = pv.log.filter((e) => e[0] > S2.t - PV_DPS_S);
+    pv.dps = pv.log.reduce((a, e) => a + e[1], 0) / PV_DPS_S;
+    if ((pv.graphT += dt) >= PV_GRAPH_DT) {
+      pv.graphT = 0;
+      pv.graph.push(pv.dps);
+      if (pv.graph.length > PV_GRAPH_N) pv.graph.shift();
+    }
+    if (S2.carved !== pv.carved) {
+      pv.carved = S2.carved;
+      pv.mendT = S2.t;
+    }
+    if (pv.mendT >= 0 && S2.t - pv.mendT > PV_MEND) {
+      S2.cells.set(pv.cells);
+      S2.dirtyAll = true;
+      S2.fire.length = 0;
+      S2.burning.clear();
+      pv.mendT = -1;
+    }
+  }
+  function pvSim(sim, g) {
+    sim.max = g.manaMax + gunPassives(g).manaMax;
+    sim.mana = g.mana == null ? sim.max : g.mana;
+    sim.delayT = g.delayT || 0;
+    sim.delayMax = g.delayMax || 0;
+    sim.rechT = g.rechT || 0;
+    sim.rechLen = g.rechLen || 0;
+  }
+
   // src/art/itemicon.js
   var NAV_ICONS = {
     guns: { px: [
@@ -29949,7 +30062,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     "autoZoneRag",
     "autoZoneScale",
     "autoZoneWarp",
-    "bagSpeed",
     "beamDeg",
     "beamGlow",
     "beamNear",
@@ -30107,7 +30219,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     "raSpeedLo",
     "raSpreadHi",
     "raSpreadLo",
-    "runnerLine",
     "runnerPx",
     "spArriveHi",
     "spArriveLo",
@@ -32603,7 +32714,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         const m = o.make(w, hh2, seed);
         S2 = m.S;
         C = m.C;
-        if (window.__TEST) window.__title = { S: S2, C };
+        if (window.__TEST && !o.quiet) window.__title = { S: S2, C };
         for (let i = 0; i < (m.warm ?? 40); i++) titleStep(S2, 1 / 30);
       }
       const now = performance.now(), dt = (now - last) / 1e3;
@@ -32616,7 +32727,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           C.ay = C.view / 2;
         }
         camStep(C, S2, Math.min(dt, 0.1));
-        titleSound(S2, C, loops, Math.min(dt, 0.1));
+        if (o.quiet) S2.snd.length = 0;
+        else titleSound(S2, C, loops, Math.min(dt, 0.1));
       }
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       titleDraw(ctx, S2, w, hh2, C);
@@ -34773,7 +34885,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           sig: it.s.p + "|" + it.s.g + "|" + g.slots.join() + "|" + g.multi + "|" + g.shuffle + "|" + g.castDelay + "|" + g.recharge,
           col: MACHINE_EDGE,
           onLit: cls === "anavout" ? void 0 : setLit,
-          cls
+          cls,
+          pl: run.players[it.s.p],
+          gi: it.s.g
         }) : null;
       }
       const s = it.s;
@@ -34810,36 +34924,83 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     );
   }
   var MACHINE_EDGE = HUB_MACHINES.mod.hue;
-  function GunPanel({ gun, sig, col, onLit, cls }) {
+  function GunPanel({ gun, sig, col, onLit, cls, pl, gi }) {
     const sim = useRef(null);
     if (!sim.current || sim.current.sig !== sig) sim.current = Object.assign(fireSimNew(gun), { sig });
-    const litFn = useRef(onLit);
-    litFn.current = onLit;
-    useEffect(() => {
-      let raf = 0, last = performance.now(), prev = null;
-      const loop = (now) => {
-        raf = requestAnimationFrame(loop);
-        const S2 = sim.current, dt = Math.min(0.1, (now - last) / 1e3) * DEV.bagSpeed;
-        last = now;
-        if (!S2) return;
-        for (let t = dt; t > 0; t -= 0.01) fireSimStep(S2, Math.min(0.01, t));
-        if (S2.lit !== prev) {
-          prev = S2.lit;
-          if (litFn.current) litFn.current(S2.lit);
-        }
-      };
-      raf = requestAnimationFrame(loop);
-      return () => {
-        cancelAnimationFrame(raf);
-        if (litFn.current) litFn.current(null);
-      };
-    }, []);
     return h(
       "div",
       { className: "agunpanel " + cls, style: { "--pc": col } },
       h(GunStats, { gun, sim, sig }),
-      h(GunFire, { gun, sim })
+      h(PreviewWindow, { sim, sig, onLit, pl, gi })
     );
+  }
+  function PreviewWindow({ sim, sig, onLit, pl, gi }) {
+    const ref = useRef(null);
+    const litFn = useRef(onLit);
+    litFn.current = onLit;
+    useEffect(() => {
+      const c = ref.current;
+      if (!c) return void 0;
+      let cam = null;
+      let prev = null;
+      const play = document.querySelector(".aplaycvs");
+      const kpx = () => Math.max(1, play && play.clientWidth || window.innerWidth) / TITLE_VW;
+      const stop = runScene(c, {
+        size: () => ({ w: c.clientWidth, hh: c.clientHeight }),
+        make: (w, hh2, seed) => {
+          const k = kpx(), vw = w / k, vh = hh2 / k, S2 = previewScene(vw, vh, pl, gi, seed);
+          const z = TITLE_VW / vw, C = titleCam(vh * z / 2, vh);
+          C.z = C.zmin = z;
+          C.w = vw;
+          C.x = vw / 2;
+          C.y = vh / 2;
+          C.lock = -1;
+          cam = C;
+          return { S: S2, C, warm: 20 };
+        },
+        quiet: true,
+        still: true,
+        step: (S2) => {
+          const pv = previewState(S2), p = S2.team && S2.team[0], g = p && p.guns[p.active];
+          if (sim.current && g) pvSim(sim.current, g);
+          if (pv && pv.lit !== prev) {
+            prev = pv.lit;
+            if (litFn.current) litFn.current(pv.lit);
+          }
+        },
+        over: (ctx, S2, w) => {
+          const pv = previewState(S2);
+          if (!pv || !cam) return;
+          const k = w / TITLE_VW, at = camTo(cam, pv.dx, pv.dy - 12);
+          ctx.font = "800 10px ui-monospace,SFMono-Regular,Menlo,monospace";
+          ctx.textAlign = "center";
+          ctx.fillStyle = "#ffd27a";
+          ctx.fillText(Math.round(pv.dps) + " DPS", at.x * k, Math.max(11, at.y * k));
+          const vals = pv.graph, peak = Math.max(...vals, 0), H = c.clientHeight, gw = c.clientWidth;
+          if (vals.length > 1 && peak > 0) {
+            ctx.strokeStyle = "#ff4a4a";
+            ctx.lineWidth = 1.2;
+            ctx.globalAlpha = 0.85;
+            ctx.beginPath();
+            vals.forEach((v, i) => {
+              const x = i * gw / (PV_GRAPH_N - 1), y = H - 3 - v / peak * 18;
+              if (i) ctx.lineTo(x, y);
+              else ctx.moveTo(x, y);
+            });
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+          }
+          c.dataset.pulls = String(pv.pulls);
+          c.dataset.dps = pv.dps.toFixed(1);
+          c.dataset.shots = String(S2.shots.length);
+        }
+      });
+      return () => {
+        stop();
+        if (litFn.current) litFn.current(null);
+      };
+    }, [sig]);
+    return h("canvas", { ref, className: "gfire apv" });
   }
   function NavRow({ row, level, cls, pick, open, down, drag, holdHelm, holdGun, meters, lit, slide, cold, pinNav, manual }) {
     const [slideIn] = useState(!!slide);

@@ -23,6 +23,7 @@ import { titleSound, titleSoundStop } from './titlesound.js';
  *   keep?: boolean,
  *   still?: boolean,
  *   step?: (S: TitleScene, dt: number) => void,
+ *   quiet?: boolean,
  * }} SceneOpts
  */
 
@@ -33,6 +34,7 @@ import { titleSound, titleSoundStop } from './titlesound.js';
 // throws the scene away and calls make again (the auto screen's hub to level and back); keep: a resize only resizes
 // the canvas and the scene runs on (the auto screen: a remake restarted the level whenever the play area's height shifted);
 // still: no camera gestures at all, no drag, pinch or tap to follow (the auto screen, feedback round 2: one fixed view).
+// quiet: no sound and no test hook (window.__title): a second scene beside the main one (the gun panel's window, auto/preview.js).
 /** @param {HTMLCanvasElement} c @param {SceneOpts} o @returns {() => void} */
 export function runScene(c, o) {
   const ctx = c.getContext('2d');
@@ -54,7 +56,7 @@ export function runScene(c, o) {
     if (!S || !C || (resized && !o.keep)) {
       const m = o.make(w, hh, seed);
       S = m.S; C = m.C;
-      if (window.__TEST) window.__title = { S, C };    // the browser suites' reach
+      if (window.__TEST && !o.quiet) window.__title = { S, C };    // the browser suites' reach
       for (let i = 0; i < (m.warm ?? 40); i++) titleStep(S, 1 / 30);     // open on the action, not an empty cave
     }
     const now = performance.now(), dt = (now - last) / 1000;
@@ -66,7 +68,7 @@ export function runScene(c, o) {
       if (o.step) o.step(S, Math.min(dt, 0.2));   // (Dev's fire sim: its flame jets)
       if (C.pack) { C.view = hh / (w / TITLE_VW); C.ay = C.view / 2; }   // the tall level's view: the canvas's height now
       camStep(C, S, Math.min(dt, 0.1));
-      titleSound(S, C, loops, Math.min(dt, 0.1));
+      if (o.quiet) S.snd.length = 0; else titleSound(S, C, loops, Math.min(dt, 0.1));
     }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     titleDraw(ctx, S, w, hh, C);

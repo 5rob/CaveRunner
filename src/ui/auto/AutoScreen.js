@@ -17,6 +17,7 @@
 
 import { SFX } from '../../audio/sfx.js';
 import { TITLE_VW, camAt, camPack, camTo, titleCam } from '../../art/titlescene.js';
+/** @typedef {import('../../art/titlescene.js').TitleCam} TitleCam */
 import { DEAD } from '../../core/consts.js';
 import { chestOpen } from '../../auto/chests.js';
 import { HUB_W, hubExit, hubLeft, hubMapA, hubMapPick, hubScene, hubState, hubStick, hubStopX } from '../../auto/hub.js';
@@ -37,8 +38,9 @@ import { loadAutoRun, saveAutoRun } from '../../auto/save.js';
 import { EXO_NAMES, arcPick, gunArc, navBack, navOpen, navPath, navPick, navRow, navStart, hpFrac } from '../../auto/nav.js';
 import { meterTail, nextSpan, spanLabel } from '../../auto/meters.js';
 import { CARD_ICON, GunCard, ModCard, PerkCard } from '../cards.js';
-import { GunFire, GunIcon, GunStats, PULL_COL } from '../editor.js';
-import { fireSimNew, fireSimStep, pullSteps } from '../../spells/bagsim.js';
+import { GunIcon, GunStats, PULL_COL } from '../editor.js';
+import { fireSimNew, pullSteps } from '../../spells/bagsim.js';
+import { PV_GRAPH_N, previewScene, previewState, pvSim } from '../../auto/preview.js';
 import { GlyphIcon, HelmetIcon, PixIcon } from './icons.js';
 import { PauseMenu } from '../pause.js';
 import { DevPanel } from '../devpanel.js';
@@ -734,7 +736,7 @@ function NavStack({ nav, run, openAt, down, drag, holdHelm, holdGun, meters, pin
     if (it.panel) {
       const g = run.players[it.s.p] && run.players[it.s.p].guns[it.s.g];
       return g ? h(GunPanel, { gun: g, sig: it.s.p + '|' + it.s.g + '|' + g.slots.join() + '|' + g.multi + '|' + g.shuffle + '|' + g.castDelay + '|' + g.recharge,
-        col: MACHINE_EDGE, onLit: cls === 'anavout' ? undefined : setLit, cls }) : null;
+        col: MACHINE_EDGE, onLit: cls === 'anavout' ? undefined : setLit, cls, pl: run.players[it.s.p], gi: it.s.g }) : null;
     }
     const s = it.s;
     /** @param {string | number} w */
@@ -754,32 +756,71 @@ function NavStack({ nav, run, openAt, down, drag, holdHelm, holdGun, meters, pin
 const MACHINE_EDGE = HUB_MACHINES.mod.hue;
 
 // The gun panel (owner, feedback round 2): the old Bag's top (ui/editor.js) in the auto screen's colours: the gun's stats
-// on the left (the live cast/recharge/mana bars), the firing window on the right. Its own fire preview (fireSimStep at
-// DEV.bagSpeed, as SlotGrid) drives both and lights the mod slots below in each pull's colour (onLit).
-/** @param {{ gun: Gun, sig: string, col: string, onLit?: (lit: any) => void, cls: string }} props */
-function GunPanel({ gun, sig, col, onLit, cls }) {
+// on the left (the live cast/recharge/mana bars), the firing window on the right. (owner: "matching the real game 1 for 1") The
+// window is the level's own scene (auto/preview.js previewScene, run by runScene: quiet, still): the player fires the gun at a
+// target that never dies, by the level's code at the level's speed and scale (PreviewWindow). Its step feeds the stat bars
+// (pvSim), the damage per second over the target and its graph, and lights the mod slots below in each pull's colour (onLit).
+/** @param {{ gun: Gun, sig: string, col: string, onLit?: (lit: any) => void, cls: string, pl: RunPlayer, gi: number }} props */
+function GunPanel({ gun, sig, col, onLit, cls, pl, gi }) {
   /** @type {{ current: import('../../spells/bagsim.js').FireSim & { sig?: string } | null }} */
   const sim = useRef(null);
   if (!sim.current || sim.current.sig !== sig) sim.current = Object.assign(fireSimNew(gun), { sig });
+  return h('div', { className: 'agunpanel ' + cls, style: { '--pc': col } },
+    h(GunStats, { gun, sim, sig }),
+    h(PreviewWindow, { sim, sig, onLit, pl, gi }));
+}
+
+// the firing window: the preview scene on a canvas, at the play area's scale (css px per world unit, as the level is drawn)
+/** @param {{ sim: { current: import('../../spells/bagsim.js').FireSim | null }, sig: string, onLit?: (lit: any) => void, pl: RunPlayer, gi: number }} props */
+function PreviewWindow({ sim, sig, onLit, pl, gi }) {
+  /** @type {{ current: HTMLCanvasElement | null }} */
+  const ref = useRef(null);
   const litFn = useRef(onLit);
   litFn.current = onLit;
   useEffect(() => {
-    let raf = 0, last = performance.now(), prev = null;
-    /** @param {number} now */
-    const loop = now => {
-      raf = requestAnimationFrame(loop);
-      const S = sim.current, dt = Math.min(0.1, (now - last) / 1000) * DEV.bagSpeed;
-      last = now;
-      if (!S) return;
-      for (let t = dt; t > 0; t -= 0.01) fireSimStep(S, Math.min(0.01, t));
-      if (S.lit !== prev) { prev = S.lit; if (litFn.current) litFn.current(S.lit); }
-    };
-    raf = requestAnimationFrame(loop);
-    return () => { cancelAnimationFrame(raf); if (litFn.current) litFn.current(null); };
-  }, []);
-  return h('div', { className: 'agunpanel ' + cls, style: { '--pc': col } },
-    h(GunStats, { gun, sim, sig }),
-    h(GunFire, { gun, sim }));
+    const c = ref.current;
+    if (!c) return undefined;
+    /** @type {TitleCam | null} */
+    let cam = null;
+    let prev = null;
+    // the level's scale: the play area's canvas is TITLE_VW world units across
+    const play = document.querySelector('.aplaycvs');
+    const kpx = () => Math.max(1, (play && play.clientWidth) || window.innerWidth) / TITLE_VW;
+    const stop = runScene(c, {
+      size: () => ({ w: c.clientWidth, hh: c.clientHeight }),
+      make: (w, hh, seed) => {
+        const k = kpx(), vw = w / k, vh = hh / k, S = previewScene(vw, vh, pl, gi, seed);
+        // the camera: the whole room, at k px a unit (titleDraw draws w / TITLE_VW × C.z px a unit)
+        const z = TITLE_VW / vw, C = titleCam(vh * z / 2, vh);
+        C.z = C.zmin = z; C.w = vw; C.x = vw / 2; C.y = vh / 2; C.lock = -1;
+        cam = C;
+        return { S, C, warm: 20 };
+      },
+      quiet: true, still: true,
+      step: S => {
+        const pv = previewState(S), p = S.team && S.team[0], g = p && p.guns[p.active];
+        if (sim.current && g) pvSim(sim.current, g);
+        if (pv && pv.lit !== prev) { prev = pv.lit; if (litFn.current) litFn.current(pv.lit); }
+      },
+      over: (ctx, S, w) => {
+        const pv = previewState(S);
+        if (!pv || !cam) return;
+        // the damage per second over the target's head, and its graph along the bottom (oldest at the left)
+        const k = w / TITLE_VW, at = camTo(cam, pv.dx, pv.dy - 12);
+        ctx.font = '800 10px ui-monospace,SFMono-Regular,Menlo,monospace'; ctx.textAlign = 'center';
+        ctx.fillStyle = '#ffd27a'; ctx.fillText(Math.round(pv.dps) + ' DPS', at.x * k, Math.max(11, at.y * k));
+        const vals = pv.graph, peak = Math.max(...vals, 0), H = c.clientHeight, gw = c.clientWidth;
+        if (vals.length > 1 && peak > 0) {
+          ctx.strokeStyle = '#ff4a4a'; ctx.lineWidth = 1.2; ctx.globalAlpha = 0.85; ctx.beginPath();
+          vals.forEach((v, i) => { const x = i * gw / (PV_GRAPH_N - 1), y = H - 3 - (v / peak) * 18; if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); });
+          ctx.stroke(); ctx.globalAlpha = 1;
+        }
+        c.dataset.pulls = String(pv.pulls); c.dataset.dps = pv.dps.toFixed(1); c.dataset.shots = String(S.shots.length);
+      },
+    });
+    return () => { stop(); if (litFn.current) litFn.current(null); };
+  }, [sig]);
+  return h('canvas', { ref, className: 'gfire apv' });
 }
 
 // One row of the nav (auto/nav.js navRow): circles for choices (a player's ring and number, a menu glyph, a gun's
