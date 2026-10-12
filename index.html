@@ -2137,6 +2137,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "autoLeafReach", g: "autofire", label: "Auto levels: a burning stem or leaf lights moss, grass and timber this near (units)", min: 0, max: 20, step: 0.5 },
     { k: "autoLeafLight", g: "autofire", label: "… each of those cells at this chance a fire tick", min: 0, max: 1, step: 0.01 }
   );
+  Object.assign(DEV_DEFAULTS, { autoBurnBright: 1, autoBurnLight: 0.9, autoBurnLightR: 34, autoBurnLightGap: 14, autoBurnGlow: 0.16 });
+  DEV_META.push(
+    { k: "autoBurnBright", g: "autofire", label: "Burning vines and webs drawn at full brightness over the dark (1 on, 0 off)", min: 0, max: 1, step: 1 },
+    { k: "autoBurnLight", g: "autofire", label: "… and light the cave round them this bright (0–1)", min: 0, max: 1, step: 0.05 },
+    { k: "autoBurnLightR", g: "autofire", label: "… this far (units), shadowed by the rock", min: 4, max: 100, step: 1 },
+    { k: "autoBurnLightGap", g: "autofire", label: "… a light every this many units along the burning stretch (at most 6 a vine)", min: 4, max: 60, step: 1 },
+    { k: "autoBurnGlow", g: "autofire", label: "… and a warm orange glow round them this strong (0: none)", min: 0, max: 0.6, step: 0.01 }
+  );
   DEV_GROUPS.push(["autofire", "Auto: fire"]);
   Object.assign(DEV_DEFAULTS, { labJetGap: 0.35, labJetH: 50, labJetT: 0.7 });
   DEV_META.push(
@@ -29825,7 +29833,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     "autoBossDmg",
     "autoBossHp",
     "autoBossSize",
+    "autoBurnBright",
     "autoBurnCut",
+    "autoBurnGlow",
+    "autoBurnLight",
+    "autoBurnLightGap",
+    "autoBurnLightR",
     "autoBurnSpin",
     "autoChestExo",
     "autoChestGold",
@@ -31420,46 +31433,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const G = { ctx };
     const gx = Math.floor(S2.scroll) - S2.scroll - 50;
     pixelSprite(ctx, gx, 0, TITLE_VW + 100, S2.vh, 1, false, (c) => worldLayer(c, S2));
-    for (const p of S2.props) {
-      if (!p.burn || p.gone || p.arc || p.x < -20 || p.x > TITLE_VW + 20) continue;
-      const pr = p, bent = p.sw || p.tl, reach2 = p.st === "silk" ? 3 : 7;
-      const top = autoOn(S2) ? Math.max(0, Math.min(p.len, p.ch ?? p.len)) : p.len, from = autoOn(S2) ? Math.min(top, p.lit ?? top) : Math.max(0, p.len - reach2);
-      const at = (k2) => bent ? vinePt(pr, k2) : { x: 0, y: k2 };
-      ctx.save();
-      ctx.translate(-S2.scroll, 0);
-      if (p.rot) tumble(ctx, p.ox, p, 1);
-      for (let k2 = from; k2 <= top; k2 += TCELL * 0.75) {
-        const q = at(k2);
-        crackleAt(ctx, p.ox + q.x, p.y + q.y, TCELL, S2.fireN, !autoOn(S2) && p.len - k2 < 1.5);
-      }
-      const char = (x, y) => {
-        const c = Math.floor(x / TCELL), r = Math.floor(y / TCELL);
-        ctx.fillStyle = (c * 7 + r * 13 + S2.fireN) % 6 === 0 ? FIRE_COLS[3] : c + r & 1 ? "#2a201a" : "#3a2e26";
-        ctx.fillRect(c * TCELL, r * TCELL, TCELL, TCELL);
-      };
-      if (autoOn(S2)) for (let k2 = top + TCELL * 0.75; k2 <= p.len; k2 += TCELL * 0.75) {
-        const q = at(k2);
-        char(p.ox + q.x, p.y + q.y);
-      }
-      if (autoOn(S2) && LEAFY(p.st)) for (let k2 = 4, s = 1, st = p.st === "kelp" ? 7 : 5; k2 < p.len; k2 += st, s = -s) {
-        if (k2 < from) continue;
-        const q = at(k2), lx = p.ox + q.x + Math.sin(S2.t * (p.st === "kelp" ? 1.6 : 1.1) + p.seed * 6 + k2 * 0.08) * (p.st === "kelp" ? 5 : 1.6) * (k2 / p.len), ly = p.y + q.y;
-        for (const d of [1.5, 3.3]) if (k2 <= top) crackleAt(ctx, lx + s * d, ly, TCELL, S2.fireN, false);
-        else char(lx + s * d, ly);
-      }
-      ctx.restore();
-    }
-    ctx.globalAlpha = 1;
-    ctx.lineWidth = 1;
-    for (const L of S2.webs) if (L.fu) for (const [u, d] of [[L.fu[0], -1], [L.fu[1], 1]]) {
-      if (u <= 0 && d < 0 || u >= 1 && d > 0) continue;
-      const a = titleWebAt(L, u), b = titleWebAt(L, Math.max(0, Math.min(1, u + d * 4 / Math.max(4, Math.hypot(L.b0x - L.a0x, L.b0y - L.a0y)))));
-      ctx.strokeStyle = (S2.fireN + Math.round(u * 50)) % 3 ? "#ff9a2e" : "#fff0b0";
-      ctx.beginPath();
-      ctx.moveTo(a.x - S2.scroll, a.y);
-      ctx.lineTo(b.x - S2.scroll, b.y);
-      ctx.stroke();
-    }
+    drawBurnProps(ctx, S2, false);
+    drawWebFronts(ctx, S2);
     for (const p of S2.parts) if (p.kind === "smoke") {
       ctx.globalAlpha = 0.5 * (p.life / p.max);
       ctx.fillStyle = p.col;
@@ -31523,6 +31498,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     for (const r of S2.runners) if (!r.hide) drawTitleRunner(ctx, S2, r);
     drawThrown(ctx, S2);
     titleDark(ctx, S2);
+    if (DEV.autoBurnBright) {
+      drawBurnProps(ctx, S2, true);
+      drawWebFronts(ctx, S2);
+    }
     if (S2.shots.some((s) => s.sid)) pixelSprite(ctx, gx, 0, TITLE_VW + 100, S2.vh, 1, false, (c) => {
       for (const s of S2.shots) if (s.sid) drawSolidShot(c, s, W);
     });
@@ -31559,9 +31538,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const pr = p;
       propGlow(ctx, pr, S2.t, T, 0, 1);
     }
+    if (autoOn(S2) && DEV.autoBurnGlow > 0) {
+      for (const p of S2.props) if (p.burn && !p.gone && p.x > -60 && p.x < TITLE_VW + 60)
+        for (const q of burnSpots(S2, p)) glowAt(ctx, q.x, q.y, DEV.autoBurnLightR * 0.8, DEV.autoBurnGlow, "255,130,45");
+    }
     for (const L of S2.webs) if (L.fu) for (const u of L.fu) {
       const w = titleWebAt(L, u);
-      glowAt(ctx, w.x - S2.scroll, w.y, 9, 0.18, "255,140,50");
+      glowAt(ctx, w.x - S2.scroll, w.y, autoOn(S2) ? DEV.autoBurnLightR * 0.6 : 9, autoOn(S2) ? Math.max(0.18, DEV.autoBurnGlow) : 0.18, "255,140,50");
     }
     if (S2.fire.length) {
       ctx.fillStyle = "rgba(255,140,50,0.32)";
@@ -31876,6 +31859,59 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var DK = { L: null, D: null, vis: [] };
   var TITLE_EDGE = 6;
   var TITLE_LAMPR = 60;
+  function drawBurnProps(ctx, S2, litOnly) {
+    for (const p of S2.props) {
+      if (!p.burn || p.gone || p.arc || p.x < -20 || p.x > TITLE_VW + 20) continue;
+      const pr = p, bent = p.sw || p.tl, reach2 = p.st === "silk" ? 3 : 7;
+      const top = autoOn(S2) ? Math.max(0, Math.min(p.len, p.ch ?? p.len)) : p.len, from = autoOn(S2) ? Math.min(top, p.lit ?? top) : Math.max(0, p.len - reach2);
+      const at = (k) => bent ? vinePt(pr, k) : { x: 0, y: k };
+      ctx.save();
+      ctx.translate(-S2.scroll, 0);
+      if (p.rot) tumble(ctx, p.ox, p, 1);
+      for (let k = from; k <= top; k += TCELL * 0.75) {
+        const q = at(k);
+        crackleAt(ctx, p.ox + q.x, p.y + q.y, TCELL, S2.fireN, !autoOn(S2) && p.len - k < 1.5);
+      }
+      const char = (x, y) => {
+        const c = Math.floor(x / TCELL), r = Math.floor(y / TCELL);
+        ctx.fillStyle = (c * 7 + r * 13 + S2.fireN) % 6 === 0 ? FIRE_COLS[3] : c + r & 1 ? "#2a201a" : "#3a2e26";
+        ctx.fillRect(c * TCELL, r * TCELL, TCELL, TCELL);
+      };
+      if (autoOn(S2) && !litOnly) for (let k = top + TCELL * 0.75; k <= p.len; k += TCELL * 0.75) {
+        const q = at(k);
+        char(p.ox + q.x, p.y + q.y);
+      }
+      if (autoOn(S2) && LEAFY(p.st)) for (let k = 4, s = 1, st = p.st === "kelp" ? 7 : 5; k < p.len; k += st, s = -s) {
+        if (k < from) continue;
+        const q = at(k), lx = p.ox + q.x + Math.sin(S2.t * (p.st === "kelp" ? 1.6 : 1.1) + p.seed * 6 + k * 0.08) * (p.st === "kelp" ? 5 : 1.6) * (k / p.len), ly = p.y + q.y;
+        for (const d of [1.5, 3.3]) if (k <= top) crackleAt(ctx, lx + s * d, ly, TCELL, S2.fireN, false);
+        else if (!litOnly) char(lx + s * d, ly);
+      }
+      ctx.restore();
+    }
+  }
+  function drawWebFronts(ctx, S2) {
+    ctx.globalAlpha = 1;
+    ctx.lineWidth = 1;
+    for (const L of S2.webs) if (L.fu) for (const [u, d] of [[L.fu[0], -1], [L.fu[1], 1]]) {
+      if (u <= 0 && d < 0 || u >= 1 && d > 0) continue;
+      const a = titleWebAt(L, u), b = titleWebAt(L, Math.max(0, Math.min(1, u + d * 4 / Math.max(4, Math.hypot(L.b0x - L.a0x, L.b0y - L.a0y)))));
+      ctx.strokeStyle = (S2.fireN + Math.round(u * 50)) % 3 ? "#ff9a2e" : "#fff0b0";
+      ctx.beginPath();
+      ctx.moveTo(a.x - S2.scroll, a.y);
+      ctx.lineTo(b.x - S2.scroll, b.y);
+      ctx.stroke();
+    }
+  }
+  function burnSpots(S2, p) {
+    const top = Math.max(0, Math.min(p.len, p.ch ?? p.len)), from = Math.min(top, p.lit ?? top), bent = p.sw || p.tl;
+    const n = Math.max(1, Math.min(6, Math.ceil((top - from) / Math.max(4, DEV.autoBurnLightGap)))), out = [];
+    for (let i = 0; i < n; i++) {
+      const k = from + (top - from) * (n === 1 ? 0.5 : i / (n - 1)), q = bent ? vinePt(p, k) : { x: 0, y: k };
+      out.push({ x: p.ox + q.x - S2.scroll, y: p.y + q.y });
+    }
+    return out;
+  }
   function titleDark(ctx, S2) {
     if (S2.lab) return;
     const x0 = -40, w = Math.ceil(((S2.hub ? S2.ncol * TCELL : TITLE_VW) + 80) / TCELL), h3 = Math.ceil(S2.vh / TCELL);
@@ -31969,7 +32005,32 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (f.burn > 0) pool(fx, f.ty, f.r * 4 + 10, 0.8, 0.3);
       if (f.je) pool(fx, f.ty, f.r * 3 + 16, 0.55, 0.3);
     }
-    for (const p of S2.props) if (p.burn && !p.gone && p.x > -30 && p.x < TITLE_VW + 30) pool(p.x, p.y + Math.min(p.len, 20), 20, 0.6, 0.2);
+    for (const p of S2.props) if (p.burn && !p.gone && p.x > -60 && p.x < TITLE_VW + 60) {
+      if (!autoOn(S2)) {
+        pool(p.x, p.y + Math.min(p.len, 20), 20, 0.6, 0.2);
+        continue;
+      }
+      for (const q of burnSpots(S2, p)) {
+        lc.save();
+        fan(q.x, q.y, DEV.autoBurnLightR, 48);
+        lc.clip();
+        pool(q.x, q.y, DEV.autoBurnLightR, DEV.autoBurnLight, 0.25);
+        lc.restore();
+      }
+    }
+    if (autoOn(S2)) {
+      for (const L3 of S2.webs) if (L3.fu) {
+        for (const u of L3.fu) if (u > 0 && u < 1) {
+          const w2 = titleWebAt(L3, u), x = w2.x - S2.scroll;
+          if (x < -60 || x > TITLE_VW + 60) continue;
+          lc.save();
+          fan(x, w2.y, DEV.autoBurnLightR, 48);
+          lc.clip();
+          pool(x, w2.y, DEV.autoBurnLightR, DEV.autoBurnLight, 0.25);
+          lc.restore();
+        }
+      }
+    }
     dc.setTransform(1, 0, 0, 1, 0, 0);
     dc.globalCompositeOperation = "source-over";
     dc.clearRect(0, 0, w, h3);

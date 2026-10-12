@@ -160,46 +160,8 @@ export function titleDraw(ctx, S, cw, ch, cam) {
   // 1 world unit a pixel, solid or clear, its grid pinned to the world so it rides with the cave as it scrolls
   const gx = Math.floor(S.scroll) - S.scroll - 50;
   pixelSprite(ctx, gx, 0, TITLE_VW + 100, S.vh, 1, false, c => worldLayer(c, S));
-  // a burning vine or piece of silk: its burning stretch drawn as the burning cells are (the fire's colours in
-  // the terrain's grid, a new flicker each fire tick), the very tip as embers. Auto's level (owner v1.0.55): alight all the
-  // way from p.lit to p.ch, and past it to the end the charred stretch, dark with a few embers, crumbling (titlescene stepFire)
-  for (const p of S.props) {
-    if (!p.burn || p.gone || p.arc || p.x < -20 || p.x > TITLE_VW + 20) continue;
-    /** @type {any} */
-    const pr = p, bent = p.sw || p.tl, reach = p.st === 'silk' ? 3 : 7;
-    const top = autoOn(S) ? Math.max(0, Math.min(p.len, p.ch ?? p.len)) : p.len, from = autoOn(S) ? Math.min(top, p.lit ?? top) : Math.max(0, p.len - reach);
-    /** @param {number} k */
-    const at = k => bent ? vinePt(pr, k) : { x: 0, y: k };
-    ctx.save(); ctx.translate(-S.scroll, 0);
-    if (p.rot) tumble(ctx, p.ox, p, 1);
-    for (let k = from; k <= top; k += TCELL * 0.75) {
-      const q = at(k);
-      crackleAt(ctx, p.ox + q.x, p.y + q.y, TCELL, S.fireN, !autoOn(S) && p.len - k < 1.5);
-    }
-    /** @param {number} x @param {number} y a charred cell (an ember now and then) */
-    const char = (x, y) => {
-      const c = Math.floor(x / TCELL), r = Math.floor(y / TCELL);
-      ctx.fillStyle = (c * 7 + r * 13 + S.fireN) % 6 === 0 ? FIRE_COLS[3] : (c + r) & 1 ? '#2a201a' : '#3a2e26';
-      ctx.fillRect(c * TCELL, r * TCELL, TCELL, TCELL);
-    };
-    if (autoOn(S)) for (let k = top + TCELL * 0.75; k <= p.len; k += TCELL * 0.75) { const q = at(k); char(p.ox + q.x, p.y + q.y); }
-    // (owner v1.0.56: the leaves stayed green) the leaves where art/props.js drawProp puts them (every 5 along, either side,
-    // swaying by its off()): alight on the burning stretch, charred past it
-    if (autoOn(S) && LEAFY(p.st)) for (let k = 4, s = 1, st = p.st === 'kelp' ? 7 : 5; k < p.len; k += st, s = -s) {
-      if (k < from) continue;
-      const q = at(k), lx = p.ox + q.x + Math.sin(S.t * (p.st === 'kelp' ? 1.6 : 1.1) + p.seed * 6 + k * 0.08) * (p.st === 'kelp' ? 5 : 1.6) * (k / p.len), ly = p.y + q.y;
-      for (const d of [1.5, 3.3]) if (k <= top) crackleAt(ctx, lx + s * d, ly, TCELL, S.fireN, false); else char(lx + s * d, ly);
-    }
-    ctx.restore();
-  }
-  // a burning line's two fronts: a short glowing stretch of silk either side of the burnt span
-  ctx.globalAlpha = 1; ctx.lineWidth = 1;
-  for (const L of S.webs) if (L.fu) for (const [u, d] of [[L.fu[0], -1], [L.fu[1], 1]]) {
-    if (u <= 0 && d < 0 || u >= 1 && d > 0) continue;
-    const a = titleWebAt(L, u), b = titleWebAt(L, Math.max(0, Math.min(1, u + d * 4 / Math.max(4, Math.hypot(L.b0x - L.a0x, L.b0y - L.a0y)))));
-    ctx.strokeStyle = (S.fireN + Math.round(u * 50)) % 3 ? '#ff9a2e' : '#fff0b0';
-    ctx.beginPath(); ctx.moveTo(a.x - S.scroll, a.y); ctx.lineTo(b.x - S.scroll, b.y); ctx.stroke();
-  }
+  drawBurnProps(ctx, S, false);
+  drawWebFronts(ctx, S);
   // smoke under everything bright
   for (const p of S.parts) if (p.kind === 'smoke') {
     ctx.globalAlpha = 0.5 * (p.life / p.max);
@@ -241,6 +203,8 @@ export function titleDraw(ctx, S, cw, ch, cam) {
   drawThrown(ctx, S);   // stage 10a: over the machines
   // the game's dark over it all, the players' gun lights, the lanterns, fire and the jellyfish cutting through it (v0.0.171)
   titleDark(ctx, S);
+  // (owner v1.0.67: burning vines and webs were lost in the dark) their burning stretch again, over the dark, at full brightness
+  if (DEV.autoBurnBright) { drawBurnProps(ctx, S, true); drawWebFronts(ctx, S); }
   // the solid shots (a bullet, pellets, the bomb, the rocket, the disc), painted over the dark (autolooks.js)
   if (S.shots.some(s => s.sid)) pixelSprite(ctx, gx, 0, TITLE_VW + 100, S.vh, 1, false, c => { for (const s of S.shots) if (s.sid) drawSolidShot(c, s, W); });
   // the bright stuff, added light
@@ -277,8 +241,11 @@ export function titleDraw(ctx, S, cw, ch, cam) {
     const pr = p;
     propGlow(ctx, pr, S.t, T, 0, 1);
   }
+  // a burning vine's or silk's warm glow round its burning stretch (owner v1.0.67), DEV.autoBurnGlow strong
+  if (autoOn(S) && DEV.autoBurnGlow > 0) for (const p of S.props) if (p.burn && !p.gone && p.x > -60 && p.x < TITLE_VW + 60)
+    for (const q of burnSpots(S, p)) glowAt(ctx, q.x, q.y, DEV.autoBurnLightR * 0.8, DEV.autoBurnGlow, '255,130,45');
   // a burning web line's fronts glow
-  for (const L of S.webs) if (L.fu) for (const u of L.fu) { const w = titleWebAt(L, u); glowAt(ctx, w.x - S.scroll, w.y, 9, 0.18, '255,140,50'); }
+  for (const L of S.webs) if (L.fu) for (const u of L.fu) { const w = titleWebAt(L, u); glowAt(ctx, w.x - S.scroll, w.y, autoOn(S) ? DEV.autoBurnLightR * 0.6 : 9, autoOn(S) ? Math.max(0.18, DEV.autoBurnGlow) : 0.18, '255,140,50'); }
   // fire's light, as render/light.js adds it: the burning cells brighten, a few warm glows
   if (S.fire.length) {
     ctx.fillStyle = 'rgba(255,140,50,0.32)'; ctx.beginPath();
@@ -527,6 +494,68 @@ function titlePlantGlow(ctx, S, e) {
 const DK = { L: null, D: null, vis: [] };   // vis: this frame's line-of-sight fan of each player (screen x), for the beam
 export const TITLE_EDGE = 6;            // light reaches this far into the rock it falls on (the dark fades in from the edge: owner, v0.0.171)
 export const TITLE_LAMPR = 60;          // a lantern's pool of light (world units)
+// a burning vine or piece of silk: its burning stretch drawn as the burning cells are (the fire's colours in
+// the terrain's grid, a new flicker each fire tick), the very tip as embers. Auto's level (owner v1.0.55): alight all the
+// way from p.lit to p.ch, and past it to the end the charred stretch, dark with a few embers, crumbling (titlescene stepFire).
+// litOnly (owner v1.0.67): just the burning stretch, drawn again over the dark so it burns at full brightness
+/** @param {CanvasRenderingContext2D} ctx @param {import('../../art/titlescene.js').TitleScene} S @param {boolean} litOnly */
+function drawBurnProps(ctx, S, litOnly) {
+  for (const p of S.props) {
+    if (!p.burn || p.gone || p.arc || p.x < -20 || p.x > TITLE_VW + 20) continue;
+    /** @type {any} */
+    const pr = p, bent = p.sw || p.tl, reach = p.st === 'silk' ? 3 : 7;
+    const top = autoOn(S) ? Math.max(0, Math.min(p.len, p.ch ?? p.len)) : p.len, from = autoOn(S) ? Math.min(top, p.lit ?? top) : Math.max(0, p.len - reach);
+    /** @param {number} k */
+    const at = k => bent ? vinePt(pr, k) : { x: 0, y: k };
+    ctx.save(); ctx.translate(-S.scroll, 0);
+    if (p.rot) tumble(ctx, p.ox, p, 1);
+    for (let k = from; k <= top; k += TCELL * 0.75) {
+      const q = at(k);
+      crackleAt(ctx, p.ox + q.x, p.y + q.y, TCELL, S.fireN, !autoOn(S) && p.len - k < 1.5);
+    }
+    /** @param {number} x @param {number} y a charred cell (an ember now and then) */
+    const char = (x, y) => {
+      const c = Math.floor(x / TCELL), r = Math.floor(y / TCELL);
+      ctx.fillStyle = (c * 7 + r * 13 + S.fireN) % 6 === 0 ? FIRE_COLS[3] : (c + r) & 1 ? '#2a201a' : '#3a2e26';
+      ctx.fillRect(c * TCELL, r * TCELL, TCELL, TCELL);
+    };
+    if (autoOn(S) && !litOnly) for (let k = top + TCELL * 0.75; k <= p.len; k += TCELL * 0.75) { const q = at(k); char(p.ox + q.x, p.y + q.y); }
+    // (owner v1.0.56: the leaves stayed green) the leaves where art/props.js drawProp puts them (every 5 along, either side,
+    // swaying by its off()): alight on the burning stretch, charred past it
+    if (autoOn(S) && LEAFY(p.st)) for (let k = 4, s = 1, st = p.st === 'kelp' ? 7 : 5; k < p.len; k += st, s = -s) {
+      if (k < from) continue;
+      const q = at(k), lx = p.ox + q.x + Math.sin(S.t * (p.st === 'kelp' ? 1.6 : 1.1) + p.seed * 6 + k * 0.08) * (p.st === 'kelp' ? 5 : 1.6) * (k / p.len), ly = p.y + q.y;
+      for (const d of [1.5, 3.3]) if (k <= top) crackleAt(ctx, lx + s * d, ly, TCELL, S.fireN, false); else if (!litOnly) char(lx + s * d, ly);
+    }
+    ctx.restore();
+}
+}
+
+// a burning line's two fronts: a short glowing stretch of silk either side of the burnt span
+/** @param {CanvasRenderingContext2D} ctx @param {import('../../art/titlescene.js').TitleScene} S */
+function drawWebFronts(ctx, S) {
+  ctx.globalAlpha = 1; ctx.lineWidth = 1;
+  for (const L of S.webs) if (L.fu) for (const [u, d] of [[L.fu[0], -1], [L.fu[1], 1]]) {
+    if (u <= 0 && d < 0 || u >= 1 && d > 0) continue;
+    const a = titleWebAt(L, u), b = titleWebAt(L, Math.max(0, Math.min(1, u + d * 4 / Math.max(4, Math.hypot(L.b0x - L.a0x, L.b0y - L.a0y)))));
+    ctx.strokeStyle = (S.fireN + Math.round(u * 50)) % 3 ? '#ff9a2e' : '#fff0b0';
+    ctx.beginPath(); ctx.moveTo(a.x - S.scroll, a.y); ctx.lineTo(b.x - S.scroll, b.y); ctx.stroke();
+}
+}
+
+// where a burning vine or silk throws its light (owner v1.0.67): points on screen along its burning stretch (p.lit to p.ch),
+// one every DEV.autoBurnLightGap, at most 6 (spread over a long one)
+/** @param {import('../../art/titlescene.js').TitleScene} S @param {any} p @returns {{ x: number, y: number }[]} */
+function burnSpots(S, p) {
+  const top = Math.max(0, Math.min(p.len, p.ch ?? p.len)), from = Math.min(top, p.lit ?? top), bent = p.sw || p.tl;
+  const n = Math.max(1, Math.min(6, Math.ceil((top - from) / Math.max(4, DEV.autoBurnLightGap)))), out = [];
+  for (let i = 0; i < n; i++) {
+    const k = from + (top - from) * (n === 1 ? 0.5 : i / (n - 1)), q = bent ? vinePt(p, k) : { x: 0, y: k };
+    out.push({ x: p.ox + q.x - S.scroll, y: p.y + q.y });
+  }
+  return out;
+}
+
 /** @param {CanvasRenderingContext2D} ctx @param {import('../../art/titlescene.js').TitleScene} S */
 function titleDark(ctx, S) {
   if (S.lab) return;   // (Dev's fire sim: a lit range)
@@ -599,7 +628,18 @@ function titleDark(ctx, S) {
     if (f.burn > 0) pool(fx, f.ty, f.r * 4 + 10, 0.8, 0.3);
     if (f.je) pool(fx, f.ty, f.r * 3 + 16, 0.55, 0.3);
   }
-  for (const p of S.props) if (p.burn && !p.gone && p.x > -30 && p.x < TITLE_VW + 30) pool(p.x, p.y + Math.min(p.len, 20), 20, 0.6, 0.2);
+  // a burning vine or silk (owner v1.0.67: decent light round it): a pool every DEV.autoBurnLightGap along its burning stretch, each
+  // DEV.autoBurnLightR across, shadowed by the rock (its own line-of-sight fan); in the old title, the old one pool near the top
+  for (const p of S.props) if (p.burn && !p.gone && p.x > -60 && p.x < TITLE_VW + 60) {
+    if (!autoOn(S)) { pool(p.x, p.y + Math.min(p.len, 20), 20, 0.6, 0.2); continue; }
+    for (const q of burnSpots(S, p)) { lc.save(); fan(q.x, q.y, DEV.autoBurnLightR, 48); lc.clip(); pool(q.x, q.y, DEV.autoBurnLightR, DEV.autoBurnLight, 0.25); lc.restore(); }
+  }
+  // a burning web line's fronts, the same
+  if (autoOn(S)) for (const L of S.webs) if (L.fu) for (const u of L.fu) if (u > 0 && u < 1) {
+    const w = titleWebAt(L, u), x = w.x - S.scroll;
+    if (x < -60 || x > TITLE_VW + 60) continue;
+    lc.save(); fan(x, w.y, DEV.autoBurnLightR, 48); lc.clip(); pool(x, w.y, DEV.autoBurnLightR, DEV.autoBurnLight, 0.25); lc.restore();
+  }
   // the dark, the light cut out of it, laid over the scene smoothed
   dc.setTransform(1, 0, 0, 1, 0, 0); dc.globalCompositeOperation = 'source-over'; dc.clearRect(0, 0, w, h);
   dc.fillStyle = 'rgba(9,10,14,' + DEV.fogDim + ')'; dc.fillRect(0, 0, w, h);

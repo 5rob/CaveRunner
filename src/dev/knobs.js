@@ -740,6 +740,14 @@ DEV_META.push(
   { k: 'autoBurnSpin',   g: 'autofire', label: '… a falling piece turns at up to this either way (rad/s)', min: 0, max: 10, step: 0.1 },
   { k: 'autoLeafReach',  g: 'autofire', label: 'Auto levels: a burning stem or leaf lights moss, grass and timber this near (units)', min: 0, max: 20, step: 0.5 },
   { k: 'autoLeafLight',  g: 'autofire', label: '… each of those cells at this chance a fire tick', min: 0, max: 1, step: 0.01 });
+// (owner v1.0.67) burning vines and webs lost in the dark: drawn again over it, and their own light
+Object.assign(DEV_DEFAULTS, { autoBurnBright: 1, autoBurnLight: 0.9, autoBurnLightR: 34, autoBurnLightGap: 14, autoBurnGlow: 0.16 });
+DEV_META.push(
+  { k: 'autoBurnBright',   g: 'autofire', label: 'Burning vines and webs drawn at full brightness over the dark (1 on, 0 off)', min: 0, max: 1, step: 1 },
+  { k: 'autoBurnLight',    g: 'autofire', label: '… and light the cave round them this bright (0–1)', min: 0, max: 1, step: 0.05 },
+  { k: 'autoBurnLightR',   g: 'autofire', label: '… this far (units), shadowed by the rock', min: 4, max: 100, step: 1 },
+  { k: 'autoBurnLightGap', g: 'autofire', label: '… a light every this many units along the burning stretch (at most 6 a vine)', min: 4, max: 60, step: 1 },
+  { k: 'autoBurnGlow',     g: 'autofire', label: '… and a warm orange glow round them this strong (0: none)', min: 0, max: 0.6, step: 0.01 });
 DEV_GROUPS.push(['autofire', 'Auto: fire']);
 // Dev → Fire sim's flame jets (art/firelab.js labStep, owner v1.0.58): Fire held, jets out of the floor
 Object.assign(DEV_DEFAULTS, { labJetGap: 0.35, labJetH: 50, labJetT: 0.7 });
