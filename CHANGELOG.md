@@ -5,6 +5,15 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.69 — CaveRunner Auto: trajectory mods part A (orbit, spiral, boomerang, ping-pong) and the Dev Edit button on mod cards (branch `autobattler`)
+Released 2026-10-13 on the branch. Agent ~12 min (worktree `cr-traj`); owner OK'd the shots.
+- `trajStep` (src/auto/traj.js, pure): the old game's pathStep rules with Auto's sizes from knobs (Dev tab Trajectory, a group per
+  mod: motion, then Look: trail, glow, tint). Orbit: radius 20, 7 rad/s, through rock (`trOrbRock`). Spiral: 2.5 Hz, widening, capped
+  16. Boomerang: turns back at 55 units (`trBoDist`) or 0.35 of its life, caught within 8, through rock coming back. Ping-pong: out
+  0.3 s, back half. `spiral` off GUN_TODO.
+- Dev mode only: an Edit button on a trajectory mod's card (`src/ui/trajedit.js`, `TRAJ_GROUP`): its knobs as live sliders, Copy
+  (just its changed knobs, the Dev report format, `devReportOf`), Reset all, Done. Suite `auto-traj`, shots `tools/trajshots.js`.
+
 ## v1.0.68 — CaveRunner Auto: the owner's Dev report as defaults (branch `autobattler`)
 Released 2026-10-13 on the branch. PM alone.
 - New defaults (src/dev/knobs.js): move 1.2; fireSpread hi 0.6; firePlant 3–7; fireArch hi 9; autoGunBase 100; autoExoPrice 175;
