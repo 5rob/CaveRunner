@@ -5,6 +5,11 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.63 — CaveRunner Auto: burnt-off vine and silk pieces fall as loose ropes (branch `autobattler`)
+Released 2026-10-12 on the branch. PM alone, owner OK'd.
+- Burnt-off pieces fall as loose ropes (`ropeMake` / `ropeStep` in art/titlescene.js: verlet points, links held, stopped by rock),
+  draping and burning away where they lie; suite `auto-firelab` measures the bend.
+
 ## v1.0.62 — CaveRunner Auto: the fire sim's window twice as tall, sticking at the top as the page scrolls; spots inset (branch `autobattler`)
 Released 2026-10-12 on the branch. PM alone, owner OK'd the shots.
 - Layout (owner): the sim's window and buttons sit outside the knobs (`.firesimtop`); on the Fire sim tab the whole panel scrolls
