@@ -1731,6 +1731,23 @@ function ctlDig(S, r, st, dt) {
   if (!boxRock(S, r.x, r.y, false) && !boxRock(S, r.x + r.dx * 7, r.y + r.dy * 7, false)) r.clearT += dt; else r.clearT = 0;
   if (r.clearT > 0.25) end();
 }
+// the creature player r shoots at, or null (the runner's gun below; owner v1.0.59, suite auto-aim)
+/** @param {TitleScene} S @param {TRunner} r @returns {Enemy | null} */
+export function titleAimPick(S, r) {
+  // aim at the nearest creature within TITLE_AIM, well on screen (owner: they come into view before he blasts them). A level
+  // (owner v1.0.59: the tall level's roof was out of reach): within DEV.autoAimR, any height, but never in the strip
+  // DEV.autoAimEdge wide down the screen's right side or past it (they come into view first); on the left, a hail mary at
+  // ones that have just left the screen, up to DEV.autoAimLeft past its edge
+  const lvl = !!S.lvl, E = DEV.autoAimEdge;
+  let best = null, bd = lvl ? DEV.autoAimR : TITLE_AIM;
+  // (CaveRunner Auto's boss, feedback round 1: measured to its edge, and shot from behind too, so the team finishes it)
+  for (const f of S.foes) {
+    const fx = f.x - S.scroll, boss = f.k && f.k.boss, d = Math.hypot(fx - r.x, f.ty - r.y) - (boss ? f.r : 0);
+    const seen = lvl ? fx > -DEV.autoAimLeft && fx < TITLE_VW - E : fx < TITLE_VW - 24 && fx > r.x + PW / 2 - 30;
+    if (f.hp > 0 && (boss || seen) && d < bd) { bd = d; best = f; }
+  }
+  return best;
+}
 /** @param {TitleScene} S @param {TRunner} r @param {number} dt */
 function stepRunnerGun(S, r, dt) {
   const R = S.rnd, cx = () => r.x + PW / 2;
@@ -1761,13 +1778,7 @@ function stepRunnerGun(S, r, dt) {
     if (r.sawT <= 0) for (const f of S.foes) if (f.hp > 0 && Math.hypot(f.x - S.scroll - bx, f.ty - by) < f.r + 6) { hitFoe(S, f, MODS.saw.dmg * 0.5, '#d9dde4'); r.sawT = 0.15; }
     return;
   }
-  // aim at the nearest creature within TITLE_AIM, well on screen (owner: they come into view before he blasts them)
-  let best = null, bd = TITLE_AIM;
-  // (CaveRunner Auto's boss, feedback round 1: measured to its edge, and shot from behind too, so the team finishes it)
-  for (const f of S.foes) {
-    const fx = f.x - S.scroll, boss = f.k && f.k.boss, d = Math.hypot(fx - r.x, f.ty - r.y) - (boss ? f.r : 0);
-    if (f.hp > 0 && (boss || (fx < TITLE_VW - 24 && fx > cx() - 30)) && d < bd) { bd = d; best = f; }
-  }
+  const best = titleAimPick(S, r);
   const gx0 = cx(), gy0 = r.y + PH * 0.45;
   if (best) {
     const want = Math.atan2(best.ty - gy0, best.x - S.scroll - gx0);

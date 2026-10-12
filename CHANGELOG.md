@@ -5,6 +5,14 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.59 — CaveRunner Auto: players shoot up to the roof, not at the screen's right edge, a hail mary off the left (branch `autobattler`)
+Released 2026-10-12 on the branch. PM alone (gameplay, no looks).
+- Owner: the short aggro (`TITLE_AIM` 90) kept off-screen creatures safe but left high ones in the tall level unshot. In a
+  level the target is now `titleAimPick(S, r)` (pulled out of the runner's gun step): the nearest within `autoAimR` (400,
+  roof from the floor), never in the strip `autoAimEdge` (24) down the screen's right side or past it; on the left (owner, same
+  round) a hail mary at ones up to `autoAimLeft` (20) past the edge; the boss wherever it is. The title as before.
+- Suite `auto-aim`.
+
 ## v1.0.58 — CaveRunner Auto: burning pixels twinkle; the fire sim in separate test spots, flame jets while Fire is held (branch `autobattler`)
 Released 2026-10-12 on the branch. PM alone, owner OK'd the shots.
 - Twinkle (owner: the fire looked like static noise): the burning pixels' hash added the tick after the multiply, so the

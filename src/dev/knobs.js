@@ -721,6 +721,13 @@ DEV_META.push(
   { k: 'autoFuelDrain',  g: 'autodeath', label: 'Jet fuel: drain (× the old game’s; a level only, auto/fuel.js)', min: 0, max: 3, step: 0.05 },
   { k: 'autoFuelRegen',  g: 'autodeath', label: 'Jet fuel: refill on the ground (× the old game’s)', min: 0.1, max: 3, step: 0.05 });
 DEV_GROUPS.push(['autodeath', 'Auto: jetpack and death']);
+// (owner v1.0.59) what the players shoot at in a level (art/titlescene.js stepRunnerGun): far enough to reach the roof, but nothing
+// in the screen's side strips or past them
+Object.assign(DEV_DEFAULTS, { autoAimR: 400, autoAimEdge: 24, autoAimLeft: 20 });
+DEV_META.push(
+  { k: 'autoAimR',    g: 'autoguns', label: 'Players shoot creatures this near, any way (units; a level is about 400 tall)', min: 20, max: 1000, step: 5 },
+  { k: 'autoAimEdge', g: 'autoguns', label: '… but none in a strip this wide down the right side of the screen, or past it (units; the screen is 220 across)', min: 0, max: 100, step: 1 },
+  { k: 'autoAimLeft', g: 'autoguns', label: '… and on the left, a hail mary at ones up to this far past the edge (units)', min: 0, max: 100, step: 1 });
 // (owner v1.0.56: full controls for fire in Auto) the level's own fire knobs; the old game's (burn times, creatures) show here too
 Object.assign(DEV_DEFAULTS, { autoFireSpread: 0.1, autoWebFire: 3, autoVineCatch: 0.25, autoLeafReach: 5, autoLeafLight: 0.15, autoBurnCut: 0.015, autoBurnSpin: 2.5, fireTwinkle: 1, fireFlare: 0.06 });
 DEV_META.push(
