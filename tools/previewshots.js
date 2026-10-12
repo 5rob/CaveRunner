@@ -1,6 +1,7 @@
 // Screenshots for the owner (the gun panel's firing window, now the level's own scene: auto/preview.js), phone size
 // (412 x 880 @2.625), the real page through the test page: player 1's gun opened in the nav (its mod slots), the panel up,
-// with a few guns: a plain Spark Bolt; Follow Me + Spark Bolt; White Hole; Circle of Vigour; a Fireball.
+// with a few guns (round 2: the hologram target; big: double-tapped, grown over the stats; the blast shot taken while the
+// floor grows back).
 //   node tools/previewshots.js [outdir]      (default tests/build/autoshots)
 // Not a test: it takes the pictures and prints what each shows.
 const { launch } = require('../tests/chromium');
@@ -13,16 +14,16 @@ require('./build')();
 require('../tests/build')();
 
 const GUNS = [
-  ['a-bolt', ['bolt', 'bolt'], 'Spark Bolt ×2: shots across the room into the jellyfish, the DPS over it'],
-  ['b-follow', ['follow', 'bolt', 'bolt'], 'Follow Me + Spark Bolt: the shots curve back to him'],
-  ['c-vacfield', ['vacfield', 'bolt'], 'White Hole + Spark Bolt: the hole hangs ahead of the gun, pulling'],
-  ['d-vigour', ['vigour', 'bolt'], 'Circle of Vigour + Spark Bolt: the green circle on the floor at him'],
-  ['e-fball', ['fball', 'fball'], 'Fireball: blasts on the wall / target, the room mended after'],
+  ['a-bolt', ['bolt', 'bolt'], 'Spark Bolt ×2: the hologram target lit on hits, red dps over it, the graph across the top'],
+  ['b-orbit', ['orbit', 'bolt', 'bolt'], 'Orbit + Spark Bolt: shots circling, room before the wall'],
+  ['c-follow-big', ['follow', 'bolt', 'bolt'], 'Follow Me + Spark Bolt, double-tapped: the window grown over the stats, him at the new left edge', true],
+  ['d-orbit-big', ['orbit', 'bolt', 'bolt'], 'Orbit + Spark Bolt, grown', true],
+  ['e-blast', ['blast', 'blast'], 'Bomb: holes in the floor and wall, part grown back (DEV.autoPvRegrow cells/s)'],
 ];
 
 (async () => {
   const browser = await launch();
-  for (const [n, slots, what] of GUNS) {
+  for (const [n, slots, what, big] of GUNS) {
     const ctx = await browser.newContext({ viewport: { width: 412, height: 880 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2.625 });
     await ctx.addInitScript(() => { window.__TEST_TITLE = true; window.__TITLE_SEED = 101; localStorage.removeItem('caverunner-auto-run'); });
     const page = await ctx.newPage();
@@ -43,8 +44,13 @@ const GUNS = [
       await page.evaluate(() => dispatchEvent(new PointerEvent('pointerup')));
       await page.waitForTimeout(150);
     }
-    await page.waitForTimeout(1500);
-    const info = await page.evaluate(() => { const c = document.querySelector('.apv'); return c ? { pulls: c.dataset.pulls, dps: c.dataset.dps, w: c.clientWidth, h: c.clientHeight } : null; });
+    if (big) {
+      await page.locator('.apv').dispatchEvent('pointerdown');
+      await page.waitForTimeout(80);
+      await page.locator('.apv').dispatchEvent('pointerdown');
+    }
+    await page.waitForTimeout(n === 'e-blast' ? 3200 : 1500);
+    const info = await page.evaluate(() => { const c = document.querySelector('.apv'); return c ? { pulls: c.dataset.pulls, dps: c.dataset.dps, room: c.dataset.big, w: c.clientWidth, h: c.clientHeight } : null; });
     await page.screenshot({ path: path.join(OUT, 'preview-' + n + '.png') });
     console.log(`preview-${n}.png  ${what}  ${JSON.stringify(info)}`);
     await ctx.close();

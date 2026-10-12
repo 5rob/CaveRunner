@@ -45,8 +45,8 @@ const run = (S, n, seen) => { for (let i = 0; i < n; i++) { G.titleStep(S, 1 / 6
 // Follow Me + bolt: the shot comes back to its caster in the window, as in a level
 {
   const { pl, gi } = withGun(['follow', 'bolt']);
-  const S = G.previewScene(110, 80, pl, gi, 7), seen = new Set();
-  run(S, 60, seen);
+  const S = G.previewScene(215, 80, pl, gi, 7), seen = new Set();
+  run(S, 120, seen);
   const back = [...seen].some(s => s.follow > 0 && s.vx < 0);
   check('Follow Me: its shots turn back to him', back);
 }
@@ -72,15 +72,38 @@ const run = (S, n, seen) => { for (let i = 0; i < n; i++) { G.titleStep(S, 1 / 6
   run(S, 120, seen);
   check(`${id} (GUN_TODO): nothing in the window either`, seen.size === 0, seen.size);
 }
-// blasts eat the room; it's made whole a little after
+// blasts eat the floor and walls; they grow back slowly, cell by cell (DEV.autoPvRegrow a second), not all at once
 {
   const { pl, gi } = withGun(['blast']);
   const S = G.previewScene(110, 80, pl, gi, 7), pv = G.previewState(S);
-  let bit = false;
-  for (let i = 0; i < 600; i++) { G.titleStep(S, 1 / 60); if (S.carved > 0) bit = true; }
+  const miss = () => S.cells.reduce((n, v, i) => n + (v !== pv.cells[i] ? 1 : 0), 0);
+  for (let i = 0; i < 600 && miss() < 20; i++) G.titleStep(S, 1 / 60);
   S.team[0].guns[gi].slots = [];
-  for (let i = 0; i < 200; i++) G.titleStep(S, 1 / 60);
-  check('a blast bites the room and it is mended', bit && S.cells.every((v, i) => v === pv.cells[i]), bit);
+  S.shots.length = 0;
+  const m0 = miss();
+  check('a blast bites the room', m0 >= 20, m0);
+  const per = G.DEV.autoPvRegrow;
+  G.titleStep(S, 0.05); G.titleStep(S, 0.05);
+  const m1 = miss();
+  check('a tenth of a second on: some grew back, at the knob rate, not all', m0 - m1 > 0 && m0 - m1 <= Math.ceil(per * 0.1) + 1 && m1 > 0, [m0, m1, per]);
+  for (let i = 0; i < 60 * 30; i++) G.titleStep(S, 1 / 60);
+  check('in time it is whole again', miss() === 0, miss());
+}
+// the hologram lights up on a hit
+{
+  const { pl, gi } = withGun(['bolt']);
+  const S = G.previewScene(110, 80, pl, gi, 7), pv = G.previewState(S);
+  let lit = false;
+  for (let i = 0; i < 240 && !lit; i++) { G.titleStep(S, 1 / 60); lit = pv.hitT > 0; }
+  check('a hit lights the hologram (pv.hitT)', lit);
+  check('it stands PV_HOLO_X off the right wall', Math.abs(pv.dx - (Math.max(4, Math.floor(110 / 2) - 2) * 2 - G.PV_HOLO_X)) < 1e-6, pv.dx);
+}
+// the grown window (wider room): he still fires across it
+{
+  const { pl, gi } = withGun(['bolt']);
+  const S = G.previewScene(215, 80, pl, gi, 7), pv = G.previewState(S);
+  for (let i = 0; i < 240; i++) G.titleStep(S, 1 / 60);
+  check('grown: the target far across the room is still shot', pv.dps > 0 && S.runners[0].x < 10 && pv.dx > 150, [pv.dps, pv.dx]);
 }
 console.log(fails ? `${fails} FAILED` : 'all passed');
 process.exit(fails ? 1 : 0);

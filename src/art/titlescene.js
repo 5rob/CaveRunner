@@ -1764,12 +1764,13 @@ export function titleAimPick(S, r) {
   // (owner v1.0.59: the tall level's roof was out of reach): within DEV.autoAimR, any height, but never in the strip
   // DEV.autoAimEdge wide down the screen's right side or past it (they come into view first); on the left, a hail mary at
   // ones that have just left the screen, up to DEV.autoAimLeft past its edge
-  const lvl = !!S.lvl, E = DEV.autoAimEdge;
-  let best = null, bd = lvl ? DEV.autoAimR : TITLE_AIM;
+  // (the gun panel's window, auto/preview.js: its one target, anywhere in the room, so the grown window still fires)
+  const lvl = !!S.lvl, E = DEV.autoAimEdge, pv = !!(S.hub && S.hub.pv);
+  let best = null, bd = lvl ? DEV.autoAimR : pv ? Infinity : TITLE_AIM;
   // (CaveRunner Auto's boss, feedback round 1: measured to its edge, and shot from behind too, so the team finishes it)
   for (const f of S.foes) {
     const fx = f.x - S.scroll, boss = f.k && f.k.boss, d = Math.hypot(fx - r.x, f.ty - r.y) - (boss ? f.r : 0);
-    const seen = lvl ? fx > -DEV.autoAimLeft && fx < TITLE_VW - E : fx < TITLE_VW - 24 && fx > r.x + PW / 2 - 30;
+    const seen = pv || (lvl ? fx > -DEV.autoAimLeft && fx < TITLE_VW - E : fx < TITLE_VW - 24 && fx > r.x + PW / 2 - 30);
     if (f.hp > 0 && (boss || seen) && d < bd) { bd = d; best = f; }
   }
   return best;

@@ -1083,7 +1083,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .agunpanel .gsrow{font:700 9.5px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.04em;text-transform:uppercase}
 .agunpanel .gsrow b{font:800 10.5px ui-monospace,SFMono-Regular,Menlo,monospace}
 .agunpanel .gsrow u{font:800 9px ui-monospace,SFMono-Regular,Menlo,monospace;min-width:30px}
-.agunpanel .gfire{min-height:0;border-color:var(--ring)}
+.agunpanel .gfire{min-height:0;border-color:var(--ring);touch-action:none}
+.agunpanel.big .gstats{display:none}   /* (owner, round 2) a double tap on the window: it grows over the stats */
 
 /* CaveRunner Auto's item cards (owner, stage 8b): the shared cards (ui/cards.js) in the auto screen's dark purple
    panels, edged in the item's group colour (--ic, AutoScreen itemEdge), titles in the menu's mono caps; no pin/trash */

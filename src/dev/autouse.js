@@ -113,6 +113,7 @@ export const AUTO_KNOBS = new Set([
   'autoPayReach',
   'autoPickMin',
   'autoPickReach',
+  'autoPvRegrow',
   'autoRed',
   'autoRoamBack',
   'autoRoamCam',
