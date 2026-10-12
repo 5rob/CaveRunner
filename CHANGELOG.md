@@ -5,6 +5,15 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.71 — CaveRunner Auto: Discriminate works (hold its tile to pick a target) (branch `autobattler`)
+Released 2026-10-13 on the branch. Agent ~17 min, 2 rounds (worktree `cr-discrim`); owner OK'd the shots.
+- Hold a Discriminate tile (bag or gun slot, `DEV.autoHoldMs`): a popup of targets with the game's pictures: rats, jellyfish, spiders,
+  gold, red crystals, green crystals, P1–P4 (helmets in team colours). The copy becomes `discrimId(target)`, the tile shows its
+  target in the corner (`art/discrimicon.js`, `TargetPic`). Shots with it hit only that kind (a player: hurts him via the level's
+  hurt, after 0.12 s); a White Hole with it pulls only that (creatures, gold nuggets, red/green pickups, or a player: `autoDiscPull`).
+  Set copies register on load (`auto/save.js`). Off GUN_TODO. Suite `auto-discrim`, shots `tools/discrimshots.js`.
+- Not yet: homing ignores the target.
+
 ## v1.0.70 — CaveRunner Auto: trajectory mods part B (homing, seeker, short-range, auto-aim, gravity, anti-gravity, horizontal) (branch `autobattler`)
 Released 2026-10-13 on the branch. Agent ~9 min (worktree `cr-traj`); the owner asked for it to ship when done.
 - src/auto/traj.js `trajHome` / `trajAim` / `trajGrav` / `trajLob`: Homing (90 reach, 3 rad/s a copy, after 0.1 s), Seeker (locks one
