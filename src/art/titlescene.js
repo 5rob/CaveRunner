@@ -1135,6 +1135,11 @@ function shotEnd(S, s) {
     S.shake = Math.min(7, S.shake + 2);
     titleCarve(S, s.x, s.y, r);
     for (const g of S.foes) if (Math.hypot(g.x - S.scroll - s.x, g.ty - s.y) < r + g.r && foeOk(s, g)) hitFoe(S, g, s.real ? s.dmg : 4, s.col, s.by);
+    // Discriminate:Pn: its blast hurts only that player
+    if (s.only && s.only.kind === 'player' && S.lvl && S.lvl.hurt) {
+      const ru = S.runners[Number(s.only.id) - 1];
+      if (ru && !ru.out && Math.hypot(ru.x + PW / 2 - s.x, ru.y + PH / 2 - s.y) < r + 8) S.lvl.hurt(S, ru.id, s.real ? s.dmg : 4);
+    }
     for (const p of S.props) if (p.k === 'lamp' && !p.gone && lampHit(p, s.x, s.y, r)) popLamp(S, p);
   } else if (s.pit) { titleCarve(S, s.x, s.y, s.pit * 0.7); snd(S, 'debris', s.x, s.y); }
   else if (!s.hitFoe) snd(S, 'rock', s.x, s.y);
@@ -2230,7 +2235,7 @@ function stepShots(S, dt) {
     // trails are looks only: their own random numbers (Math.random), so the run plays the same
     if (s.sid) { if (S.parts.length < TITLE_PARTS - FX_ROOM) for (const p of autoTrail(s, dt, Math.random)) S.parts.push(p); }
     if (s.pull && !s.foe) for (const a of holePull(s, S.foes, S.scroll, S.shots, dt, DEV.bhPull * s.pull / 70)) burst(S, a.x, a.y, 3, '#c58cff', 40, 'spark', 0.25);
-    if (s.vac) { vacPull(s, S.foes, S.scroll, S.shots, dt, VAC_PULL, S.coins, S.loot); continue; }   // White Hole: hangs, pulls, hits nothing
+    if (s.vac) { vacPull(s, S.foes, S.scroll, S.shots, dt, VAC_PULL, S.coins, S.loot, S.runners); continue; }   // White Hole: hangs, pulls, hits nothing
     if (s.heal) { if (!S.hub) s.x -= sv(S) * dt; if (s.follow) fieldFollow(S, s, dt); vigourStep(S, s, dt); continue; }   // Circle of Vigour: stays on the ground, heals, hits nothing
     if (s.sid === 'zap' && S.zaps.length < 24) { const fk = zapFork(s, S.foes, S.scroll, dt, Math.random); if (fk) S.zaps.push({ pts: fk, t: 0.12, col: s.col }); }
     if (s.hopT) s.hopT = Math.max(0, s.hopT - dt);
@@ -2246,6 +2251,16 @@ function stepShots(S, dt) {
       if (!s.pierce) { s.life = 0; burst(S, s.x, s.y, 3, s.col, 50, 'spark', 0.2); }
     }
     if (s.life <= 0) continue;
+    // Discriminate:Pn (owner, v1.0.71; the old game's bullets.js): once clear of the muzzle it hits player n (runner n - 1) through
+    // the level's hurt (shields apply); in the hub and the gun preview there's no hurt: it passes through
+    if (s.only && s.only.kind === 'player' && s.age > 0.12 && S.lvl && S.lvl.hurt) {
+      const ru = S.runners[Number(s.only.id) - 1];
+      if (ru && !ru.out && Math.abs(ru.x + PW / 2 - s.x) < 7 + s.size && Math.abs(ru.y + PH / 2 - s.y) < 11 + s.size) {
+        burst(S, s.x, s.y, 6, s.col, 60, 'spark', 0.25); snd(S, 'hit', s.x, s.y);
+        if (s.explode) shotEnd(S, s); else { s.life = 0; S.lvl.hurt(S, ru.id, s.dmg); }
+        continue;
+      }
+    }
     for (const f of S.foes) {
       if (f.hp > 0 && Math.hypot(f.x - S.scroll - s.x, f.ty - s.y) < f.r + s.size && foeOk(s, f)) {
         hitFoe(S, f, s.real ? s.dmg : s.dmg * 1.5, s.col, s.by);

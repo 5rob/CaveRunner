@@ -1,5 +1,5 @@
 // Screenshots for the owner (Discriminate's target popup, v1.0.71), phone size (412 x 880 @2.625), the real page through
-// the test page: a Discriminate held in the bag (its popup of six targets), the tile once set to gold (its picture in the
+// the test page: a Discriminate held in the bag (its popup of six targets), the tile once set to P2 (his helmet in the
 // corner), and the gun preview with Discriminate:gold + White Hole pulling a handful of gold nuggets dropped into it.
 //   node tools/discrimshots.js [outdir]      (default tests/build/autoshots)
 // Not a test: it takes the pictures and prints what each shows.
@@ -36,13 +36,13 @@ require('../tests/build')();
   await page.waitForTimeout(700);
   const open = await page.locator('.adbox').count();
   await page.screenshot({ path: path.join(OUT, 'discrim-a-popup.png') });
-  console.log('discrim-a-popup.png  Discriminate held in the bag: the popup of six targets  ' + JSON.stringify({ open }));
+  console.log('discrim-a-popup.png  Discriminate held in the bag: the popup, six targets and the four players  ' + JSON.stringify({ open }));
   await page.evaluate(() => dispatchEvent(new PointerEvent('pointerup', { pointerId: 1 })));
-  await page.locator('.adbtn[data-tgt="gold"]').dispatchEvent('pointerdown');
+  await page.locator('.adbtn[data-tgt="p2"]').dispatchEvent('pointerdown');
   await page.waitForTimeout(300);
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('caverunner-auto-run')).run.bag.filter(it => it && it.kind === 'mod').map(it => it.id));
   await page.screenshot({ path: path.join(OUT, 'discrim-b-set.png') });
-  console.log('discrim-b-set.png  the tile set to gold: the nugget in its corner  ' + JSON.stringify({ closed: (await page.locator('.adbox').count()) === 0, saved }));
+  console.log('discrim-b-set.png  the tile set to P2: his helmet in its corner  ' + JSON.stringify({ closed: (await page.locator('.adbox').count()) === 0, saved }));
   for (const t of ['[data-player="0"]', '[data-open="guns"]', '[data-open="0"]']) {
     await page.locator('.anav ' + t).first().dispatchEvent('pointerdown');
     await page.evaluate(() => dispatchEvent(new PointerEvent('pointerup')));

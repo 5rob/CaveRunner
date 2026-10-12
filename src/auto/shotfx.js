@@ -6,6 +6,8 @@
 // falling), 'smoke' (a dark puff that swells), 'fire' (rises, white → orange → red).
 
 import { matchesTarget } from '../spells/discrim.js';
+import { DEV } from '../dev/knobs.js';
+import { PH, PW } from '../core/consts.js';
 
 export const FX_ROOM = 60;          // trails stop while the scene has fewer than this many particles of room
 export const FX_TRAIL = 8;          // positions a shot remembers for its afterimages (Disc Projectile)
@@ -261,8 +263,8 @@ export function holePull(s, foes, scroll, shots, dt, reach) {
 // White Hole (owner, v1.0.40; the game's 'vacuum' field, game/systems/fields.js): a steady strong pull into its middle,
 // through walls, harming nothing. Creatures within `s.vac` are hauled in at `pull` units/s at the edge (faster further
 // in) and held at the middle; enemy shots are bent in and slowed, so they settle rather than swing through.
-/** @param {import('../art/titlescene.js').TShot} s @param {{ x: number, y: number, ty: number, hp: number, k?: { id: string } }[]} foes @param {number} scroll @param {import('../art/titlescene.js').TShot[]} shots @param {number} dt @param {number} pull @param {Coin[]} [coins] @param {import('../art/titlescene.js').TLoot[]} [loot] */
-export function vacPull(s, foes, scroll, shots, dt, pull, coins, loot) {
+/** @param {import('../art/titlescene.js').TShot} s @param {{ x: number, y: number, ty: number, hp: number, k?: { id: string } }[]} foes @param {number} scroll @param {import('../art/titlescene.js').TShot[]} shots @param {number} dt @param {number} pull @param {Coin[]} [coins] @param {import('../art/titlescene.js').TLoot[]} [loot] @param {{ x: number, y: number, id: number, out?: boolean }[]} [runners] */
+export function vacPull(s, foes, scroll, shots, dt, pull, coins, loot, runners) {
   const reach = s.vac || 64, only = s.only || null;
   /** @param {number} d */
   const sp = d => pull * (0.35 + 0.65 * (1 - d / reach));
@@ -283,6 +285,12 @@ export function vacPull(s, foes, scroll, shots, dt, pull, coins, loot) {
       const m = Math.min(d, sp(d) * dt);
       g.x += dx / d * m; g.y += dy / d * m; g.vx = 0; g.vy = 0;   // held at the middle (its own fall can't win)
     }
+  }
+  // Discriminate:Pn: player n's runner (id n - 1) drawn gently in, DEV.autoDiscPull units a second
+  if (only && only.kind === 'player') for (const r of runners || []) {
+    if (r.out || r.id !== Number(only.id) - 1) continue;
+    const dx = s.x - (r.x + PW / 2), dy = s.y - (r.y + PH / 2), d = Math.hypot(dx, dy) || 1;
+    if (d < reach) { const m = Math.min(d, DEV.autoDiscPull * dt); r.x += dx / d * m; r.y += dy / d * m; }
   }
   if (!only) for (const q of shots) {
     if (!q.foe || q.life <= 0) continue;

@@ -23,10 +23,12 @@ check('an unset copy changes nothing', JSON.stringify(shotsFor(['discrim', 'bolt
 check('Discriminate is off GUN_TODO', !G.GUN_TODO.includes('discrim'));
 
 // ---- a bolt with Discriminate:rat passes through a jellyfish and hits a rat (the scene's sandbox) ----
-function scene() {
+function scene(n = 1) {
   const run = G.newRun(3);
+  G.bagAdd(run, { kind: 'green', n: 5 });
+  for (let i = 1; i < n; i++) G.addPlayer(run);
   for (const pl of run.players) pl.guns = pl.guns.map(() => null);
-  const S = G.levelScene(200, 3, 1, undefined, run.players);
+  const S = G.levelScene(200, 3, run.players.length, undefined, run.players);
   S.lvl.step = null; S.pace = 0; S.spawn = 1e9; S.still = false;
   S.foes.length = 0; S.shots.length = 0;
   return S;
@@ -81,6 +83,33 @@ const run = (s, foes, coins, loot) => { for (let i = 0; i < 20; i++) G.vacPull(s
   const f = foe('rotta'), c = { x: 70, y: 50, amount: 1, t: 0 };
   run(hole(null), [f], [c], []);
   check('an unset White Hole pulls creatures as before, and not gold', f.x < 130 && c.x === 70, [f.x, c.x]);
+}
+
+// ---- Discriminate:Pn (owner, v1.0.71): a shot passes creatures and hurts player n; a White Hole pulls only him ----
+{
+  const P2 = G.discrimId({ kind: 'player', id: '2' });
+  const S = scene(2), r0 = S.runners[0], r1 = S.runners[1], y = r0.y + G.PH / 2;
+  const x0 = r0.x, y0 = r0.y, x1 = r0.x + 70;
+  const jelly = foeAt(S, 'meduusa', r0.x + 35, y);
+  const hp0 = S.team[0].hp, hp1 = S.team[1].hp;
+  const sh = G.planCast(gunOf([P2, 'bolt'])).shots[0];
+  check('Discriminate:P2 puts player 2 on the bolt', JSON.stringify(sh.only) === JSON.stringify({ kind: 'player', id: '2' }));
+  for (const s of G.shotsOf(sh, 0, r0.x + G.PW / 2 + 6, y, R0, 0)) S.shots.push(s);
+  for (let i = 0; i < 90; i++) {
+    G.titleStep(S, 1 / 60);
+    jelly.x = jelly.hx; jelly.y = jelly.ty = y;
+    r0.x = x0; r0.y = y0; r1.x = x1; r1.y = y0; r0.vx = r0.vy = r1.vx = r1.vy = 0;
+  }
+  check('a P2 bolt passes through the creature', jelly.hp === 9999, jelly.hp);
+  check('…and hurts player 2 (runner 1)', S.team[1].hp < hp1, [S.team[1].hp, hp1]);
+  check('…not player 1 (runner 0)', S.team[0].hp === hp0, [S.team[0].hp, hp0]);
+}
+{
+  const r0 = { x: 60, y: 40, id: 0 }, r1 = { x: 60, y: 60, id: 1 }, f = foe('rotta'), c = { x: 70, y: 50, amount: 1, t: 0 };
+  const s = hole({ kind: 'player', id: '1' });
+  for (let i = 0; i < 20; i++) G.vacPull(s, [f], 0, [], 1 / 60, 200, [c], [], [r0, r1]);
+  check('White Hole + Discriminate:P1 moves runner 0 toward it', r0.x > 60, r0.x);
+  check('…not runner 1, a creature or gold', r1.x === 60 && f.x === 130 && c.x === 70, [r1.x, f.x, c.x]);
 }
 
 console.log(fails ? `${fails} FAILED` : 'all passed');

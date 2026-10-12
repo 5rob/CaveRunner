@@ -835,6 +835,9 @@ Object.assign(DEV_DEFAULTS, { autoHoldMs: 350, autoArcR: 110 });
 DEV_META.push(
   { k: 'autoHoldMs', g: 'autobag', label: 'Gun arc: hold a player’s helmet this long (ms) to fan out his 4 guns', min: 150, max: 1000, step: 10 },
   { k: 'autoArcR', g: 'autobag', label: 'Gun arc: its radius (px) above the helmet', min: 70, max: 160, step: 2 });
+// (owner, v1.0.71) a White Hole with Discriminate:Pn pulls that player this many units a second (auto/shotfx.js vacPull)
+Object.assign(DEV_DEFAULTS, { autoDiscPull: 70 });
+DEV_META.push({ k: 'autoDiscPull', g: 'autobag', label: 'Discriminate: a White Hole set on a player pulls him this fast (units/s)', min: 0, max: 400, step: 5 });
 DEV_GROUPS.push(['autobag', 'Auto: bag']);
 // stage 10a: throwing gold and gems into the hub's machines (auto/throw.js, ui/auto/AutoScreen.js)
 Object.assign(DEV_DEFAULTS, { autoThrowPull: 45, autoThrowSuck: 500, autoThrowBack: 3, autoPayReach: 30, autoPickReach: 22, autoPickMin: 1, autoPayHold: 300, autoPayK: 2,

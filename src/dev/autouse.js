@@ -57,6 +57,7 @@ export const AUTO_KNOBS = new Set([
   'autoClearWait',
   'autoCtlWait',
   'autoDeathStop',
+  'autoDiscPull',
   'autoExoPrice',
   'autoFireJump',
   'autoFireJumpP',

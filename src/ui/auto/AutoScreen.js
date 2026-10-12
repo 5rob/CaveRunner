@@ -991,17 +991,20 @@ const isDiscrim = id => id === 'discrim' || (!!id && id.startsWith('discrim:'));
 // above the tile (below it if there's no room); a tap on one sets the copy, a tap outside closes it
 /** @param {{ at: DiscrimPopAt, cur: DiscrimTarget | null, pick: (t: DiscrimTarget) => void, close: () => void }} props */
 function DiscrimPop({ at, cur, pick, close }) {
-  const W = 3 * 58 + 16, H = 2 * 66 + 34, vw = window.innerWidth || 412;
+  const W = 3 * 58 + 16, H = 2 * 66 + 50 + 38, vw = window.innerWidth || 412;
   const left = Math.max(8, Math.min(vw - W - 8, at.x - W / 2));
   const top = at.top - H - 8 >= 8 ? at.top - H - 8 : at.bottom + 8;
   /** @param {any} e */
   const shut = e => { e.preventDefault(); e.stopPropagation(); close(); };
+  /** one target's button (players: a row of four, smaller; data-tgt 'gold', 'rotta', … or 'p1'..'p4') @param {{ t: DiscrimTarget, label: string }} d */
+  const btn = d => h('button', { key: d.t.kind + d.t.id, className: 'adbtn' + (d.t.kind === 'player' ? ' pl' : '') + (cur && cur.kind === d.t.kind && cur.id === d.t.id ? ' on' : ''), 'data-tgt': d.t.kind === 'player' ? 'p' + d.t.id : d.t.id, title: d.label,
+    onPointerDown: (e) => { e.preventDefault(); e.stopPropagation(); pick(d.t); } }, h(TargetPic, { t: d.t, size: d.t.kind === 'player' ? 26 : 38 }), h('span', null, d.label));
   return ReactDOM.createPortal(h('div', { className: 'adpop' },
     h('div', { className: 'shade', onPointerDown: shut }),
     h('div', { className: 'adbox', style: { left: left + 'px', top: top + 'px', width: W + 'px' } },
       h('div', { className: 'adtitle' }, 'Discriminate: only…'),
-      h('div', { className: 'adgrid' }, DISCRIM_TARGETS.map(d => h('button', { key: d.t.id, className: 'adbtn' + (cur && cur.kind === d.t.kind && cur.id === d.t.id ? ' on' : ''), 'data-tgt': d.t.id, title: d.label,
-        onPointerDown: e => { e.preventDefault(); e.stopPropagation(); pick(d.t); } }, h(TargetPic, { t: d.t, size: 38 }), h('span', null, d.label)))))),
+      h('div', { className: 'adgrid' }, DISCRIM_TARGETS.filter(d => d.t.kind !== 'player').map(btn)),
+      h('div', { className: 'adgrid p4' }, DISCRIM_TARGETS.filter(d => d.t.kind === 'player').map(btn)))),
     document.body);
 }
 // a press moving this far (px) is a drag (on the handle) or not a tap

@@ -1135,6 +1135,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .adbtn{display:flex;flex-direction:column;align-items:center;justify-content:center;height:62px;padding:2px;border-radius:8px;border:1px solid #3a3150;background:#221b30;color:#e9e3f5;font-size:10px;line-height:1.1;touch-action:none}
 .adbtn.on{border-color:#b57cff;background:#3a2858}
 .adbtn span{margin-top:2px}
+.adgrid.p4{grid-template-columns:repeat(4,1fr);margin-top:4px}
+.adbtn.pl{height:46px}
 .atgt.aon{position:absolute;right:-4px;bottom:-4px;pointer-events:none;background:#16121fcc;border-radius:6px}
 </style>
 </head>
@@ -2258,6 +2260,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "autoHoldMs", g: "autobag", label: "Gun arc: hold a player’s helmet this long (ms) to fan out his 4 guns", min: 150, max: 1e3, step: 10 },
     { k: "autoArcR", g: "autobag", label: "Gun arc: its radius (px) above the helmet", min: 70, max: 160, step: 2 }
   );
+  Object.assign(DEV_DEFAULTS, { autoDiscPull: 70 });
+  DEV_META.push({ k: "autoDiscPull", g: "autobag", label: "Discriminate: a White Hole set on a player pulls him this fast (units/s)", min: 0, max: 400, step: 5 });
   DEV_GROUPS.push(["autobag", "Auto: bag"]);
   Object.assign(DEV_DEFAULTS, {
     autoThrowPull: 45,
@@ -12218,7 +12222,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     return ate;
   }
-  function vacPull(s, foes, scroll, shots, dt, pull, coins, loot) {
+  function vacPull(s, foes, scroll, shots, dt, pull, coins, loot, runners) {
     const reach2 = s.vac || 64, only = s.only || null;
     const sp = (d) => pull * (0.35 + 0.65 * (1 - d / reach2));
     if (!only || only.kind === "creature") for (const f of foes) {
@@ -12242,6 +12246,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         g.y += dy / d * m;
         g.vx = 0;
         g.vy = 0;
+      }
+    }
+    if (only && only.kind === "player") for (const r of runners || []) {
+      if (r.out || r.id !== Number(only.id) - 1) continue;
+      const dx = s.x - (r.x + PW / 2), dy = s.y - (r.y + PH / 2), d = Math.hypot(dx, dy) || 1;
+      if (d < reach2) {
+        const m = Math.min(d, DEV.autoDiscPull * dt);
+        r.x += dx / d * m;
+        r.y += dy / d * m;
       }
     }
     if (!only) for (const q of shots) {
@@ -14522,6 +14535,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       S2.shake = Math.min(7, S2.shake + 2);
       titleCarve(S2, s.x, s.y, r);
       for (const g of S2.foes) if (Math.hypot(g.x - S2.scroll - s.x, g.ty - s.y) < r + g.r && foeOk(s, g)) hitFoe(S2, g, s.real ? s.dmg : 4, s.col, s.by);
+      if (s.only && s.only.kind === "player" && S2.lvl && S2.lvl.hurt) {
+        const ru = S2.runners[Number(s.only.id) - 1];
+        if (ru && !ru.out && Math.hypot(ru.x + PW / 2 - s.x, ru.y + PH / 2 - s.y) < r + 8) S2.lvl.hurt(S2, ru.id, s.real ? s.dmg : 4);
+      }
       for (const p of S2.props) if (p.k === "lamp" && !p.gone && lampHit(p, s.x, s.y, r)) popLamp(S2, p);
     } else if (s.pit) {
       titleCarve(S2, s.x, s.y, s.pit * 0.7);
@@ -15907,7 +15924,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
       if (s.pull && !s.foe) for (const a of holePull(s, S2.foes, S2.scroll, S2.shots, dt, DEV.bhPull * s.pull / 70)) burst(S2, a.x, a.y, 3, "#c58cff", 40, "spark", 0.25);
       if (s.vac) {
-        vacPull(s, S2.foes, S2.scroll, S2.shots, dt, VAC_PULL, S2.coins, S2.loot);
+        vacPull(s, S2.foes, S2.scroll, S2.shots, dt, VAC_PULL, S2.coins, S2.loot, S2.runners);
         continue;
       }
       if (s.heal) {
@@ -15944,6 +15961,19 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
       }
       if (s.life <= 0) continue;
+      if (s.only && s.only.kind === "player" && s.age > 0.12 && S2.lvl && S2.lvl.hurt) {
+        const ru = S2.runners[Number(s.only.id) - 1];
+        if (ru && !ru.out && Math.abs(ru.x + PW / 2 - s.x) < 7 + s.size && Math.abs(ru.y + PH / 2 - s.y) < 11 + s.size) {
+          burst(S2, s.x, s.y, 6, s.col, 60, "spark", 0.25);
+          snd(S2, "hit", s.x, s.y);
+          if (s.explode) shotEnd(S2, s);
+          else {
+            s.life = 0;
+            S2.lvl.hurt(S2, ru.id, s.dmg);
+          }
+          continue;
+        }
+      }
       for (const f of S2.foes) {
         if (f.hp > 0 && Math.hypot(f.x - S2.scroll - s.x, f.ty - s.y) < f.r + s.size && foeOk(s, f)) {
           hitFoe(S2, f, s.real ? s.dmg : s.dmg * 1.5, s.col, s.by);
@@ -27965,6 +27995,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     "autoClearWait",
     "autoCtlWait",
     "autoDeathStop",
+    "autoDiscPull",
     "autoExoPrice",
     "autoFireJump",
     "autoFireJumpP",
@@ -34455,16 +34486,26 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { t: { kind: "creature", id: "hamahakki" }, label: "Spiders" },
     { t: { kind: "object", id: "gold" }, label: "Gold" },
     { t: { kind: "object", id: "red" }, label: "Red crystals" },
-    { t: { kind: "object", id: "green" }, label: "Green crystals" }
+    { t: { kind: "object", id: "green" }, label: "Green crystals" },
+    // the players (owner, v1.0.71): P1..P4, all four shown whoever is in the team
+    { t: { kind: "player", id: "1" }, label: "P1" },
+    { t: { kind: "player", id: "2" }, label: "P2" },
+    { t: { kind: "player", id: "3" }, label: "P3" },
+    { t: { kind: "player", id: "4" }, label: "P4" }
   ];
   var isAutoTarget = (t) => !!t && DISCRIM_TARGETS.some((d) => d.t.kind === t.kind && d.t.id === t.id);
   function drawTarget(ctx, t, px) {
     const c = px / 2;
     ctx.save();
-    if (t.kind === "creature") {
+    if (t.kind === "player") {
+      const s = Math.round(px * 0.8), o = (px - s) / 2;
+      ctx.translate(o, o);
+      helmetIcon(ctx, s, TITLE_COLS[Number(t.id) - 1 & 3]);
+    } else if (t.kind === "creature") {
       const k = enemyFor(t.id, 1), s = px * 0.36 / k.r;
       ctx.translate(c, c);
       ctx.scale(s, s);
+      if (t.id === "hamahakki") ctx.filter = "brightness(2.2)";
       const e = { x: 0, y: 0, ty: 0, r: k.r, phase: 0, hp: 1, hpMax: 1, cd: 0, flash: 0, lx: 1, ly: 0, hx: 0, hy: 0, tgt: null, rest: 0, k, touch: 0, charge: 0 };
       try {
         drawEnemy(ctx, e, 0);
@@ -35856,7 +35897,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   var isDiscrim = (id) => id === "discrim" || !!id && id.startsWith("discrim:");
   function DiscrimPop({ at, cur, pick, close }) {
-    const W = 3 * 58 + 16, H = 2 * 66 + 34, vw = window.innerWidth || 412;
+    const W = 3 * 58 + 16, H = 2 * 66 + 50 + 38, vw = window.innerWidth || 412;
     const left = Math.max(8, Math.min(vw - W - 8, at.x - W / 2));
     const top = at.top - H - 8 >= 8 ? at.top - H - 8 : at.bottom + 8;
     const shut = (e) => {
@@ -35864,6 +35905,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       e.stopPropagation();
       close();
     };
+    const btn = (d) => h("button", {
+      key: d.t.kind + d.t.id,
+      className: "adbtn" + (d.t.kind === "player" ? " pl" : "") + (cur && cur.kind === d.t.kind && cur.id === d.t.id ? " on" : ""),
+      "data-tgt": d.t.kind === "player" ? "p" + d.t.id : d.t.id,
+      title: d.label,
+      onPointerDown: (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        pick(d.t);
+      }
+    }, h(TargetPic, { t: d.t, size: d.t.kind === "player" ? 26 : 38 }), h("span", null, d.label));
     return ReactDOM.createPortal(
       h(
         "div",
@@ -35873,17 +35925,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           "div",
           { className: "adbox", style: { left: left + "px", top: top + "px", width: W + "px" } },
           h("div", { className: "adtitle" }, "Discriminate: only…"),
-          h("div", { className: "adgrid" }, DISCRIM_TARGETS.map((d) => h("button", {
-            key: d.t.id,
-            className: "adbtn" + (cur && cur.kind === d.t.kind && cur.id === d.t.id ? " on" : ""),
-            "data-tgt": d.t.id,
-            title: d.label,
-            onPointerDown: (e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              pick(d.t);
-            }
-          }, h(TargetPic, { t: d.t, size: 38 }), h("span", null, d.label))))
+          h("div", { className: "adgrid" }, DISCRIM_TARGETS.filter((d) => d.t.kind !== "player").map(btn)),
+          h("div", { className: "adgrid p4" }, DISCRIM_TARGETS.filter((d) => d.t.kind === "player").map(btn))
         )
       ),
       document.body
