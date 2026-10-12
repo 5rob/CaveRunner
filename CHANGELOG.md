@@ -5,6 +5,15 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.70 — CaveRunner Auto: trajectory mods part B (homing, seeker, short-range, auto-aim, gravity, anti-gravity, horizontal) (branch `autobattler`)
+Released 2026-10-13 on the branch. Agent ~9 min (worktree `cr-traj`); the owner asked for it to ship when done.
+- src/auto/traj.js `trajHome` / `trajAim` / `trajGrav` / `trajLob`: Homing (90 reach, 3 rad/s a copy, after 0.1 s), Seeker (locks one
+  creature within 220 till it dies, 10 rad/s), Short-range (nothing till one is within 36, then 16 rad/s), Auto-Aim (first frame at the
+  nearest within 170; off GUN_TODO), Gravity 260 down / Anti-Gravity 200 up a copy (launch-angle knob), Horizontal Path (kept level,
+  speed and damage knobs). Each its Trajectory knob group + TRAJ_GROUP (the Edit button). spells/mods.js: those mods count themselves
+  on the shot (`homN`, `seekN`, `nearN`, `gravN`, `floatN`; the old game ignores them). Suite `auto-traj` (35 checks).
+- Gravity's bolt lands on the preview's floor short of the target (`trGravG` / `trGravLob` to tune).
+
 ## v1.0.69 — CaveRunner Auto: trajectory mods part A (orbit, spiral, boomerang, ping-pong) and the Dev Edit button on mod cards (branch `autobattler`)
 Released 2026-10-13 on the branch. Agent ~12 min (worktree `cr-traj`); owner OK'd the shots.
 - `trajStep` (src/auto/traj.js, pure): the old game's pathStep rules with Auto's sizes from knobs (Dev tab Trajectory, a group per
