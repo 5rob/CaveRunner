@@ -101,5 +101,25 @@ check('flame specks: rolled from the knobs', fl.length > 5 && fl.every(q => q.r 
 check('smoke: rolled from the knobs', sm.length > 0 && sm.every(q => q.max >= D.fxSmLifeLo - 1e-9 && q.max <= D.fxSmLifeHi + 1e-9 && q.a <= 1 && q.a >= 1 - D.fxSmAlphaJit - 1e-9), sm.length);
 const off = fxRun(0, 0);
 check('… none with their rates at 0', off.length === 0, off.length);
+// (v1.0.61) silk on its own knobs: a burning strand smokes at autoSilkSmoke; its burn-through is autoSilkCut, not the vines'
+const silkRun = (smoke, cut, vineCut) => {
+  const keep = [D.autoSilkSmoke, D.autoSilkCut, D.autoBurnCut]; D.autoSilkSmoke = smoke; D.autoSilkCut = cut; D.autoBurnCut = vineCut;
+  const { S } = G.labScene(VH, 3);
+  S.props.length = 0; S.webs.length = 0; S.parts.length = 0;
+  S.props.push({ k: 'climb', st: 'silk', ox: 300, x: 0, y: G.LAB_ROOF, len: 70, seed: 0.3, side: 1, burn: 1, ac: Math.floor(300 / G.TCELL), ar: Math.floor((G.LAB_ROOF - 1) / G.TCELL) });
+  S.scroll = G.labClamp(190);
+  let puffs = 0, drops = 0;
+  const seen = new Set();
+  for (let i = 0; i < 30 * 3; i++) {
+    G.titleStep(S, dt);
+    for (const p of S.parts) if (p.kind === 'fsmoke' && !seen.has(p)) { seen.add(p); puffs++; }
+    for (const p of S.props) if (p.drop && p.rv != null && !seen.has(p)) { seen.add(p); drops++; }
+  }
+  [D.autoSilkSmoke, D.autoSilkCut, D.autoBurnCut] = keep;
+  return { puffs, drops };
+};
+const sm1 = silkRun(30, 0, 0), sm0 = silkRun(0, 0, 0);
+check('a burning strand smokes (autoSilkSmoke), not at 0', sm1.puffs >= 3 && sm0.puffs === 0, [sm1.puffs, sm0.puffs]);
+check("silk burns through by autoSilkCut, not the vines' knob", silkRun(0, 0.5, 0).drops > 0 && silkRun(0, 0, 0.5).drops === 0);
 console.log(fails ? `${fails} FAILED` : 'all passed');
 process.exit(fails ? 1 : 0);

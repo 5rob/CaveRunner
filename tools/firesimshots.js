@@ -47,10 +47,10 @@ require('../tests/build')();
   await page.evaluate(() => { document.getElementById('sheet').style.display = 'flex'; });
   await page.screenshot({ path: path.join(OUT, 'fs-b-spots.png') });
   await page.evaluate(() => { document.getElementById('sheet').remove(); });
-  // Fire held over the timber
-  await pan('timber'); await page.waitForTimeout(200);
+  // Fire held over the timber (or the spot named after the out dir: node tools/firesimshots.js <out> webs)
+  await pan(process.argv[3] || 'timber'); await page.waitForTimeout(200);
   await page.locator('.firego').dispatchEvent('pointerdown');
-  await page.waitForTimeout(1200);
+  await page.waitForTimeout(+(process.argv[4] || 1200));   // [ms]: how long it's held before the shot
   await page.screenshot({ path: path.join(OUT, 'fs-c-jets.png') });
   await page.evaluate(() => dispatchEvent(new PointerEvent('pointerup')));
   // (v1.0.60) the flames-and-smoke group: its first knobs, then its gradient editors

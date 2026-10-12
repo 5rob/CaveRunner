@@ -710,7 +710,7 @@ const AHEAD = 130;
 export const TITLE_BACK = 400;
 // how far behind the screen's left edge things are culled (world units, negative): d on the title, TITLE_BACK in a level
 /** @param {TitleScene} S @param {number} d */
-const behind = (S, d) => (S.lvl ? -TITLE_BACK : d);
+const behind = (S, d) => (S.lab ? -Infinity : S.lvl ? -TITLE_BACK : d);   // (Dev's fire sim pans both ways: nothing culled, v1.0.61)
 // a sound for the title's player (ui/titlesound.js), at screen point (x, y); a frame's are played and cleared there
 /** @param {TitleScene} S @param {string} k @param {number} x @param {number} y @param {any} [a] */
 const snd = (S, k, x, y, a) => { if (S.snd.length < 80) S.snd.push({ k, x, y, a }); };
@@ -983,6 +983,7 @@ function cutWeb(S, L, u, burn) {
   };
   /** @param {number} x @param {number} y @param {Pt[]} P */
   const piece = (x, y, P) => {
+    if (titleSolid(S, x - S.scroll, y + 2)) return;   // (v1.0.61) its end on the floor: nothing to hang down from (it hung into the rock)
     const h = hold(x, y), p = hangPiece(S, 'silk', x, y, P, burn, !!h);
     if (p && h) { p.ac = h[0]; p.ar = h[1]; }
   };
@@ -2274,25 +2275,28 @@ function stepFire(S, dt) {
     if (p.arc) { cutArch(S, p, ((p.u0 || 0.5) + (p.u1 || 0.5)) / 2, true); continue; }   // lit by hand: cut there
     // up from its tip (silk TITLE_WEBFIRE × faster), at TITLE_FIRESPEED × the game's (a CaveRunner Auto level: DEV.autoVineFire ×,
     // owner v1.0.50: it was too slow to see); a swinging one's tip where it hangs
+    // (owner v1.0.61) silk has its own knobs in Auto's rules (Dev → Fire: webs (silk)); vines theirs
+    const sk = autoOn(S) && p.st === 'silk';
     const vf = autoOn(S) ? DEV.autoVineFire : TITLE_FIRESPEED, rate = kr('firePlant', R) * vf * (p.st === 'silk' ? (autoOn(S) ? DEV.autoWebFire : TITLE_WEBFIRE) : 1);
     // Auto's level (owner v1.0.55: only the tip looked alight) three states along it: unburnt from the root to p.lit, burning
     // p.lit..p.ch (alight all along, drawn so: titledraw), charred and crumbling p.ch..p.len (DEV.autoVineAsh long), its end
     // falling away as ash; the title: burning at the tip, as ever (p.ch = p.len)
     const was = p.len;
-    if (autoOn(S)) { p.ch = (p.ch ?? p.len) - rate * dt; p.len = Math.min(p.len, p.ch + DEV.autoVineAsh); } else p.ch = p.len -= rate * dt;
+    if (autoOn(S)) { p.ch = (p.ch ?? p.len) - rate * dt; p.len = Math.min(p.len, p.ch + (sk ? DEV.autoSilkAsh : DEV.autoVineAsh)); } else p.ch = p.len -= rate * dt;
     const top = Math.max(0, p.ch);
     // the flames run up ahead of it: the front climbing at DEV.autoVineSpread × the burn (the title: 1, only the tip); in a level
     // (owner v1.0.55: not so even) spurting and stalling by noise along it and in time, ± DEV.autoVineJitter
-    const lit0 = p.lit ?? top, jit = autoOn(S) ? 1 + DEV.autoVineJitter * (2 * titleNoise(lit0 * 0.12 + p.seed * 97, p.seed * 31 + S.t * 1.5) - 1) : 1;
-    p.lit = Math.max(0, Math.min(top, lit0 - rate * (autoOn(S) ? DEV.autoVineSpread * jit : 1) * dt));
+    const lit0 = p.lit ?? top, jit = autoOn(S) ? 1 + (sk ? DEV.autoSilkJitter : DEV.autoVineJitter) * (2 * titleNoise(lit0 * 0.12 + p.seed * 97, p.seed * 31 + S.t * 1.5) - 1) : 1;
+    p.lit = Math.max(0, Math.min(top, lit0 - rate * (autoOn(S) ? (sk ? DEV.autoSilkSpread : DEV.autoVineSpread) * jit : 1) * dt));
     /** @type {any} */
     const pa = p;
     /** @param {number} k a point k along it from the root, world */
     const at = k => { const q = p.sw || p.tl ? vinePt(pa, Math.max(0, k)) : { x: 0, y: Math.max(0, k) }; return { x: p.ox + q.x, y: p.y + q.y }; };
     const T = at(top), F = at(p.lit), tx = T.x, ty = T.y, span = Math.max(0, top - p.lit);
     if (autoOn(S) && was > p.len && R() < dt * 25) { const q = at(p.len); burst(S, q.x - S.scroll, q.y, 1, R() < 0.3 ? '#ff7a2a' : '#2a201a', 15, 'chunk', 0.7); }
-    for (let n = R() < dt * (30 + span * 1.5) ? 1 + Math.floor(span / 25) : 0; n > 0; n--) { const q = at(p.lit + R() * span); flameAt(S, q.x - S.scroll + (R() - 0.5) * 4, q.y); }
-    if (R() < dt * (4 + span * 0.2)) { const q = at(p.lit + R() * span); fireSmoke(S, q.x - S.scroll, q.y); }
+    for (let n = R() < dt * (30 + span * 1.5) * (sk ? DEV.autoSilkFlames : 1) ? 1 + Math.floor(span / 25) : 0; n > 0; n--) { const q = at(p.lit + R() * span); flameAt(S, q.x - S.scroll + (R() - 0.5) * 4, q.y); }
+    // smoke along the burning stretch (silk: DEV.autoSilkSmoke puffs a second a strand, owner v1.0.61: it burns too short to smoke)
+    if (R() < dt * (sk ? DEV.autoSilkSmoke : 4 + span * 0.2)) { const q = at(p.lit + R() * Math.max(1, span)); fireSmoke(S, q.x - S.scroll, q.y); }
     // (Auto's level, owner v1.0.53/55) the whole burning stretch lights what's beside it, sideways too: a point every 6 along it
     // (at most 16), jumping DEV.autoFireJump at autoFireJumpP a tick; the title: the tip and the front, as ever
     const pts = [T];
@@ -2306,16 +2310,16 @@ function stepFire(S, dt) {
     if (ticks) for (const E of pts) {
       if (autoOn(S)) lightArea(S, E.x, E.y, DEV.autoLeafReach, DEV.autoLeafLight);
       else if (E === T || E === F) lightArea(S, E.x, E.y, 5, 0.3 * fireK(S));
-      if (autoOn(S)) spreadFrom(S, E.x, E.y, DEV.autoFireJump, DEV.autoFireJumpP); else spreadFrom(S, E.x, E.y);
+      if (sk) spreadFrom(S, E.x, E.y, DEV.autoSilkJump, DEV.autoSilkJumpP); else if (autoOn(S)) spreadFrom(S, E.x, E.y, DEV.autoFireJump, DEV.autoFireJumpP); else spreadFrom(S, E.x, E.y);
       for (const o of S.props) if (!o.burn && !o.gone && !o.arc && burns(o) && Math.abs(o.ox - E.x) < 10 && E.y > o.y - 4 && E.y < o.y + o.len + 4 && R() < (autoOn(S) ? DEV.autoVineCatch : 0.25 * Math.min(1, vf))) catchPlant(S, o);
     }
     // (Auto's rules, owner v1.0.57) now and then it burns right through somewhere along the burning stretch: the rest below
     // drops away, still burning, turning as it falls (DEV.autoBurnCut a fire tick, spin up to autoBurnSpin rad/s either way)
-    if (autoOn(S) && ticks && !p.drop && span > 6 && p.len - p.lit > 8 && R() < 1 - Math.pow(1 - DEV.autoBurnCut, ticks)) {
+    if (autoOn(S) && ticks && !p.drop && span > 6 && p.len - p.lit > 8 && R() < 1 - Math.pow(1 - (sk ? DEV.autoSilkCut : DEV.autoBurnCut), ticks)) {
       const k = p.lit + 2 + R() * (span - 4), q = at(k);
       /** @type {TProp} */
       const piece = { k: 'climb', st: p.st, ox: q.x, x: q.x - S.scroll, y: q.y, len: p.len - k, seed: R(), side: 1, burn: 1, ac: p.ac, ar: p.ar,
-        lit: 0, ch: Math.max(0, (p.ch ?? p.len) - k), drop: true, vy: 0, rot: 0, rv: (R() * 2 - 1) * DEV.autoBurnSpin };
+        lit: 0, ch: Math.max(0, (p.ch ?? p.len) - k), drop: true, vy: 0, rot: 0, rv: (R() * 2 - 1) * (sk ? DEV.autoSilkSpin : DEV.autoBurnSpin) };
       S.props.push(piece);
       p.len = k; p.ch = Math.min(p.ch ?? k, k);
       snd(S, 'rustle', q.x - S.scroll, q.y, { st: p.st === 'silk' ? 'myc' : 'vine', v: 0.3 });

@@ -702,13 +702,13 @@ DEV_GROUPS.push(['autofoes', 'Auto: enemies']);
 // the slow stop, Tap A, the helmet light, the blast, home)
 Object.assign(DEV_DEFAULTS, { autoMoveK: 0.55, autoJetTilt: 1, autoJetSmoke: 1, autoDeathStop: 1.5, autoTpBlink: 1, autoTpBoomWait: 0.6, autoTpBoomR: 60, autoFuelDrain: 1, autoFuelRegen: 1, autoCtlWait: 3, autoVineFire: 3, autoVineSpread: 24, autoVineJitter: 0.8, autoVineAsh: 6, autoFireJump: 14, autoFireJumpP: 0.5, autoNavCut: 0.8, autoNavGive: 1.2 });
 DEV_META.push(
-  { k: 'autoVineFire',   g: 'autofire', label: 'Auto levels: vines and silk burn up at this × the old game speed (the title menu: 0.1)', min: 0.1, max: 5, step: 0.1 },
+  { k: 'autoVineFire',   g: 'autofire', label: 'Vines burn up at this × the old game speed (the title menu: 0.1)', min: 0.1, max: 5, step: 0.1 },
   { k: 'autoVineSpread', g: 'autofire', label: 'Auto levels: the flames climb a vine this × faster than it burns away (1: only the tip burns)', min: 1, max: 40, step: 0.5 },
   { k: 'autoNavCut',     g: 'autodeath', label: 'Auto levels: rock facing back at a player more than this (its normal · the way on) he saws; less, he goes over or under', min: 0, max: 1, step: 0.05 },
   { k: 'autoNavGive',    g: 'autodeath', label: '… and saws anyway once he has tried going round it this long (s)', min: 0.2, max: 5, step: 0.1 },
   { k: 'autoVineJitter', g: 'autofire', label: 'Auto levels: the flames climbing a vine spurt and stall by this much either way (0: even)', min: 0, max: 1, step: 0.05 },
-  { k: 'autoVineAsh',    g: 'autofire', label: 'Auto levels: the charred, crumbling end of a burning vine or strand is this long (units)', min: 0, max: 20, step: 1 },
-  { k: 'autoFireJump',   g: 'autofire', label: 'Auto levels: fire jumps sideways from a burning vine or strand to vines and webs this near (units)', min: 2, max: 40, step: 1 },
+  { k: 'autoVineAsh',    g: 'autofire', label: 'Vines: the charred, crumbling end is this long (units)', min: 0, max: 20, step: 1 },
+  { k: 'autoFireJump',   g: 'autofire', label: 'Vines: fire jumps sideways from a burning vine to vines and webs this near (units)', min: 2, max: 40, step: 1 },
   { k: 'autoFireJumpP',  g: 'autofire', label: '… at this chance a fire tick, from each burning stretch', min: 0, max: 1, step: 0.05 },
   { k: 'autoCtlWait',    g: 'autodeath', label: 'Manual mode: seconds of the stick at rest before the autopilot takes him back', min: 0, max: 10, step: 0.25 },
   { k: 'autoMoveK',      g: 'autodeath', label: 'Hand-steered speed (× the old game’s walk, jet, their pushes; hub and steering a player; the hub’s followers too)', min: 0.2, max: 1.5, step: 0.05 },
@@ -732,11 +732,11 @@ DEV_META.push(
 Object.assign(DEV_DEFAULTS, { autoFireSpread: 0.1, autoWebFire: 3, autoVineCatch: 0.25, autoLeafReach: 5, autoLeafLight: 0.15, autoBurnCut: 0.015, autoBurnSpin: 2.5, fireTwinkle: 1, fireFlare: 0.06 });
 DEV_META.push(
   { k: 'autoFireSpread', g: 'autofire', label: 'Auto levels: fire spreads cell to cell, and onto vines and webs from burning ground, at this × the old game', min: 0, max: 3, step: 0.05 },
-  { k: 'autoWebFire',    g: 'autofire', label: 'Auto levels: silk burns up this × faster than vines', min: 0.1, max: 10, step: 0.1 },
+  { k: 'autoWebFire',    g: 'firesilk', label: 'Auto levels: silk burns up this × faster than vines', min: 0.1, max: 10, step: 0.1 },
   { k: 'autoVineCatch',  g: 'autofire', label: 'Auto levels: a vine beside a burning one catches at this chance a fire tick', min: 0, max: 1, step: 0.05 },
   { k: 'fireTwinkle',    g: 'autofire', label: 'Burning pixels twinkle at this × their own pace (0: still)', min: 0, max: 4, step: 0.05 },
   { k: 'fireFlare',      g: 'autofire', label: '… and flare bright at this chance a fire tick', min: 0, max: 0.5, step: 0.01 },
-  { k: 'autoBurnCut',    g: 'autofire', label: 'Vines and webs on fire burn right through at this chance a fire tick: the rest falls away', min: 0, max: 0.3, step: 0.005 },
+  { k: 'autoBurnCut',    g: 'autofire', label: 'Vines on fire burn right through at this chance a fire tick: the rest falls away', min: 0, max: 0.3, step: 0.005 },
   { k: 'autoBurnSpin',   g: 'autofire', label: '… a falling piece turns at up to this either way (rad/s)', min: 0, max: 10, step: 0.1 },
   { k: 'autoLeafReach',  g: 'autofire', label: 'Auto levels: a burning stem or leaf lights moss, grass and timber this near (units)', min: 0, max: 20, step: 0.5 },
   { k: 'autoLeafLight',  g: 'autofire', label: '… each of those cells at this chance a fire tick', min: 0, max: 1, step: 0.01 });
@@ -778,6 +778,20 @@ DEV_META.push(
   { k: 'fxSmGrad',  g: 'firefx', label: 'Smoke: colour over life (gradient)', type: 'grad' },
   { k: 'fxSmAlpha', g: 'firefx', label: 'Smoke: opacity over life (ramp)', type: 'ramp' });
 DEV_GROUPS.push(['firefx', 'Fire: flames and smoke']);
+// (owner v1.0.61) silk's own (art/titlescene.js stepFire's burning strands; webs are cut into hanging strands when they catch): the
+// same as the vines' (their defaults), plus how much it smokes and flames
+Object.assign(DEV_DEFAULTS, { autoSilkSpread: 24, autoSilkJitter: 0.8, autoSilkAsh: 6, autoSilkCut: 0.015, autoSilkSpin: 2.5, autoSilkJump: 14, autoSilkJumpP: 0.5, autoSilkSmoke: 10, autoSilkFlames: 1 });
+DEV_META.push(
+  { k: 'autoSilkSpread', g: 'firesilk', label: 'Silk: the flames climb a strand this × faster than it burns away', min: 1, max: 40, step: 0.5 },
+  { k: 'autoSilkJitter', g: 'firesilk', label: 'Silk: the climb spurts and stalls by this much either way (0: even)', min: 0, max: 1, step: 0.05 },
+  { k: 'autoSilkAsh',    g: 'firesilk', label: 'Silk: the charred, crumbling end is this long (units)', min: 0, max: 20, step: 1 },
+  { k: 'autoSilkCut',    g: 'firesilk', label: 'Silk: burns right through at this chance a fire tick, the rest falling away', min: 0, max: 0.3, step: 0.005 },
+  { k: 'autoSilkSpin',   g: 'firesilk', label: '… a falling piece turns at up to this either way (rad/s)', min: 0, max: 10, step: 0.1 },
+  { k: 'autoSilkJump',   g: 'firesilk', label: 'Silk: fire jumps sideways to vines and webs this near (units)', min: 2, max: 40, step: 1 },
+  { k: 'autoSilkJumpP',  g: 'firesilk', label: '… at this chance a fire tick, from each burning stretch', min: 0, max: 1, step: 0.05 },
+  { k: 'autoSilkSmoke',  g: 'firesilk', label: 'Silk: puffs of smoke a second off each burning strand', min: 0, max: 60, step: 0.5 },
+  { k: 'autoSilkFlames', g: 'firesilk', label: 'Silk: flame specks (× the vines\' amount)', min: 0, max: 5, step: 0.05 });
+DEV_GROUPS.push(['firesilk', 'Fire: webs (silk)']);
 // the level's drops (auto/loot.js, stage 6 part 2): gun mods, gems and exo mods from kills
 Object.assign(DEV_DEFAULTS, { autoLootMod: 6, autoLootRed: 2, autoLootExo: 30, autoLootEliteGold: 3, autoLootBossGold: 10 });
 DEV_META.push(
@@ -834,7 +848,7 @@ DEV_META.push(
 DEV_GROUPS.push(['autothrow', 'Auto: throw']);
 // before the last tab: that one also takes any group in no tab
 // (owner v1.0.56) every fire knob on its own page, under the fire sim's window (ui/firesim.js)
-DEV_TABS.splice(DEV_TABS.length - 1, 0, ['firesim', 'Fire sim', ['firelab', 'firefx', 'autofire', 'fire']]);
+DEV_TABS.splice(DEV_TABS.length - 1, 0, ['firesim', 'Fire sim', ['firelab', 'firefx', 'autofire', 'firesilk', 'fire']]);
 DEV_TABS.splice(DEV_TABS.length - 2, 0, ['auto', 'Auto', ['auto', 'autohub', 'automaps', 'autolevel', 'autoblocks', 'autoguns', 'autoperks', 'autofoes', 'autodeath', 'autoloot', 'autochests', 'autobag', 'autothrow']]);
 export const DEV_KEY = 'caverunner-dev';
 /** @type {DevKnobs} */

@@ -5,6 +5,19 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.61 — CaveRunner Auto: silk's own fire knobs and smoke; the fire sim keeps what's behind the view (branch `autobattler`)
+Released 2026-10-12 on the branch. PM alone, owner approved the shot.
+- Silk (owner: separate controls, no smoke seen): group `firesilk` "Fire: webs (silk)": `autoWebFire` moved in, and silk's
+  own `autoSilkSpread/Jitter/Ash/Cut/Spin/Jump/JumpP` (the vines' defaults), `autoSilkSmoke` (10 puffs a second a burning strand;
+  it burnt too short for the vines' span-based rate) and `autoSilkFlames` (×). stepFire's burning loop picks by `sk`. The
+  vines' knobs relabelled "Vines: …".
+- Fix: the fire sim culled props and webs left behind the view (`behind`, made for a level's forward scroll): panning right
+  and back lost the spots. `S.lab`: nothing culled.
+- Fix: a web line cut where its end sits on the floor hung a strand down into the rock; that end now just goes (`cutWeb`'s
+  piece: rock just below the anchor). Levels too.
+- Suite `auto-firelab` (a strand smokes at `autoSilkSmoke`, burns through by `autoSilkCut` not the vines'). Shots:
+  `tools/firesimshots.js <out> <spot> <ms held>`.
+
 ## v1.0.60 — CaveRunner Auto: Dev controls for the fire's flame specks and smoke (branch `autobattler`)
 Released 2026-10-12 on the branch. PM alone, owner OK'd the shots.
 - New group `firefx` "Fire: flames and smoke" (Fire sim tab). In Auto's rules (`autoOn`) `flameAt`, `fireSmoke` and `titleJet`
