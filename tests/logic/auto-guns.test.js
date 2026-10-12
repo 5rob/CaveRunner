@@ -76,7 +76,7 @@ const strip = s => { const o = Object.assign({}, s); delete o.x; delete o.y; del
 function sig(slots, withDelay) {
   const g = gunOf(slots), pas = G.gunPassives(g), plan = G.planCast(g);
   const shots = G.planShots(plan, 0, 0, 0, R0, 0).map(strip);
-  return { n: shots.length, s: JSON.stringify(shots), clocks: JSON.stringify([withDelay ? plan.delay : 0, G.effRecharge(g), pas.manaMax, pas.manaRegen]) };
+  return { n: shots.length, s: JSON.stringify(shots), clocks: JSON.stringify([withDelay ? plan.delay : 0, G.effRecharge(g), pas.manaMax, pas.manaRegen, pas.auto]) };
 }
 const base = sig(['bolt', 'bolt'], true), baseNoDelay = sig(['bolt', 'bolt'], false);
 const same = [];

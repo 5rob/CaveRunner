@@ -29,8 +29,6 @@ export const GUN_TODO = [
   'boom', 'brim', 'crystal', 'dormant', 'stillc', 'shieldc', 'vigour', 'storm', 'glitter',
   // modifiers whose effect the scene's shot model has no field for yet
   'knock', 'damper', 'crit', 'spiral', 'follow', 'autoaim', 'discrim', 'gpower', 'cluster',
-  // a passive with no meaning here (the scene always fires on its own)
-  'auto',
 ];
 
 // One frame of a gun's clocks: mana back at its regen (to its max), cast delay and recharge counting down.

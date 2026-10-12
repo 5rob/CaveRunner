@@ -5,6 +5,11 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.65 — CaveRunner Auto: Questions Later works on the players (branch `autobattler`)
+Released 2026-10-12 on the branch. PM alone (owner's note).
+- In a level a gun with Questions Later fires with nothing in sight, aimed ahead (`stepRunnerGun`; not in the hub). Off `GUN_TODO`;
+  `auto-guns` counts the passive; new suite `auto-qlater`.
+
 ## v1.0.64 — CaveRunner Auto: Dev buttons for red and green crystals (branch `autobattler`)
 Released 2026-10-12 on the branch. PM alone, owner OK'd the shots.
 - Dev panel (Auto): "+1 red crystal" / "+1 green crystal" put one in the bag a tap (`DevPanel` prop `onGem`). Shots: `tools/devshots.js` (e, f).

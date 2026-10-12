@@ -25,6 +25,7 @@ import { losClear } from '../world/vision.js';
 import { archCurve, archNear } from '../world/decorate.js';
 import { bendPush, swingStep, swings, tailStep, vinePt, webAt, webNearU } from '../world/sway.js';
 import { MODS, VAC_PULL } from '../spells/mods.js';
+import { gunPassives } from '../spells/cast.js';
 import { rustleStep } from '../audio/recipes.js';
 import { pixText, pixWidth } from './pixfont.js';
 import { GUN_HELD, gunMuzzle } from './sprites.js';
@@ -1815,7 +1816,8 @@ function stepRunnerGun(S, r, dt) {
     const g = pl.alive === false ? null : pl.guns[pl.active];
     if (!g) return;
     gunTick(g, dt);
-    if (!best) return;
+    // Questions Later (owner v1.0.65): the trigger always down, nothing in sight or not, in a level (not the hub); aimed ahead when nothing is
+    if (!best && !(S.lvl && gunPassives(g).auto)) return;
     const plan = gunPull(g, pl.guns);
     if (!plan) return;
     const mz = gunMuzzle(gx0 + Math.cos(r.ang) * 2.5, gy0, r.ang, GUN_HELD, r.kit.art), out = planShots(plan, r.ang, mz.x, mz.y, R, r.id), dm = perkDmg(pl);
