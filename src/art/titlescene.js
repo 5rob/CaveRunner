@@ -33,6 +33,7 @@ import { GUN_HELD, gunMuzzle } from './sprites.js';
 import { GUN_ART } from './gunart.js';
 import { VIG_HP, VIG_TICK, gunPull, gunTick, perkDmg, planShots, shotsOf } from './scenegun.js';
 import { playerStats } from '../auto/run.js';
+import { hasTraj, trajLook, trajStep } from '../auto/traj.js';
 import { FX_ROOM, MISSILE_TURN, MISSILE_WAIT, fireSpray, keepTrail, muzzleFx, nearestFoe, autoTrail, steerTo, zapFork, traceBeam, bigBoomFx, boomLook, holePull, vacPull } from '../auto/shotfx.js';
 import { teamClearer } from '../auto/clear.js';
 import { FUEL_TAKEOFF, fuelCan, fuelForClimb, fuelTick } from '../auto/fuel.js';
@@ -134,7 +135,7 @@ export const TITLE_HOME = {
  *   homing?: number, accel?: number, vmax?: number, chain?: number, hitFoe?: boolean,
  *   real?: boolean, by?: number, trig?: string | null, timer?: number, pay?: Shot[] | null, age?: number,
  *   sid?: string, tr?: number[], homeR?: number, light?: string, lightR?: number,
- *   beam?: number, ang?: number, bx?: number, by2?: number, pull?: number, vac?: number, heal?: number, tick?: number, follow?: number, sp0?: number, max?: number, hopT?: number, hx?: number, hy?: number }} TShot */
+ *   beam?: number, ang?: number, bx?: number, by2?: number, pull?: number, vac?: number, heal?: number, tick?: number, follow?: number, sp0?: number, orbit?: number, spiral?: number, boomer?: number, pong?: number, born?: number, back?: number, caught?: number, oa?: number, or0?: number, odir?: number, pdir?: number, ptr?: number[], max?: number, hopT?: number, hx?: number, hy?: number }} TShot */
 /** @typedef {{ x: number, y: number, vx: number, vy: number, life: number, max: number, r: number, col: string, kind: string, to?: { x: number, y: number, life: number }, fx?: boolean, u?: number, a?: number, g?: number }} TPart */
 /** @typedef {{ x: number, y: number, r: number, t: number, max: number, sid?: string }} TBoom */
 /** @typedef {{ pts: { x: number, y: number }[], t: number, col: string }} TZap */
@@ -1879,6 +1880,15 @@ function fieldFollow(S, s, dt) {
   const want = Math.min(FIELD_SPEED * 2, d * 5), k = Math.min(1, SEEK_ACC * dt);
   s.vx += (dx / d * want - s.vx) * k; s.vy += (dy / d * want - s.vy) * k;
 }
+// a trajectory shot's light trail (auto/traj.js trajLook: its points, DEV.tr…Trail long; drawn by game/render/titledraw.js)
+/** @param {TShot} s */
+function trajTrail(s) {
+  const L = trajLook(s), n = L ? Math.round(L.trail) : 0;
+  if (!n) { s.ptr = undefined; return; }
+  const t = s.ptr || (s.ptr = []);
+  t.unshift(s.x, s.y);
+  if (t.length > n * 2) t.length = n * 2;
+}
 // Follow Me on a shot (owner v1.0.67, the old game's spells/paths.js rule): a steady pull to its caster's middle, FOLLOW_PULL × its
 // strength, never faster than it set out, so it slows, stops and comes straight back (caster gone: it flies on)
 /** @param {TitleScene} S @param {TShot} s @param {number} dt */
@@ -2196,7 +2206,16 @@ function stepShots(S, dt) {
     s.vy += s.grav * dt;
     if (s.drag) { const k = Math.exp(-s.drag * dt); s.vx *= k; s.vy *= k; }
     if (s.follow && !s.beam && !s.heal) shotFollow(S, s, dt);   // Follow Me: pulled back to its caster (a field: fieldFollow)
-    s.x += s.vx * dt; s.y += s.vy * dt; s.life -= dt; s.spin += dt * 10;
+    // the purple trajectory mods (auto/traj.js): round, across, back, and to and fro, by the caster
+    let ex = 0, ey = 0;
+    const path = hasTraj(s) && !s.beam && !s.heal;
+    if (path) {
+      const r = S.runners[s.by], home = r && !r.out ? { x: r.x + PW / 2, y: r.y + PH / 2 } : null;
+      [ex, ey] = trajStep(s, dt, home);
+      if (s.life <= 0) continue;   // a boomerang caught
+    }
+    s.x += s.vx * dt + ex; s.y += s.vy * dt + ey; s.life -= dt; s.spin += dt * 10;
+    if (path) trajTrail(s);
     if (s.pay && s.trig === 'timer' && s.age >= (s.timer || 0)) release(S, s);
     // each shot's own trail (auto/shotfx.js); the old flame specks for the shots it doesn't know
     keepTrail(s);
@@ -2241,7 +2260,7 @@ function stepShots(S, dt) {
       }
     }
     if (s.life <= 0) continue;
-    if (titleSolid(S, s.x, s.y)) {
+    if (titleSolid(S, s.x, s.y) && !(s.orbit && DEV.trOrbRock && s.oa != null) && !(s.boomer && DEV.trBoRock && s.back)) {
       if (s.bounce > 0) {
         s.bounce--;
         snd(S, 'bounce', s.x, s.y);

@@ -1107,3 +1107,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .acard .tg .apixg{width:100%;height:100%}
 /* (owner) a pickup's tile flying into its bag slot (AutoScreen FlyTile): above the screen, not touchable */
 .afly{position:fixed;z-index:45;pointer-events:none;box-shadow:0 4px 14px rgba(0,0,0,0.55)}
+
+/* the mod card's dev-only Edit mode (ui/trajedit.js) */
+.pact.pedit{border-color:#b57cff;color:#b57cff}
+.trajedit{margin:8px 0;padding:8px;border:1px solid #b57cff;border-radius:10px}
+.trajedit .tehead{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:4px}
+.trajedit .tehead span{font-size:12px;color:var(--muted)}
+.trajedit .devrow input[type=range]{width:120px}
+.trajedit .tebtns{display:flex;gap:6px;flex-wrap:wrap}
+.trajedit .tebtns .pact{flex:1 1 0;margin:6px 0 0}
+.trajedit .tetext{width:100%;height:110px;font-size:11px;box-sizing:border-box}

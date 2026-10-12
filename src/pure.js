@@ -64,6 +64,7 @@ export * from './art/crackle.js';
 export * from './dev/autouse.js';
 export * from './art/cleared.js';
 export * from './auto/run.js';
+export * from './auto/traj.js';
 export * from './auto/maps.js';
 export * from './auto/fuel.js';
 export * from './auto/hang.js';
