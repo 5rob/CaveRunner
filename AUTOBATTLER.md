@@ -377,6 +377,7 @@ chest slow ×0.5. Grab radius 35% of a tile.
 | feedback round 2 (f) | done | v1.0.30 | PM: B hides the nav (a play tap shows it), one fixed camera (no gestures), jet thrust by the stick's height, auto-loot race. Agent (~13 min, worktree `cr-roam`): hold a helmet in a level → manual mode (scroll stops, damped follow forward/back, team behind, B lets go). Open: the view doesn't follow inside the arena; followers can trail the wrong side backing up. |
 | feedback round 2 (g) | done | v1.0.31 | PM alone. Owner: the jetpack way too fast and strong → `autoJetK` 0.55 (climb, sideways, push). |
 | gun drag | done | v1.0.43 | PM alone. Owner: drag a gun out of the nav's Guns row into the bag (`gunToBag`, `gunMove`; slide off a gun circle before the hold). |
+| falling ropes | built, waiting on the owner | (v1.0.63) | PM alone. Burnt-off vine and silk pieces fall as loose ropes and burn away where they lie (`ropeStep`). Committed, not pushed. |
 | fire sim layout | done | v1.0.62 | PM alone. The sim's window twice as tall and sticky as the Fire sim tab scrolls as one (`fsmode`); burnables 10% in from each spot's sides (`LAB_IN`). |
 | silk fire | done | v1.0.61 | PM alone. Silk's own fire knobs (`firesilk`) and smoke; the fire sim no longer culls what's behind the view; floor-anchored web ends don't hang into the rock. |
 | fire particles | done | v1.0.60 | PM alone. Dev controls for the fire's flame specks and smoke (`firefx`: ranges, rates, colour and opacity over life as gradients, randomness). |

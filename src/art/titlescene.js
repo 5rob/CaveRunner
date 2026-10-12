@@ -136,7 +136,7 @@ export const TITLE_HOME = {
 /** @typedef {{ x: number, y: number, r: number, t: number, max: number, sid?: string }} TBoom */
 /** @typedef {{ pts: { x: number, y: number }[], t: number, col: string }} TZap */
 // a prop: `ox` its world x (not `wx`: art/props.js reads that as an arch's or a vine's sideways bend)
-/** @typedef {{ k: string, st: string, ox: number, x: number, y: number, len: number, seed: number, side: number, burn: number, ac: number, ar: number, lit?: number, ch?: number, rot?: number, rv?: number,
+/** @typedef {{ k: string, st: string, ox: number, x: number, y: number, len: number, seed: number, side: number, burn: number, ac: number, ar: number, lit?: number, ch?: number, rot?: number, rv?: number, rp?: number[], rq?: number[], rs?: number,
  *   arc?: number[][], thick?: number, t?: number, span?: number, host?: TProp, gone?: boolean, u0?: number, u1?: number, alen?: number, u?: number,
  *   fall?: boolean, vy?: number, sw?: number, swv?: number, sj?: number, tl?: number[], tq?: number[], wx?: number, wy?: number, wvx?: number,
  *   wvy?: number, wu?: number, on?: TProp | null, drop?: boolean, links?: number }} TProp */
@@ -1234,6 +1234,7 @@ export function titleStep(S, dt) {
     if (p.gone) continue;
     if (p.drop) {                       // falling: down until it hits rock (a burning one lights it) or leaves
       p.vy = (p.vy || 0) + GRAVITY * 0.5 * dt; p.y += p.vy * dt;
+      if (p.rp) { ropeStep(S, p, dt); if (p.y > S.vh + 20) p.gone = true; continue; }   // (a burnt-off piece: a loose rope, v1.0.63)
       if (p.rv != null) p.rot = (p.rot || 0) + p.rv * dt;
       const lo = p.rv != null ? titleTumbleLow(p) : { x: p.x, y: p.y + 1 };
       if (p.y > S.vh) p.gone = true;
@@ -2316,10 +2317,15 @@ function stepFire(S, dt) {
     // (Auto's rules, owner v1.0.57) now and then it burns right through somewhere along the burning stretch: the rest below
     // drops away, still burning, turning as it falls (DEV.autoBurnCut a fire tick, spin up to autoBurnSpin rad/s either way)
     if (autoOn(S) && ticks && !p.drop && span > 6 && p.len - p.lit > 8 && R() < 1 - Math.pow(1 - (sk ? DEV.autoSilkCut : DEV.autoBurnCut), ticks)) {
-      const k = p.lit + 2 + R() * (span - 4), q = at(k);
+      const k = p.lit + 2 + R() * (span - 4), q = at(k), plen = p.len - k;
       /** @type {TProp} */
-      const piece = { k: 'climb', st: p.st, ox: q.x, x: q.x - S.scroll, y: q.y, len: p.len - k, seed: R(), side: 1, burn: 1, ac: p.ac, ar: p.ar,
-        lit: 0, ch: Math.max(0, (p.ch ?? p.len) - k), drop: true, vy: 0, rot: 0, rv: (R() * 2 - 1) * (sk ? DEV.autoSilkSpin : DEV.autoBurnSpin) };
+      const piece = { k: 'climb', st: p.st, ox: q.x, x: q.x - S.scroll, y: q.y, len: plen, seed: R(), side: 1, burn: 1, ac: p.ac, ar: p.ar,
+        lit: 0, ch: Math.max(0, (p.ch ?? p.len) - k), drop: true, vy: 0, sw: 0, sj: 0 };
+      // (owner v1.0.63: they fell as rigid sticks) a loose rope along where it hung, turning at first by the spin knob
+      /** @type {{ x: number, y: number }[]} */
+      const rope = [];
+      for (let i = 0, n = Math.max(3, Math.min(16, Math.round(plen / 4))); i <= n; i++) rope.push(at(k + plen * i / n));
+      ropeMake(piece, rope, (R() * 2 - 1) * (sk ? DEV.autoSilkSpin : DEV.autoBurnSpin), 1 / 30);
       S.props.push(piece);
       p.len = k; p.ch = Math.min(p.ch ?? k, k);
       snd(S, 'rustle', q.x - S.scroll, q.y, { st: p.st === 'silk' ? 'myc' : 'vine', v: 0.3 });
@@ -2335,6 +2341,55 @@ export const autoOn = S => !!(S.lvl || S.lab);
 // how fast fire spreads cell to cell and onto plants and webs: the title TITLE_FIRESPEED × the game's, a level DEV.autoFireSpread
 /** @param {TitleScene} S */
 const fireK = S => autoOn(S) ? DEV.autoFireSpread : TITLE_FIRESPEED;
+// A burnt-off piece of vine or silk falling (owner v1.0.63: not a stick): a loose rope of points p.rp (world x, y), last frame's
+// p.rq, links p.rs long. Gravity on every point, each link held to its length, a point stopped by rock (it slides a little):
+// it falls, drapes over what's below and burns away there (stepFire: links past its length go as it shortens). The plant is
+// drawn from it as a hanging tail is: root (ox, y) = its first point, p.tl the rest from there
+/** @param {TProp} p @param {{ x: number, y: number }[]} pts along it, root first @param {number} spin a turn (rad/s) about its middle @param {number} dt */
+function ropeMake(p, pts, spin, dt) {
+  const mx = pts.reduce((a, q) => a + q.x, 0) / pts.length, my = pts.reduce((a, q) => a + q.y, 0) / pts.length;
+  /** @type {number[]} */
+  const P = [], Q = [];
+  for (const q of pts) { P.push(q.x, q.y); Q.push(q.x + (q.y - my) * spin * dt, q.y - (q.x - mx) * spin * dt); }
+  p.rp = P; p.rq = Q; p.rs = p.len / (pts.length - 1);
+  ropeTail(p);
+}
+/** @param {TProp} p the plant's root and tail from its rope */
+function ropeTail(p) {
+  const P = p.rp || [];
+  p.ox = P[0]; p.y = P[1];
+  /** @type {number[]} */
+  const tl = [];
+  for (let i = 2; i < P.length; i += 2) tl.push(P[i] - P[0], P[i + 1] - P[1]);
+  p.tl = tl; p.tq = tl.slice(); p.links = tl.length / 2;
+}
+/** @param {TitleScene} S @param {TProp} p @param {number} dt */
+function ropeStep(S, p, dt) {
+  const P = p.rp, Q = p.rq;
+  if (!P || !Q) return;
+  // burnt shorter: the links past its length go
+  const n = Math.max(1, Math.min(P.length / 2 - 1, Math.ceil(p.len / (p.rs || 4) - 1e-6)));
+  if (P.length > 2 * (n + 1)) { P.length = 2 * (n + 1); Q.length = 2 * (n + 1); }
+  const seg = p.len / n, keep = Math.max(0, 1 - 1.2 * dt), g = GRAVITY * 0.5 * dt * dt;
+  for (let i = 0; i < P.length; i += 2) {
+    const vx = (P[i] - Q[i]) * keep, vy = (P[i + 1] - Q[i + 1]) * keep;
+    Q[i] = P[i]; Q[i + 1] = P[i + 1];
+    P[i] += vx; P[i + 1] += vy + g;
+  }
+  for (let it = 0; it < 4; it++) for (let i = 2; i < P.length; i += 2) {
+    const dx = P[i] - P[i - 2], dy = P[i + 1] - P[i - 1], d = Math.hypot(dx, dy) || 1e-6, e = (d - seg) / d * 0.5;
+    P[i] -= dx * e; P[i + 1] -= dy * e; P[i - 2] += dx * e; P[i - 1] += dy * e;
+  }
+  // rock: back up out of it, most of its speed lost (it lies there)
+  for (let i = 0; i < P.length; i += 2) {
+    if (!titleSolid(S, P[i] - S.scroll, P[i + 1])) continue;
+    let y = P[i + 1];
+    for (let k = 0; k < 10 && titleSolid(S, P[i] - S.scroll, y); k++) y -= 0.5;
+    P[i + 1] = y; Q[i + 1] = y; Q[i] = P[i] - (P[i] - Q[i]) * 0.2;
+  }
+  ropeTail(p);
+  p.x = p.ox - S.scroll;
+}
 // a burnt-through piece turning as it falls (rot about its middle): its lower end, screen x
 /** @param {TProp} p */
 export const titleTumbleLow = p => { const h = p.len / 2, s = Math.sin(p.rot || 0) * h, c = Math.cos(p.rot || 0) * h, e = c >= 0 ? 1 : -1; return { x: p.x - s * e, y: p.y + h + c * e }; };

@@ -68,6 +68,7 @@ const leafTest = light => {
 check('a burning vine\'s leaves light timber beside it', leafTest(0.3) > 0);
 check('… not with autoLeafLight 0', leafTest(0) === 0);
 // (v1.0.57) burning through: with autoBurnCut a lit vine drops pieces below the cut, turning as they fall, and they land
+const bendOf = p => { const P = p.rp, n = P.length / 2 - 1; if (n < 2) return 0; const ax = P[0], ay = P[1], bx = P[2 * n], by = P[2 * n + 1], L = Math.hypot(bx - ax, by - ay) || 1; let m = 0; for (let i = 1; i < n; i++) m = Math.max(m, Math.abs((P[2 * i] - ax) * (by - ay) - (P[2 * i + 1] - ay) * (bx - ax)) / L); return m; };
 const cutTest = P => {
   const keep = D.autoBurnCut; D.autoBurnCut = P;
   const { S } = G.labScene(VH, 3);
@@ -75,13 +76,13 @@ const cutTest = P => {
   S.props.push({ k: 'climb', st: 'vine', ox: 300, x: 0, y: G.LAB_ROOF, len: 80, seed: 0.3, side: 1, burn: 1, ac: Math.floor(300 / G.TCELL), ar: Math.floor((G.LAB_ROOF - 1) / G.TCELL) });
   S.scroll = G.labClamp(190);
   const seen = new Set();
-  for (let i = 0; i < 30 * 6; i++) { G.titleStep(S, dt); for (const p of S.props) if (p.drop && p.rv != null) seen.add(p); }
+  for (let i = 0; i < 30 * 6; i++) { G.titleStep(S, dt); for (const p of S.props) if (p.drop && p.rp) { seen.add(p); p.bend = Math.max(p.bend || 0, bendOf(p)); } }
   D.autoBurnCut = keep;
   return [...seen];
 };
 const cut = cutTest(0.5), none = cutTest(0);
-check('burns through: pieces fall away, each turning its own way', cut.length >= 2 && new Set(cut.map(p => p.rv.toFixed(3))).size === cut.length && cut.some(p => Math.abs(p.rot) > 0.05), cut.length);
-check('… and land (gone)', cut.every(p => p.gone));
+check('burns through: pieces fall away as loose ropes that bend (v1.0.63, not sticks)', cut.length >= 2 && cut.some(p => p.bend > 2), cut.map(p => +(p.bend || 0).toFixed(1)));
+check('… and burn away (gone)', cut.every(p => p.gone));
 check('… none with autoBurnCut 0', none.length === 0);
 // (v1.0.58) burning pixels twinkle: over 2 s (40 fire ticks) nearly every square changes colour several times; knobs 0: still
 const changes = () => { let n = 0; for (let c = 0; c < 20; c++) for (let r = 0; r < 10; r++) { let k = 0, was = G.fireTone(c, r, 0); for (let t = 1; t <= 40; t++) { const v = G.fireTone(c, r, t); if (v !== was) k++; was = v; } if (k >= 3) n++; } return n / 200; };
@@ -119,7 +120,7 @@ const silkRun = (smoke, cut, vineCut) => {
   for (let i = 0; i < 30 * 3; i++) {
     G.titleStep(S, dt);
     for (const p of S.parts) if (p.kind === 'fsmoke' && !seen.has(p)) { seen.add(p); puffs++; }
-    for (const p of S.props) if (p.drop && p.rv != null && !seen.has(p)) { seen.add(p); drops++; }
+    for (const p of S.props) if (p.drop && p.rp && !seen.has(p)) { seen.add(p); drops++; }
   }
   [D.autoSilkSmoke, D.autoSilkCut, D.autoBurnCut] = keep;
   return { puffs, drops };

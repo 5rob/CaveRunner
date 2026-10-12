@@ -13622,6 +13622,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (p.drop) {
         p.vy = (p.vy || 0) + GRAVITY * 0.5 * dt;
         p.y += p.vy * dt;
+        if (p.rp) {
+          ropeStep(S2, p, dt);
+          if (p.y > S2.vh + 20) p.gone = true;
+          continue;
+        }
         if (p.rv != null) p.rot = (p.rot || 0) + p.rv * dt;
         const lo = p.rv != null ? titleTumbleLow(p) : { x: p.x, y: p.y + 1 };
         if (p.y > S2.vh) p.gone = true;
@@ -15005,14 +15010,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         for (const o of S2.props) if (!o.burn && !o.gone && !o.arc && burns(o) && Math.abs(o.ox - E.x) < 10 && E.y > o.y - 4 && E.y < o.y + o.len + 4 && R() < (autoOn(S2) ? DEV.autoVineCatch : 0.25 * Math.min(1, vf))) catchPlant(S2, o);
       }
       if (autoOn(S2) && ticks && !p.drop && span > 6 && p.len - p.lit > 8 && R() < 1 - Math.pow(1 - (sk ? DEV.autoSilkCut : DEV.autoBurnCut), ticks)) {
-        const k = p.lit + 2 + R() * (span - 4), q = at(k);
+        const k = p.lit + 2 + R() * (span - 4), q = at(k), plen = p.len - k;
         const piece = {
           k: "climb",
           st: p.st,
           ox: q.x,
           x: q.x - S2.scroll,
           y: q.y,
-          len: p.len - k,
+          len: plen,
           seed: R(),
           side: 1,
           burn: 1,
@@ -15022,9 +15027,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           ch: Math.max(0, (p.ch ?? p.len) - k),
           drop: true,
           vy: 0,
-          rot: 0,
-          rv: (R() * 2 - 1) * (sk ? DEV.autoSilkSpin : DEV.autoBurnSpin)
+          sw: 0,
+          sj: 0
         };
+        const rope = [];
+        for (let i = 0, n = Math.max(3, Math.min(16, Math.round(plen / 4))); i <= n; i++) rope.push(at(k + plen * i / n));
+        ropeMake(piece, rope, (R() * 2 - 1) * (sk ? DEV.autoSilkSpin : DEV.autoBurnSpin), 1 / 30);
         S2.props.push(piece);
         p.len = k;
         p.ch = Math.min(p.ch ?? k, k);
@@ -15039,6 +15047,62 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   var autoOn = (S2) => !!(S2.lvl || S2.lab);
   var fireK = (S2) => autoOn(S2) ? DEV.autoFireSpread : TITLE_FIRESPEED;
+  function ropeMake(p, pts, spin, dt) {
+    const mx = pts.reduce((a, q) => a + q.x, 0) / pts.length, my = pts.reduce((a, q) => a + q.y, 0) / pts.length;
+    const P2 = [], Q = [];
+    for (const q of pts) {
+      P2.push(q.x, q.y);
+      Q.push(q.x + (q.y - my) * spin * dt, q.y - (q.x - mx) * spin * dt);
+    }
+    p.rp = P2;
+    p.rq = Q;
+    p.rs = p.len / (pts.length - 1);
+    ropeTail(p);
+  }
+  function ropeTail(p) {
+    const P2 = p.rp || [];
+    p.ox = P2[0];
+    p.y = P2[1];
+    const tl = [];
+    for (let i = 2; i < P2.length; i += 2) tl.push(P2[i] - P2[0], P2[i + 1] - P2[1]);
+    p.tl = tl;
+    p.tq = tl.slice();
+    p.links = tl.length / 2;
+  }
+  function ropeStep(S2, p, dt) {
+    const P2 = p.rp, Q = p.rq;
+    if (!P2 || !Q) return;
+    const n = Math.max(1, Math.min(P2.length / 2 - 1, Math.ceil(p.len / (p.rs || 4) - 1e-6)));
+    if (P2.length > 2 * (n + 1)) {
+      P2.length = 2 * (n + 1);
+      Q.length = 2 * (n + 1);
+    }
+    const seg = p.len / n, keep = Math.max(0, 1 - 1.2 * dt), g = GRAVITY * 0.5 * dt * dt;
+    for (let i = 0; i < P2.length; i += 2) {
+      const vx = (P2[i] - Q[i]) * keep, vy = (P2[i + 1] - Q[i + 1]) * keep;
+      Q[i] = P2[i];
+      Q[i + 1] = P2[i + 1];
+      P2[i] += vx;
+      P2[i + 1] += vy + g;
+    }
+    for (let it = 0; it < 4; it++) for (let i = 2; i < P2.length; i += 2) {
+      const dx = P2[i] - P2[i - 2], dy = P2[i + 1] - P2[i - 1], d = Math.hypot(dx, dy) || 1e-6, e = (d - seg) / d * 0.5;
+      P2[i] -= dx * e;
+      P2[i + 1] -= dy * e;
+      P2[i - 2] += dx * e;
+      P2[i - 1] += dy * e;
+    }
+    for (let i = 0; i < P2.length; i += 2) {
+      if (!titleSolid(S2, P2[i] - S2.scroll, P2[i + 1])) continue;
+      let y = P2[i + 1];
+      for (let k = 0; k < 10 && titleSolid(S2, P2[i] - S2.scroll, y); k++) y -= 0.5;
+      P2[i + 1] = y;
+      Q[i + 1] = y;
+      Q[i] = P2[i] - (P2[i] - Q[i]) * 0.2;
+    }
+    ropeTail(p);
+    p.x = p.ox - S2.scroll;
+  }
   var titleTumbleLow = (p) => {
     const h3 = p.len / 2, s = Math.sin(p.rot || 0) * h3, c = Math.cos(p.rot || 0) * h3, e = c >= 0 ? 1 : -1;
     return { x: p.x - s * e, y: p.y + h3 + c * e };
