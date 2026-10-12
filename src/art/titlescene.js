@@ -26,6 +26,7 @@ import { archCurve, archNear } from '../world/decorate.js';
 import { bendPush, swingStep, swings, tailStep, vinePt, webAt, webNearU } from '../world/sway.js';
 import { MODS, VAC_PULL } from '../spells/mods.js';
 import { gunPassives } from '../spells/cast.js';
+import { matchesTarget } from '../spells/discrim.js';
 import { FIELD_SPEED, FOLLOW_PULL, SEEK_ACC } from '../spells/paths.js';
 import { rustleStep } from '../audio/recipes.js';
 import { pixText, pixWidth } from './pixfont.js';
@@ -135,7 +136,7 @@ export const TITLE_HOME = {
  *   homing?: number, accel?: number, vmax?: number, chain?: number, hitFoe?: boolean,
  *   real?: boolean, by?: number, trig?: string | null, timer?: number, pay?: Shot[] | null, age?: number,
  *   sid?: string, tr?: number[], homeR?: number, light?: string, lightR?: number,
- *   beam?: number, ang?: number, bx?: number, by2?: number, pull?: number, vac?: number, heal?: number, tick?: number, follow?: number, sp0?: number, orbit?: number, spiral?: number, boomer?: number, pong?: number, born?: number, back?: number, caught?: number, oa?: number, or0?: number, odir?: number, pdir?: number, ptr?: number[], homN?: number, seekN?: number, nearN?: number, autoaim?: number, aimed?: number, gravN?: number, floatN?: number, flat?: number, tgt?: Enemy | null, sp1?: number, max?: number, hopT?: number, hx?: number, hy?: number }} TShot */
+ *   beam?: number, ang?: number, bx?: number, by2?: number, pull?: number, vac?: number, heal?: number, tick?: number, follow?: number, sp0?: number, orbit?: number, spiral?: number, boomer?: number, pong?: number, born?: number, back?: number, caught?: number, oa?: number, or0?: number, odir?: number, pdir?: number, ptr?: number[], homN?: number, seekN?: number, nearN?: number, autoaim?: number, aimed?: number, gravN?: number, floatN?: number, flat?: number, tgt?: Enemy | null, sp1?: number, max?: number, hopT?: number, hx?: number, hy?: number, only?: DiscrimTarget | null }} TShot */
 /** @typedef {{ x: number, y: number, vx: number, vy: number, life: number, max: number, r: number, col: string, kind: string, to?: { x: number, y: number, life: number }, fx?: boolean, u?: number, a?: number, g?: number }} TPart */
 /** @typedef {{ x: number, y: number, r: number, t: number, max: number, sid?: string }} TBoom */
 /** @typedef {{ pts: { x: number, y: number }[], t: number, col: string }} TZap */
@@ -1133,7 +1134,7 @@ function shotEnd(S, s) {
     burst(S, s.x, s.y, 4, '#3a3346', 25, 'smoke', 1.2);
     S.shake = Math.min(7, S.shake + 2);
     titleCarve(S, s.x, s.y, r);
-    for (const g of S.foes) if (Math.hypot(g.x - S.scroll - s.x, g.ty - s.y) < r + g.r) hitFoe(S, g, s.real ? s.dmg : 4, s.col, s.by);
+    for (const g of S.foes) if (Math.hypot(g.x - S.scroll - s.x, g.ty - s.y) < r + g.r && foeOk(s, g)) hitFoe(S, g, s.real ? s.dmg : 4, s.col, s.by);
     for (const p of S.props) if (p.k === 'lamp' && !p.gone && lampHit(p, s.x, s.y, r)) popLamp(S, p);
   } else if (s.pit) { titleCarve(S, s.x, s.y, s.pit * 0.7); snd(S, 'debris', s.x, s.y); }
   else if (!s.hitFoe) snd(S, 'rock', s.x, s.y);
@@ -2184,6 +2185,9 @@ function castBeam(S, s) {
   }
 }
 
+// Discriminate (owner, v1.0.71): a shot carrying `only` (a set copy before it) touches only that creature kind, passing through the rest
+/** @param {TShot} s @param {Enemy} f */
+const foeOk = (s, f) => !s.only || matchesTarget(s.only, { kind: 'creature', id: f.k.id });
 /** @param {TitleScene} S @param {number} dt */
 function stepShots(S, dt) {
   for (const s of S.shots) {
@@ -2226,7 +2230,7 @@ function stepShots(S, dt) {
     // trails are looks only: their own random numbers (Math.random), so the run plays the same
     if (s.sid) { if (S.parts.length < TITLE_PARTS - FX_ROOM) for (const p of autoTrail(s, dt, Math.random)) S.parts.push(p); }
     if (s.pull && !s.foe) for (const a of holePull(s, S.foes, S.scroll, S.shots, dt, DEV.bhPull * s.pull / 70)) burst(S, a.x, a.y, 3, '#c58cff', 40, 'spark', 0.25);
-    if (s.vac) { vacPull(s, S.foes, S.scroll, S.shots, dt, VAC_PULL); continue; }   // White Hole: hangs, pulls, hits nothing
+    if (s.vac) { vacPull(s, S.foes, S.scroll, S.shots, dt, VAC_PULL, S.coins, S.loot); continue; }   // White Hole: hangs, pulls, hits nothing
     if (s.heal) { if (!S.hub) s.x -= sv(S) * dt; if (s.follow) fieldFollow(S, s, dt); vigourStep(S, s, dt); continue; }   // Circle of Vigour: stays on the ground, heals, hits nothing
     if (s.sid === 'zap' && S.zaps.length < 24) { const fk = zapFork(s, S.foes, S.scroll, dt, Math.random); if (fk) S.zaps.push({ pts: fk, t: 0.12, col: s.col }); }
     if (s.hopT) s.hopT = Math.max(0, s.hopT - dt);
@@ -2243,7 +2247,7 @@ function stepShots(S, dt) {
     }
     if (s.life <= 0) continue;
     for (const f of S.foes) {
-      if (f.hp > 0 && Math.hypot(f.x - S.scroll - s.x, f.ty - s.y) < f.r + s.size) {
+      if (f.hp > 0 && Math.hypot(f.x - S.scroll - s.x, f.ty - s.y) < f.r + s.size && foeOk(s, f)) {
         hitFoe(S, f, s.real ? s.dmg : s.dmg * 1.5, s.col, s.by);
         if (s.trig === 'hit') { s.hitFoe = true; shotEnd(S, s); break; }
         snd(S, 'hit', s.x, s.y);

@@ -6,6 +6,7 @@ import { helmetIcon } from '../../art/sprites.js';
 import { h, useEffect, useRef } from '../h.js';
 
 import { NAV_ICONS, tintShade } from '../../art/itemicon.js';
+import { drawTarget } from '../../art/discrimicon.js';
 export { NAV_ICONS, tintShade };
 
 // one icon as SVG squares, centred in its box (it keeps its shape: width over height)
@@ -87,4 +88,20 @@ export function GlyphIcon({ glyph, col }) {
     ctx.putImageData(im, 0, 0);
   }, [glyph, col]);
   return h('canvas', { ref, className: 'apixg' });
+}
+
+// a Discriminate target's picture (art/discrimicon.js drawTarget: the creature's own sprite, the nugget, the crystal), size px
+/** @param {{ t: DiscrimTarget, size?: number, className?: string }} props */
+export function TargetPic({ t, size = 40, className }) {
+  /** @type {{ current: HTMLCanvasElement | null }} */
+  const ref = useRef(null);
+  useEffect(() => {
+    const c = ref.current, ctx = c && c.getContext('2d');
+    if (!c || !ctx) return;
+    const dpr = Math.min(3, window.devicePixelRatio || 1);
+    c.width = c.height = Math.round(size * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, size, size);
+    drawTarget(ctx, t, size);
+  }, [t.kind, t.id, size]);
+  return h('canvas', { ref, className: className || 'atgt', style: { width: size + 'px', height: size + 'px' } });
 }

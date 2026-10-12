@@ -80,7 +80,8 @@ function sig(slots, withDelay) {
 }
 const base = sig(['bolt', 'bolt'], true), baseNoDelay = sig(['bolt', 'bolt'], false);
 const same = [];
-for (const id of G.ALL_IDS.filter(k => k !== 'bolt')) {
+// (Discriminate: an unset copy does nothing by design; a set one carries `only`: tests/logic/auto-discrim.test.js)
+for (const id of G.ALL_IDS.filter(k => k !== 'bolt' && k !== 'discrim')) {
   const M = G.MODS[id], shot = M.kind === 'shot' || M.kind === 'static';
   let changed;
   if (shot) {

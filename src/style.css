@@ -1117,3 +1117,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .trajedit .tebtns{display:flex;gap:6px;flex-wrap:wrap}
 .trajedit .tebtns .pact{flex:1 1 0;margin:6px 0 0}
 .trajedit .tetext{width:100%;height:110px;font-size:11px;box-sizing:border-box}
+
+/* CaveRunner Auto: a held Discriminate tile's target popup (ui/auto/AutoScreen.js DiscrimPop, v1.0.71) */
+.adpop .shade{z-index:40}
+.adbox{position:fixed;z-index:41;box-sizing:border-box;padding:6px 8px 8px;border-radius:10px;background:#16121f;border:2px solid #b57cff;box-shadow:0 0 14px #b57cff66;color:#e9e3f5}
+.adtitle{font-size:12px;font-weight:700;margin:0 0 4px;text-align:center;color:#d6b8ff}
+.adgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+.adbtn{display:flex;flex-direction:column;align-items:center;justify-content:center;height:62px;padding:2px;border-radius:8px;border:1px solid #3a3150;background:#221b30;color:#e9e3f5;font-size:10px;line-height:1.1;touch-action:none}
+.adbtn.on{border-color:#b57cff;background:#3a2858}
+.adbtn span{margin-top:2px}
+.atgt.aon{position:absolute;right:-4px;bottom:-4px;pointer-events:none;background:#16121fcc;border-radius:6px}

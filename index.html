@@ -1126,6 +1126,16 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .trajedit .tebtns{display:flex;gap:6px;flex-wrap:wrap}
 .trajedit .tebtns .pact{flex:1 1 0;margin:6px 0 0}
 .trajedit .tetext{width:100%;height:110px;font-size:11px;box-sizing:border-box}
+
+/* CaveRunner Auto: a held Discriminate tile's target popup (ui/auto/AutoScreen.js DiscrimPop, v1.0.71) */
+.adpop .shade{z-index:40}
+.adbox{position:fixed;z-index:41;box-sizing:border-box;padding:6px 8px 8px;border-radius:10px;background:#16121f;border:2px solid #b57cff;box-shadow:0 0 14px #b57cff66;color:#e9e3f5}
+.adtitle{font-size:12px;font-weight:700;margin:0 0 4px;text-align:center;color:#d6b8ff}
+.adgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+.adbtn{display:flex;flex-direction:column;align-items:center;justify-content:center;height:62px;padding:2px;border-radius:8px;border:1px solid #3a3150;background:#221b30;color:#e9e3f5;font-size:10px;line-height:1.1;touch-action:none}
+.adbtn.on{border-color:#b57cff;background:#3a2858}
+.adbtn span{margin-top:2px}
+.atgt.aon{position:absolute;right:-4px;bottom:-4px;pointer-events:none;background:#16121fcc;border-radius:6px}
 </style>
 </head>
 <body>
@@ -9890,6 +9900,89 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return { rech, rechMul, manaMax, manaRegen, auto };
   }
 
+  // src/spells/discrim.js
+  var PRE = "discrim:";
+  function discrimId(t) {
+    const id = PRE + t.kind + ":" + t.id;
+    ensureMod(id);
+    return id;
+  }
+  function ensureMod(id) {
+    if (!id) return false;
+    if (MODS[id]) return true;
+    if (!id.startsWith(PRE)) return false;
+    const [kind, ...rest] = id.slice(PRE.length).split(":");
+    const tid = rest.join(":");
+    if (kind !== "creature" && kind !== "player" && kind !== "object" || !tid) return false;
+    const tgt = { kind, id: tid };
+    const b = MODS.discrim;
+    MODS[id] = Object.assign({}, b, {
+      id,
+      base: "discrim",
+      off: 1,
+      tgt,
+      name: "Discriminate → " + targetName(tgt),
+      info: "The next spell touches only " + targetName(tgt) + ", and passes through everything else (it still stops at rock, without digging or burning it)",
+      f: (s) => {
+        s.only = tgt;
+      }
+    });
+    FAMILY_OF[id] = FAMILY_OF.discrim;
+    MOD_PRICE[id] = MOD_PRICE.discrim;
+    MOD_TIER[id] = MOD_TIER.discrim;
+    return true;
+  }
+  var targetOf = (id) => id && MODS[id] && MODS[id].tgt || null;
+  var isUnsetDiscrim = (id) => id === "discrim";
+  function matchesTarget(t, thing) {
+    if (!t) return true;
+    return t.kind === thing.kind && t.id === thing.id;
+  }
+  var BODY_ICON = {
+    jelly: "🪼",
+    drone: "🤖",
+    spider: "🕷",
+    alien: "👽",
+    rat: "🐀",
+    nest: "🪺",
+    crawler: "🐾",
+    worm: "🪱",
+    blob: "🟢",
+    skull: "💀"
+  };
+  var OBJ_ICON = {
+    barrel: "🛢",
+    pod: "🫛",
+    lamp: "🏮",
+    cover: "🧱",
+    crystal: "💎",
+    mod: "✦",
+    gun: "🔫",
+    heart: "❤",
+    heal: "✚",
+    perk: "★",
+    noise: "🪨",
+    spike: "🔺",
+    drop: "🧊",
+    climb: "🌿"
+  };
+  function targetIcon(t) {
+    if (t.kind === "player") return "👨‍🚀";
+    if (t.kind === "creature") {
+      const c = CREATURES[t.id];
+      return c && BODY_ICON[c.body] || (c ? c.name.slice(0, 2) : "?");
+    }
+    return OBJ_ICON[t.id] || t.id.slice(0, 2);
+  }
+  function targetName(t) {
+    if (t.kind === "player") return "You";
+    if (t.kind === "creature") {
+      const c = CREATURES[t.id];
+      return c ? c.name : t.id;
+    }
+    return t.id.charAt(0).toUpperCase() + t.id.slice(1);
+  }
+
   // src/spells/paths.js
   var BOOM_TURN = 9;
   var BOOM_CATCH = 10;
@@ -12125,11 +12218,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     return ate;
   }
-  function vacPull(s, foes, scroll, shots, dt, pull) {
-    const reach2 = s.vac || 64;
+  function vacPull(s, foes, scroll, shots, dt, pull, coins, loot) {
+    const reach2 = s.vac || 64, only = s.only || null;
     const sp = (d) => pull * (0.35 + 0.65 * (1 - d / reach2));
-    for (const f of foes) {
+    if (!only || only.kind === "creature") for (const f of foes) {
       if (!(f.hp > 0)) continue;
+      if (only && !matchesTarget(only, { kind: "creature", id: f.k ? f.k.id : "" })) continue;
       const dx = s.x - (f.x - scroll), dy = s.y - f.ty, d = Math.hypot(dx, dy) || 1;
       if (d < reach2) {
         const m = Math.min(d, sp(d) * dt);
@@ -12138,7 +12232,19 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         f.ty += dy / d * m;
       }
     }
-    for (const q of shots) {
+    if (only && only.kind === "object") {
+      const things = only.id === "gold" ? coins || [] : (loot || []).filter((g) => g.it && g.it.kind === only.id);
+      for (const g of things) {
+        const dx = s.x + scroll - g.x, dy = s.y - g.y, d = Math.hypot(dx, dy) || 1;
+        if (d >= reach2) continue;
+        const m = Math.min(d, sp(d) * dt);
+        g.x += dx / d * m;
+        g.y += dy / d * m;
+        g.vx = 0;
+        g.vy = 0;
+      }
+    }
+    if (!only) for (const q of shots) {
       if (!q.foe || q.life <= 0) continue;
       const dx = s.x - q.x, dy = s.y - q.y, d = Math.hypot(dx, dy) || 1;
       if (d < reach2) {
@@ -12316,10 +12422,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     "storm",
     "glitter",
     // modifiers whose effect the scene's shot model has no field for yet
+    // (Discriminate left it in v1.0.71: shotsOf / whiteHole carry `only`; an unset copy does nothing, by design)
     "knock",
     "damper",
     "crit",
-    "discrim",
     "gpower",
     "cluster"
   ];
@@ -12415,7 +12521,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         autoaim: sh.autoaim || 0,
         gravN: sh.gravN || 0,
         floatN: sh.floatN || 0,
-        flat: sh.flat || 0
+        flat: sh.flat || 0,
+        only: sh.only || null
       });
     }
     return out;
@@ -12476,7 +12583,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       beam: 0,
       ang,
       pull: 0,
-      vac: sh.r || 64
+      vac: sh.r || 64,
+      only: sh.only || null
     };
   }
   var VIG_HP = 4, VIG_TICK = 0.4;
@@ -14413,7 +14521,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       burst(S2, s.x, s.y, 4, "#3a3346", 25, "smoke", 1.2);
       S2.shake = Math.min(7, S2.shake + 2);
       titleCarve(S2, s.x, s.y, r);
-      for (const g of S2.foes) if (Math.hypot(g.x - S2.scroll - s.x, g.ty - s.y) < r + g.r) hitFoe(S2, g, s.real ? s.dmg : 4, s.col, s.by);
+      for (const g of S2.foes) if (Math.hypot(g.x - S2.scroll - s.x, g.ty - s.y) < r + g.r && foeOk(s, g)) hitFoe(S2, g, s.real ? s.dmg : 4, s.col, s.by);
       for (const p of S2.props) if (p.k === "lamp" && !p.gone && lampHit(p, s.x, s.y, r)) popLamp(S2, p);
     } else if (s.pit) {
       titleCarve(S2, s.x, s.y, s.pit * 0.7);
@@ -15739,6 +15847,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (s.pit) titleCarve(S2, e.x, e.y, s.pit * 0.7);
     }
   }
+  var foeOk = (s, f) => !s.only || matchesTarget(s.only, { kind: "creature", id: f.k.id });
   function stepShots(S2, dt) {
     for (const s of S2.shots) {
       s.age = (s.age || 0) + dt;
@@ -15798,7 +15907,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
       if (s.pull && !s.foe) for (const a of holePull(s, S2.foes, S2.scroll, S2.shots, dt, DEV.bhPull * s.pull / 70)) burst(S2, a.x, a.y, 3, "#c58cff", 40, "spark", 0.25);
       if (s.vac) {
-        vacPull(s, S2.foes, S2.scroll, S2.shots, dt, VAC_PULL);
+        vacPull(s, S2.foes, S2.scroll, S2.shots, dt, VAC_PULL, S2.coins, S2.loot);
         continue;
       }
       if (s.heal) {
@@ -15836,7 +15945,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
       if (s.life <= 0) continue;
       for (const f of S2.foes) {
-        if (f.hp > 0 && Math.hypot(f.x - S2.scroll - s.x, f.ty - s.y) < f.r + s.size) {
+        if (f.hp > 0 && Math.hypot(f.x - S2.scroll - s.x, f.ty - s.y) < f.r + s.size && foeOk(s, f)) {
           hitFoe(S2, f, s.real ? s.dmg : s.dmg * 1.5, s.col, s.by);
           if (s.trig === "hit") {
             s.hitFoe = true;
@@ -16690,89 +16799,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       navYou: {}
       // the shared way-to-you field the hunting rats follow (see navFor)
     };
-  }
-
-  // src/spells/discrim.js
-  var PRE = "discrim:";
-  function discrimId(t) {
-    const id = PRE + t.kind + ":" + t.id;
-    ensureMod(id);
-    return id;
-  }
-  function ensureMod(id) {
-    if (!id) return false;
-    if (MODS[id]) return true;
-    if (!id.startsWith(PRE)) return false;
-    const [kind, ...rest] = id.slice(PRE.length).split(":");
-    const tid = rest.join(":");
-    if (kind !== "creature" && kind !== "player" && kind !== "object" || !tid) return false;
-    const tgt = { kind, id: tid };
-    const b = MODS.discrim;
-    MODS[id] = Object.assign({}, b, {
-      id,
-      base: "discrim",
-      off: 1,
-      tgt,
-      name: "Discriminate → " + targetName(tgt),
-      info: "The next spell touches only " + targetName(tgt) + ", and passes through everything else (it still stops at rock, without digging or burning it)",
-      f: (s) => {
-        s.only = tgt;
-      }
-    });
-    FAMILY_OF[id] = FAMILY_OF.discrim;
-    MOD_PRICE[id] = MOD_PRICE.discrim;
-    MOD_TIER[id] = MOD_TIER.discrim;
-    return true;
-  }
-  var targetOf = (id) => id && MODS[id] && MODS[id].tgt || null;
-  var isUnsetDiscrim = (id) => id === "discrim";
-  function matchesTarget(t, thing) {
-    if (!t) return true;
-    return t.kind === thing.kind && t.id === thing.id;
-  }
-  var BODY_ICON = {
-    jelly: "🪼",
-    drone: "🤖",
-    spider: "🕷",
-    alien: "👽",
-    rat: "🐀",
-    nest: "🪺",
-    crawler: "🐾",
-    worm: "🪱",
-    blob: "🟢",
-    skull: "💀"
-  };
-  var OBJ_ICON = {
-    barrel: "🛢",
-    pod: "🫛",
-    lamp: "🏮",
-    cover: "🧱",
-    crystal: "💎",
-    mod: "✦",
-    gun: "🔫",
-    heart: "❤",
-    heal: "✚",
-    perk: "★",
-    noise: "🪨",
-    spike: "🔺",
-    drop: "🧊",
-    climb: "🌿"
-  };
-  function targetIcon(t) {
-    if (t.kind === "player") return "👨‍🚀";
-    if (t.kind === "creature") {
-      const c = CREATURES[t.id];
-      return c && BODY_ICON[c.body] || (c ? c.name.slice(0, 2) : "?");
-    }
-    return OBJ_ICON[t.id] || t.id.slice(0, 2);
-  }
-  function targetName(t) {
-    if (t.kind === "player") return "You";
-    if (t.kind === "creature") {
-      const c = CREATURES[t.id];
-      return c ? c.name : t.id;
-    }
-    return t.id.charAt(0).toUpperCase() + t.id.slice(1);
   }
 
   // src/save/save.js
@@ -27335,6 +27361,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (!d || d.v !== AUTO_SAVE_V || !d.run || !Array.isArray(d.run.players) || !Array.isArray(d.run.bag)) return null;
       mapsOf(d.run);
       syncTier(d.run);
+      for (const it of d.run.bag) {
+        if (it && it.kind === "mod") ensureMod(it.id);
+        if (it && it.gun) for (const id of it.gun.slots || []) ensureMod(id);
+      }
+      for (const pl of d.run.players) for (const g of pl && pl.guns || []) for (const id of g && g.slots || []) ensureMod(id);
       return d.run;
     } catch (e) {
       return null;
@@ -34417,6 +34448,35 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     sim.rechLen = g.rechLen || 0;
   }
 
+  // src/art/discrimicon.js
+  var DISCRIM_TARGETS = [
+    { t: { kind: "creature", id: "rotta" }, label: "Rats" },
+    { t: { kind: "creature", id: "meduusa" }, label: "Jellyfish" },
+    { t: { kind: "creature", id: "hamahakki" }, label: "Spiders" },
+    { t: { kind: "object", id: "gold" }, label: "Gold" },
+    { t: { kind: "object", id: "red" }, label: "Red crystals" },
+    { t: { kind: "object", id: "green" }, label: "Green crystals" }
+  ];
+  var isAutoTarget = (t) => !!t && DISCRIM_TARGETS.some((d) => d.t.kind === t.kind && d.t.id === t.id);
+  function drawTarget(ctx, t, px) {
+    const c = px / 2;
+    ctx.save();
+    if (t.kind === "creature") {
+      const k = enemyFor(t.id, 1), s = px * 0.36 / k.r;
+      ctx.translate(c, c);
+      ctx.scale(s, s);
+      const e = { x: 0, y: 0, ty: 0, r: k.r, phase: 0, hp: 1, hpMax: 1, cd: 0, flash: 0, lx: 1, ly: 0, hx: 0, hy: 0, tgt: null, rest: 0, k, touch: 0, charge: 0 };
+      try {
+        drawEnemy(ctx, e, 0);
+      } catch (_) {
+      }
+    } else {
+      const pal = t.id === "red" ? CRYSTAL_PAL : t.id === "green" ? GREEN_PAL : void 0;
+      drawNugget(ctx, c, c, px * (pal ? 0.36 : 0.3), 3, 0.3, pal);
+    }
+    ctx.restore();
+  }
+
   // src/ui/auto/icons.js
   function PixIcon({ id, size = 26, tint }) {
     const ic = NAV_ICONS[id];
@@ -34493,6 +34553,19 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       ctx.putImageData(im, 0, 0);
     }, [glyph, col]);
     return h("canvas", { ref, className: "apixg" });
+  }
+  function TargetPic({ t, size = 40, className }) {
+    const ref = useRef(null);
+    useEffect(() => {
+      const c = ref.current, ctx = c && c.getContext("2d");
+      if (!c || !ctx) return;
+      const dpr = Math.min(3, window.devicePixelRatio || 1);
+      c.width = c.height = Math.round(size * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, size, size);
+      drawTarget(ctx, t, size);
+    }, [t.kind, t.id, size]);
+    return h("canvas", { ref, className: className || "atgt", style: { width: size + "px", height: size + "px" } });
   }
 
   // src/ui/volume.js
@@ -34689,6 +34762,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const [, setV] = useState(0);
     const noCard = null;
     const [card, setCard] = useState(noCard);
+    const noPop = null;
+    const [dpop, setDpop] = useState(noPop);
     const noDrag = null;
     const [drag, setDrag] = useState(noDrag);
     const press = useRef(null);
@@ -35066,15 +35141,35 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (grab) e.preventDefault();
       const p = { id: e.pointerId, x0: e.clientX, y0: e.clientY, src, grab, drag: false };
       press.current = p;
+      const it0 = srcItem(src), el = e.currentTarget;
+      const noMenu = (ev) => ev.preventDefault();
+      const holdT = it0 && it0.kind === "mod" && isDiscrim(it0.id) ? setTimeout(() => {
+        if (p.drag || press.current !== p) return;
+        p.held = true;
+        SFX.fx("open");
+        const r = el && el.getBoundingClientRect ? el.getBoundingClientRect() : { left: p.x0, top: p.y0, width: 0, height: 0 };
+        const n = navRef.current;
+        setDpop({ src, pl: n.p, g: n.g == null ? -1 : n.g, x: r.left + r.width / 2, top: r.top, bottom: r.top + r.height });
+      }, DEV.autoHoldMs) : 0;
+      if (holdT) addEventListener("contextmenu", noMenu);
       const finish = () => {
         press.current = null;
+        if (holdT) {
+          clearTimeout(holdT);
+          setTimeout(() => removeEventListener("contextmenu", noMenu), 400);
+        }
         removeEventListener("pointermove", move);
         removeEventListener("pointerup", up);
         removeEventListener("pointercancel", cancel);
       };
       const move = (ev) => {
         if (ev.pointerId !== p.id) return;
+        if (p.held) {
+          ev.preventDefault();
+          return;
+        }
         if (!p.drag && Math.hypot(ev.clientX - p.x0, ev.clientY - p.y0) > MOVE) {
+          if (holdT) clearTimeout(holdT);
           if (!p.grab) {
             if (ev.pointerType === "mouse") finish();
             return;
@@ -35091,6 +35186,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const up = (ev) => {
         if (ev.pointerId !== p.id) return;
         finish();
+        if (p.held) return;
         if (p.drag) drop(src, ev.clientX, ev.clientY, p);
         else if (Math.hypot(ev.clientX - p.x0, ev.clientY - p.y0) <= MOVE) {
           const it = srcItem(src);
@@ -35109,6 +35205,25 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       addEventListener("pointermove", move, { passive: false });
       addEventListener("pointerup", up);
       addEventListener("pointercancel", cancel);
+    };
+    const setTarget = (at, tg) => {
+      const id = discrimId(tg);
+      if (at.src.from === "bag") {
+        const it = run.bag[at.src.i];
+        if (it && it.kind === "mod" && isDiscrim(it.id) && it.id !== id) {
+          if (it.n > 1) {
+            it.n--;
+            if (bagAdd(run, { kind: "mod", id, n: 1 })) it.n++;
+          } else it.id = id;
+        }
+      } else if (at.src.from === "nav") {
+        const pl = run.players[at.pl], g = pl && pl.guns[at.g];
+        if (g && isDiscrim(g.slots[at.src.i])) g.slots[at.src.i] = id;
+      }
+      saveAutoRun(run);
+      SFX.ui("tap");
+      setDpop(null);
+      setV((v) => v + 1);
     };
     const dropAt2 = (src, x, y) => {
       const el = document.elementFromPoint(x, y);
@@ -35362,6 +35477,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       drag ? h(Ghost, { drag, it: srcItem(drag.src) }) : null,
       flies.map((f) => h(FlyTile, { key: f.k, f, done: () => setFlies((fs) => fs.filter((q) => q.k !== f.k)) })),
       card ? h(CardPop, { it: card, close: () => setCard(null) }) : null,
+      dpop ? h(DiscrimPop, { at: dpop, cur: (() => {
+        const it = srcItem(dpop.src);
+        return it ? targetOf(it.id) : null;
+      })(), pick: (tg) => setTarget(dpop, tg), close: () => {
+        SFX.fx("close");
+        setDpop(null);
+      } }) : null,
       devOpen ? h(DevPanel, {
         input,
         refresh: () => setV((v) => v + 1),
@@ -35558,6 +35680,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           C.y = vh / 2;
           C.lock = -1;
           cam = C;
+          if (window.__TEST_TITLE) window.__pvScene = S2;
           return { S: S2, C, warm: 20 };
         },
         quiet: true,
@@ -35722,11 +35845,48 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     else if (it.kind === "red") g = { glyph: "◆", col: "#ff4f5e" };
     else if (it.kind === "green") g = { glyph: "◆", col: "#5ee05a" };
     if (!g) return null;
+    const tg = it.kind === "mod" ? targetOf(it.id) : null;
     return h(
       "span",
       { className: "aglyph" },
       h(GlyphIcon, { glyph: g.glyph, col: g.col }),
-      g.tier ? h("i", { className: "atier" }, ROMAN2[g.tier - 1]) : null
+      g.tier ? h("i", { className: "atier" }, ROMAN2[g.tier - 1]) : null,
+      tg && isAutoTarget(tg) ? h(TargetPic, { t: tg, size: 22, className: "atgt aon" }) : null
+    );
+  }
+  var isDiscrim = (id) => id === "discrim" || !!id && id.startsWith("discrim:");
+  function DiscrimPop({ at, cur, pick, close }) {
+    const W = 3 * 58 + 16, H = 2 * 66 + 34, vw = window.innerWidth || 412;
+    const left = Math.max(8, Math.min(vw - W - 8, at.x - W / 2));
+    const top = at.top - H - 8 >= 8 ? at.top - H - 8 : at.bottom + 8;
+    const shut = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      close();
+    };
+    return ReactDOM.createPortal(
+      h(
+        "div",
+        { className: "adpop" },
+        h("div", { className: "shade", onPointerDown: shut }),
+        h(
+          "div",
+          { className: "adbox", style: { left: left + "px", top: top + "px", width: W + "px" } },
+          h("div", { className: "adtitle" }, "Discriminate: only…"),
+          h("div", { className: "adgrid" }, DISCRIM_TARGETS.map((d) => h("button", {
+            key: d.t.id,
+            className: "adbtn" + (cur && cur.kind === d.t.kind && cur.id === d.t.id ? " on" : ""),
+            "data-tgt": d.t.id,
+            title: d.label,
+            onPointerDown: (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              pick(d.t);
+            }
+          }, h(TargetPic, { t: d.t, size: 38 }), h("span", null, d.label))))
+        )
+      ),
+      document.body
     );
   }
   var MOVE = 6;

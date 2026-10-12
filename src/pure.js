@@ -53,6 +53,7 @@ export * from './creatures/alien.js';
 export * from './creatures/classic.js';
 export * from './creatures/draw.js';
 export * from './art/sprites.js';
+export * from './art/discrimicon.js';
 export * from './art/props.js';
 export * from './art/pixfont.js';
 export * from './art/sign.js';

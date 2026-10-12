@@ -30,7 +30,8 @@ export const GUN_TODO = [
   // statics and fields (they don't fly: planShots leaves them out)
   'boom', 'brim', 'crystal', 'dormant', 'stillc', 'shieldc', 'storm', 'glitter',
   // modifiers whose effect the scene's shot model has no field for yet
-  'knock', 'damper', 'crit', 'discrim', 'gpower', 'cluster',
+  // (Discriminate left it in v1.0.71: shotsOf / whiteHole carry `only`; an unset copy does nothing, by design)
+  'knock', 'damper', 'crit', 'gpower', 'cluster',
 ];
 
 // One frame of a gun's clocks: mana back at its regen (to its max), cast delay and recharge counting down.
@@ -88,7 +89,7 @@ export function shotsOf(sh, ang, x, y, R, by) {
       sid: sh.sid || '', light: sh.light || '', lightR: sh.lightR || 0,
       beam: Math.min(SG_BEAM_MAX, sh.beam || 0), ang: a, pull: sh.pull || 0, follow: sh.follow || 0,
       orbit: sh.orbit || 0, spiral: sh.spiral || 0, boomer: sh.boomer || 0, pong: sh.pong || 0,
-      homN: sh.homN || 0, seekN: sh.seekN || 0, nearN: sh.nearN || 0, autoaim: sh.autoaim || 0, gravN: sh.gravN || 0, floatN: sh.floatN || 0, flat: sh.flat || 0 });
+      homN: sh.homN || 0, seekN: sh.seekN || 0, nearN: sh.nearN || 0, autoaim: sh.autoaim || 0, gravN: sh.gravN || 0, floatN: sh.floatN || 0, flat: sh.flat || 0, only: sh.only || null });
   }
   return out;
 }
@@ -117,7 +118,7 @@ export function whiteHole(sh, ang, x, y, by) {
   return { x: x + Math.cos(ang) * WH_AHEAD, y: y + Math.sin(ang) * WH_AHEAD, vx: 0, vy: 0, size: 2, col: sh.col || '#9fd8ff', look: '', life, max: life,
     foe: false, spin: 0, grav: 0, drag: 0, explode: 0, pit: 0, fire: 0, bounce: 0, bounceE: 0, pierce: 0, dmg: 0, homing: 0, accel: 0, vmax: 0, chain: 0,
     real: true, by: by == null ? -1 : by, trig: null, timer: 0, pay: null, age: 0, sid: 'vacfield', light: '159,216,255', lightR: 30,
-    beam: 0, ang, pull: 0, vac: sh.r || 64 };
+    beam: 0, ang, pull: 0, vac: sh.r || 64, only: sh.only || null };
 }
 // Circle of Vigour (owner, v1.0.66): cast at the gun, it stays put on the ground for its life (titlescene.js stepShots moves it
 // back with the scroll; with Follow Me it comes to its caster and stays with him, v1.0.66; vigourStep: a living player inside heals VIG_HP every VIG_TICK s, × his heal perks, as the old game); harmless

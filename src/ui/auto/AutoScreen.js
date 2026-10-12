@@ -42,7 +42,9 @@ import { CARD_ICON, GunCard, ModCard, PerkCard } from '../cards.js';
 import { GunIcon, GunStats, PULL_COL } from '../editor.js';
 import { fireSimNew, pullSteps } from '../../spells/bagsim.js';
 import { PV_GRAPH_N, PV_HIT_T, previewScene, previewState, pvSim } from '../../auto/preview.js';
-import { GlyphIcon, HelmetIcon, PixIcon } from './icons.js';
+import { GlyphIcon, HelmetIcon, PixIcon, TargetPic } from './icons.js';
+import { discrimId, targetOf } from '../../spells/discrim.js';
+import { DISCRIM_TARGETS, isAutoTarget } from '../../art/discrimicon.js';
 import { PauseMenu } from '../pause.js';
 import { DevPanel } from '../devpanel.js';
 import { DEV_HOLD_MS, devShown, setDevShown } from '../devmode.js';
@@ -124,6 +126,9 @@ export function AutoScreen() {
   /** @type {BagItem | null} */
   const noCard = null;
   const [card, setCard] = useState(noCard);
+  /** @type {DiscrimPopAt | null} */
+  const noPop = null;
+  const [dpop, setDpop] = useState(noPop);   // a held Discriminate tile's target popup (owner, v1.0.71)
   /** @type {Drag | null} */
   const noDrag = null;
   const [drag, setDrag] = useState(noDrag);
@@ -397,14 +402,29 @@ export function AutoScreen() {
     /** @type {Press} */
     const p = { id: e.pointerId, x0: e.clientX, y0: e.clientY, src, grab, drag: false };
     press.current = p;
+    // (owner, v1.0.71) a Discriminate tile held DEV.autoHoldMs (not moved): its target popup, no drag, no card
+    const it0 = srcItem(src), el = e.currentTarget;
+    /** @param {any} ev */
+    const noMenu = ev => ev.preventDefault();
+    const holdT = it0 && it0.kind === 'mod' && isDiscrim(it0.id) ? setTimeout(() => {
+      if (p.drag || press.current !== p) return;
+      p.held = true; SFX.fx('open');
+      const r = el && el.getBoundingClientRect ? el.getBoundingClientRect() : { left: p.x0, top: p.y0, width: 0, height: 0 };
+      const n = navRef.current;
+      setDpop({ src, pl: n.p, g: n.g == null ? -1 : n.g, x: r.left + r.width / 2, top: r.top, bottom: r.top + r.height });
+    }, DEV.autoHoldMs) : 0;
+    if (holdT) addEventListener('contextmenu', noMenu);
     const finish = () => {
       press.current = null;
+      if (holdT) { clearTimeout(holdT); setTimeout(() => removeEventListener('contextmenu', noMenu), 400); }
       removeEventListener('pointermove', move); removeEventListener('pointerup', up); removeEventListener('pointercancel', cancel);
     };
     /** @param {any} ev */
     const move = ev => {
       if (ev.pointerId !== p.id) return;
+      if (p.held) { ev.preventDefault(); return; }
       if (!p.drag && Math.hypot(ev.clientX - p.x0, ev.clientY - p.y0) > MOVE) {
+        if (holdT) clearTimeout(holdT);
         if (!p.grab) { if (ev.pointerType === 'mouse') finish(); return; }
         p.drag = true;
         SFX.unlock(); SFX.ui('tap');
@@ -415,12 +435,28 @@ export function AutoScreen() {
     const up = ev => {
       if (ev.pointerId !== p.id) return;
       finish();
+      if (p.held) return;
       if (p.drag) drop(src, ev.clientX, ev.clientY, p);
       else if (Math.hypot(ev.clientX - p.x0, ev.clientY - p.y0) <= MOVE) { const it = srcItem(src); if (it && hasCard(it)) { SFX.ui('tap'); setCard(it); } }
     };
     /** @param {any} ev */
     const cancel = ev => { if (ev.pointerId === p.id) { finish(); setDrag(null); } };
     addEventListener('pointermove', move, { passive: false }); addEventListener('pointerup', up); addEventListener('pointercancel', cancel);
+  };
+  /** a target picked in the popup: the copy becomes discrimId(t) (one off a stack), the run saved @param {DiscrimPopAt} at @param {DiscrimTarget} tg */
+  const setTarget = (at, tg) => {
+    const id = discrimId(tg);
+    if (at.src.from === 'bag') {
+      const it = run.bag[at.src.i];
+      if (it && it.kind === 'mod' && isDiscrim(it.id) && it.id !== id) {
+        if (it.n > 1) { it.n--; if (bagAdd(run, { kind: 'mod', id, n: 1 })) it.n++; }
+        else it.id = id;
+      }
+    } else if (at.src.from === 'nav') {
+      const pl = run.players[at.pl], g = pl && pl.guns[at.g];
+      if (g && isDiscrim(g.slots[at.src.i])) g.slots[at.src.i] = id;
+    }
+    saveAutoRun(run); SFX.ui('tap'); setDpop(null); setV(v => v + 1);
   };
   /** the drop target under a point, and whether this item fits there @param {DragSrc} src @param {number} x @param {number} y @returns {DropAt | null} */
   const dropAt = (src, x, y) => {
@@ -625,6 +661,7 @@ export function AutoScreen() {
     drag ? h(Ghost, { drag, it: srcItem(drag.src) }) : null,
     flies.map(f => h(FlyTile, { key: f.k, f, done: () => setFlies(fs => fs.filter(q => q.k !== f.k)) })),
     card ? h(CardPop, { it: card, close: () => setCard(null) }) : null,
+    dpop ? h(DiscrimPop, { at: dpop, cur: (() => { const it = srcItem(dpop.src); return it ? targetOf(it.id) : null; })(), pick: tg => setTarget(dpop, tg), close: () => { SFX.fx('close'); setDpop(null); } }) : null,
     devOpen ? h(DevPanel, { input, refresh: () => setV(v => v + 1), close: () => { SFX.fx('close'); setDevOpen(false); },
       onGem: kind => { bagAdd(run, { kind, n: 1 }); saveAutoRun(run); SFX.fx('coin'); setV(v => v + 1); } }) : null,
     paused ? h(PauseMenu, { input, label: mapLabel(run), onNew: freshRun, close:() => { SFX.fx('close'); setPaused(false); } }) : null);
@@ -808,6 +845,7 @@ function PreviewWindow({ sim, sig, onLit, pl, gi, flip }) {
         const z = TITLE_VW / vw, C = titleCam(vh * z / 2, vh);
         C.z = C.zmin = z; C.w = vw; C.x = vw / 2; C.y = vh / 2; C.lock = -1;
         cam = C;
+        if (window.__TEST_TITLE) window.__pvScene = S;   // shot scripts reach the preview (tools/discrimshots.js)
         return { S, C, warm: 20 };
       },
       quiet: true, still: true,
@@ -934,15 +972,38 @@ function ItemIcon({ it }) {
   else if (it.kind === 'red') g = { glyph: '◆', col: '#ff4f5e' };
   else if (it.kind === 'green') g = { glyph: '◆', col: '#5ee05a' };
   if (!g) return null;
+  const tg = it.kind === 'mod' ? targetOf(it.id) : null;   // a set Discriminate: its target's picture in the corner (v1.0.71)
   return h('span', { className: 'aglyph' }, h(GlyphIcon, { glyph: g.glyph, col: g.col }),
-    g.tier ? h('i', { className: 'atier' }, ROMAN[g.tier - 1]) : null);
+    g.tier ? h('i', { className: 'atier' }, ROMAN[g.tier - 1]) : null,
+    tg && isAutoTarget(tg) ? h(TargetPic, { t: tg, size: 22, className: 'atgt aon' }) : null);
 }
 
 // ---- stage 8b: drag and drop, the cards ----
 /** @typedef {{ from: 'bag' | 'nav' | 'guns', i: number }} DragSrc */
 /** @typedef {{ key: string, to: 'nav' | 'gun' | 'bag' | 'scrap' | 'play' | 'player', s: number, ok: boolean }} DropAt */
 /** @typedef {{ src: DragSrc, x: number, y: number, over: DropAt | null, back: boolean }} Drag */
-/** @typedef {{ id: number, x0: number, y0: number, src: DragSrc, grab: boolean, drag: boolean }} Press */
+/** @typedef {{ id: number, x0: number, y0: number, src: DragSrc, grab: boolean, drag: boolean, held?: boolean }} Press */
+/** @typedef {{ src: DragSrc, pl: number, g: number, x: number, top: number, bottom: number }} DiscrimPopAt */
+/** a Discriminate copy, set or not @param {string | null | undefined} id */
+const isDiscrim = id => id === 'discrim' || (!!id && id.startsWith('discrim:'));
+
+// (owner, v1.0.71) a held Discriminate tile's targets (art/discrimicon.js DISCRIM_TARGETS), each its own picture, in a small box
+// above the tile (below it if there's no room); a tap on one sets the copy, a tap outside closes it
+/** @param {{ at: DiscrimPopAt, cur: DiscrimTarget | null, pick: (t: DiscrimTarget) => void, close: () => void }} props */
+function DiscrimPop({ at, cur, pick, close }) {
+  const W = 3 * 58 + 16, H = 2 * 66 + 34, vw = window.innerWidth || 412;
+  const left = Math.max(8, Math.min(vw - W - 8, at.x - W / 2));
+  const top = at.top - H - 8 >= 8 ? at.top - H - 8 : at.bottom + 8;
+  /** @param {any} e */
+  const shut = e => { e.preventDefault(); e.stopPropagation(); close(); };
+  return ReactDOM.createPortal(h('div', { className: 'adpop' },
+    h('div', { className: 'shade', onPointerDown: shut }),
+    h('div', { className: 'adbox', style: { left: left + 'px', top: top + 'px', width: W + 'px' } },
+      h('div', { className: 'adtitle' }, 'Discriminate: only…'),
+      h('div', { className: 'adgrid' }, DISCRIM_TARGETS.map(d => h('button', { key: d.t.id, className: 'adbtn' + (cur && cur.kind === d.t.kind && cur.id === d.t.id ? ' on' : ''), 'data-tgt': d.t.id, title: d.label,
+        onPointerDown: e => { e.preventDefault(); e.stopPropagation(); pick(d.t); } }, h(TargetPic, { t: d.t, size: 38 }), h('span', null, d.label)))))),
+    document.body);
+}
 // a press moving this far (px) is a drag (on the handle) or not a tap
 const MOVE = 6;
 const BIG_TAP = 350;   // (owner) two taps on empty bag slots within this (ms): the bag grows over the play area, or back
