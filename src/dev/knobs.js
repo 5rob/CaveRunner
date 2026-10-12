@@ -905,6 +905,48 @@ DEV_META.push(
   { k: 'trPoBack', g: 'trajpong', label: '… then back for (× the out time)', min: 0, max: 1.5, step: 0.05, type: 'slider' },
   { k: 'trPoLife', g: 'trajpong', label: 'Lifetime (× the shot’s)', min: 0.2, max: 4, step: 0.1, type: 'slider' });
 trajLook('trajpong', 'trPo', 10, 0);
+// Part B: Homing, Seeker, Short-range Homing, Auto-Aim, Gravity, Anti-Gravity, Horizontal Path (auto/traj.js)
+Object.assign(DEV_DEFAULTS, { trHoTurn: 3, trHoReach: 90, trHoWait: 0.1 });
+DEV_META.push(
+  { k: 'trHoTurn',  g: 'trajhoming', label: 'Turns onto a creature at (rad/s, one Homing)', min: 0.2, max: 30, step: 0.2, type: 'slider' },
+  { k: 'trHoReach', g: 'trajhoming', label: 'Sees creatures this near (units)', min: 10, max: 300, step: 5, type: 'slider' },
+  { k: 'trHoWait',  g: 'trajhoming', label: 'Starts turning after (s)', min: 0, max: 1, step: 0.02, type: 'slider' });
+trajLook('trajhoming', 'trHo', 8, 0);
+Object.assign(DEV_DEFAULTS, { trSeTurn: 10, trSeReach: 220, trSeWait: 0.06, trSeSpeed: 1 });
+DEV_META.push(
+  { k: 'trSeTurn',  g: 'trajseeker', label: 'Turns onto its target at (rad/s, one Seeker)', min: 0.5, max: 40, step: 0.5, type: 'slider' },
+  { k: 'trSeReach', g: 'trajseeker', label: 'Locks onto a creature this near (units), and keeps it till it dies', min: 20, max: 400, step: 5, type: 'slider' },
+  { k: 'trSeWait',  g: 'trajseeker', label: 'Starts seeking after (s)', min: 0, max: 1, step: 0.02, type: 'slider' },
+  { k: 'trSeSpeed', g: 'trajseeker', label: 'Speed once locked on (× its own)', min: 0.3, max: 3, step: 0.05, type: 'slider' });
+trajLook('trajseeker', 'trSe', 12, 8);
+Object.assign(DEV_DEFAULTS, { trNeTurn: 16, trNeReach: 36 });
+DEV_META.push(
+  { k: 'trNeTurn',  g: 'trajnear', label: 'Snaps onto a creature at (rad/s, one Short-range Homing)', min: 1, max: 60, step: 1, type: 'slider' },
+  { k: 'trNeReach', g: 'trajnear', label: '… only once it is this near (units)', min: 5, max: 150, step: 1, type: 'slider' });
+trajLook('trajnear', 'trNe', 6, 0);
+Object.assign(DEV_DEFAULTS, { trAimReach: 170, trAimMax: 180 });
+DEV_META.push(
+  { k: 'trAimReach', g: 'trajaim', label: 'Aims at the nearest creature this near as it leaves the barrel (units)', min: 10, max: 400, step: 5, type: 'slider' },
+  { k: 'trAimMax',   g: 'trajaim', label: '… turning at most this far from the way it was fired (degrees)', min: 0, max: 180, step: 5, type: 'slider' });
+trajLook('trajaim', 'trAim', 6, 0);
+Object.assign(DEV_DEFAULTS, { trGravG: 260, trGravLob: 0 });
+DEV_META.push(
+  { k: 'trGravG',   g: 'trajgrav', label: 'Pull down (units/s², one Gravity)', min: 0, max: 1200, step: 10, type: 'slider' },
+  { k: 'trGravLob', g: 'trajgrav', label: 'Lobbed up as it leaves (degrees, toward the roof)', min: 0, max: 60, step: 1, type: 'slider' });
+trajLook('trajgrav', 'trGrav', 6, 0);
+Object.assign(DEV_DEFAULTS, { trFloatG: 200, trFloatLob: 0 });
+DEV_META.push(
+  { k: 'trFloatG',   g: 'trajfloat', label: 'Lift (units/s², one Anti-Gravity)', min: 0, max: 1200, step: 10, type: 'slider' },
+  { k: 'trFloatLob', g: 'trajfloat', label: 'Aimed down as it leaves (degrees, toward the floor)', min: 0, max: 60, step: 1, type: 'slider' });
+trajLook('trajfloat', 'trFloat', 6, 0);
+Object.assign(DEV_DEFAULTS, { trFlatSpeed: 1, trFlatDmg: 1 });
+DEV_META.push(
+  { k: 'trFlatSpeed', g: 'trajflat', label: 'Speed (× its own)', min: 0.3, max: 3, step: 0.05, type: 'slider' },
+  { k: 'trFlatDmg',   g: 'trajflat', label: 'Damage (× on top of the mod’s 1.6)', min: 0.2, max: 4, step: 0.05, type: 'slider' });
+trajLook('trajflat', 'trFlat', 8, 0);
+Object.assign(TRAJ_GROUP, { homing: 'trajhoming', seeker: 'trajseeker', nearhome: 'trajnear', autoaim: 'trajaim', gravmod: 'trajgrav', float: 'trajfloat', flat: 'trajflat' });
+DEV_GROUPS.push(['trajhoming', 'Trajectory: Homing'], ['trajseeker', 'Trajectory: Seeker'], ['trajnear', 'Trajectory: Short-range Homing'], ['trajaim', 'Trajectory: Auto-Aim'],
+  ['trajgrav', 'Trajectory: Gravity'], ['trajfloat', 'Trajectory: Anti-Gravity'], ['trajflat', 'Trajectory: Horizontal Path']);
 DEV_GROUPS.push(['trajorbit', 'Trajectory: Orbiting Arc'], ['trajspiral', 'Trajectory: Spiral Arc'], ['trajboomer', 'Trajectory: Boomerang'], ['trajpong', 'Trajectory: Ping-Pong Path']);
 // one group's changed knobs, in Copy Dev settings' shape (the mod card's Edit → Copy)
 /** @param {string} g @param {string} name */
@@ -919,7 +961,7 @@ export function devReportOf(g, name) {
 // before the last tab: that one also takes any group in no tab
 // (owner v1.0.56) every fire knob on its own page, under the fire sim's window (ui/firesim.js)
 DEV_TABS.splice(DEV_TABS.length - 1, 0, ['firesim', 'Fire sim', ['firelab', 'firefx', 'autofire', 'firesilk', 'fire']]);
-DEV_TABS.splice(DEV_TABS.length - 2, 0, ['traj', 'Trajectory', ['trajorbit', 'trajspiral', 'trajboomer', 'trajpong']]);
+DEV_TABS.splice(DEV_TABS.length - 2, 0, ['traj', 'Trajectory', ['trajorbit', 'trajspiral', 'trajboomer', 'trajpong', 'trajhoming', 'trajseeker', 'trajnear', 'trajaim', 'trajgrav', 'trajfloat', 'trajflat']]);
 DEV_TABS.splice(DEV_TABS.length - 2, 0, ['auto', 'Auto', ['auto', 'autohub', 'automaps', 'autolevel', 'autoblocks', 'autoguns', 'autoperks', 'autofoes', 'autodeath', 'autoloot', 'autochests', 'autobag', 'autothrow']]);
 export const DEV_KEY = 'caverunner-dev';
 /** @type {DevKnobs} */

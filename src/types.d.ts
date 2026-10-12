@@ -91,6 +91,7 @@ interface GunArt { id: string; name: string; w: number; h: number; grip: number[
 
 /** one shot out of the barrel: blankShot's fields (spells/cast.js), after the modifiers */
 interface Shot {
+  homN?: number; seekN?: number; nearN?: number; gravN?: number; floatN?: number;   // which purple mod gave the homing / gravity (Auto's shotsOf reads them)
   dmg: number; speed: number; spread: number; size: number; life: number; count: number;
   bounce: number; pierce: number; explode: number; grav: number; homing: number; accel: number;
   bore: number; recoil: number; col: string; knock: number; crit: number; boomer: number;

@@ -86,6 +86,50 @@ function watch(slots, see) {
   check('Copy lists the changed knob', t.includes('(DEV.trOrbR): 33') && !t.includes('trSpHz'), t);
   G.DEV.trOrbR = k;
 }
+// ---- Part B ----
+for (const id of ['homing', 'seeker', 'nearhome', 'autoaim', 'gravmod', 'float', 'flat']) check(id + ' is off GUN_TODO, with its knob group', !G.GUN_TODO.includes(id) && G.DEV_META.some(m => m.g === G.TRAJ_GROUP[id]));
+// the scene shot carries which mod it was (shotsOf)
+/** @param {string[]} mods */
+const shotOf = mods => { const g = G.resetGun(Object.assign(G.scratchPistol(), { slots: mods.concat('bolt'), cap: mods.length + 1 })); const p = G.planCast(g); return G.shotsOf(p.shots[0], 0, 0, 0, () => 0.5, 0)[0]; };
+check('shotsOf carries the kinds', shotOf(['homing']).homN === 1 && shotOf(['seeker']).seekN === 1 && shotOf(['nearhome']).nearN === 1 && shotOf(['autoaim']).autoaim === 1);
+// homing kinds: a creature placed above and ahead; each turns its shot onto it (pure), Short-range only once near, Seeker locks on
+/** @param {any} kind @param {number} fy */
+function homeRun(kind, fy) {
+  const foe = { x: 60, ty: fy, hp: 5 }, s = Object.assign({ x: 0, y: 0, vx: 135, vy: 0, age: 0 }, kind);
+  let first = -1, best = 1e9;
+  for (let i = 0; i < 60; i++) {
+    s.age += 1 / 60; const tg = G.trajHome(s, [foe], 0, 1 / 60); if (tg && first < 0) first = i;
+    s.x += s.vx / 60; s.y += s.vy / 60; best = Math.min(best, Math.hypot(foe.x - s.x, foe.ty - s.y));
+  }
+  return { first, best: +best.toFixed(1), tgt: !!s.tgt };
+}
+const plainMiss = (() => { let best = 1e9; for (let i = 0; i < 60; i++) best = Math.min(best, Math.hypot(60 - i * 135 / 60, -30)); return best; })();
+const ho = homeRun({ homN: 1 }, -30), se = homeRun({ seekN: 1 }, -30), ne = homeRun({ nearN: 1 }, -30), neFar = homeRun({ nearN: 1 }, -60);
+check('homing turns onto a placed creature (closer than a plain shot passes)', ho.first >= 0 && ho.best < plainMiss - 5, { ho, plainMiss });
+check('seeker locks on and gets closer than homing', se.tgt && se.best <= ho.best, { se, ho });
+check('short-range homing waits till it is near', ne.first > ho.first && ne.best < plainMiss, { ne, ho });
+check('… and ignores one out of its reach', neFar.first < 0, neFar);
+// auto-aim: its first heading points at the nearest creature
+{
+  const s = { x: 0, y: 0, vx: 135, vy: 0 }, foes = [{ x: 80, ty: -40, hp: 3 }, { x: 150, ty: 50, hp: 3 }];
+  G.trajAim(s, foes, 0);
+  const err = Math.abs(Math.atan2(s.vy, s.vx) - Math.atan2(-40, 80));
+  check('auto-aim heads straight at the nearest creature', err < 0.01, err);
+  const s2 = { x: 0, y: 0, vx: 135, vy: 0 }; G.trajAim(s2, [], 0);
+  check('… and flies on with none in reach', s2.vy === 0 && s2.aimed === 1);
+}
+// gravity, anti-gravity and flat in a real level: the bolt's height change over its flight, against a plain bolt's
+/** @param {string[]} slots */
+function drop(slots) {
+  let dy = 0, n = 0, vyMax = 0;
+  watch(['auto'].concat(slots, 'bolt'), (s) => { if (s.y0 == null) s.y0 = s.y; if (s.age > 0.15 && s.age < 0.25) { dy += s.y - s.y0; n++; } vyMax = Math.max(vyMax, Math.abs(s.vy)); });
+  return { dy: n ? dy / n : 0, vyMax };
+}
+const pd = drop([]), gd = drop(['gravmod']), fd = drop(['float']), fl = drop(['flat']);
+check('gravity: its shot drops more than a plain one', gd.dy > pd.dy + 2, { gd, pd });
+check('anti-gravity: its shot rises against a plain one', fd.dy < pd.dy - 2, { fd, pd });
+check('flat: vy stays 0', fl.vyMax === 0, fl);
+check('flat: hits harder', shotOf(['flat']).dmg > shotOf([]).dmg);
 G.DEV.autoFoeElites = keep;
 console.log(fails ? `${fails} FAILED` : 'all passed');
 process.exit(fails ? 1 : 0);

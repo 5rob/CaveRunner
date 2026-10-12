@@ -120,3 +120,4 @@ and `game/systems/shotlooks.js`.
 - **`eat` tunnels through rock**: a bullet with `eat` digs and passes through instead of dying on
   the wall (else a fast Matter Eater outruns its hole). The Black Hole's dig (`eat: 19`) is exactly
   its drawn core.
+- **Auto's counters on a Shot** (Part B of the trajectory mods): Homing, Seeker, Short-range Homing, Gravity and Anti-Gravity also count themselves (`homN`, `seekN`, `nearN`, `gravN`, `floatN`, zero in `blankShot`) so CaveRunner Auto (art/scenegun.js, auto/traj.js) knows which mod gave the homing or gravity. The old game ignores them.

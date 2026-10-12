@@ -11,13 +11,21 @@ fs.mkdirSync(OUT, { recursive: true });
 require('./build')();
 require('../tests/build')();
 
-const GUNS = [
+const PART_A = [
   ['orbit', ['orbit', 'bolt', 'bolt'], 'Orbiting Arc + Spark Bolt: circling him with a light trail and glow'],
   ['spiral', ['spiral', 'bolt', 'bolt'], 'Spiral Arc + Spark Bolt: a widening side-to-side wave, capped'],
   ['boomer', ['boomer', 'bolt', 'bolt'], 'Boomerang + Spark Bolt: out ~55 units, turns and comes back to be caught'],
   ['pong', ['pong', 'bolt', 'bolt'], 'Ping-Pong Path + Spark Bolt: out, snaps back a little, on again'],
-  ['edit', ['orbit', 'bolt', 'bolt'], 'Orbiting Arc\'s card (tap the slot), Edit tapped: its knobs as sliders, Copy / Reset all / Done', false, true],
+  ['edit', ['orbit', 'bolt', 'bolt'], "Orbiting Arc's card (tap the slot), Edit tapped: its knobs as sliders, Copy / Reset all / Done", false, true],
 ];
+const PART_B = [
+  ['homing', ['homing', 'bolt', 'bolt'], 'Homing + Spark Bolt: curving onto the hologram target'],
+  ['autoaim', ['autoaim', 'bolt', 'bolt'], 'Auto-Aim + Spark Bolt: straight at the target from the barrel'],
+  ['gravmod', ['gravmod', 'bolt', 'bolt'], 'Gravity + Spark Bolt: arcing down'],
+  ['flat', ['flat', 'bolt', 'bolt'], 'Horizontal Path + Spark Bolt: dead level'],
+];
+// node tools/trajshots.js [outdir] [a|b]   (default: Part B)
+const GUNS = process.argv[3] === 'a' ? PART_A : PART_B;
 
 (async () => {
   const browser = await launch();

@@ -106,3 +106,4 @@
 
 - CaveRunner Auto's enemies (`g: 'autofoes'`, "Auto: enemies", **Auto** tab; `auto/enemies.js`, stage 6): `autoFoeDmg` (creatures hurt players × their damage, 0.5), `autoFoeElites` (elites a level, 2), `autoBossSize` (4), `autoBossHp` (12), `autoBossDmg` (3); `autoTierHp` (1.45) and `autoTierDmg` (1.15), v1.0.53: health and bite × that a level past 1, compounding (`autoFoe`).
 - **Trajectory mods (Part A):** groups `trajorbit`, `trajspiral`, `trajboomer`, `trajpong` on the **Trajectory** tab, every row a `slider` (motion, then `Look:` rows); `TRAJ_GROUP` maps a mod id to its group (the mod card's Edit button, ui/trajedit.js); `devReportOf(g, name)` is one group's Copy Dev settings. Read by auto/traj.js.
+- **Trajectory mods (Part B):** groups `trajhoming`, `trajseeker`, `trajnear`, `trajaim`, `trajgrav`, `trajfloat`, `trajflat` on the Trajectory tab, each in `TRAJ_GROUP` (so the card's Edit button works).

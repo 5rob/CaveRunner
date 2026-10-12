@@ -7,9 +7,10 @@
 import { effRecharge, gunPassives, planCast } from '../spells/cast.js';
 import { shuffleOrder } from '../spells/guns.js';
 import { MODS } from '../spells/mods.js';
+import { DEV } from '../dev/knobs.js';
 import { perkBag } from '../data/perks.js';
 import { LIFE_K } from '../auto/shotfx.js';
-import { trajLife } from '../auto/traj.js';
+import { trajGrav, trajLife, trajLob } from '../auto/traj.js';
 /** @typedef {import('./titlescene.js').TShot} SceneShot */
 
 const SP = 0.5;                       // the scene's speed scale (titlescene.js SP: the game's speeds at the title's screen)
@@ -29,7 +30,7 @@ export const GUN_TODO = [
   // statics and fields (they don't fly: planShots leaves them out)
   'boom', 'brim', 'crystal', 'dormant', 'stillc', 'shieldc', 'storm', 'glitter',
   // modifiers whose effect the scene's shot model has no field for yet
-  'knock', 'damper', 'crit', 'autoaim', 'discrim', 'gpower', 'cluster',
+  'knock', 'damper', 'crit', 'discrim', 'gpower', 'cluster',
 ];
 
 // One frame of a gun's clocks: mana back at its regen (to its max), cast delay and recharge counting down.
@@ -75,17 +76,19 @@ export function shotsOf(sh, ang, x, y, R, by) {
   const off = (sh.ang || 0) * Math.PI / 180;
   const life = Math.min(SG_LIFE_MAX, (sh.fuse ? Math.min(sh.life, sh.fuse + 0.5) : sh.life) * SG_LIFE) * (LIFE_K[sh.sid] || 1) * trajLife(sh);
   for (let i = 0; i < n; i++) {
-    const a = ang + off + (R() - 0.5) * (sh.spread || 0) * Math.PI / 180;
-    const v = (sh.speed || 0) * SP;
+    let a = ang + off + (R() - 0.5) * (sh.spread || 0) * Math.PI / 180 + trajLob(sh, ang);
+    if (sh.flat) a = Math.cos(a) < 0 ? Math.PI : 0;   // Horizontal Path: dead level (auto/traj.js knobs trFlat…)
+    const v = (sh.speed || 0) * SP * (sh.flat ? DEV.trFlatSpeed : 1);
     out.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, size: Math.max(1, Math.min(SG_SIZE_MAX, sh.size || 2)),
-      col: sh.col || MODS.bolt.col || '#fff', look: sh.look || '', life, foe: false, spin: R() * 6, grav: (sh.grav || 0) * SP,
+      col: sh.col || MODS.bolt.col || '#fff', look: sh.look || '', life, foe: false, spin: R() * 6, grav: trajGrav(sh, SP),
       drag: sh.drag || 0, explode: Math.min(SG_EXPLODE_MAX, sh.explode || 0), pit: Math.min(SG_PIT_MAX, Math.max(sh.pit || 0, sh.bore || 0)),
-      fire: sh.fire || 0, bounce: sh.bounce || 0, bounceE: sh.bounceE || 0.92, pierce: sh.pierce || 0, dmg: sh.dmg || 0,
+      fire: sh.fire || 0, bounce: sh.bounce || 0, bounceE: sh.bounceE || 0.92, pierce: sh.pierce || 0, dmg: (sh.dmg || 0) * (sh.flat ? DEV.trFlatDmg : 1),
       homing: sh.sid === 'missile' ? Math.max(1, sh.homing || 0) : sh.homing || 0, homeR: sh.sid === 'missile' ? 400 : 0, accel: sh.accel || 0, vmax: (sh.vmax || 0) * SP, chain: sh.chain || 0,
       real: true, by: by == null ? -1 : by, trig: sh.trig || null, timer: sh.timer || 0, pay: sh.payload && sh.payload.length ? sh.payload : null, age: 0,
       sid: sh.sid || '', light: sh.light || '', lightR: sh.lightR || 0,
       beam: Math.min(SG_BEAM_MAX, sh.beam || 0), ang: a, pull: sh.pull || 0, follow: sh.follow || 0,
-      orbit: sh.orbit || 0, spiral: sh.spiral || 0, boomer: sh.boomer || 0, pong: sh.pong || 0 });
+      orbit: sh.orbit || 0, spiral: sh.spiral || 0, boomer: sh.boomer || 0, pong: sh.pong || 0,
+      homN: sh.homN || 0, seekN: sh.seekN || 0, nearN: sh.nearN || 0, autoaim: sh.autoaim || 0, gravN: sh.gravN || 0, floatN: sh.floatN || 0, flat: sh.flat || 0 });
   }
   return out;
 }

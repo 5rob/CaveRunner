@@ -2333,6 +2333,61 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "trPoLife", g: "trajpong", label: "Lifetime (× the shot’s)", min: 0.2, max: 4, step: 0.1, type: "slider" }
   );
   trajLook("trajpong", "trPo", 10, 0);
+  Object.assign(DEV_DEFAULTS, { trHoTurn: 3, trHoReach: 90, trHoWait: 0.1 });
+  DEV_META.push(
+    { k: "trHoTurn", g: "trajhoming", label: "Turns onto a creature at (rad/s, one Homing)", min: 0.2, max: 30, step: 0.2, type: "slider" },
+    { k: "trHoReach", g: "trajhoming", label: "Sees creatures this near (units)", min: 10, max: 300, step: 5, type: "slider" },
+    { k: "trHoWait", g: "trajhoming", label: "Starts turning after (s)", min: 0, max: 1, step: 0.02, type: "slider" }
+  );
+  trajLook("trajhoming", "trHo", 8, 0);
+  Object.assign(DEV_DEFAULTS, { trSeTurn: 10, trSeReach: 220, trSeWait: 0.06, trSeSpeed: 1 });
+  DEV_META.push(
+    { k: "trSeTurn", g: "trajseeker", label: "Turns onto its target at (rad/s, one Seeker)", min: 0.5, max: 40, step: 0.5, type: "slider" },
+    { k: "trSeReach", g: "trajseeker", label: "Locks onto a creature this near (units), and keeps it till it dies", min: 20, max: 400, step: 5, type: "slider" },
+    { k: "trSeWait", g: "trajseeker", label: "Starts seeking after (s)", min: 0, max: 1, step: 0.02, type: "slider" },
+    { k: "trSeSpeed", g: "trajseeker", label: "Speed once locked on (× its own)", min: 0.3, max: 3, step: 0.05, type: "slider" }
+  );
+  trajLook("trajseeker", "trSe", 12, 8);
+  Object.assign(DEV_DEFAULTS, { trNeTurn: 16, trNeReach: 36 });
+  DEV_META.push(
+    { k: "trNeTurn", g: "trajnear", label: "Snaps onto a creature at (rad/s, one Short-range Homing)", min: 1, max: 60, step: 1, type: "slider" },
+    { k: "trNeReach", g: "trajnear", label: "… only once it is this near (units)", min: 5, max: 150, step: 1, type: "slider" }
+  );
+  trajLook("trajnear", "trNe", 6, 0);
+  Object.assign(DEV_DEFAULTS, { trAimReach: 170, trAimMax: 180 });
+  DEV_META.push(
+    { k: "trAimReach", g: "trajaim", label: "Aims at the nearest creature this near as it leaves the barrel (units)", min: 10, max: 400, step: 5, type: "slider" },
+    { k: "trAimMax", g: "trajaim", label: "… turning at most this far from the way it was fired (degrees)", min: 0, max: 180, step: 5, type: "slider" }
+  );
+  trajLook("trajaim", "trAim", 6, 0);
+  Object.assign(DEV_DEFAULTS, { trGravG: 260, trGravLob: 0 });
+  DEV_META.push(
+    { k: "trGravG", g: "trajgrav", label: "Pull down (units/s², one Gravity)", min: 0, max: 1200, step: 10, type: "slider" },
+    { k: "trGravLob", g: "trajgrav", label: "Lobbed up as it leaves (degrees, toward the roof)", min: 0, max: 60, step: 1, type: "slider" }
+  );
+  trajLook("trajgrav", "trGrav", 6, 0);
+  Object.assign(DEV_DEFAULTS, { trFloatG: 200, trFloatLob: 0 });
+  DEV_META.push(
+    { k: "trFloatG", g: "trajfloat", label: "Lift (units/s², one Anti-Gravity)", min: 0, max: 1200, step: 10, type: "slider" },
+    { k: "trFloatLob", g: "trajfloat", label: "Aimed down as it leaves (degrees, toward the floor)", min: 0, max: 60, step: 1, type: "slider" }
+  );
+  trajLook("trajfloat", "trFloat", 6, 0);
+  Object.assign(DEV_DEFAULTS, { trFlatSpeed: 1, trFlatDmg: 1 });
+  DEV_META.push(
+    { k: "trFlatSpeed", g: "trajflat", label: "Speed (× its own)", min: 0.3, max: 3, step: 0.05, type: "slider" },
+    { k: "trFlatDmg", g: "trajflat", label: "Damage (× on top of the mod’s 1.6)", min: 0.2, max: 4, step: 0.05, type: "slider" }
+  );
+  trajLook("trajflat", "trFlat", 8, 0);
+  Object.assign(TRAJ_GROUP, { homing: "trajhoming", seeker: "trajseeker", nearhome: "trajnear", autoaim: "trajaim", gravmod: "trajgrav", float: "trajfloat", flat: "trajflat" });
+  DEV_GROUPS.push(
+    ["trajhoming", "Trajectory: Homing"],
+    ["trajseeker", "Trajectory: Seeker"],
+    ["trajnear", "Trajectory: Short-range Homing"],
+    ["trajaim", "Trajectory: Auto-Aim"],
+    ["trajgrav", "Trajectory: Gravity"],
+    ["trajfloat", "Trajectory: Anti-Gravity"],
+    ["trajflat", "Trajectory: Horizontal Path"]
+  );
   DEV_GROUPS.push(["trajorbit", "Trajectory: Orbiting Arc"], ["trajspiral", "Trajectory: Spiral Arc"], ["trajboomer", "Trajectory: Boomerang"], ["trajpong", "Trajectory: Ping-Pong Path"]);
   function devReportOf(g, name) {
     const rows = DEV_META.filter((m) => m.g === g), changed = rows.filter((m) => DEV[m.k] !== DEV_DEFAULTS[m.k]);
@@ -2343,7 +2398,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return lines.join("\n");
   }
   DEV_TABS.splice(DEV_TABS.length - 1, 0, ["firesim", "Fire sim", ["firelab", "firefx", "autofire", "firesilk", "fire"]]);
-  DEV_TABS.splice(DEV_TABS.length - 2, 0, ["traj", "Trajectory", ["trajorbit", "trajspiral", "trajboomer", "trajpong"]]);
+  DEV_TABS.splice(DEV_TABS.length - 2, 0, ["traj", "Trajectory", ["trajorbit", "trajspiral", "trajboomer", "trajpong", "trajhoming", "trajseeker", "trajnear", "trajaim", "trajgrav", "trajfloat", "trajflat"]]);
   DEV_TABS.splice(DEV_TABS.length - 2, 0, ["auto", "Auto", ["auto", "autohub", "automaps", "autolevel", "autoblocks", "autoguns", "autoperks", "autofoes", "autodeath", "autoloot", "autochests", "autobag", "autothrow"]]);
   var DEV_KEY = "caverunner-dev";
   var DEV = Object.assign({}, DEV_DEFAULTS);
@@ -2704,6 +2759,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       info: "curves onto enemies",
       f: (s) => {
         s.homing += 3.5;
+        s.homN++;
       }
     },
     seeker: {
@@ -2716,6 +2772,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       f: (s) => {
         s.homing += 10;
         s.speed *= 0.8;
+        s.seekN++;
       }
     },
     bounce: {
@@ -3772,6 +3829,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       info: "Drags the shot down as it flies",
       f: (s) => {
         s.grav += 420;
+        s.gravN++;
       }
     },
     float: {
@@ -3784,6 +3842,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       info: "Lifts the shot as it flies",
       f: (s) => {
         s.grav -= 340;
+        s.floatN++;
       }
     },
     boomer: {
@@ -3915,6 +3974,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       f: (s) => {
         s.homing += 7;
         s.homeR = 70;
+        s.nearN++;
       }
     },
     flat: {
@@ -9567,6 +9627,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       follow: 0,
       followAim: 0,
       autoaim: 0,
+      homN: 0,
+      seekN: 0,
+      nearN: 0,
+      gravN: 0,
+      floatN: 0,
       assist: 0,
       only: null,
       homeR: sm.homeR || 0,
@@ -12148,6 +12213,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (s.spiral) return { trail: DEV.trSpTrail, alpha: DEV.trSpTrailA, width: DEV.trSpTrailW, glow: DEV.trSpGlow, glowA: DEV.trSpGlowA, tint: DEV.trSpTint };
     if (s.boomer) return { trail: DEV.trBoTrail, alpha: DEV.trBoTrailA, width: DEV.trBoTrailW, glow: DEV.trBoGlow, glowA: DEV.trBoGlowA, tint: DEV.trBoTint };
     if (s.pong) return { trail: DEV.trPoTrail, alpha: DEV.trPoTrailA, width: DEV.trPoTrailW, glow: DEV.trPoGlow, glowA: DEV.trPoGlowA, tint: DEV.trPoTint };
+    if (s.seekN) return { trail: DEV.trSeTrail, alpha: DEV.trSeTrailA, width: DEV.trSeTrailW, glow: DEV.trSeGlow, glowA: DEV.trSeGlowA, tint: DEV.trSeTint };
+    if (s.nearN) return { trail: DEV.trNeTrail, alpha: DEV.trNeTrailA, width: DEV.trNeTrailW, glow: DEV.trNeGlow, glowA: DEV.trNeGlowA, tint: DEV.trNeTint };
+    if (s.homN) return { trail: DEV.trHoTrail, alpha: DEV.trHoTrailA, width: DEV.trHoTrailW, glow: DEV.trHoGlow, glowA: DEV.trHoGlowA, tint: DEV.trHoTint };
+    if (s.autoaim) return { trail: DEV.trAimTrail, alpha: DEV.trAimTrailA, width: DEV.trAimTrailW, glow: DEV.trAimGlow, glowA: DEV.trAimGlowA, tint: DEV.trAimTint };
+    if (s.gravN) return { trail: DEV.trGravTrail, alpha: DEV.trGravTrailA, width: DEV.trGravTrailW, glow: DEV.trGravGlow, glowA: DEV.trGravGlowA, tint: DEV.trGravTint };
+    if (s.floatN) return { trail: DEV.trFloatTrail, alpha: DEV.trFloatTrailA, width: DEV.trFloatTrailW, glow: DEV.trFloatGlow, glowA: DEV.trFloatGlowA, tint: DEV.trFloatTint };
+    if (s.flat) return { trail: DEV.trFlatTrail, alpha: DEV.trFlatTrailA, width: DEV.trFlatTrailW, glow: DEV.trFlatGlow, glowA: DEV.trFlatGlowA, tint: DEV.trFlatTint };
     return null;
   }
   function trajRgb(col, k) {
@@ -12158,6 +12230,70 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const m = /^#?([0-9a-f]{6})$/i.exec(c || "");
     const n = m ? parseInt(m[1], 16) : 16777215;
     return [n >> 16 & 255, n >> 8 & 255, n & 255];
+  }
+  function trajHome(s, foes, scroll, dt) {
+    const age = s.age || 0;
+    const near = (reach2) => {
+      let tg2 = null, td = reach2;
+      for (const f of foes) {
+        const d = Math.hypot(f.x - scroll - s.x, f.ty - s.y);
+        if (f.hp > 0 && d < td) {
+          td = d;
+          tg2 = f;
+        }
+      }
+      return tg2;
+    };
+    let tg = null, turn2 = 0;
+    if (s.seekN) {
+      if (age < DEV.trSeWait) return null;
+      if (!s.tgt || s.tgt.hp <= 0) s.tgt = near(DEV.trSeReach);
+      tg = s.tgt;
+      turn2 = DEV.trSeTurn * s.seekN;
+      if (tg && !s.sp1) {
+        s.sp1 = 1;
+        const k = DEV.trSeSpeed;
+        s.vx *= k;
+        s.vy *= k;
+      }
+    } else if (s.nearN) {
+      tg = near(DEV.trNeReach);
+      turn2 = DEV.trNeTurn * s.nearN;
+    } else if (s.homN) {
+      if (age < DEV.trHoWait) return null;
+      tg = near(DEV.trHoReach);
+      turn2 = DEV.trHoTurn * s.homN;
+    }
+    if (!tg) return null;
+    const sp = Math.hypot(s.vx, s.vy) || 1, want = Math.atan2(tg.ty - s.y, tg.x - scroll - s.x), a = Math.atan2(s.vy, s.vx);
+    const b = a + Math.max(-turn2 * dt, Math.min(turn2 * dt, angDiff(want, a)));
+    s.vx = Math.cos(b) * sp;
+    s.vy = Math.sin(b) * sp;
+    return tg;
+  }
+  function trajAim(s, foes, scroll) {
+    if (s.aimed) return null;
+    s.aimed = 1;
+    let tg = null, td = DEV.trAimReach;
+    for (const f of foes) {
+      const d = Math.hypot(f.x - scroll - s.x, f.ty - s.y);
+      if (f.hp > 0 && d < td) {
+        td = d;
+        tg = f;
+      }
+    }
+    if (!tg) return null;
+    const sp = Math.hypot(s.vx, s.vy) || 1, a = Math.atan2(s.vy, s.vx), m = DEV.trAimMax * Math.PI / 180;
+    const b = a + Math.max(-m, Math.min(m, angDiff(Math.atan2(tg.ty - s.y, tg.x - scroll - s.x), a)));
+    s.vx = Math.cos(b) * sp;
+    s.vy = Math.sin(b) * sp;
+    return tg;
+  }
+  var trajGrav = (sh, sp) => sh.flat ? 0 : ((sh.grav || 0) - (sh.gravN || 0) * 420 + (sh.floatN || 0) * 340) * sp + (sh.gravN || 0) * DEV.trGravG - (sh.floatN || 0) * DEV.trFloatG;
+  function trajLob(sh, ang) {
+    if (sh.flat) return 0;
+    const d = ((sh.gravN ? -DEV.trGravLob : 0) + (sh.floatN ? DEV.trFloatLob : 0)) * Math.PI / 180;
+    return Math.cos(ang) < 0 ? -d : d;
   }
 
   // src/art/scenegun.js
@@ -12183,7 +12319,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     "knock",
     "damper",
     "crit",
-    "autoaim",
     "discrim",
     "gpower",
     "cluster"
@@ -12229,8 +12364,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const off = (sh.ang || 0) * Math.PI / 180;
     const life = Math.min(SG_LIFE_MAX, (sh.fuse ? Math.min(sh.life, sh.fuse + 0.5) : sh.life) * SG_LIFE) * (LIFE_K[sh.sid] || 1) * trajLife(sh);
     for (let i = 0; i < n; i++) {
-      const a = ang + off + (R() - 0.5) * (sh.spread || 0) * Math.PI / 180;
-      const v = (sh.speed || 0) * SP;
+      let a = ang + off + (R() - 0.5) * (sh.spread || 0) * Math.PI / 180 + trajLob(sh, ang);
+      if (sh.flat) a = Math.cos(a) < 0 ? Math.PI : 0;
+      const v = (sh.speed || 0) * SP * (sh.flat ? DEV.trFlatSpeed : 1);
       out.push({
         x,
         y,
@@ -12242,7 +12378,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         life,
         foe: false,
         spin: R() * 6,
-        grav: (sh.grav || 0) * SP,
+        grav: trajGrav(sh, SP),
         drag: sh.drag || 0,
         explode: Math.min(SG_EXPLODE_MAX, sh.explode || 0),
         pit: Math.min(SG_PIT_MAX, Math.max(sh.pit || 0, sh.bore || 0)),
@@ -12250,7 +12386,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         bounce: sh.bounce || 0,
         bounceE: sh.bounceE || 0.92,
         pierce: sh.pierce || 0,
-        dmg: sh.dmg || 0,
+        dmg: (sh.dmg || 0) * (sh.flat ? DEV.trFlatDmg : 1),
         homing: sh.sid === "missile" ? Math.max(1, sh.homing || 0) : sh.homing || 0,
         homeR: sh.sid === "missile" ? 400 : 0,
         accel: sh.accel || 0,
@@ -12272,7 +12408,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         orbit: sh.orbit || 0,
         spiral: sh.spiral || 0,
         boomer: sh.boomer || 0,
-        pong: sh.pong || 0
+        pong: sh.pong || 0,
+        homN: sh.homN || 0,
+        seekN: sh.seekN || 0,
+        nearN: sh.nearN || 0,
+        autoaim: sh.autoaim || 0,
+        gravN: sh.gravN || 0,
+        floatN: sh.floatN || 0,
+        flat: sh.flat || 0
       });
     }
     return out;
@@ -15600,10 +15743,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     for (const s of S2.shots) {
       s.age = (s.age || 0) + dt;
       if (s.beam && s.bx == null) castBeam(S2, s);
+      if (s.autoaim && !s.aimed && !s.foe) trajAim(s, S2.foes, S2.scroll);
       if (s.sid === "missile") {
         const tg = s.age > MISSILE_WAIT ? nearestFoe(S2.foes, s.x, s.y, S2.scroll, s.homeR || 400) : null;
         if (tg) steerTo(s, tg.x - S2.scroll, tg.ty, MISSILE_TURN * dt);
-      } else if (s.homing && !s.foe) {
+      } else if ((s.homN || s.seekN || s.nearN) && !s.foe) trajHome(s, S2.foes, S2.scroll, dt);
+      else if (s.homing && !s.foe) {
         let tg = null, td = 90;
         for (const f of S2.foes) {
           const d = Math.hypot(f.x - S2.scroll - s.x, f.ty - s.y);
@@ -15640,11 +15785,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         [ex, ey] = trajStep(s, dt, home);
         if (s.life <= 0) continue;
       }
+      if (s.flat) s.vy = 0;
       s.x += s.vx * dt + ex;
       s.y += s.vy * dt + ey;
       s.life -= dt;
       s.spin += dt * 10;
-      if (path) trajTrail(s);
+      trajTrail(s);
       if (s.pay && s.trig === "timer" && s.age >= (s.timer || 0)) release(S2, s);
       keepTrail(s);
       if (s.sid) {
@@ -28087,6 +28233,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     "spWebLo",
     "sputDip",
     "torch",
+    "trAimGlow",
+    "trAimGlowA",
+    "trAimMax",
+    "trAimReach",
+    "trAimTint",
+    "trAimTrail",
+    "trAimTrailA",
+    "trAimTrailW",
     "trBoCatch",
     "trBoDist",
     "trBoGlow",
@@ -28100,6 +28254,47 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     "trBoTrailA",
     "trBoTrailW",
     "trBoTurn",
+    "trFlatDmg",
+    "trFlatGlow",
+    "trFlatGlowA",
+    "trFlatSpeed",
+    "trFlatTint",
+    "trFlatTrail",
+    "trFlatTrailA",
+    "trFlatTrailW",
+    "trFloatG",
+    "trFloatGlow",
+    "trFloatGlowA",
+    "trFloatLob",
+    "trFloatTint",
+    "trFloatTrail",
+    "trFloatTrailA",
+    "trFloatTrailW",
+    "trGravG",
+    "trGravGlow",
+    "trGravGlowA",
+    "trGravLob",
+    "trGravTint",
+    "trGravTrail",
+    "trGravTrailA",
+    "trGravTrailW",
+    "trHoGlow",
+    "trHoGlowA",
+    "trHoReach",
+    "trHoTint",
+    "trHoTrail",
+    "trHoTrailA",
+    "trHoTrailW",
+    "trHoTurn",
+    "trHoWait",
+    "trNeGlow",
+    "trNeGlowA",
+    "trNeReach",
+    "trNeTint",
+    "trNeTrail",
+    "trNeTrailA",
+    "trNeTrailW",
+    "trNeTurn",
     "trOrbGlow",
     "trOrbGlowA",
     "trOrbIn",
@@ -28120,6 +28315,16 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     "trPoTrail",
     "trPoTrailA",
     "trPoTrailW",
+    "trSeGlow",
+    "trSeGlowA",
+    "trSeReach",
+    "trSeSpeed",
+    "trSeTint",
+    "trSeTrail",
+    "trSeTrailA",
+    "trSeTrailW",
+    "trSeTurn",
+    "trSeWait",
     "trSpGlow",
     "trSpGlowA",
     "trSpGrow",

@@ -80,14 +80,24 @@ export function trajStep(s, dt, home) {
   return [ex, ey];
 }
 
-// The look of a path shot: the first of its mods (orbit, spiral, boomer, pong) picks the knobs. null: none of them
-/** @param {{ orbit?: number, spiral?: number, boomer?: number, pong?: number }} s
+// The look of a trajectory shot: the first of its mods (orbit, spiral, boomer, pong, seeker, short-range, homing, auto-aim, gravity,
+// anti-gravity, flat) picks the knobs. null: none of them
+/** @typedef {{ orbit?: number, spiral?: number, boomer?: number, pong?: number, homN?: number, seekN?: number, nearN?: number, autoaim?: number,
+ *   gravN?: number, floatN?: number, flat?: number }} TrajLooks */
+/** @param {TrajLooks} s
  *  @returns {{ trail: number, alpha: number, width: number, glow: number, glowA: number, tint: number } | null} */
 export function trajLook(s) {
   if (s.orbit) return { trail: DEV.trOrbTrail, alpha: DEV.trOrbTrailA, width: DEV.trOrbTrailW, glow: DEV.trOrbGlow, glowA: DEV.trOrbGlowA, tint: DEV.trOrbTint };
   if (s.spiral) return { trail: DEV.trSpTrail, alpha: DEV.trSpTrailA, width: DEV.trSpTrailW, glow: DEV.trSpGlow, glowA: DEV.trSpGlowA, tint: DEV.trSpTint };
   if (s.boomer) return { trail: DEV.trBoTrail, alpha: DEV.trBoTrailA, width: DEV.trBoTrailW, glow: DEV.trBoGlow, glowA: DEV.trBoGlowA, tint: DEV.trBoTint };
   if (s.pong) return { trail: DEV.trPoTrail, alpha: DEV.trPoTrailA, width: DEV.trPoTrailW, glow: DEV.trPoGlow, glowA: DEV.trPoGlowA, tint: DEV.trPoTint };
+  if (s.seekN) return { trail: DEV.trSeTrail, alpha: DEV.trSeTrailA, width: DEV.trSeTrailW, glow: DEV.trSeGlow, glowA: DEV.trSeGlowA, tint: DEV.trSeTint };
+  if (s.nearN) return { trail: DEV.trNeTrail, alpha: DEV.trNeTrailA, width: DEV.trNeTrailW, glow: DEV.trNeGlow, glowA: DEV.trNeGlowA, tint: DEV.trNeTint };
+  if (s.homN) return { trail: DEV.trHoTrail, alpha: DEV.trHoTrailA, width: DEV.trHoTrailW, glow: DEV.trHoGlow, glowA: DEV.trHoGlowA, tint: DEV.trHoTint };
+  if (s.autoaim) return { trail: DEV.trAimTrail, alpha: DEV.trAimTrailA, width: DEV.trAimTrailW, glow: DEV.trAimGlow, glowA: DEV.trAimGlowA, tint: DEV.trAimTint };
+  if (s.gravN) return { trail: DEV.trGravTrail, alpha: DEV.trGravTrailA, width: DEV.trGravTrailW, glow: DEV.trGravGlow, glowA: DEV.trGravGlowA, tint: DEV.trGravTint };
+  if (s.floatN) return { trail: DEV.trFloatTrail, alpha: DEV.trFloatTrailA, width: DEV.trFloatTrailW, glow: DEV.trFloatGlow, glowA: DEV.trFloatGlowA, tint: DEV.trFloatTint };
+  if (s.flat) return { trail: DEV.trFlatTrail, alpha: DEV.trFlatTrailA, width: DEV.trFlatTrailW, glow: DEV.trFlatGlow, glowA: DEV.trFlatGlowA, tint: DEV.trFlatTint };
   return null;
 }
 // a '#rrggbb' colour mixed k of the way to the mods' purple, as 'r,g,b'
@@ -98,3 +108,55 @@ export function trajRgb(col, k) {
 }
 /** @param {string} c @returns {number[]} */
 function rgbOf(c) { const m = /^#?([0-9a-f]{6})$/i.exec(c || ''); const n = m ? parseInt(m[1], 16) : 0xffffff; return [n >> 16 & 255, n >> 8 & 255, n & 255]; }
+
+// Part B. Homing (homN), Seeker (seekN), Short-range Homing (nearN): which one steers is the strongest kind it has (seeker, then
+// short-range, then homing), its turn × copies. Homing: the nearest creature in reach, each frame. Seeker: locks onto one
+// and keeps it till it dies, at trSeSpeed × its speed. Short-range: only once one is within trNeReach, a sharp turn.
+// Creatures are the scene's (world x, ty; screen x = x - scroll). Returns the creature it steered at, or null
+/** @template {{ x: number, ty: number, hp: number }} F
+ *  @param {{ x: number, y: number, vx: number, vy: number, age?: number, homN?: number, seekN?: number, nearN?: number, tgt?: F | null, sp1?: number }} s
+ *  @param {F[]} foes @param {number} scroll @param {number} dt @returns {F | null} */
+export function trajHome(s, foes, scroll, dt) {
+  const age = s.age || 0;
+  /** @param {number} reach @returns {F | null} */
+  const near = reach => { let tg = null, td = reach; for (const f of foes) { const d = Math.hypot(f.x - scroll - s.x, f.ty - s.y); if (f.hp > 0 && d < td) { td = d; tg = f; } } return tg; };
+  let tg = null, turn = 0;
+  if (s.seekN) {
+    if (age < DEV.trSeWait) return null;
+    if (!s.tgt || s.tgt.hp <= 0) s.tgt = near(DEV.trSeReach);
+    tg = s.tgt; turn = DEV.trSeTurn * s.seekN;
+    if (tg && !s.sp1) { s.sp1 = 1; const k = DEV.trSeSpeed; s.vx *= k; s.vy *= k; }
+  } else if (s.nearN) { tg = near(DEV.trNeReach); turn = DEV.trNeTurn * s.nearN; }
+  else if (s.homN) { if (age < DEV.trHoWait) return null; tg = near(DEV.trHoReach); turn = DEV.trHoTurn * s.homN; }
+  if (!tg) return null;
+  const sp = Math.hypot(s.vx, s.vy) || 1, want = Math.atan2(tg.ty - s.y, tg.x - scroll - s.x), a = Math.atan2(s.vy, s.vx);
+  const b = a + Math.max(-turn * dt, Math.min(turn * dt, angDiff(want, a)));
+  s.vx = Math.cos(b) * sp; s.vy = Math.sin(b) * sp;
+  return tg;
+}
+// Auto-Aim: the moment it leaves the barrel, turned straight at the nearest creature within trAimReach (at most trAimMax degrees
+// from the way it was fired); once only (s.aimed)
+/** @template {{ x: number, ty: number, hp: number }} F
+ *  @param {{ x: number, y: number, vx: number, vy: number, aimed?: number }} s @param {F[]} foes @param {number} scroll @returns {F | null} */
+export function trajAim(s, foes, scroll) {
+  if (s.aimed) return null;
+  s.aimed = 1;
+  let tg = null, td = DEV.trAimReach;
+  for (const f of foes) { const d = Math.hypot(f.x - scroll - s.x, f.ty - s.y); if (f.hp > 0 && d < td) { td = d; tg = f; } }
+  if (!tg) return null;
+  const sp = Math.hypot(s.vx, s.vy) || 1, a = Math.atan2(s.vy, s.vx), m = DEV.trAimMax * Math.PI / 180;
+  const b = a + Math.max(-m, Math.min(m, angDiff(Math.atan2(tg.ty - s.y, tg.x - scroll - s.x), a)));
+  s.vx = Math.cos(b) * sp; s.vy = Math.sin(b) * sp;
+  return tg;
+}
+// Gravity and Anti-Gravity in the scene: the shot's own gravity without the mods' (420 down, 340 up each, the old game's), then
+// Auto's trGravG / trFloatG per copy; Horizontal Path: none. And the angle it leaves at (the lob knobs): radians to add, toward
+// the roof (−) for Gravity, the floor (+) for Anti-Gravity, mirrored for a shot fired left
+/** @param {{ grav?: number, gravN?: number, floatN?: number, flat?: number }} sh @param {number} sp the scene's speed scale */
+export const trajGrav = (sh, sp) => sh.flat ? 0 : ((sh.grav || 0) - (sh.gravN || 0) * 420 + (sh.floatN || 0) * 340) * sp + (sh.gravN || 0) * DEV.trGravG - (sh.floatN || 0) * DEV.trFloatG;
+/** @param {{ gravN?: number, floatN?: number, flat?: number }} sh @param {number} ang */
+export function trajLob(sh, ang) {
+  if (sh.flat) return 0;
+  const d = ((sh.gravN ? -DEV.trGravLob : 0) + (sh.floatN ? DEV.trFloatLob : 0)) * Math.PI / 180;
+  return Math.cos(ang) < 0 ? -d : d;
+}

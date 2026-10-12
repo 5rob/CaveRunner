@@ -33,7 +33,7 @@ import { GUN_HELD, gunMuzzle } from './sprites.js';
 import { GUN_ART } from './gunart.js';
 import { VIG_HP, VIG_TICK, gunPull, gunTick, perkDmg, planShots, shotsOf } from './scenegun.js';
 import { playerStats } from '../auto/run.js';
-import { hasTraj, trajLook, trajStep } from '../auto/traj.js';
+import { hasTraj, trajAim, trajHome, trajLook, trajStep } from '../auto/traj.js';
 import { FX_ROOM, MISSILE_TURN, MISSILE_WAIT, fireSpray, keepTrail, muzzleFx, nearestFoe, autoTrail, steerTo, zapFork, traceBeam, bigBoomFx, boomLook, holePull, vacPull } from '../auto/shotfx.js';
 import { teamClearer } from '../auto/clear.js';
 import { FUEL_TAKEOFF, fuelCan, fuelForClimb, fuelTick } from '../auto/fuel.js';
@@ -135,7 +135,7 @@ export const TITLE_HOME = {
  *   homing?: number, accel?: number, vmax?: number, chain?: number, hitFoe?: boolean,
  *   real?: boolean, by?: number, trig?: string | null, timer?: number, pay?: Shot[] | null, age?: number,
  *   sid?: string, tr?: number[], homeR?: number, light?: string, lightR?: number,
- *   beam?: number, ang?: number, bx?: number, by2?: number, pull?: number, vac?: number, heal?: number, tick?: number, follow?: number, sp0?: number, orbit?: number, spiral?: number, boomer?: number, pong?: number, born?: number, back?: number, caught?: number, oa?: number, or0?: number, odir?: number, pdir?: number, ptr?: number[], max?: number, hopT?: number, hx?: number, hy?: number }} TShot */
+ *   beam?: number, ang?: number, bx?: number, by2?: number, pull?: number, vac?: number, heal?: number, tick?: number, follow?: number, sp0?: number, orbit?: number, spiral?: number, boomer?: number, pong?: number, born?: number, back?: number, caught?: number, oa?: number, or0?: number, odir?: number, pdir?: number, ptr?: number[], homN?: number, seekN?: number, nearN?: number, autoaim?: number, aimed?: number, gravN?: number, floatN?: number, flat?: number, tgt?: Enemy | null, sp1?: number, max?: number, hopT?: number, hx?: number, hy?: number }} TShot */
 /** @typedef {{ x: number, y: number, vx: number, vy: number, life: number, max: number, r: number, col: string, kind: string, to?: { x: number, y: number, life: number }, fx?: boolean, u?: number, a?: number, g?: number }} TPart */
 /** @typedef {{ x: number, y: number, r: number, t: number, max: number, sid?: string }} TBoom */
 /** @typedef {{ pts: { x: number, y: number }[], t: number, col: string }} TZap */
@@ -2190,11 +2190,13 @@ function stepShots(S, dt) {
     // homing (pollen, Homing, Seeker): turns onto the nearest creature; accelerating ones speed up to their top speed
     s.age = (s.age || 0) + dt;
     if (s.beam && s.bx == null) castBeam(S, s);
+    if (s.autoaim && !s.aimed && !s.foe) trajAim(s, S.foes, S.scroll);   // Auto-Aim: at the nearest creature as it leaves the barrel
     // Magic Missile (stage: shots): out at the angle fired, then curving onto the nearest creature
     if (s.sid === 'missile') {
       const tg = s.age > MISSILE_WAIT ? nearestFoe(S.foes, s.x, s.y, S.scroll, s.homeR || 400) : null;
       if (tg) steerTo(s, tg.x - S.scroll, tg.ty, MISSILE_TURN * dt);
-    } else if (s.homing && !s.foe) {
+    } else if ((s.homN || s.seekN || s.nearN) && !s.foe) trajHome(s, S.foes, S.scroll, dt);   // Homing / Seeker / Short-range (auto/traj.js)
+    else if (s.homing && !s.foe) {
       let tg = null, td = 90;
       for (const f of S.foes) { const d = Math.hypot(f.x - S.scroll - s.x, f.ty - s.y); if (f.hp > 0 && d < td) { td = d; tg = f; } }
       if (tg) {
@@ -2215,8 +2217,9 @@ function stepShots(S, dt) {
       [ex, ey] = trajStep(s, dt, home);
       if (s.life <= 0) continue;   // a boomerang caught
     }
+    if (s.flat) s.vy = 0;   // Horizontal Path: dead level whatever else turns it
     s.x += s.vx * dt + ex; s.y += s.vy * dt + ey; s.life -= dt; s.spin += dt * 10;
-    if (path) trajTrail(s);
+    trajTrail(s);
     if (s.pay && s.trig === 'timer' && s.age >= (s.timer || 0)) release(S, s);
     // each shot's own trail (auto/shotfx.js); the old flame specks for the shots it doesn't know
     keepTrail(s);
