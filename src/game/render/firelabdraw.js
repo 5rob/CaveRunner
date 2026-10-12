@@ -4,7 +4,7 @@
 // shot full of holes, scorch marks. Everything from a hash of the world position: it holds still as you pan.
 import { pixText } from '../../art/pixfont.js';
 import { TITLE_VW } from '../../art/titlescene.js';
-import { LAB_FLOOR, LAB_ROOF, LAB_W } from '../../art/firelab.js';
+import { LAB_FLOOR, LAB_ROOF, LAB_SPOT, LAB_SPOTS, LAB_W } from '../../art/firelab.js';
 
 /** @param {number} a @param {number} b */
 const hash = (a, b) => { const v = Math.sin(a * 127.1 + b * 311.7) * 43758.5453; return v - Math.floor(v); };
@@ -48,6 +48,12 @@ export function labBack(ctx, S) {
     }
     ctx.fillStyle = 'rgba(15,10,8,0.7)';
     for (let i = 0; i < 7; i++) ctx.fillRect(tx - 7 + hash(tx, i) * 14 - sx, cy - 9 + hash(i, tx) * 18, 1, 1);
+  }
+  // (v1.0.58) each test spot's name stencilled over it, and a painted line down each side
+  for (const { kind, x0 } of LAB_SPOTS) {
+    if (x0 + LAB_SPOT < sx - 10 || x0 > sx + TITLE_VW + 10) continue;
+    ctx.fillStyle = 'rgba(230,200,120,0.5)'; pixText(ctx, kind.toUpperCase(), x0 + 6 - sx, y1 - 10, 1, 1, 1);   // (low on the wall: the timber spot's roof hangs low)
+    ctx.fillStyle = 'rgba(230,200,120,0.25)'; ctx.fillRect(x0 - sx, y0, 1, y1 - y0); ctx.fillRect(x0 + LAB_SPOT - sx, y0, 1, y1 - y0);
   }
   // distance marks every 100: a tick and a painted number
   ctx.fillStyle = 'rgba(225,215,190,0.4)';

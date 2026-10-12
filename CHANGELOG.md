@@ -5,6 +5,23 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.58 — CaveRunner Auto: burning pixels twinkle; the fire sim in separate test spots, flame jets while Fire is held (branch `autobattler`)
+Released 2026-10-12 on the branch. PM alone, owner OK'd the shots.
+- Twinkle (owner: the fire looked like static noise): the burning pixels' hash added the tick after the multiply, so the
+  colour's top bits hardly ever changed. `art/crackle.js` `fireTone(c, r, tick)`: each square breathes at its own pace and
+  phase (`fireTwinkle` 1 ×) and flares bright at `fireFlare` (0.06) a tick; used for burning cells (titledraw), vines and
+  silk (`crackleAt`) and creatures (`crackleBody`, its squares and tongues now change too). The old game's `render/cave.js`
+  keeps its own (not in this branch's build).
+- Fire sim room (owner's layout): `art/firelab.js` five spots `LAB_SPOTS` (`LAB_SPOT` = 2/3 of the screen, `LAB_GAP` 50
+  between): vines (cave hanging vines + 3 crossing arches with strands), webs (single strands + a dense hatch, all inside the
+  spot), timber (a low mine roof, two support frames as genCol's, three hanging lanterns), moss (floor, mound, roof
+  underside), grass (tufts). Names stencilled low on the wall (`firelabdraw.js`). `labScene` → `Lab` `{ S, pts, jets, next }`.
+- Hold Fire: `labStep(L, dt, hold)` (runScene's new `step` hook) spawns jets across the view every `labJetGap` (0.35 s, at
+  random), up to `labJetH` (50) high, about `labJetT` (0.7 s), swelling and dying; `titleJet` shoots flame specks up and lights
+  what it reaches. Group `firelab` "Fire sim: flame jets" on the Fire sim tab. `labNearest` gone.
+- Suites: `auto-firelab` (spots in order, nothing that burns between them, each spot burns, jets come and go and light the
+  grass, twinkle). Shots: `tools/firesimshots.js` (page, spots sheet, jets), `tools/twinkleshots.js`.
+
 ## v1.0.57 — CaveRunner Auto: the Dev panel shows what works in Auto; burning vines and webs burn through (branch `autobattler`)
 Released 2026-10-12 on the branch. PM alone, owner OK'd the shots. (A per-material burn time for vines/webs was built and
 scrapped by the owner: grass, moss and timber already have theirs, the Fire group's "… burns for (s)".)

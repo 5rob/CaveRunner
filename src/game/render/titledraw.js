@@ -15,7 +15,7 @@ import { drawEnemy } from '../../creatures/draw.js';
 import { coinR } from '../../world/nuggets.js';
 import { FIRE_COLS } from '../../world/fire.js';
 import { vinePt } from '../../world/sway.js';
-import { crackleAt, crackleBody } from '../../art/crackle.js';
+import { crackleAt, crackleBody, fireTone } from '../../art/crackle.js';
 import { drawProp, propGlow } from '../../art/props.js';
 import { gunArtId } from '../../art/gunart.js';
 import { CRYSTAL_PAL, CRYSTAL_R, GREEN_PAL, GUN_HELD, gunMuzzle, drawGun, drawNugget, glowAt, drawRunner, jetFlame, pixelHeld, pixelSoft, pixelSprite } from '../../art/sprites.js';
@@ -142,10 +142,7 @@ export function titleDraw(ctx, S, cw, ch, cam) {
   if (S.fire.length) {
     /** @type {number[][]} */
     const buckets = [[], [], [], []];
-    for (const f of S.fire) {
-      const h = (Math.imul(f.c * 977 + f.r, 2654435761) + S.fireN * 40503) >>> 30;
-      buckets[f.t <= 3 ? 3 : h === 0 ? 0 : h === 3 ? 2 : 1].push(f.c, f.r);
-    }
+    for (const f of S.fire) buckets[f.t <= 3 ? 3 : fireTone(f.c, f.r, S.fireN)].push(f.c, f.r);   // (v1.0.58) twinkling, crackle.js
     for (let k = 0; k < 4; k++) {
       const B = buckets[k];
       if (!B.length) continue;

@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v1.0.57</title>
-<!-- VERSION = 'v1000057' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v1.0.58</title>
+<!-- VERSION = 'v1000058' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -1114,7 +1114,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v1.0.57';</script>
+<script>const VERSION = 'v1.0.58';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -1219,15 +1219,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const to = (q) => Math.round((q + m) * 255);
     return "#" + (1 << 24 | to(R) << 16 | to(G) << 8 | to(B)).toString(16).slice(1);
   }
-  function rr(ctx, x, y, w, hh, r) {
-    const k = Math.min(r, w / 2, hh / 2);
+  function rr(ctx, x, y, w, hh2, r) {
+    const k = Math.min(r, w / 2, hh2 / 2);
     ctx.beginPath();
-    if (ctx.roundRect) ctx.roundRect(x, y, w, hh, k);
+    if (ctx.roundRect) ctx.roundRect(x, y, w, hh2, k);
     else {
       ctx.moveTo(x + k, y);
-      ctx.arcTo(x + w, y, x + w, y + hh, k);
-      ctx.arcTo(x + w, y + hh, x, y + hh, k);
-      ctx.arcTo(x, y + hh, x, y, k);
+      ctx.arcTo(x + w, y, x + w, y + hh2, k);
+      ctx.arcTo(x + w, y + hh2, x, y + hh2, k);
+      ctx.arcTo(x, y + hh2, x, y, k);
       ctx.arcTo(x, y, x + w, y, k);
       ctx.closePath();
     }
@@ -2112,17 +2112,26 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "autoFuelRegen", g: "autodeath", label: "Jet fuel: refill on the ground (× the old game’s)", min: 0.1, max: 3, step: 0.05 }
   );
   DEV_GROUPS.push(["autodeath", "Auto: jetpack and death"]);
-  Object.assign(DEV_DEFAULTS, { autoFireSpread: 0.1, autoWebFire: 3, autoVineCatch: 0.25, autoLeafReach: 5, autoLeafLight: 0.15, autoBurnCut: 0.015, autoBurnSpin: 2.5 });
+  Object.assign(DEV_DEFAULTS, { autoFireSpread: 0.1, autoWebFire: 3, autoVineCatch: 0.25, autoLeafReach: 5, autoLeafLight: 0.15, autoBurnCut: 0.015, autoBurnSpin: 2.5, fireTwinkle: 1, fireFlare: 0.06 });
   DEV_META.push(
     { k: "autoFireSpread", g: "autofire", label: "Auto levels: fire spreads cell to cell, and onto vines and webs from burning ground, at this × the old game", min: 0, max: 3, step: 0.05 },
     { k: "autoWebFire", g: "autofire", label: "Auto levels: silk burns up this × faster than vines", min: 0.1, max: 10, step: 0.1 },
     { k: "autoVineCatch", g: "autofire", label: "Auto levels: a vine beside a burning one catches at this chance a fire tick", min: 0, max: 1, step: 0.05 },
+    { k: "fireTwinkle", g: "autofire", label: "Burning pixels twinkle at this × their own pace (0: still)", min: 0, max: 4, step: 0.05 },
+    { k: "fireFlare", g: "autofire", label: "… and flare bright at this chance a fire tick", min: 0, max: 0.5, step: 0.01 },
     { k: "autoBurnCut", g: "autofire", label: "Vines and webs on fire burn right through at this chance a fire tick: the rest falls away", min: 0, max: 0.3, step: 5e-3 },
     { k: "autoBurnSpin", g: "autofire", label: "… a falling piece turns at up to this either way (rad/s)", min: 0, max: 10, step: 0.1 },
     { k: "autoLeafReach", g: "autofire", label: "Auto levels: a burning stem or leaf lights moss, grass and timber this near (units)", min: 0, max: 20, step: 0.5 },
     { k: "autoLeafLight", g: "autofire", label: "… each of those cells at this chance a fire tick", min: 0, max: 1, step: 0.01 }
   );
   DEV_GROUPS.push(["autofire", "Auto: fire"]);
+  Object.assign(DEV_DEFAULTS, { labJetGap: 0.35, labJetH: 50, labJetT: 0.7 });
+  DEV_META.push(
+    { k: "labJetGap", g: "firelab", label: "Fire held: a new jet about every (s, at random)", min: 0.02, max: 3, step: 0.01 },
+    { k: "labJetH", g: "firelab", label: "… up to this high (units, each its own strength)", min: 5, max: 120, step: 1 },
+    { k: "labJetT", g: "firelab", label: "… lasting about (s)", min: 0.1, max: 4, step: 0.05 }
+  );
+  DEV_GROUPS.push(["firelab", "Fire sim: flame jets"]);
   Object.assign(DEV_DEFAULTS, { autoLootMod: 6, autoLootRed: 2, autoLootExo: 30, autoLootEliteGold: 3, autoLootBossGold: 10 });
   DEV_META.push(
     { k: "autoLootMod", g: "autoloot", label: "A kill drops a gun mod (% chance)", min: 0, max: 100, step: 0.5 },
@@ -2192,7 +2201,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "autoStreamGrow", g: "autothrow", label: "Gold stream: big nuggets double in worth every (s)", min: 0.2, max: 10, step: 0.1 }
   );
   DEV_GROUPS.push(["autothrow", "Auto: throw"]);
-  DEV_TABS.splice(DEV_TABS.length - 1, 0, ["firesim", "Fire sim", ["autofire", "fire"]]);
+  DEV_TABS.splice(DEV_TABS.length - 1, 0, ["firesim", "Fire sim", ["firelab", "autofire", "fire"]]);
   DEV_TABS.splice(DEV_TABS.length - 2, 0, ["auto", "Auto", ["auto", "autohub", "automaps", "autolevel", "autoblocks", "autoguns", "autoperks", "autofoes", "autodeath", "autoloot", "autochests", "autobag", "autothrow"]]);
   var DEV_KEY = "caverunner-dev";
   var DEV = Object.assign({}, DEV_DEFAULTS);
@@ -8884,9 +8893,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         FU = 0;
       },
       rubble(cx, cy) {
-        const w = 3 + Math.floor(R() * 4), hh = 2 + R() * 2.5;
+        const w = 3 + Math.floor(R() * 4), hh2 = 2 + R() * 2.5;
         for (let dx = -w; dx <= w; dx++) {
-          const top = Math.round((1 - (dx / (w + 1)) ** 2) * hh);
+          const top = Math.round((1 - (dx / (w + 1)) ** 2) * hh2);
           for (let k = 0; k < top; k++) {
             const mossy = k === top - 1 && R() < 0.7;
             const c = mossy ? pick(T2.moss[0], T2.moss[1]) : R() < 0.2 ? T2.mortar : pick(T2.brick[0], T2.brick[1]);
@@ -10421,8 +10430,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         ctx.fillStyle = "#07060b";
         ctx.fillRect(-8.6, 7.4, 2.6, 9);
         ctx.fillStyle = gauge.col;
-        const hh = 8 * Math.max(0, Math.min(1, gauge.v));
-        ctx.fillRect(-8.1, 15.9 - hh, 1.6, hh);
+        const hh2 = 8 * Math.max(0, Math.min(1, gauge.v));
+        ctx.fillRect(-8.1, 15.9 - hh2, 1.6, hh2);
       }
     });
     along(P2.chest, P2.hip, 0, 10, () => {
@@ -10484,7 +10493,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     });
     ctx.restore();
   }
-  function drawRunner(ctx, x, y, w, hh, face, gait, air, jet, flash, hands, held, tint, gauge) {
+  function drawRunner(ctx, x, y, w, hh2, face, gait, air, jet, flash, hands, held, tint, gauge) {
     paintBody(ctx, runnerPose(x, y, w, face, gait, air, hands), jet, flash, held, tint, gauge);
   }
   function ragPose(R) {
@@ -13049,6 +13058,26 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       col: R() < 0.4 ? "#ffd35a" : R() < 0.6 ? "#ff8a2a" : "#e8461c",
       kind: "flame"
     });
+  }
+  function titleJet(S2, sx, fy, h3, dt) {
+    if (h3 < 2) return;
+    const R = S2.rnd;
+    for (let n = Math.ceil(dt * (40 + h3 * 2)); n > 0 && S2.parts.length < TITLE_PARTS; n--) {
+      const l = 0.25 + R() * 0.3, v = h3 / 0.4 * (0.6 + R() * 0.5);
+      S2.parts.push({
+        x: sx + (R() - 0.5) * 3,
+        y: fy - 1.5,
+        vx: (R() - 0.5) * 14,
+        vy: -v,
+        life: l,
+        max: 0.55,
+        r: 1.2 + R() * 1.6,
+        col: R() < 0.45 ? "#ffd35a" : R() < 0.65 ? "#ff8a2a" : "#e8461c",
+        kind: "flame"
+      });
+    }
+    if (R() < dt * 4) fireSmoke(S2, sx, fy - h3);
+    if (R() < dt * 12) titleIgnite(S2, sx + (R() - 0.5) * 4, fy - R() * h3, 5, 0.8);
   }
   function fireSmoke(S2, x, y) {
     if (S2.parts.length >= TITLE_PARTS) return;
@@ -20304,17 +20333,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
     };
     if (!tomb) carve(CW / 2, 22, 40, 16, CH);
-    const emptyRatio = (x0, y0, w, hh) => {
+    const emptyRatio = (x0, y0, w, hh2) => {
       let e = 0, n = 0;
-      for (let y = y0; y < y0 + hh; y++)
+      for (let y = y0; y < y0 + hh2; y++)
         for (let x = x0; x < x0 + w; x++) {
           n++;
           if (inside(x, y) && !mat[y * CW + x]) e++;
         }
       return e / n;
     };
-    const slab = (x0, y0, w, hh) => {
-      for (let y = y0; y < y0 + hh; y++)
+    const slab = (x0, y0, w, hh2) => {
+      for (let y = y0; y < y0 + hh2; y++)
         for (let x = x0; x < x0 + w; x++) if (inside(x, y)) mat[y * CW + x] = BRICK;
     };
     let ledges = 0;
@@ -21459,17 +21488,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         break;
       }
       case "pad": {
-        const sq = Math.max(0, pr.sq || 0) / 0.3, hh = 8 * (1 - 0.4 * sq), ww = 10 * (1 + 0.25 * sq);
+        const sq = Math.max(0, pr.sq || 0) / 0.3, hh2 = 8 * (1 - 0.4 * sq), ww = 10 * (1 + 0.25 * sq);
         ctx.fillStyle = rgbA(mix(T2.moss[1], [240, 230, 220], 0.6));
-        ctx.fillRect(x - 1.8, y - hh, 3.6, hh);
+        ctx.fillRect(x - 1.8, y - hh2, 3.6, hh2);
         ctx.fillStyle = rgbA(T2.moss[0]);
         ctx.beginPath();
-        ctx.ellipse(x, y - hh, ww, 5, 0, Math.PI, 0);
+        ctx.ellipse(x, y - hh2, ww, 5, 0, Math.PI, 0);
         ctx.fill();
         ctx.fillStyle = "rgba(255,255,255,0.7)";
         for (const [dx, dy] of [[-5, -2], [0, -3.8], [4.5, -1.8]]) {
           ctx.beginPath();
-          ctx.arc(x + dx * ww / 10, y - hh + dy, 0.9, 0, 6.29);
+          ctx.arc(x + dx * ww / 10, y - hh2 + dy, 0.9, 0, 6.29);
           ctx.fill();
         }
         break;
@@ -22738,9 +22767,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
     if (changed) G.dctx.putImageData(W.dimg, 0, 0, minX, minY, maxX - minX + 1, maxY - minY + 1);
   }
-  function paint(W, G, x, y, w, hh) {
+  function paint(W, G, x, y, w, hh2) {
     const x0 = Math.max(1, Math.round(x / CELL - w / 2)), x1 = Math.min(CW - 2, x0 + w);
-    const y0 = Math.max(1, Math.round(y / CELL)), y1 = Math.min(CH - 2, y0 + hh);
+    const y0 = Math.max(1, Math.round(y / CELL)), y1 = Math.min(CH - 2, y0 + hh2);
     const d = W.img.data;
     for (let cy = y0; cy < y1; cy++)
       for (let cx = x0; cx < x1; cx++) {
@@ -29697,6 +29726,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     "fireBurnLo",
     "fireDpsHi",
     "fireDpsLo",
+    "fireFlare",
     "fireGrassHi",
     "fireGrassLo",
     "fireMossHi",
@@ -29705,6 +29735,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     "firePlantLo",
     "fireSpreadHi",
     "fireSpreadLo",
+    "fireTwinkle",
     "fireWoodHi",
     "fireWoodLo",
     "fogDim",
@@ -29770,6 +29801,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     "jeWaveLo",
     "jetVol",
     "killGrow",
+    "labJetGap",
+    "labJetH",
+    "labJetT",
     "loseAggro",
     "move",
     "raArriveHi",
@@ -29857,69 +29891,106 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   ]);
 
   // src/art/firelab.js
-  var LAB_W = 1500;
   var LAB_ROOF = 14;
   var LAB_FLOOR = 16;
-  var GAP = 120;
-  var KINDS = ["vines", "arch", "webs", "moss", "crate", "frame", "grass", "mix"];
+  var LAB_SPOT = Math.round(TITLE_VW * 2 / 3);
+  var LAB_GAP = 50;
+  var EDGE2 = 40;
+  var LAB_KINDS = ["vines", "webs", "timber", "moss", "grass"];
+  var LAB_SPOTS = LAB_KINDS.map((kind, i) => ({ kind, x0: EDGE2 + i * (LAB_SPOT + LAB_GAP) }));
+  var LAB_W = EDGE2 * 2 + LAB_KINDS.length * LAB_SPOT + (LAB_KINDS.length - 1) * LAB_GAP;
+  var MINE_H = 46;
   function labScene(vh, seed) {
-    const R = titleRng(seed), fy = vh - LAB_FLOOR, roof = LAB_ROOF;
+    const R = titleRng(seed), fy = vh - LAB_FLOOR, roof = LAB_ROOF, room = fy - roof, mroof = fy - MINE_H;
     const pts = [];
-    const boxes = [];
+    const paint3 = [];
     const vines = [];
     const webs = [];
     const arches = [];
-    let bag = [];
-    for (let x = 80; x < LAB_W - 60; x += GAP) {
-      if (!bag.length) {
-        bag = KINDS.slice();
-        for (let i = bag.length - 1; i > 0; i--) {
-          const j = Math.floor(R() * (i + 1));
-          [bag[i], bag[j]] = [bag[j], bag[i]];
-        }
-      }
-      const kind = bag.pop() || "vines", room = fy - roof;
-      const vine = (vx, len) => {
-        vines.push({ x: vx, len });
-        return { x: vx, y: roof + len, kind };
-      };
+    const lamps = [];
+    for (const { kind, x0 } of LAB_SPOTS) {
+      const x1 = x0 + LAB_SPOT;
       if (kind === "vines") {
-        const n = 3 + Math.floor(R() * 3);
-        for (let i = 0; i < n; i++) vine(x - 16 + i * 8 + R() * 3, room * (0.35 + R() * 0.45));
-        pts.push({ x: vines[vines.length - 1].x, y: roof + vines[vines.length - 1].len, kind });
-      } else if (kind === "arch") {
-        arches.push({ ax: x - 30, bx: x + 30 });
-        pts.push({ x, y: roof + room * 0.45, kind });
+        for (let x = x0 + 3; x < x1 - 3; x += 3 + R() * 5) if (R() < 0.65) vines.push({ x, y: roof, len: room * (0.12 + R() * 0.62), st: "vine" });
+        for (let i = 0; i < 3; i++) {
+          const span = 50 + R() * 45, ax = x0 + 4 + R() * (LAB_SPOT - span - 8);
+          arches.push({ ax, bx: ax + span, slack: 1.3 + R() * 0.7 });
+        }
+        const mid = vines.filter((v) => v.x >= x0 && v.x < x1).reduce((b, v) => Math.abs(v.x - x0 - LAB_SPOT / 2) < Math.abs(b.x - x0 - LAB_SPOT / 2) ? v : b);
+        pts.push({ x: mid.x, y: mid.y + mid.len - 1, kind });
       } else if (kind === "webs") {
-        for (let i = 0; i < 4; i++) webs.push({ ax: x - 24 + i * 12, bx: x - 34 + i * 18 + R() * 10, by: i % 2 ? fy - 0.5 : roof + 0.5 });
-        pts.push({ x: x - 24 + 9, y: (roof + fy) / 2, kind });
+        const wn = webs.length;
+        for (let i = 0; i < 4; i++) {
+          const ax = x0 + 6 + i * 14 + R() * 6;
+          webs.push({ ax, ay: roof + 0.5, bx: ax + (R() - 0.5) * 40, by: fy - 0.5 });
+        }
+        for (let i = 0; i < 2; i++) {
+          const ax = x0 + 4 + R() * 40;
+          webs.push({ ax, ay: roof + 0.5, bx: ax + 20 + R() * 25, by: roof + 0.5 });
+        }
+        const hx = x0 + 70, hw = LAB_SPOT - 76;
+        for (let i = 0; i < 8; i++) {
+          const a = hx + i * hw / 8;
+          webs.push({ ax: a, ay: roof + 0.5, bx: a + 26 + R() * 10, by: fy - 0.5 });
+        }
+        for (let i = 0; i < 8; i++) {
+          const a = hx + 30 + i * hw / 8;
+          webs.push({ ax: a, ay: roof + 0.5, bx: a - 26 - R() * 10, by: fy - 0.5 });
+        }
+        for (let i = 0; i < 4; i++) {
+          const a = hx + R() * (hw - 30);
+          webs.push({ ax: a, ay: roof + 0.5, bx: a + 24 + R() * 20, by: roof + 0.5 });
+        }
+        for (const w of webs.slice(wn)) {
+          w.ax = Math.max(x0 + 3, Math.min(x1 - 3, w.ax));
+          w.bx = Math.max(x0 + 3, Math.min(x1 - 3, w.bx));
+        }
+        pts.push({ x: x0 + LAB_SPOT / 2, y: fy - 2, kind });
+      } else if (kind === "timber") {
+        paint3.push((x, y) => x >= x0 - 6 && x < x1 + 6 && y < mroof ? TM.ROCK : -1);
+        for (const left of [x0 + 18, x1 - 18 - FRAME_W]) {
+          paint3.push((x, y) => {
+            const uc = x - left, under = y - mroof, post = uc >= 0 && uc < 4 || uc >= FRAME_W - 4 && uc < FRAME_W;
+            if (y < mroof || y >= fy) return -1;
+            if (uc >= -4 && uc < FRAME_W + 4 && under < 4) return under < 2 ? TM.BEAM : TM.BEAMD;
+            if (post) return uc < 2 || uc >= FRAME_W - 4 && uc < FRAME_W - 2 ? TM.BEAM : TM.BEAMD;
+            if (uc >= 4 && uc <= 12 && Math.abs(under - 4 - (12 - uc)) < 1 || uc >= FRAME_W - 12 && uc < FRAME_W - 4 && Math.abs(under - 4 - (uc - (FRAME_W - 12))) < 1) return TM.BEAMD;
+            if (y >= fy - 2 && (uc >= -1 && uc < 5 || uc >= FRAME_W - 5 && uc < FRAME_W + 1)) return TM.BEAMD;
+            return -1;
+          });
+          lamps.push({ x: left + FRAME_W / 2, y: mroof + 4, len: 5 + R() * 6 });
+        }
+        lamps.push({ x: (x0 + x1) / 2, y: mroof, len: 8 + R() * 10 });
+        pts.push({ x: x0 + 20, y: fy - 2, kind });
       } else if (kind === "moss") {
-        boxes.push({ x0: x - 30, x1: x + 30, y0: fy - 6, y1: fy + 4, m: TM.MOSS });
-        pts.push({ x: x - 26, y: fy - 4, kind });
-      } else if (kind === "crate") {
-        boxes.push({ x0: x - 10, x1: x + 10, y0: fy - 20, y1: fy, m: TM.WOOD });
-        pts.push({ x: x - 11, y: fy - 2, kind });
-      } else if (kind === "frame") {
-        boxes.push(
-          { x0: x - 22, x1: x - 18, y0: roof, y1: fy, m: TM.BEAM },
-          { x0: x + 18, x1: x + 22, y0: roof, y1: fy, m: TM.BEAM },
-          { x0: x - 22, x1: x + 22, y0: roof, y1: roof + 4, m: TM.BEAM }
-        );
-        pts.push({ x: x - 20, y: fy - 2, kind });
-      } else if (kind === "grass") {
-        boxes.push({ x0: x - 30, x1: x + 30, y0: fy - 4, y1: fy, m: TM.GRASS });
-        pts.push({ x: x - 28, y: fy - 2, kind });
+        const mx = x0 + 30 + R() * 70, mw = 24 + R() * 16;
+        paint3.push((x, y) => {
+          if (x < x0 || x >= x1) return -1;
+          if (y >= fy - 4 && y < fy + 3) return TM.MOSS;
+          const d = (x - mx) / mw, top = fy - 4 - 14 * Math.max(0, 1 - d * d);
+          if (y >= top && y < fy) return y < top + 4 ? TM.MOSS : TM.ROCK;
+          if (y >= roof && y < roof + 3 + 2 * Math.sin(x * 0.15)) return TM.MOSS;
+          return -1;
+        });
+        pts.push({ x: x0 + 8, y: fy - 5, kind });
       } else {
-        boxes.push({ x0: x - 26, x1: x + 26, y0: fy - 5, y1: fy + 3, m: TM.MOSS });
-        for (let i = 0; i < 3; i++) vine(x - 14 + i * 14, room * (0.55 + R() * 0.3));
-        webs.push({ ax: x - 20, bx: x + 24, by: fy - 0.5 });
-        pts.push({ x: x - 22, y: fy - 3, kind });
+        const tall = [];
+        for (let c = Math.floor(x0 / TCELL); c < Math.ceil(x1 / TCELL); c++) tall.push(R() < 0.85 ? 2 + Math.floor(R() * R() * 9) : 0);
+        paint3.push((x, y) => {
+          if (x < x0 || x >= x1 || y >= fy) return -1;
+          const h3 = tall[Math.floor(x / TCELL) - Math.floor(x0 / TCELL)] || 0;
+          return y >= fy - h3 * TCELL ? TM.GRASS : -1;
+        });
+        pts.push({ x: x0 + 6, y: fy - 2, kind });
       }
     }
     const ncol = Math.ceil((LAB_W + 160) / TCELL);
     const hub = { w: ncol, cell: (c, r) => {
       const x = (c + 0.5) * TCELL, y = (r + 0.5) * TCELL;
-      for (const b of boxes) if (x >= b.x0 && x < b.x1 && y >= b.y0 && y < b.y1) return b.m;
+      for (const p of paint3) {
+        const m = p(x, y);
+        if (m >= 0) return m;
+      }
       return y < roof || y >= fy ? TM.ROCK : TM.AIR;
     } };
     const S2 = titleScene(vh, seed, roof, fy, { hub, runners: 1 });
@@ -29932,9 +30003,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     S2.spawn = Infinity;
     S2.lab = true;
     const ar = Math.floor((roof - 1) / TCELL);
-    for (const v of vines) S2.props.push({ k: "climb", st: "vine", ox: v.x, x: 0, y: roof, len: v.len, seed: R(), side: 1, burn: 0, ac: Math.floor(v.x / TCELL), ar });
+    for (const v of vines) S2.props.push({ k: "climb", st: v.st, ox: v.x, x: 0, y: v.y, len: v.len, seed: R(), side: 1, burn: 0, ac: Math.floor(v.x / TCELL), ar });
     for (const a of arches) {
-      const n = 16, p = archCurve(a.ax, roof + 1, a.bx, roof + 1, 1.6 + R() * 0.6, n);
+      const n = 16, p = archCurve(a.ax, roof + 1, a.bx, roof + 1, a.slack, n);
       const arch = {
         k: "climb",
         st: "vine",
@@ -29953,22 +30024,36 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         span: a.bx - a.ax
       };
       S2.props.push(arch);
-      for (let s = 0; s < 4; s++) {
-        const k = 3 + s * 3, q = p[k];
-        S2.props.push({ k: "climb", st: "vine", ox: q.x, x: 0, y: q.y, len: 8 + R() * 14, seed: R(), side: 1, burn: 0, ac: arch.ac, ar, host: arch, on: arch, u: k / n });
+      for (let s = 0; s < 5; s++) {
+        const k = 2 + Math.floor(R() * (n - 3)), q = p[k];
+        S2.props.push({ k: "climb", st: "vine", ox: q.x, x: 0, y: q.y, len: 6 + R() * 16, seed: R(), side: 1, burn: 0, ac: arch.ac, ar, host: arch, on: arch, u: k / n });
       }
     }
     for (const w of webs) {
-      const ay = roof + 0.5, down = w.by > roof + 1;
-      const L = { ax: w.ax, ay, bx: w.bx, by: w.by, a0x: w.ax, a0y: ay, b0x: w.bx, b0y: w.by, ain: { x: w.ax, y: ay - 1.5 }, bin: { x: w.bx, y: down ? w.by + 1.5 : w.by - 1.5 }, owner: null, sag: 0 };
+      const down = w.by > roof + 1;
+      const L = { ax: w.ax, ay: w.ay, bx: w.bx, by: w.by, a0x: w.ax, a0y: w.ay, b0x: w.bx, b0y: w.by, ain: { x: w.ax, y: w.ay - 1.5 }, bin: { x: w.bx, y: down ? w.by + 1.5 : w.by - 1.5 }, owner: null, sag: 0 };
       L.sag = DEV.webSag * Math.abs(L.b0x - L.a0x) * (down ? 1 : 2.5);
       S2.webs.push(L);
     }
+    for (const l of lamps) S2.props.push({ k: "lamp", st: "hanglamp", ox: l.x, x: 0, y: l.y, len: l.len, seed: R(), side: 1, burn: 0, ac: Math.floor(l.x / TCELL), ar: Math.floor((l.y - 1) / TCELL) });
     S2.dirtyAll = true;
-    return { S: S2, pts };
+    return { S: S2, pts, jets: [], next: 0 };
   }
-  var labNearest = (pts, mid) => pts.reduce((b, p) => Math.abs(p.x - mid) < Math.abs(b.x - mid) ? p : b, pts[0]);
   var labClamp = (x) => Math.max(0, Math.min(LAB_W - TITLE_VW, x));
+  function labStep(L, dt, hold) {
+    const S2 = L.S, R = S2.rnd;
+    if (hold && (L.next -= dt) <= 0) {
+      L.next = DEV.labJetGap * (0.2 + R() * 1.6);
+      L.jets.push({ x: S2.scroll + 10 + R() * (TITLE_VW - 20), h: DEV.labJetH * (0.3 + R() * 0.9), t: 0, max: DEV.labJetT * (0.5 + R()) });
+    }
+    if (!hold) L.next = 0;
+    for (const j of L.jets) {
+      j.t += dt;
+      const sx = j.x - S2.scroll, fy = titleSurf(S2, sx, S2.vh - LAB_FLOOR - 30, 1);
+      titleJet(S2, sx, fy, j.h * Math.sin(Math.PI * Math.min(1, j.t / j.max)), dt);
+    }
+    L.jets = L.jets.filter((j) => j.t < j.max);
+  }
 
   // src/game/render/firelabdraw.js
   var hash3 = (a, b) => {
@@ -30017,6 +30102,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
       ctx.fillStyle = "rgba(15,10,8,0.7)";
       for (let i = 0; i < 7; i++) ctx.fillRect(tx - 7 + hash3(tx, i) * 14 - sx, cy - 9 + hash3(i, tx) * 18, 1, 1);
+    }
+    for (const { kind, x0: x02 } of LAB_SPOTS) {
+      if (x02 + LAB_SPOT < sx - 10 || x02 > sx + TITLE_VW + 10) continue;
+      ctx.fillStyle = "rgba(230,200,120,0.5)";
+      pixText(ctx, kind.toUpperCase(), x02 + 6 - sx, y1 - 10, 1, 1, 1);
+      ctx.fillStyle = "rgba(230,200,120,0.25)";
+      ctx.fillRect(x02 - sx, y0, 1, y1 - y0);
+      ctx.fillRect(x02 + LAB_SPOT - sx, y0, 1, y1 - y0);
     }
     ctx.fillStyle = "rgba(225,215,190,0.4)";
     for (let mx = 0; mx <= LAB_W; mx += 100) {
@@ -30219,22 +30312,27 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
 
   // src/art/crackle.js
-  var fhash = (c, r, tick) => Math.imul(c * 977 + r, 2654435761) + tick * 40503 >>> 30;
+  var hh = (c, r, s) => (Math.imul(Math.imul(c, 73856093) ^ Math.imul(r, 19349663) ^ Math.imul(s, 83492791), 2654435761) >>> 0) / 4294967296;
+  function fireTone(c, r, tick) {
+    const w = (0.35 + 0.5 * hh(c, r, 1)) * DEV.fireTwinkle, v = hh(c, r, tick + 7) < DEV.fireFlare ? 1 : 0.5 + 0.5 * Math.sin(tick * w + hh(c, r, 2) * 6.283);
+    return v > 0.8 ? 0 : v > 0.4 ? 1 : 2;
+  }
   function crackleAt(ctx, x, y, cell, tick, ember) {
-    const c = Math.floor(x / cell), r = Math.floor(y / cell), h3 = fhash(c, r, tick);
-    ctx.fillStyle = FIRE_COLS[ember ? 3 : h3 === 0 ? 0 : h3 === 3 ? 2 : 1];
+    const c = Math.floor(x / cell), r = Math.floor(y / cell);
+    ctx.fillStyle = FIRE_COLS[ember ? 3 : fireTone(c, r, tick)];
     ctx.fillRect(c * cell, r * cell, cell, cell);
   }
   function crackleBody(ctx, x, y, r, cell, tick) {
     const c0 = Math.floor((x - r) / cell), c1 = Math.floor((x + r) / cell);
     const r0 = Math.floor((y - r * 1.8) / cell), r1 = Math.floor((y + r) / cell);
     for (let c = c0; c <= c1; c++) for (let q = r0; q <= r1; q++) {
-      const px = (c + 0.5) * cell - x, py = (q + 0.5) * cell - y, h3 = fhash(c, q, tick), g = fhash(q * 7 + 3, c * 13 + 1, tick);
+      const px = (c + 0.5) * cell - x, py = (q + 0.5) * cell - y, g = hh(c, q, (tick >> 1) + 11), t = hh(c, q, tick + 13);
       let keep;
-      if (py >= -r * 0.4) keep = px * px + py * py <= r * r && g >= 2;
-      else keep = Math.abs(px) < r * 0.7 * (1 + (py + r * 0.4) / (r * 1.4)) && g === 3 && h3 !== 2;
+      if (py >= -r * 0.4) keep = px * px + py * py <= r * r && g >= 0.45;
+      else keep = Math.abs(px) < r * 0.7 * (1 + (py + r * 0.4) / (r * 1.4)) && t < 0.2;
       if (!keep) continue;
-      ctx.fillStyle = FIRE_COLS[py < -r * 0.2 ? h3 & 1 : h3 === 3 ? 2 : h3 === 0 ? 0 : 1];
+      const tone = fireTone(c, q, tick);
+      ctx.fillStyle = FIRE_COLS[py < -r * 0.2 ? Math.min(1, tone) : tone];
       ctx.fillRect(c * cell, q * cell, cell, cell);
     }
   }
@@ -31022,10 +31120,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     if (S2.fire.length) {
       const buckets = [[], [], [], []];
-      for (const f of S2.fire) {
-        const h3 = Math.imul(f.c * 977 + f.r, 2654435761) + S2.fireN * 40503 >>> 30;
-        buckets[f.t <= 3 ? 3 : h3 === 0 ? 0 : h3 === 3 ? 2 : 1].push(f.c, f.r);
-      }
+      for (const f of S2.fire) buckets[f.t <= 3 ? 3 : fireTone(f.c, f.r, S2.fireN)].push(f.c, f.r);
       for (let k2 = 0; k2 < 4; k2++) {
         const B = buckets[k2];
         if (!B.length) continue;
@@ -31312,12 +31407,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (!H || !id) return;
     const ma = id === "map" ? hubMapA(S2) : "pay";
     if (ma === "no") return;
-    const x = hubStopX(id) - S2.scroll, y = H.fy - MACH_H - 9 + Math.sin(S2.t * 4) * 1.2, w = 40, hh = 11;
+    const x = hubStopX(id) - S2.scroll, y = H.fy - MACH_H - 9 + Math.sin(S2.t * 4) * 1.2, w = 40, hh2 = 11;
     c.fillStyle = "rgba(14,9,26,0.9)";
     c.strokeStyle = "#4ef08a";
     c.lineWidth = 1;
     c.beginPath();
-    c.roundRect(x - w / 2, y - hh / 2, w, hh, hh / 2);
+    c.roundRect(x - w / 2, y - hh2 / 2, w, hh2, hh2 / 2);
     c.fill();
     c.stroke();
     c.fillStyle = "#18c464";
@@ -32196,17 +32291,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const seed = window.__TEST ? window.__TITLE_SEED || 7 : 1 + Math.floor(Math.random() * 1e6);
     const frame = () => {
       raf = requestAnimationFrame(frame);
-      const dpr = Math.min(3, window.devicePixelRatio || 1), { w, hh } = o.size();
-      if (w < 1 || hh < 1) return;
-      const resized = w !== cw || hh !== chh;
+      const dpr = Math.min(3, window.devicePixelRatio || 1), { w, hh: hh2 } = o.size();
+      if (w < 1 || hh2 < 1) return;
+      const resized = w !== cw || hh2 !== chh;
       if (resized) {
         cw = w;
-        chh = hh;
+        chh = hh2;
         c.width = Math.round(w * dpr);
-        c.height = Math.round(hh * dpr);
+        c.height = Math.round(hh2 * dpr);
       }
       if (!S2 || !C || resized && !o.keep) {
-        const m = o.make(w, hh, seed);
+        const m = o.make(w, hh2, seed);
         S2 = m.S;
         C = m.C;
         if (window.__TEST) window.__title = { S: S2, C };
@@ -32216,16 +32311,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       last = now;
       if (!(o.paused && o.paused())) {
         for (let left = Math.min(dt, 0.2); left > 1e-4; left -= 0.05) titleStep(S2, Math.min(left, 0.05));
+        if (o.step) o.step(S2, Math.min(dt, 0.2));
         if (C.pack) {
-          C.view = hh / (w / TITLE_VW);
+          C.view = hh2 / (w / TITLE_VW);
           C.ay = C.view / 2;
         }
         camStep(C, S2, Math.min(dt, 0.1));
         titleSound(S2, C, loops, Math.min(dt, 0.1));
       }
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      titleDraw(ctx, S2, w, hh, C);
-      if (o.over) o.over(ctx, S2, w, hh);
+      titleDraw(ctx, S2, w, hh2, C);
+      if (o.over) o.over(ctx, S2, w, hh2);
       c.dataset.kills = String(S2.kills);
       c.dataset.t = S2.t.toFixed(2);
       c.dataset.cam = [C.z.toFixed(2), C.x.toFixed(1), C.y.toFixed(1), C.lock].join(" ");
@@ -32305,19 +32401,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   // src/ui/firesim.js
   function FireSim() {
     const cv = useRef(null);
-    const st = useRef({ S: null, pts: [], again: false, seed: 1 + Math.floor(Math.random() * 1e6), x: 0 });
+    const st = useRef({ L: null, again: false, seed: 1 + Math.floor(Math.random() * 1e6), x: 0, hold: false });
     useEffect(() => {
       const c = cv.current;
       if (!c) return;
       const k = () => c.clientWidth / TITLE_VW;
       const stop = runScene(c, {
         size: () => ({ w: c.clientWidth, hh: c.clientHeight }),
-        make: (w, hh) => {
-          const vh = hh * TITLE_VW / w, m = labScene(vh, st.current.seed);
+        make: (w, hh2) => {
+          const vh = hh2 * TITLE_VW / w, m = labScene(vh, st.current.seed);
           m.S.back = labBack;
           m.S.scroll = labClamp(st.current.x);
-          st.current.S = m.S;
-          st.current.pts = m.pts;
+          st.current.L = m;
           if (window.__TEST) window.__firesim = st.current;
           return { S: m.S, C: titleCam(vh / 2, vh), warm: 0 };
         },
@@ -32325,6 +32420,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           if (!st.current.again) return false;
           st.current.again = false;
           return true;
+        },
+        step: (_S, dt) => {
+          if (st.current.L) labStep(st.current.L, dt, st.current.hold);
         },
         still: true
       });
@@ -32334,7 +32432,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         c.setPointerCapture(e.pointerId);
       };
       const move = (e) => {
-        const S2 = st.current.S;
+        const S2 = st.current.L && st.current.L.S;
         if (px == null || !S2) return;
         const was = S2.scroll;
         S2.scroll = labClamp(S2.scroll - (e.clientX - px) / k());
@@ -32361,11 +32459,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       st.current.seed = 1 + Math.floor(Math.random() * 1e6);
       st.current.again = true;
     };
-    const fire = () => {
-      const { S: S2, pts } = st.current;
-      if (!S2 || !pts.length) return;
-      const p = labNearest(pts, S2.scroll + TITLE_VW / 2);
-      titleIgnite(S2, p.x - S2.scroll, p.y, 6, 1);
+    const fireOn = () => {
+      st.current.hold = true;
+      const off = () => {
+        st.current.hold = false;
+        removeEventListener("pointerup", off);
+        removeEventListener("pointercancel", off);
+      };
+      addEventListener("pointerup", off);
+      addEventListener("pointercancel", off);
     };
     const btn = (cls, label, fn) => h("button", { className: "dbg " + cls, onPointerDown: (e) => {
       e.preventDefault();
@@ -32375,8 +32477,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       "div",
       { className: "firesim" },
       h("canvas", { ref: cv, className: "firesimcvs" }),
-      h("div", { className: "firesimbtns" }, btn("firerespawn", "Respawn", respawn), btn("firego", "Fire", fire)),
-      h("p", { className: "devnote" }, "Drag the window sideways to move along the room. Fire lights the thing nearest the middle.")
+      h("div", { className: "firesimbtns" }, btn("firerespawn", "Respawn", respawn), btn("firego", "Hold for fire", fireOn)),
+      h("p", { className: "devnote" }, "Drag the window sideways to move along the room: vines, webs, timber, moss, grass. Hold Fire: flame jets out of the floor.")
     );
   }
 
@@ -33636,11 +33738,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (!c) return void 0;
       return runScene(c, {
         size: () => ({ w: c.clientWidth, hh: c.clientHeight }),
-        make: (w, hh, seed) => {
-          const k = w / TITLE_VW, vh = Math.max(1, hh - bigPlayRef.current) / k;
+        make: (w, hh2, seed) => {
+          const k = w / TITLE_VW, vh = Math.max(1, hh2 - bigPlayRef.current) / k;
           if (where.current === "level") {
             const bag = c.parentElement && c.parentElement.parentElement && c.parentElement.parentElement.querySelector(".abag");
-            const lvh = (hh + (bag ? Math.max(0, bag.getBoundingClientRect().bottom - c.getBoundingClientRect().bottom) : 0)) / k;
+            const lvh = (hh2 + (bag ? Math.max(0, bag.getBoundingClientRect().bottom - c.getBoundingClientRect().bottom) : 0)) / k;
             healRun(run);
             saveAutoRun(run);
             const S3 = levelScene(lvh, window.__AUTO_LEVEL || levelSeed(run), run.players.length, void 0, run.players, run.tier, run);
@@ -33650,9 +33752,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               window.__autoScene = S3;
               window.__autoCam = cam;
             }
-            const C2 = titleCam(hh / k / 2, lvh);
+            const C2 = titleCam(hh2 / k / 2, lvh);
             C2.pack = true;
-            C2.view = hh / k;
+            C2.view = hh2 / k;
             camPack(C2, S3, 1);
             cam.current = C2;
             return { S: S3, C: C2, warm: 0 };
@@ -33685,15 +33787,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         // (feedback round 2) one fixed view: no pinch, drag or tap to follow
         // LEVEL CLEARED (stage 7), in the upper part of the play area
         // (feedback round 2) everyone down: "Tap A to Teleport back to Hub" (the hub's hint look), on the screen whatever the zoom
-        over: (ctx, S2, w, hh) => {
+        over: (ctx, S2, w, hh2) => {
           const a = levelClearedAge(S2);
-          if (a >= 0) clearedText(ctx, a, DEV.autoClearT, w, hh * 0.14);
+          if (a >= 0) clearedText(ctx, a, DEV.autoClearT, w, hh2 * 0.14);
           if (jcvs.current) journeyDraw(jcvs.current, S2, run);
           if (levelDeathPrompt(S2)) {
             const k = w / 150;
             ctx.save();
             ctx.scale(k, k);
-            drawHint(ctx, w / 2 / k, hh * 0.3 / k, "Tap A to Teleport back to Hub", S2.t);
+            drawHint(ctx, w / 2 / k, hh2 * 0.3 / k, "Tap A to Teleport back to Hub", S2.t);
             ctx.restore();
           }
         },
@@ -34758,7 +34860,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
 
   // src/ui/title.js
-  var TOP = (hh) => Math.max(28, hh * 0.05);
+  var TOP = (hh2) => Math.max(28, hh2 * 0.05);
   function Title({ onStart }) {
     const cvs = useRef(null);
     const menu = useRef(null);
@@ -34768,12 +34870,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (!c) return void 0;
       return runScene(c, {
         size: () => ({ w: window.innerWidth, hh: window.innerHeight }),
-        make: (w, hh, seed) => {
-          const k = w / TITLE_VW, mt = menu.current ? menu.current.getBoundingClientRect().top : hh * 0.6;
-          const S2 = titleScene(hh / k, seed, (titleBottom(w, TOP(hh)) + 14) / k, (mt - 10) / k);
+        make: (w, hh2, seed) => {
+          const k = w / TITLE_VW, mt = menu.current ? menu.current.getBoundingClientRect().top : hh2 * 0.6;
+          const S2 = titleScene(hh2 / k, seed, (titleBottom(w, TOP(hh2)) + 14) / k, (mt - 10) / k);
           return { S: S2, C: titleCam((S2.top + S2.bot) / 2, S2.bot + 10 / k) };
         },
-        over: (ctx, S2, w, hh) => titleText(ctx, S2.t, w, TOP(hh))
+        over: (ctx, S2, w, hh2) => titleText(ctx, S2.t, w, TOP(hh2))
       });
     }, []);
     const start = () => {

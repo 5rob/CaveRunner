@@ -1,21 +1,21 @@
 // @ts-check
 // Dev → Fire sim (owner v1.0.56): a window on a long test room of things that burn (art/firelab.js), its worn range backdrop
 // (game/render/firelabdraw.js), run by the menu scene's loop (scenecanvas.js runScene, still: our own gestures). Drag
-// sideways to pan along the room; Respawn: a new line-up; Fire: lights the test object nearest the window's middle. The
+// sideways to pan along the room; Respawn: new decoration; Fire held: flame jets out of the floor (firelab.js labStep). The
 // page's fire knobs sit under it (devpanel.js) and act live.
-import { TITLE_VW, titleCam, titleIgnite } from '../art/titlescene.js';
-import { labClamp, labNearest, labScene } from '../art/firelab.js';
+import { TITLE_VW, titleCam } from '../art/titlescene.js';
+import { labClamp, labScene, labStep } from '../art/firelab.js';
 import { labBack } from '../game/render/firelabdraw.js';
 import { h, useEffect, useRef } from './h.js';
 import { runScene } from './scenecanvas.js';
 
-/** @typedef {{ S: import('../art/titlescene.js').TitleScene | null, pts: import('../art/firelab.js').LabPt[], again: boolean, seed: number, x: number }} SimState */
+/** @typedef {{ L: import('../art/firelab.js').Lab | null, again: boolean, seed: number, x: number, hold: boolean }} SimState */
 
 export function FireSim() {
   /** @type {{ current: HTMLCanvasElement | null }} */
   const cv = useRef(null);
   /** @type {{ current: SimState }} */
-  const st = useRef({ S: null, pts: [], again: false, seed: 1 + Math.floor(Math.random() * 1e6), x: 0 });
+  const st = useRef({ L: null, again: false, seed: 1 + Math.floor(Math.random() * 1e6), x: 0, hold: false });
   useEffect(() => {
     const c = cv.current;
     if (!c) return;
@@ -25,11 +25,12 @@ export function FireSim() {
       make: (w, hh) => {
         const vh = hh * TITLE_VW / w, m = labScene(vh, st.current.seed);
         m.S.back = labBack; m.S.scroll = labClamp(st.current.x);
-        st.current.S = m.S; st.current.pts = m.pts;
+        st.current.L = m;
         if (window.__TEST) window.__firesim = st.current;     // the browser suites' and shot scripts' reach
         return { S: m.S, C: titleCam(vh / 2, vh), warm: 0 };
       },
       next: () => { if (!st.current.again) return false; st.current.again = false; return true; },
+      step: (_S, dt) => { if (st.current.L) labStep(st.current.L, dt, st.current.hold); },
       still: true,
     });
     // one finger sideways pans along the room (the panel scrolls up and down: touch-action pan-y)
@@ -39,7 +40,7 @@ export function FireSim() {
     const down = e => { px = e.clientX; c.setPointerCapture(e.pointerId); };
     /** @param {PointerEvent} e */
     const move = e => {
-      const S = st.current.S;
+      const S = st.current.L && st.current.L.S;
       if (px == null || !S) return;
       const was = S.scroll;
       S.scroll = labClamp(S.scroll - (e.clientX - px) / k());
@@ -56,16 +57,16 @@ export function FireSim() {
     };
   }, []);
   const respawn = () => { st.current.seed = 1 + Math.floor(Math.random() * 1e6); st.current.again = true; };
-  const fire = () => {
-    const { S, pts } = st.current;
-    if (!S || !pts.length) return;
-    const p = labNearest(pts, S.scroll + TITLE_VW / 2);
-    titleIgnite(S, p.x - S.scroll, p.y, 6, 1);
+  // Fire: held, jets out of the floor till it's let go (anywhere: the finger may slide off the button)
+  const fireOn = () => {
+    st.current.hold = true;
+    const off = () => { st.current.hold = false; removeEventListener('pointerup', off); removeEventListener('pointercancel', off); };
+    addEventListener('pointerup', off); addEventListener('pointercancel', off);
   };
   /** @param {string} cls @param {string} label @param {() => void} fn */
   const btn = (cls, label, fn) => h('button', { className: 'dbg ' + cls, onPointerDown: (/** @type {PointerEvent} */ e) => { e.preventDefault(); fn(); } }, label);
   return h('div', { className: 'firesim' },
     h('canvas', { ref: cv, className: 'firesimcvs' }),
-    h('div', { className: 'firesimbtns' }, btn('firerespawn', 'Respawn', respawn), btn('firego', 'Fire', fire)),
-    h('p', { className: 'devnote' }, 'Drag the window sideways to move along the room. Fire lights the thing nearest the middle.'));
+    h('div', { className: 'firesimbtns' }, btn('firerespawn', 'Respawn', respawn), btn('firego', 'Hold for fire', fireOn)),
+    h('p', { className: 'devnote' }, 'Drag the window sideways to move along the room: vines, webs, timber, moss, grass. Hold Fire: flame jets out of the floor.'));
 }

@@ -780,6 +780,20 @@ function flameAt(S, x, y) {
   S.parts.push({ x, y, vx: (R() - 0.5) * 16, vy: -30 - R() * 40, life: l, max: 0.55, r: 1 + R() * 1.2,
     col: R() < 0.4 ? '#ffd35a' : R() < 0.6 ? '#ff8a2a' : '#e8461c', kind: 'flame' });
 }
+// A jet of flame out of the floor at screen x sx, the floor at fy (Dev's fire sim, Fire held: art/firelab.js labStep), h high
+// this frame (0: none): flame specks shooting up it, smoke off its top now and then, and what it reaches catching
+/** @param {TitleScene} S @param {number} sx @param {number} fy @param {number} h @param {number} dt */
+export function titleJet(S, sx, fy, h, dt) {
+  if (h < 2) return;
+  const R = S.rnd;
+  for (let n = Math.ceil(dt * (40 + h * 2)); n > 0 && S.parts.length < TITLE_PARTS; n--) {
+    const l = 0.25 + R() * 0.3, v = h / 0.4 * (0.6 + R() * 0.5);
+    S.parts.push({ x: sx + (R() - 0.5) * 3, y: fy - 1.5, vx: (R() - 0.5) * 14, vy: -v, life: l, max: 0.55, r: 1.2 + R() * 1.6,
+      col: R() < 0.45 ? '#ffd35a' : R() < 0.65 ? '#ff8a2a' : '#e8461c', kind: 'flame' });
+  }
+  if (R() < dt * 4) fireSmoke(S, sx, fy - h);
+  if (R() < dt * 12) titleIgnite(S, sx + (R() - 0.5) * 4, fy - R() * h, 5, 0.8);
+}
 /** @param {TitleScene} S @param {number} x @param {number} y */
 function fireSmoke(S, x, y) {
   if (S.parts.length >= TITLE_PARTS) return;
