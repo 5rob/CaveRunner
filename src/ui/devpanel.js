@@ -555,8 +555,8 @@ const blurBox = () => {
 // so the look-of-it knobs (zoom, torch, fog) preview live as you type. On top: the actions
 // ("All mods" is the old DEBUG shelf) and Copy report; then a search box and the tabs
 // (DEV_TABS), each a page of collapsible groups of the saved, persisted variables.
-/** @param {{ input: { current: GameInput }, refresh: () => void, close: () => void, onRestart: () => void, onSpawnGun: () => void, onSpawnLevel: () => void }} props */
-export function DevPanel({ input, refresh, close, onRestart, onSpawnGun, onSpawnLevel }) {
+/** @param {{ input: { current: GameInput }, refresh: () => void, close: () => void, onRestart: () => void, onSpawnGun?: () => void, onSpawnLevel?: () => void, onGem?: (kind: 'red' | 'green') => void }} props */
+export function DevPanel({ input, refresh, close, onRestart, onSpawnGun, onSpawnLevel, onGem }) {
   const LO = input.current.loadout;
   const [, bump] = useState(0);
   const [copied, setCopied] = useState(null);     // null, or the text + whether it copied
@@ -625,6 +625,8 @@ export function DevPanel({ input, refresh, close, onRestart, onSpawnGun, onSpawn
             act('spawngun', 'Spawn gun', onSpawnGun),
             act('spawnlevel', 'Spawn level', onSpawnLevel),
             act('restart', 'Restart run', onRestart)] : []),
+          // (Auto) a red / green crystal straight into the bag, one a tap
+          ...(onGem ? [act('gemred', '+1 red crystal', () => onGem('red')), act('gemgreen', '+1 green crystal', () => onGem('green'))] : []),
           act('devcopy', 'Copy Dev settings', () => copyText(devReport)),
           act('devaudit', 'Copy mod & perk audit', () => copyText(() => auditText(loadAudit()), 'audit'))),
         copied ? h('p', { className: 'devnote devcopied' + (copied.ok ? ' ok' : '') }, copied.empty

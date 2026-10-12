@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v1.0.63</title>
-<!-- VERSION = 'v1000063' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v1.0.64</title>
+<!-- VERSION = 'v1000064' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -1121,7 +1121,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v1.0.63';</script>
+<script>const VERSION = 'v1.0.64';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -33486,7 +33486,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var blurBox = () => {
     if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
   };
-  function DevPanel({ input, refresh, close, onRestart, onSpawnGun, onSpawnLevel }) {
+  function DevPanel({ input, refresh, close, onRestart, onSpawnGun, onSpawnLevel, onGem }) {
     const LO = input.current.loadout;
     const [, bump] = useState(0);
     const [copied, setCopied] = useState(null);
@@ -33591,6 +33591,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               act("spawnlevel", "Spawn level", onSpawnLevel),
               act("restart", "Restart run", onRestart)
             ] : [],
+            ...onGem ? [act("gemred", "+1 red crystal", () => onGem("red")), act("gemgreen", "+1 green crystal", () => onGem("green"))] : [],
             act("devcopy", "Copy Dev settings", () => copyText(devReport)),
             act("devaudit", "Copy mod & perk audit", () => copyText(() => auditText(loadAudit()), "audit"))
           ),
@@ -34560,10 +34561,20 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       drag ? h(Ghost, { drag, it: srcItem(drag.src) }) : null,
       flies.map((f) => h(FlyTile, { key: f.k, f, done: () => setFlies((fs) => fs.filter((q) => q.k !== f.k)) })),
       card ? h(CardPop, { it: card, close: () => setCard(null) }) : null,
-      devOpen ? h(DevPanel, { input, refresh: () => setV((v) => v + 1), close: () => {
-        SFX.fx("close");
-        setDevOpen(false);
-      } }) : null,
+      devOpen ? h(DevPanel, {
+        input,
+        refresh: () => setV((v) => v + 1),
+        close: () => {
+          SFX.fx("close");
+          setDevOpen(false);
+        },
+        onGem: (kind) => {
+          bagAdd(run, { kind, n: 1 });
+          saveAutoRun(run);
+          SFX.fx("coin");
+          setV((v) => v + 1);
+        }
+      }) : null,
       paused ? h(PauseMenu, { input, label: mapLabel(run), onNew: freshRun, close: () => {
         SFX.fx("close");
         setPaused(false);

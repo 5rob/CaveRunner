@@ -622,7 +622,8 @@ export function AutoScreen() {
     drag ? h(Ghost, { drag, it: srcItem(drag.src) }) : null,
     flies.map(f => h(FlyTile, { key: f.k, f, done: () => setFlies(fs => fs.filter(q => q.k !== f.k)) })),
     card ? h(CardPop, { it: card, close: () => setCard(null) }) : null,
-    devOpen ? h(DevPanel, { input, refresh: () => setV(v => v + 1), close: () => { SFX.fx('close'); setDevOpen(false); } }) : null,
+    devOpen ? h(DevPanel, { input, refresh: () => setV(v => v + 1), close: () => { SFX.fx('close'); setDevOpen(false); },
+      onGem: kind => { bagAdd(run, { kind, n: 1 }); saveAutoRun(run); SFX.fx('coin'); setV(v => v + 1); } }) : null,
     paused ? h(PauseMenu, { input, label: mapLabel(run), onNew: freshRun, close:() => { SFX.fx('close'); setPaused(false); } }) : null);
 }
 

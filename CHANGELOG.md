@@ -5,6 +5,10 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.64 — CaveRunner Auto: Dev buttons for red and green crystals (branch `autobattler`)
+Released 2026-10-12 on the branch. PM alone, owner OK'd the shots.
+- Dev panel (Auto): "+1 red crystal" / "+1 green crystal" put one in the bag a tap (`DevPanel` prop `onGem`). Shots: `tools/devshots.js` (e, f).
+
 ## v1.0.63 — CaveRunner Auto: burnt-off vine and silk pieces fall as loose ropes (branch `autobattler`)
 Released 2026-10-12 on the branch. PM alone, owner OK'd.
 - Burnt-off pieces fall as loose ropes (`ropeMake` / `ropeStep` in art/titlescene.js: verlet points, links held, stopped by rock),

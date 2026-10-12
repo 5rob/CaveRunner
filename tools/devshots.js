@@ -38,6 +38,17 @@ require('../tests/build')();
   await page.locator('.devbody').evaluate(e => { e.scrollTop = 0; });
   await page.waitForTimeout(200);
   await page.screenshot({ path: path.join(OUT, 'dev-d-groups.png') });
+  // e: (v1.0.64) +1 red ×3 and +1 green ×1, then the panel shut: the crystals in the bag
+  await page.locator('.gemred').dispatchEvent('pointerdown');
+  await page.locator('.gemred').dispatchEvent('pointerdown');
+  await page.locator('.gemred').dispatchEvent('pointerdown');
+  await page.locator('.gemgreen').dispatchEvent('pointerdown');
+  await page.waitForTimeout(200);
+  await page.screenshot({ path: path.join(OUT, 'dev-e-gems.png') });
+  await page.locator('.devpanel .done').dispatchEvent('pointerdown');
+  await page.waitForTimeout(500);
+  await page.screenshot({ path: path.join(OUT, 'dev-f-bag.png') });
+  console.log('dev-e-gems.png  the crystal buttons\ndev-f-bag.png  3 red + 1 green in the bag');
   console.log('dev-a-gear.png  the Dev ⚙️ beside ⏸ (dev mode on)\ndev-b-panel.png  the Dev panel open, Auto tab\ndev-c-auto.png  Spider open, coloured\ndev-d-groups.png  Creatures groups');
   await browser.close();
 })().catch(e => { console.log(e); process.exit(1); });
