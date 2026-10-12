@@ -5,6 +5,20 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.67 — CaveRunner Auto: the gun preview runs the level's own code; Follow Me on every shot; burning vines bright and lighting the cave (branch `autobattler`)
+Released 2026-10-13 on the branch. Preview by an agent (worktree `cr-preview`, two rounds, ~25 min), the rest PM; owner OK'd the shots.
+- The gun panel's firing window is a small room of the level's scene (`src/auto/preview.js`): the same shot flight, looks, trails,
+  lights and speed as a level; GUN_TODO mods do nothing there too. A fresh copy of the gun fires (the real one untouched). Target: the
+  hologram of you (an unseen rat takes the hits; dark at rest, lit on a hit, unkillable), 30 units off the right wall (`PV_HOLO_X`);
+  DPS number and graph over the top third. Double tap: the window grows over the stats (shooter at the new left; aims at the
+  target at any range); again: back. Floor and walls break and grow back cell by cell from the hole's edges (`autoPvRegrow`, 40/s).
+  `runScene` option `quiet`. Suite `auto-preview`, shots `tools/previewshots.js`.
+- Follow Me works on every shot in Auto (`shotFollow` in art/titlescene.js, the old game's pull: slows, stops, comes back to its
+  caster, never faster than it left); off `GUN_TODO`. Suite `auto-follow`.
+- Burning vines and webs drawn again over the dark at full brightness (`drawBurnProps(ctx, S, true)`, `drawWebFronts` in
+  render/titledraw.js), with their own light, shadowed by the rock, every `autoBurnLightGap` along the burning stretch
+  (`burnSpots`), and a warm glow: knobs `autoBurnBright`, `autoBurnLight`, `autoBurnLightR`, `autoBurnLightGap`, `autoBurnGlow`.
+
 ## v1.0.66 — CaveRunner Auto: Circle of Vigour works, and with Follow Me stays with its caster (branch `autobattler`)
 Released 2026-10-13 on the branch. PM alone, owner OK'd the shots.
 - Vigour is cast in a level (`vigourCircle` in art/scenegun.js): it stays on the ground (back with the scroll) and heals a living
