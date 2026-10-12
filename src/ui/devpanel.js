@@ -347,14 +347,15 @@ export function FlamePreview() {
 // The flames' colour over a particle's life: a bar showing the gradient, its stops as handles
 // under it. Drag a handle sideways to move it; tap the bar to add a stop there (in the colour it
 // already is); tap a handle to pick its colour or delete it. Saves DEV.elFxGrad (art/ramps.js).
-export function GradEditor() {
+/** @param {{ k?: string }} [props] k: the gradient knob it edits (v1.0.60: the fire's too) */
+export function GradEditor({ k = 'elFxGrad' } = {}) {
   const [, bump] = useState(0);
   const [sel, setSel] = useState(-1);
   const svg = useRef(null), drag = useRef(-1);
-  const G = parseGrad(DEV.elFxGrad);
+  const G = parseGrad(DEV[k]);
   const save = (/** @type {GradStop[]} */ g, /** @type {number} */ keep) => {
     const s = g[keep], out = g.slice().sort((a, b) => a.t - b.t);
-    devSet('elFxGrad', gradStr(out)); setSel(s ? out.indexOf(s) : -1); bump(n => n + 1);
+    devSet(k, gradStr(out)); setSel(s ? out.indexOf(s) : -1); bump(n => n + 1);
     return s ? out.indexOf(s) : -1;
   };
   const X0 = 8, X1 = 192, tOf = (/** @type {number} */ x) => clamp((x - X0) / (X1 - X0), 0, 1);
@@ -382,9 +383,9 @@ export function GradEditor() {
         drag.current = save(G, drag.current);
       },
       onPointerUp: () => { drag.current = -1; }, onPointerCancel: () => { drag.current = -1; } },
-      h('defs', null, h('linearGradient', { id: 'elfxg', x1: 0, x2: 1, y1: 0, y2: 0 },
+      h('defs', null, h('linearGradient', { id: 'gradbar-' + k, x1: 0, x2: 1, y1: 0, y2: 0 },
         G.map((s, k) => h('stop', { key: k, offset: s.t, stopColor: s.c })))),
-      h('rect', { x: X0, y: 4, width: X1 - X0, height: 18, rx: 3, fill: 'url(#elfxg)' }),
+      h('rect', { x: X0, y: 4, width: X1 - X0, height: 18, rx: 3, fill: 'url(#gradbar-' + k + ')' }),
       G.map((s, k) => { const x = X0 + s.t * (X1 - X0);
         return h('path', { key: k, d: 'M' + x + ' 24 l5 8 v8 h-10 v-8 z', fill: s.c,
           stroke: k === sel ? '#fff' : 'rgba(255,255,255,0.45)', strokeWidth: k === sel ? 1.6 : 0.8 }); })),
@@ -392,36 +393,37 @@ export function GradEditor() {
       h('span', null, 'Stop at ' + Math.round(G[sel].t * 100) + '%'),
       h('input', { type: 'color', value: G[sel].c, onChange: e => { G[sel].c = e.target.value; save(G, sel); } }),
       G.length > 1 ? h('button', { className: 'devreset', onPointerDown: e => { e.preventDefault();
-        G.splice(sel, 1); devSet('elFxGrad', gradStr(G)); setSel(-1); bump(n => n + 1); } }, 'Delete') : null) : null,
+        G.splice(sel, 1); devSet(k, gradStr(G)); setSel(-1); bump(n => n + 1); } }, 'Delete') : null) : null,
     h('div', { className: 'gradsel' }, h('span', null, sel >= 0 ? '' : 'Tap the bar to add a stop, drag one to move it'),
       h('button', { className: 'devreset', 'aria-label': 'Default gradient', onPointerDown: e => { e.preventDefault();
-        devSet('elFxGrad', DEV_DEFAULTS.elFxGrad); setSel(-1); bump(n => n + 1); } }, '↺')));
+        devSet(k, DEV_DEFAULTS[k]); setSel(-1); bump(n => n + 1); } }, '↺')));
 }
 
 // The flames' opacity over a particle's life: a B-spline through draggable control points (life
 // left to right, opacity bottom to top), the dashed line joining them, and a dot running along it
 // at the real speed. Drag a point; tap empty space to add one there; tap a point to select it and
 // Delete. Saves DEV.elFxAlpha (art/ramps.js).
-export function RampEditor() {
+/** @param {{ k?: string, life?: string }} [props] k: the ramp knob it edits; life: the range knob whose middle times the dot */
+export function RampEditor({ k = 'elFxAlpha', life = 'elFxLife' } = {}) {
   const [, bump] = useState(0);
   const [sel, setSel] = useState(-1);
   const svg = useRef(null), drag = useRef(-1), dot = useRef(null);
-  const R = parseRamp(DEV.elFxAlpha);
+  const R = parseRamp(DEV[k]);
   const B = { x0: 10, x1: 190, top: 8, bot: 98 };
   const px = (/** @type {number} */ x) => B.x0 + x * (B.x1 - B.x0), py = (/** @type {number} */ y) => B.bot - y * (B.bot - B.top);
   useEffect(() => {
     let raf, t0 = performance.now();
     const tick = now => {
       raf = requestAnimationFrame(tick);
-      const len = Math.max(0.05, (DEV.elFxLifeLo + DEV.elFxLifeHi) / 2), u = (((now - t0) / 1000) % (len + 0.4)) / len;
-      if (dot.current && u <= 1) { dot.current.setAttribute('cx', String(px(u))); dot.current.setAttribute('cy', String(py(rampAt(parseRamp(DEV.elFxAlpha), u)))); }
+      const len = Math.max(0.05, (DEV[life + 'Lo'] + DEV[life + 'Hi']) / 2), u = (((now - t0) / 1000) % (len + 0.4)) / len;
+      if (dot.current && u <= 1) { dot.current.setAttribute('cx', String(px(u))); dot.current.setAttribute('cy', String(py(rampAt(parseRamp(DEV[k]), u)))); }
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, []);
   const save = (/** @type {RampPt[]} */ r, /** @type {number} */ keep) => {
     const p = r[keep], out = r.slice().sort((a, b) => a.x - b.x);
-    devSet('elFxAlpha', rampStr(out)); setSel(p ? out.indexOf(p) : -1); bump(n => n + 1);
+    devSet(k, rampStr(out)); setSel(p ? out.indexOf(p) : -1); bump(n => n + 1);
     return p ? out.indexOf(p) : -1;
   };
   const at = e => { const p = svgPt(svg.current, e); return p && { x: clamp((p.x - B.x0) / (B.x1 - B.x0), 0, 1), y: clamp((B.bot - p.y) / (B.bot - B.top), 0, 1), sx: p.x, sy: p.y }; };
@@ -462,9 +464,9 @@ export function RampEditor() {
       sel >= 0 && R[sel] ? h('span', null, 'Point: life ' + Math.round(R[sel].x * 100) + '%, opacity ' + Math.round(R[sel].y * 100) + '%')
         : h('span', null, 'Tap to add a point, drag to move'),
       sel >= 0 && R.length > 2 ? h('button', { className: 'devreset', onPointerDown: e => { e.preventDefault();
-        R.splice(sel, 1); devSet('elFxAlpha', rampStr(R)); setSel(-1); bump(n => n + 1); } }, 'Delete') : null,
+        R.splice(sel, 1); devSet(k, rampStr(R)); setSel(-1); bump(n => n + 1); } }, 'Delete') : null,
       h('button', { className: 'devreset', 'aria-label': 'Default ramp', onPointerDown: e => { e.preventDefault();
-        devSet('elFxAlpha', DEV_DEFAULTS.elFxAlpha); setSel(-1); bump(n => n + 1); } }, '↺')));
+        devSet(k, DEV_DEFAULTS[k]); setSel(-1); bump(n => n + 1); } }, '↺')));
 }
 
 // One tweakable value in the dev panel: a labelled number box prefilled with the live
@@ -532,7 +534,13 @@ const groupExtras = g => [
   g === 'holoflash' ? h(FadeCurve, { key: 'fc' }) : null,
   ...CURVES.filter(c => c.g === g).map(c => h(CurveEdit, { key: c.p, p: c.p, label: c.label, lo: c.lo, hi: c.hi })),
   ...(g === 'elitefx' ? [h(FlamePreview, { key: 'fp' }), h('p', { key: 'gl', className: 'devlbl' }, 'Colour over life'), h(GradEditor, { key: 'ge' }),
-    h('p', { key: 'rl', className: 'devlbl' }, 'Opacity over life'), h(RampEditor, { key: 're' })] : [])];
+    h('p', { key: 'rl', className: 'devlbl' }, 'Opacity over life'), h(RampEditor, { key: 're' })] : []),
+  // (v1.0.60) the fire's flame specks and smoke: colour and opacity over life
+  ...(g === 'firefx' ? [
+    h('p', { key: 'fg', className: 'devlbl' }, 'Flame specks: colour over life'), h(GradEditor, { key: 'fge', k: 'fxFlGrad' }),
+    h('p', { key: 'fa', className: 'devlbl' }, 'Flame specks: opacity over life'), h(RampEditor, { key: 'fae', k: 'fxFlAlpha', life: 'fxFlLife' }),
+    h('p', { key: 'sg', className: 'devlbl' }, 'Smoke: colour over life'), h(GradEditor, { key: 'sge', k: 'fxSmGrad' }),
+    h('p', { key: 'sa', className: 'devlbl' }, 'Smoke: opacity over life'), h(RampEditor, { key: 'sae', k: 'fxSmAlpha', life: 'fxSmLife' })] : [])];
 
 /** @param {string} k @returns {any} */
 const lsGet = k => { try { return JSON.parse(localStorage.getItem(k)); } catch (_) { return null; } };

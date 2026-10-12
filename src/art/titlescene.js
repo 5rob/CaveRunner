@@ -132,7 +132,7 @@ export const TITLE_HOME = {
  *   real?: boolean, by?: number, trig?: string | null, timer?: number, pay?: Shot[] | null, age?: number,
  *   sid?: string, tr?: number[], homeR?: number, light?: string, lightR?: number,
  *   beam?: number, ang?: number, bx?: number, by2?: number, pull?: number, vac?: number, max?: number, hopT?: number, hx?: number, hy?: number }} TShot */
-/** @typedef {{ x: number, y: number, vx: number, vy: number, life: number, max: number, r: number, col: string, kind: string, to?: { x: number, y: number, life: number } }} TPart */
+/** @typedef {{ x: number, y: number, vx: number, vy: number, life: number, max: number, r: number, col: string, kind: string, to?: { x: number, y: number, life: number }, fx?: boolean, u?: number, a?: number, g?: number }} TPart */
 /** @typedef {{ x: number, y: number, r: number, t: number, max: number, sid?: string }} TBoom */
 /** @typedef {{ pts: { x: number, y: number }[], t: number, col: string }} TZap */
 // a prop: `ox` its world x (not `wx`: art/props.js reads that as an arch's or a vine's sideways bend)
@@ -776,9 +776,26 @@ function burst(S, x, y, n, col, spd, kind, life) {
 /** @param {TitleScene} S @param {number} x @param {number} y */
 function flameAt(S, x, y) {
   if (S.parts.length >= TITLE_PARTS) return;
-  const R = S.rnd, l = 0.25 + R() * 0.3;
+  const R = S.rnd;
+  if (autoOn(S)) {   // (owner v1.0.60) Dev → Fire: flames and smoke
+    for (let n = fxCount(R, DEV.fxFlRate); n > 0; n--)
+      fxPart(S, 'flame', x, y, (R() * 2 - 1) * kr('fxFlSide', R), -kr('fxFlRise', R), kr('fxFlLife', R), kr('fxFlSize', R));
+    return;
+  }
+  const l = 0.25 + R() * 0.3;
   S.parts.push({ x, y, vx: (R() - 0.5) * 16, vy: -30 - R() * 40, life: l, max: 0.55, r: 1 + R() * 1.2,
     col: R() < 0.4 ? '#ffd35a' : R() < 0.6 ? '#ff8a2a' : '#e8461c', kind: 'flame' });
+}
+// (owner v1.0.60) how many of a particle for a rate (× the usual: 1.5 is one, and another half the time)
+/** @param {() => number} R @param {number} rate */
+const fxCount = (R, rate) => Math.floor(rate) + (R() < rate % 1 ? 1 : 0);
+// a flame speck or a puff of smoke whose look comes from Dev → Fire: flames and smoke (titledraw.js): fx, its own shift along
+// the colour (u), its own opacity (a), smoke's growth (g)
+/** @param {TitleScene} S @param {string} kind @param {number} x @param {number} y @param {number} vx @param {number} vy @param {number} life @param {number} r */
+function fxPart(S, kind, x, y, vx, vy, life, r) {
+  if (S.parts.length >= TITLE_PARTS) return;
+  const R = S.rnd, sm = kind === 'fsmoke';
+  S.parts.push({ x, y, vx, vy, life, max: life, r, col: '', kind, fx: true, u: R(), a: 1 - (sm ? DEV.fxSmAlphaJit : DEV.fxFlAlphaJit) * R(), g: sm ? kr('fxSmGrow', R) : 0 });
 }
 // A jet of flame out of the floor at screen x sx, the floor at fy (Dev's fire sim, Fire held: art/firelab.js labStep), h high
 // this frame (0: none): flame specks shooting up it, smoke off its top now and then, and what it reaches catching
@@ -788,8 +805,7 @@ export function titleJet(S, sx, fy, h, dt) {
   const R = S.rnd;
   for (let n = Math.ceil(dt * (40 + h * 2)); n > 0 && S.parts.length < TITLE_PARTS; n--) {
     const l = 0.25 + R() * 0.3, v = h / 0.4 * (0.6 + R() * 0.5);
-    S.parts.push({ x: sx + (R() - 0.5) * 3, y: fy - 1.5, vx: (R() - 0.5) * 14, vy: -v, life: l, max: 0.55, r: 1.2 + R() * 1.6,
-      col: R() < 0.45 ? '#ffd35a' : R() < 0.65 ? '#ff8a2a' : '#e8461c', kind: 'flame' });
+    fxPart(S, 'flame', sx + (R() - 0.5) * 3, fy - 1.5, (R() - 0.5) * 14, -v, l, kr('fxFlSize', R) * 1.2);
   }
   if (R() < dt * 4) fireSmoke(S, sx, fy - h);
   if (R() < dt * 12) titleIgnite(S, sx + (R() - 0.5) * 4, fy - R() * h, 5, 0.8);
@@ -798,6 +814,11 @@ export function titleJet(S, sx, fy, h, dt) {
 function fireSmoke(S, x, y) {
   if (S.parts.length >= TITLE_PARTS) return;
   const R = S.rnd;
+  if (autoOn(S)) {   // (owner v1.0.60) Dev → Fire: flames and smoke
+    for (let n = fxCount(R, DEV.fxSmRate); n > 0; n--)
+      fxPart(S, 'fsmoke', x, y, (R() * 2 - 1) * kr('fxSmSide', R), -kr('fxSmRise', R), kr('fxSmLife', R), kr('fxSmSize', R));
+    return;
+  }
   S.parts.push({ x, y, vx: (R() - 0.5) * 12, vy: -25 - R() * 20, life: 1.4, max: 1.4, r: 2 + R() * 2.5, col: '#2a2624', kind: 'fsmoke' });
 }
 
@@ -1177,7 +1198,7 @@ export function titleStep(S, dt) {
       continue;
     }
     if (p.kind === 'fsmoke' || p.kind === 'jsmoke') {         // game/systems/particles.js smoke (the jetpack's too)
-      p.x += (p.vx - sv(S)) * dt; p.y += p.vy * dt; p.vx *= 1 - 2.5 * dt; p.vy = p.vy * (1 - 2.5 * dt) - 12 * dt; p.r += 5 * dt;
+      p.x += (p.vx - sv(S)) * dt; p.y += p.vy * dt; p.vx *= 1 - 2.5 * dt; p.vy = p.vy * (1 - 2.5 * dt) - 12 * dt; p.r += (p.g || 5) * dt;
       continue;
     }
     if (p.to) {                       // White Hole motes (v1.0.40): pulled onto it, faster the closer, swirling a little; gone at its core

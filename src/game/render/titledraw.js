@@ -16,6 +16,7 @@ import { coinR } from '../../world/nuggets.js';
 import { FIRE_COLS } from '../../world/fire.js';
 import { vinePt } from '../../world/sway.js';
 import { crackleAt, crackleBody, fireTone } from '../../art/crackle.js';
+import { gradLut, lutAt, rampLut } from '../../art/ramps.js';
 import { drawProp, propGlow } from '../../art/props.js';
 import { gunArtId } from '../../art/gunart.js';
 import { CRYSTAL_PAL, CRYSTAL_R, GREEN_PAL, GUN_HELD, gunMuzzle, drawGun, drawNugget, glowAt, drawRunner, jetFlame, pixelHeld, pixelSoft, pixelSprite } from '../../art/sprites.js';
@@ -205,8 +206,8 @@ export function titleDraw(ctx, S, cw, ch, cam) {
     ctx.fillStyle = p.col;
     ctx.beginPath(); ctx.arc(p.x, p.y, p.r * (2 - p.life / p.max), 0, Math.PI * 2); ctx.fill();
   } else if (p.kind === 'fsmoke') {   // fire's smoke, as render/effects.js puffs it
-    ctx.globalAlpha = Math.max(0, p.life / p.max) * 0.35;
-    ctx.fillStyle = p.col;
+    if (p.fx) { const t = 1 - p.life / p.max; ctx.globalAlpha = Math.max(0, lutAt(rampLut(DEV.fxSmAlpha), t) * (p.a ?? 1)); ctx.fillStyle = lutAt(gradLut(DEV.fxSmGrad), fxShift(t, p.u, DEV.fxSmColJit)); }   // (v1.0.60, Dev → Fire: flames and smoke)
+    else { ctx.globalAlpha = Math.max(0, p.life / p.max) * 0.35; ctx.fillStyle = p.col; }
     ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
   }
   ctx.globalAlpha = 1;
@@ -291,7 +292,8 @@ export function titleDraw(ctx, S, cw, ch, cam) {
   }
   for (const p of S.parts) if (p.kind !== 'smoke' && p.kind !== 'fsmoke' && p.kind !== 'jsmoke') {
     if (p.kind === 'flame' || p.kind === 'ember') {   // the game's flame specks and a lantern's burning oil (glowing dparts: bright until their last third)
-      ctx.globalAlpha = Math.min(1, p.life / (p.max * 0.3)); ctx.fillStyle = p.col;
+      if (p.fx) { const t = 1 - p.life / p.max; ctx.globalAlpha = Math.max(0, lutAt(rampLut(DEV.fxFlAlpha), t) * (p.a ?? 1)); ctx.fillStyle = lutAt(gradLut(DEV.fxFlGrad), fxShift(t, p.u, DEV.fxFlColJit)); }   // (v1.0.60)
+      else { ctx.globalAlpha = Math.min(1, p.life / (p.max * 0.3)); ctx.fillStyle = p.col; }
       ctx.fillRect(p.x - p.r / 2, p.y - p.r / 2, p.r, p.r);
       continue;
     }
@@ -350,6 +352,9 @@ function drawTitleRunner(ctx, S, r) {
   }
 }
 
+// where a particle's colour is read along its gradient: its age t, shifted by its own u (0-1) up to ± j
+/** @param {number} t @param {number | undefined} u @param {number} j */
+const fxShift = (t, u, j) => Math.max(0, Math.min(1, t + ((u ?? 0.5) - 0.5) * 2 * j));
 // turn the canvas about a falling piece's middle (x its top's x in these units)
 /** @param {CanvasRenderingContext2D} c @param {number} x @param {import('../../art/titlescene.js').TProp} p @param {number} _k */
 function tumble(c, x, p, _k) { const my = p.y + p.len / 2; c.translate(x, my); c.rotate(p.rot || 0); c.translate(-x, -my); }

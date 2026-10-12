@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v1.0.59</title>
-<!-- VERSION = 'v1000059' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v1.0.60</title>
+<!-- VERSION = 'v1000060' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -1114,7 +1114,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v1.0.59';</script>
+<script>const VERSION = 'v1.0.60';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -2138,6 +2138,42 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "labJetT", g: "firelab", label: "… lasting about (s)", min: 0.1, max: 4, step: 0.05 }
   );
   DEV_GROUPS.push(["firelab", "Fire sim: flame jets"]);
+  rangeKnobs("firefx", [
+    ["fxFlLife", "Flame specks: life (s)", 0.05, 3, 0.05, 0.25, 0.55],
+    ["fxFlSize", "Flame specks: size", 0.3, 8, 0.1, 1, 2.2],
+    ["fxFlRise", "Flame specks: rise speed", 0, 200, 1, 30, 70],
+    ["fxFlSide", "Flame specks: sideways speed (either way)", 0, 60, 1, 0, 8],
+    ["fxSmLife", "Smoke: life (s)", 0.1, 8, 0.05, 1.2, 1.6],
+    ["fxSmSize", "Smoke: size at the start", 0.3, 12, 0.1, 2, 4.5],
+    ["fxSmGrow", "Smoke: grows (units a second)", 0, 30, 0.1, 4, 6],
+    ["fxSmRise", "Smoke: rise speed", 0, 120, 1, 25, 45],
+    ["fxSmSide", "Smoke: sideways speed (either way)", 0, 40, 1, 0, 6]
+  ]);
+  Object.assign(DEV_DEFAULTS, {
+    fxFlRate: 1,
+    fxFlColJit: 0.25,
+    fxFlAlphaJit: 0.2,
+    fxSmRate: 1,
+    fxSmColJit: 0.2,
+    fxSmAlphaJit: 0.3,
+    fxFlGrad: "0:#fff0a0 0.3:#ffd35a 0.6:#ff8a2a 1:#e8461c",
+    fxFlAlpha: "0:1 0.7:1 1:0",
+    fxSmGrad: "0:#3a3430 1:#1e1c1c",
+    fxSmAlpha: "0:0 0.1:0.35 1:0"
+  });
+  DEV_META.push(
+    { k: "fxFlRate", g: "firefx", label: "Flame specks: how many (× the usual)", min: 0, max: 5, step: 0.05 },
+    { k: "fxFlColJit", g: "firefx", label: "Flame specks: colour randomness (each shifted along the gradient, ±)", min: 0, max: 1, step: 0.01 },
+    { k: "fxFlAlphaJit", g: "firefx", label: "Flame specks: opacity randomness (each up to this much fainter)", min: 0, max: 1, step: 0.01 },
+    { k: "fxSmRate", g: "firefx", label: "Smoke: how much (× the usual)", min: 0, max: 5, step: 0.05 },
+    { k: "fxSmColJit", g: "firefx", label: "Smoke: colour randomness (±)", min: 0, max: 1, step: 0.01 },
+    { k: "fxSmAlphaJit", g: "firefx", label: "Smoke: opacity randomness (each up to this much fainter)", min: 0, max: 1, step: 0.01 },
+    { k: "fxFlGrad", g: "firefx", label: "Flame specks: colour over life (gradient)", type: "grad" },
+    { k: "fxFlAlpha", g: "firefx", label: "Flame specks: opacity over life (ramp)", type: "ramp" },
+    { k: "fxSmGrad", g: "firefx", label: "Smoke: colour over life (gradient)", type: "grad" },
+    { k: "fxSmAlpha", g: "firefx", label: "Smoke: opacity over life (ramp)", type: "ramp" }
+  );
+  DEV_GROUPS.push(["firefx", "Fire: flames and smoke"]);
   Object.assign(DEV_DEFAULTS, { autoLootMod: 6, autoLootRed: 2, autoLootExo: 30, autoLootEliteGold: 3, autoLootBossGold: 10 });
   DEV_META.push(
     { k: "autoLootMod", g: "autoloot", label: "A kill drops a gun mod (% chance)", min: 0, max: 100, step: 0.5 },
@@ -2207,7 +2243,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "autoStreamGrow", g: "autothrow", label: "Gold stream: big nuggets double in worth every (s)", min: 0.2, max: 10, step: 0.1 }
   );
   DEV_GROUPS.push(["autothrow", "Auto: throw"]);
-  DEV_TABS.splice(DEV_TABS.length - 1, 0, ["firesim", "Fire sim", ["firelab", "autofire", "fire"]]);
+  DEV_TABS.splice(DEV_TABS.length - 1, 0, ["firesim", "Fire sim", ["firelab", "firefx", "autofire", "fire"]]);
   DEV_TABS.splice(DEV_TABS.length - 2, 0, ["auto", "Auto", ["auto", "autohub", "automaps", "autolevel", "autoblocks", "autoguns", "autoperks", "autofoes", "autodeath", "autoloot", "autochests", "autobag", "autothrow"]]);
   var DEV_KEY = "caverunner-dev";
   var DEV = Object.assign({}, DEV_DEFAULTS);
@@ -13052,7 +13088,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   function flameAt(S2, x, y) {
     if (S2.parts.length >= TITLE_PARTS) return;
-    const R = S2.rnd, l = 0.25 + R() * 0.3;
+    const R = S2.rnd;
+    if (autoOn(S2)) {
+      for (let n = fxCount(R, DEV.fxFlRate); n > 0; n--)
+        fxPart(S2, "flame", x, y, (R() * 2 - 1) * kr("fxFlSide", R), -kr("fxFlRise", R), kr("fxFlLife", R), kr("fxFlSize", R));
+      return;
+    }
+    const l = 0.25 + R() * 0.3;
     S2.parts.push({
       x,
       y,
@@ -13065,22 +13107,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       kind: "flame"
     });
   }
+  var fxCount = (R, rate) => Math.floor(rate) + (R() < rate % 1 ? 1 : 0);
+  function fxPart(S2, kind, x, y, vx, vy, life, r) {
+    if (S2.parts.length >= TITLE_PARTS) return;
+    const R = S2.rnd, sm = kind === "fsmoke";
+    S2.parts.push({ x, y, vx, vy, life, max: life, r, col: "", kind, fx: true, u: R(), a: 1 - (sm ? DEV.fxSmAlphaJit : DEV.fxFlAlphaJit) * R(), g: sm ? kr("fxSmGrow", R) : 0 });
+  }
   function titleJet(S2, sx, fy, h3, dt) {
     if (h3 < 2) return;
     const R = S2.rnd;
     for (let n = Math.ceil(dt * (40 + h3 * 2)); n > 0 && S2.parts.length < TITLE_PARTS; n--) {
       const l = 0.25 + R() * 0.3, v = h3 / 0.4 * (0.6 + R() * 0.5);
-      S2.parts.push({
-        x: sx + (R() - 0.5) * 3,
-        y: fy - 1.5,
-        vx: (R() - 0.5) * 14,
-        vy: -v,
-        life: l,
-        max: 0.55,
-        r: 1.2 + R() * 1.6,
-        col: R() < 0.45 ? "#ffd35a" : R() < 0.65 ? "#ff8a2a" : "#e8461c",
-        kind: "flame"
-      });
+      fxPart(S2, "flame", sx + (R() - 0.5) * 3, fy - 1.5, (R() - 0.5) * 14, -v, l, kr("fxFlSize", R) * 1.2);
     }
     if (R() < dt * 4) fireSmoke(S2, sx, fy - h3);
     if (R() < dt * 12) titleIgnite(S2, sx + (R() - 0.5) * 4, fy - R() * h3, 5, 0.8);
@@ -13088,6 +13126,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function fireSmoke(S2, x, y) {
     if (S2.parts.length >= TITLE_PARTS) return;
     const R = S2.rnd;
+    if (autoOn(S2)) {
+      for (let n = fxCount(R, DEV.fxSmRate); n > 0; n--)
+        fxPart(S2, "fsmoke", x, y, (R() * 2 - 1) * kr("fxSmSide", R), -kr("fxSmRise", R), kr("fxSmLife", R), kr("fxSmSize", R));
+      return;
+    }
     S2.parts.push({ x, y, vx: (R() - 0.5) * 12, vy: -25 - R() * 20, life: 1.4, max: 1.4, r: 2 + R() * 2.5, col: "#2a2624", kind: "fsmoke" });
   }
   function popLamp(S2, p) {
@@ -13512,7 +13555,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         p.y += p.vy * dt;
         p.vx *= 1 - 2.5 * dt;
         p.vy = p.vy * (1 - 2.5 * dt) - 12 * dt;
-        p.r += 5 * dt;
+        p.r += (p.g || 5) * dt;
         continue;
       }
       if (p.to) {
@@ -29754,6 +29797,34 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     "fireWoodHi",
     "fireWoodLo",
     "fogDim",
+    "fxFlAlpha",
+    "fxFlAlphaJit",
+    "fxFlColJit",
+    "fxFlGrad",
+    "fxFlLifeHi",
+    "fxFlLifeLo",
+    "fxFlRate",
+    "fxFlRiseHi",
+    "fxFlRiseLo",
+    "fxFlSideHi",
+    "fxFlSideLo",
+    "fxFlSizeHi",
+    "fxFlSizeLo",
+    "fxSmAlpha",
+    "fxSmAlphaJit",
+    "fxSmColJit",
+    "fxSmGrad",
+    "fxSmGrowHi",
+    "fxSmGrowLo",
+    "fxSmLifeHi",
+    "fxSmLifeLo",
+    "fxSmRate",
+    "fxSmRiseHi",
+    "fxSmRiseLo",
+    "fxSmSideHi",
+    "fxSmSideLo",
+    "fxSmSizeHi",
+    "fxSmSizeLo",
     "jeAimTolHi",
     "jeAimTolLo",
     "jeBounceHi",
@@ -31196,8 +31267,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       ctx.arc(p.x, p.y, p.r * (2 - p.life / p.max), 0, Math.PI * 2);
       ctx.fill();
     } else if (p.kind === "fsmoke") {
-      ctx.globalAlpha = Math.max(0, p.life / p.max) * 0.35;
-      ctx.fillStyle = p.col;
+      if (p.fx) {
+        const t = 1 - p.life / p.max;
+        ctx.globalAlpha = Math.max(0, lutAt(rampLut(DEV.fxSmAlpha), t) * (p.a ?? 1));
+        ctx.fillStyle = lutAt(gradLut(DEV.fxSmGrad), fxShift(t, p.u, DEV.fxSmColJit));
+      } else {
+        ctx.globalAlpha = Math.max(0, p.life / p.max) * 0.35;
+        ctx.fillStyle = p.col;
+      }
       ctx.beginPath();
       ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
       ctx.fill();
@@ -31299,8 +31376,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     for (const p of S2.parts) if (p.kind !== "smoke" && p.kind !== "fsmoke" && p.kind !== "jsmoke") {
       if (p.kind === "flame" || p.kind === "ember") {
-        ctx.globalAlpha = Math.min(1, p.life / (p.max * 0.3));
-        ctx.fillStyle = p.col;
+        if (p.fx) {
+          const t = 1 - p.life / p.max;
+          ctx.globalAlpha = Math.max(0, lutAt(rampLut(DEV.fxFlAlpha), t) * (p.a ?? 1));
+          ctx.fillStyle = lutAt(gradLut(DEV.fxFlGrad), fxShift(t, p.u, DEV.fxFlColJit));
+        } else {
+          ctx.globalAlpha = Math.min(1, p.life / (p.max * 0.3));
+          ctx.fillStyle = p.col;
+        }
         ctx.fillRect(p.x - p.r / 2, p.y - p.r / 2, p.r, p.r);
         continue;
       }
@@ -31356,6 +31439,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       });
     }
   }
+  var fxShift = (t, u, j) => Math.max(0, Math.min(1, t + ((u ?? 0.5) - 0.5) * 2 * j));
   function tumble(c, x, p, _k) {
     const my = p.y + p.len / 2;
     c.translate(x, my);
@@ -32962,14 +33046,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }, []);
     return h("canvas", { ref, className: "flameprev" });
   }
-  function GradEditor() {
+  function GradEditor({ k = "elFxGrad" } = {}) {
     const [, bump] = useState(0);
     const [sel, setSel] = useState(-1);
     const svg = useRef(null), drag = useRef(-1);
-    const G = parseGrad(DEV.elFxGrad);
+    const G = parseGrad(DEV[k]);
     const save = (g, keep) => {
       const s = g[keep], out = g.slice().sort((a, b) => a.t - b.t);
-      devSet("elFxGrad", gradStr(out));
+      devSet(k, gradStr(out));
       setSel(s ? out.indexOf(s) : -1);
       bump((n) => n + 1);
       return s ? out.indexOf(s) : -1;
@@ -32989,11 +33073,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             const p = svgPt(svg.current, e);
             if (!p) return;
             let i = -1, bd = 7;
-            G.forEach((s, k) => {
+            G.forEach((s, k2) => {
               const d = Math.abs(X0 + s.t * (X1 - X0) - p.x);
               if (p.y > 22 && d < bd) {
                 bd = d;
-                i = k;
+                i = k2;
               }
             });
             if (i < 0) {
@@ -33020,18 +33104,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         },
         h("defs", null, h(
           "linearGradient",
-          { id: "elfxg", x1: 0, x2: 1, y1: 0, y2: 0 },
-          G.map((s, k) => h("stop", { key: k, offset: s.t, stopColor: s.c }))
+          { id: "gradbar-" + k, x1: 0, x2: 1, y1: 0, y2: 0 },
+          G.map((s, k2) => h("stop", { key: k2, offset: s.t, stopColor: s.c }))
         )),
-        h("rect", { x: X0, y: 4, width: X1 - X0, height: 18, rx: 3, fill: "url(#elfxg)" }),
-        G.map((s, k) => {
+        h("rect", { x: X0, y: 4, width: X1 - X0, height: 18, rx: 3, fill: "url(#gradbar-" + k + ")" }),
+        G.map((s, k2) => {
           const x = X0 + s.t * (X1 - X0);
           return h("path", {
-            key: k,
+            key: k2,
             d: "M" + x + " 24 l5 8 v8 h-10 v-8 z",
             fill: s.c,
-            stroke: k === sel ? "#fff" : "rgba(255,255,255,0.45)",
-            strokeWidth: k === sel ? 1.6 : 0.8
+            stroke: k2 === sel ? "#fff" : "rgba(255,255,255,0.45)",
+            strokeWidth: k2 === sel ? 1.6 : 0.8
           });
         })
       ),
@@ -33046,7 +33130,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         G.length > 1 ? h("button", { className: "devreset", onPointerDown: (e) => {
           e.preventDefault();
           G.splice(sel, 1);
-          devSet("elFxGrad", gradStr(G));
+          devSet(k, gradStr(G));
           setSel(-1);
           bump((n) => n + 1);
         } }, "Delete") : null
@@ -33057,28 +33141,28 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         h("span", null, sel >= 0 ? "" : "Tap the bar to add a stop, drag one to move it"),
         h("button", { className: "devreset", "aria-label": "Default gradient", onPointerDown: (e) => {
           e.preventDefault();
-          devSet("elFxGrad", DEV_DEFAULTS.elFxGrad);
+          devSet(k, DEV_DEFAULTS[k]);
           setSel(-1);
           bump((n) => n + 1);
         } }, "↺")
       )
     );
   }
-  function RampEditor() {
+  function RampEditor({ k = "elFxAlpha", life = "elFxLife" } = {}) {
     const [, bump] = useState(0);
     const [sel, setSel] = useState(-1);
     const svg = useRef(null), drag = useRef(-1), dot2 = useRef(null);
-    const R = parseRamp(DEV.elFxAlpha);
+    const R = parseRamp(DEV[k]);
     const B = { x0: 10, x1: 190, top: 8, bot: 98 };
     const px = (x) => B.x0 + x * (B.x1 - B.x0), py = (y) => B.bot - y * (B.bot - B.top);
     useEffect(() => {
       let raf, t0 = performance.now();
       const tick = (now) => {
         raf = requestAnimationFrame(tick);
-        const len = Math.max(0.05, (DEV.elFxLifeLo + DEV.elFxLifeHi) / 2), u = (now - t0) / 1e3 % (len + 0.4) / len;
+        const len = Math.max(0.05, (DEV[life + "Lo"] + DEV[life + "Hi"]) / 2), u = (now - t0) / 1e3 % (len + 0.4) / len;
         if (dot2.current && u <= 1) {
           dot2.current.setAttribute("cx", String(px(u)));
-          dot2.current.setAttribute("cy", String(py(rampAt(parseRamp(DEV.elFxAlpha), u))));
+          dot2.current.setAttribute("cy", String(py(rampAt(parseRamp(DEV[k]), u))));
         }
       };
       raf = requestAnimationFrame(tick);
@@ -33086,7 +33170,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }, []);
     const save = (r, keep) => {
       const p = r[keep], out = r.slice().sort((a, b) => a.x - b.x);
-      devSet("elFxAlpha", rampStr(out));
+      devSet(k, rampStr(out));
       setSel(p ? out.indexOf(p) : -1);
       bump((n) => n + 1);
       return p ? out.indexOf(p) : -1;
@@ -33112,11 +33196,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             const p = at(e);
             if (!p) return;
             let i = -1, bd = 9;
-            R.forEach((q, k) => {
+            R.forEach((q, k2) => {
               const dd = Math.hypot(px(q.x) - p.sx, py(q.y) - p.sy);
               if (dd < bd) {
                 bd = dd;
-                i = k;
+                i = k2;
               }
             });
             if (i < 0) {
@@ -33148,13 +33232,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         h("polyline", { points: R.map((q) => px(q.x) + "," + py(q.y)).join(" "), className: "fcarm", fill: "none" }),
         h("path", { d, className: "fcline" }),
         h("circle", { ref: dot2, r: 2.5, className: "fcdot", cx: -10, cy: -10 }),
-        R.map((q, k) => h("circle", {
-          key: k,
+        R.map((q, k2) => h("circle", {
+          key: k2,
           cx: px(q.x),
           cy: py(q.y),
           r: 4.5,
           className: "fchandle",
-          style: k === sel ? { stroke: "#fff" } : null
+          style: k2 === sel ? { stroke: "#fff" } : null
         }))
       ),
       h(
@@ -33164,13 +33248,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         sel >= 0 && R.length > 2 ? h("button", { className: "devreset", onPointerDown: (e) => {
           e.preventDefault();
           R.splice(sel, 1);
-          devSet("elFxAlpha", rampStr(R));
+          devSet(k, rampStr(R));
           setSel(-1);
           bump((n) => n + 1);
         } }, "Delete") : null,
         h("button", { className: "devreset", "aria-label": "Default ramp", onPointerDown: (e) => {
           e.preventDefault();
-          devSet("elFxAlpha", DEV_DEFAULTS.elFxAlpha);
+          devSet(k, DEV_DEFAULTS[k]);
           setSel(-1);
           bump((n) => n + 1);
         } }, "↺")
@@ -33276,6 +33360,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       h(GradEditor, { key: "ge" }),
       h("p", { key: "rl", className: "devlbl" }, "Opacity over life"),
       h(RampEditor, { key: "re" })
+    ] : [],
+    // (v1.0.60) the fire's flame specks and smoke: colour and opacity over life
+    ...g === "firefx" ? [
+      h("p", { key: "fg", className: "devlbl" }, "Flame specks: colour over life"),
+      h(GradEditor, { key: "fge", k: "fxFlGrad" }),
+      h("p", { key: "fa", className: "devlbl" }, "Flame specks: opacity over life"),
+      h(RampEditor, { key: "fae", k: "fxFlAlpha", life: "fxFlLife" }),
+      h("p", { key: "sg", className: "devlbl" }, "Smoke: colour over life"),
+      h(GradEditor, { key: "sge", k: "fxSmGrad" }),
+      h("p", { key: "sa", className: "devlbl" }, "Smoke: opacity over life"),
+      h(RampEditor, { key: "sae", k: "fxSmAlpha", life: "fxSmLife" })
     ] : []
   ];
   var lsGet = (k) => {

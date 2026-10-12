@@ -5,6 +5,17 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.60 — CaveRunner Auto: Dev controls for the fire's flame specks and smoke (branch `autobattler`)
+Released 2026-10-12 on the branch. PM alone, owner OK'd the shots.
+- New group `firefx` "Fire: flames and smoke" (Fire sim tab). In Auto's rules (`autoOn`) `flameAt`, `fireSmoke` and `titleJet`
+  roll their particles from it (`fxPart`, `fxCount`): ranges `fxFlLife/Size/Rise/Side`, `fxSmLife/Size/Grow/Rise/Side` (Lo/Hi);
+  `fxFlRate`/`fxSmRate` (× how many); colour over life `fxFlGrad`/`fxSmGrad` and opacity over life `fxFlAlpha`/`fxSmAlpha`
+  (shaped on the panel's `GradEditor` / `RampEditor`, now taking their knob: `k`, `life`); randomness `fxFlColJit`/`fxSmColJit`
+  (each particle's own shift along the gradient, `p.u`) and `fxFlAlphaJit`/`fxSmAlphaJit` (its own opacity, `p.a`); smoke grows
+  at its own `p.g`. Defaults match the old look. The title as before.
+- Fix: two gradient editors on one page shared their bar's SVG id (the second showed the first's colours); now `gradbar-<knob>`.
+- Suite `auto-firelab` (particles in the knobs' ranges, none at rate 0). Shots: `tools/firesimshots.js` adds fs-d-fx, fs-e-grads.
+
 ## v1.0.59 — CaveRunner Auto: players shoot up to the roof, not at the screen's right edge, a hail mary off the left (branch `autobattler`)
 Released 2026-10-12 on the branch. PM alone (gameplay, no looks).
 - Owner: the short aggro (`TITLE_AIM` 90) kept off-screen creatures safe but left high ones in the tall level unshot. In a

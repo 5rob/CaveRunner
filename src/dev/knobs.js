@@ -748,6 +748,36 @@ DEV_META.push(
   { k: 'labJetH',   g: 'firelab', label: '… up to this high (units, each its own strength)', min: 5, max: 120, step: 1 },
   { k: 'labJetT',   g: 'firelab', label: '… lasting about (s)', min: 0.1, max: 4, step: 0.05 });
 DEV_GROUPS.push(['firelab', 'Fire sim: flame jets']);
+// (owner v1.0.60) the fire's flame specks and smoke in Auto's levels and the fire sim (art/titlescene.js flameAt, fireSmoke,
+// titleJet; drawn by game/render/titledraw.js): every number a range rolled per particle, colour and opacity over life as
+// gradients (shaped on the panel's editors), each particle shifted along the colour by up to ± …ColJit and its opacity
+// × (1 - up to …AlphaJit); …Rate × how many
+rangeKnobs('firefx', [
+  ['fxFlLife', 'Flame specks: life (s)',                      0.05, 3, 0.05, 0.25, 0.55],
+  ['fxFlSize', 'Flame specks: size',                          0.3, 8, 0.1,   1, 2.2],
+  ['fxFlRise', 'Flame specks: rise speed',                    0, 200, 1,     30, 70],
+  ['fxFlSide', 'Flame specks: sideways speed (either way)',   0, 60, 1,      0, 8],
+  ['fxSmLife', 'Smoke: life (s)',                             0.1, 8, 0.05,  1.2, 1.6],
+  ['fxSmSize', 'Smoke: size at the start',                    0.3, 12, 0.1,  2, 4.5],
+  ['fxSmGrow', 'Smoke: grows (units a second)',               0, 30, 0.1,    4, 6],
+  ['fxSmRise', 'Smoke: rise speed',                           0, 120, 1,     25, 45],
+  ['fxSmSide', 'Smoke: sideways speed (either way)',          0, 40, 1,      0, 6],
+]);
+Object.assign(DEV_DEFAULTS, { fxFlRate: 1, fxFlColJit: 0.25, fxFlAlphaJit: 0.2, fxSmRate: 1, fxSmColJit: 0.2, fxSmAlphaJit: 0.3,
+  fxFlGrad: '0:#fff0a0 0.3:#ffd35a 0.6:#ff8a2a 1:#e8461c', fxFlAlpha: '0:1 0.7:1 1:0',
+  fxSmGrad: '0:#3a3430 1:#1e1c1c', fxSmAlpha: '0:0 0.1:0.35 1:0' });
+DEV_META.push(
+  { k: 'fxFlRate',     g: 'firefx', label: 'Flame specks: how many (× the usual)', min: 0, max: 5, step: 0.05 },
+  { k: 'fxFlColJit',   g: 'firefx', label: 'Flame specks: colour randomness (each shifted along the gradient, ±)', min: 0, max: 1, step: 0.01 },
+  { k: 'fxFlAlphaJit', g: 'firefx', label: 'Flame specks: opacity randomness (each up to this much fainter)', min: 0, max: 1, step: 0.01 },
+  { k: 'fxSmRate',     g: 'firefx', label: 'Smoke: how much (× the usual)', min: 0, max: 5, step: 0.05 },
+  { k: 'fxSmColJit',   g: 'firefx', label: 'Smoke: colour randomness (±)', min: 0, max: 1, step: 0.01 },
+  { k: 'fxSmAlphaJit', g: 'firefx', label: 'Smoke: opacity randomness (each up to this much fainter)', min: 0, max: 1, step: 0.01 },
+  { k: 'fxFlGrad',  g: 'firefx', label: 'Flame specks: colour over life (gradient)', type: 'grad' },
+  { k: 'fxFlAlpha', g: 'firefx', label: 'Flame specks: opacity over life (ramp)', type: 'ramp' },
+  { k: 'fxSmGrad',  g: 'firefx', label: 'Smoke: colour over life (gradient)', type: 'grad' },
+  { k: 'fxSmAlpha', g: 'firefx', label: 'Smoke: opacity over life (ramp)', type: 'ramp' });
+DEV_GROUPS.push(['firefx', 'Fire: flames and smoke']);
 // the level's drops (auto/loot.js, stage 6 part 2): gun mods, gems and exo mods from kills
 Object.assign(DEV_DEFAULTS, { autoLootMod: 6, autoLootRed: 2, autoLootExo: 30, autoLootEliteGold: 3, autoLootBossGold: 10 });
 DEV_META.push(
@@ -804,7 +834,7 @@ DEV_META.push(
 DEV_GROUPS.push(['autothrow', 'Auto: throw']);
 // before the last tab: that one also takes any group in no tab
 // (owner v1.0.56) every fire knob on its own page, under the fire sim's window (ui/firesim.js)
-DEV_TABS.splice(DEV_TABS.length - 1, 0, ['firesim', 'Fire sim', ['firelab', 'autofire', 'fire']]);
+DEV_TABS.splice(DEV_TABS.length - 1, 0, ['firesim', 'Fire sim', ['firelab', 'firefx', 'autofire', 'fire']]);
 DEV_TABS.splice(DEV_TABS.length - 2, 0, ['auto', 'Auto', ['auto', 'autohub', 'automaps', 'autolevel', 'autoblocks', 'autoguns', 'autoperks', 'autofoes', 'autodeath', 'autoloot', 'autochests', 'autobag', 'autothrow']]);
 export const DEV_KEY = 'caverunner-dev';
 /** @type {DevKnobs} */

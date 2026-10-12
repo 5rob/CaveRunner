@@ -85,5 +85,21 @@ const still = changes();
 [D.fireTwinkle, D.fireFlare] = keepT;
 check('burning pixels twinkle (most squares change 3+ times in 2 s)', tw > 0.8, +tw.toFixed(2));
 check('… still with the twinkle knobs at 0', still === 0, still);
+// (v1.0.60) flame specks and smoke come from Dev → Fire: flames and smoke: sizes and lives in the knobs' ranges; rate 0: none
+const fxRun = (flRate, smRate) => {
+  const keep = [D.fxFlRate, D.fxSmRate]; D.fxFlRate = flRate; D.fxSmRate = smRate;
+  const L = G.labScene(VH, 6), S = L.S, sp = G.LAB_SPOTS.find(q => q.kind === 'timber');
+  S.scroll = G.labClamp(sp.x0 + G.LAB_SPOT / 2 - G.TITLE_VW / 2);
+  G.titleIgnite(S, sp.x0 + 20 - S.scroll, L.pts[2].y, 8, 1);
+  const seen = [];
+  for (let i = 0; i < 45; i++) { G.titleStep(S, dt); for (const p of S.parts) if (p.fx && !seen.includes(p)) seen.push({ kind: p.kind, r: p.r, max: p.max, a: p.a, fx: p.fx, p }); }
+  [D.fxFlRate, D.fxSmRate] = keep;
+  return seen;
+};
+const fx = fxRun(1, 1), fl = fx.filter(q => q.kind === 'flame'), sm = fx.filter(q => q.kind === 'fsmoke');
+check('flame specks: rolled from the knobs', fl.length > 5 && fl.every(q => q.r >= D.fxFlSizeLo - 1e-9 && q.r <= D.fxFlSizeHi + 1e-9 && q.max >= D.fxFlLifeLo - 1e-9 && q.max <= D.fxFlLifeHi + 1e-9), fl.length);
+check('smoke: rolled from the knobs', sm.length > 0 && sm.every(q => q.max >= D.fxSmLifeLo - 1e-9 && q.max <= D.fxSmLifeHi + 1e-9 && q.a <= 1 && q.a >= 1 - D.fxSmAlphaJit - 1e-9), sm.length);
+const off = fxRun(0, 0);
+check('… none with their rates at 0', off.length === 0, off.length);
 console.log(fails ? `${fails} FAILED` : 'all passed');
 process.exit(fails ? 1 : 0);

@@ -53,6 +53,13 @@ require('../tests/build')();
   await page.waitForTimeout(1200);
   await page.screenshot({ path: path.join(OUT, 'fs-c-jets.png') });
   await page.evaluate(() => dispatchEvent(new PointerEvent('pointerup')));
+  // (v1.0.60) the flames-and-smoke group: its first knobs, then its gradient editors
+  await page.locator('.devghead[data-g=firefx]').evaluate(e => e.scrollIntoView({ block: 'start' }));
+  await page.waitForTimeout(200);
+  await page.screenshot({ path: path.join(OUT, 'fs-d-fx.png') });
+  await page.getByText('Flame specks: colour over life', { exact: true }).evaluate(e => e.scrollIntoView({ block: 'start' }));
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: path.join(OUT, 'fs-e-grads.png') });
   const info = await page.evaluate(() => { const F = window.__firesim; return { hold: F.hold, jets: F.L.jets.length, burnt: F.L.S.burnt }; });
   console.log('fs-a-page.png  fs-b-spots.png  fs-c-jets.png', JSON.stringify(info));
   await browser.close();
