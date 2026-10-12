@@ -57,7 +57,7 @@ check('no control before he is through', Math.abs(cx(L) - G.hubStopX('enter')) <
 step(T, 60);
 const x0 = cx(L); step(T, 30);
 check('pushed right: he runs right, facing right, running', cx(L) > x0 + 20 && L.face === 1 && !L.stand && L.ground, [x0, cx(L)]);
-check('…at the old game\'s walk speed × autoMoveK (feedback round 2)', Math.abs(Math.abs(L.vx) - G.WALK * G.DEV.autoMoveK) < 1, L.vx);
+check('…at the old game\'s walk speed × autoMoveK (feedback round 2)', Math.abs(Math.abs(L.vx) - G.WALK * G.DEV.autoMoveK * G.DEV.move) < 1, L.vx);
 const x1 = cx(L); stick(T, 0.5, 0, 0.5); step(T, 30);
 const half = cx(L) - x1;
 check('a half push runs slower', half > 0 && half < G.WALK * G.DEV.autoMoveK * 0.6, half);

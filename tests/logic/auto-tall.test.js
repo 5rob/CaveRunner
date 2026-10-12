@@ -58,6 +58,7 @@ D.autoLvlMin = keep.m; D.autoLvlBossT = keep.b;
 // the caves follow the curving zones (DEV.autoZoneOpen): plants hang from rock (titleRoof), not from carved air, and they
 // follow the zone the roof looks like (some stand where the zone by x is another)
 {
+  D.autoZoneOpen = 1;   // (this checks that mode; the owner turned it off by default in v1.0.68)
   const S = G.levelScene(VH, 23, 4, G.levelPlan(23, undefined, 0));
   for (let i = 0; i < 300; i++) { S.scroll += 4; G.titleStep(S, 1 / 30); }
   const hung = S.props.filter(p => p.k === 'climb' && !p.host && !p.arc && !p.gone && !p.drop && p.ac >= S.gen - S.ncol);

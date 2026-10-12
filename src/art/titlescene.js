@@ -1399,7 +1399,8 @@ function startDig(S, r, dx, dy, why) {
     }
     r.clr = c; r.clrT = 0;
   }
-  if (!r.dig) { r.keep = r.kit; r.kit = kitOf('saw', [], TITLE_SAW); r.swap = 0.2; S.digs++; r.digY = r.y; S.digWhy[why] = (S.digWhy[why] || 0) + 1; }
+  // (v1.0.68) the saw starts from his own speed on screen, not a stale r.vx (at the faster pace a hand-steered one slid ~20 units)
+  if (!r.dig) { r.vx = (r.cvx || 0) - sv(S); r.keep = r.kit; r.kit = kitOf('saw', [], TITLE_SAW); r.swap = 0.2; S.digs++; r.digY = r.y; S.digWhy[why] = (S.digWhy[why] || 0) + 1; }
   const d = Math.hypot(dx, dy) || 1;
   r.dig = Math.max(r.dig, 1e-3); r.clearT = 0; r.dx = dx / d; r.dy = dy / d;
 }

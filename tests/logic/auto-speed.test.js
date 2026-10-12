@@ -23,6 +23,7 @@ for (let i = 0; i < 3 * 30; i++) G.titleStep(S, 1 / 30);
 const r = S.runners[0];
 G.levelControl(S, r.id, push);
 for (let i = 0; i < 15; i++) G.titleStep(S, 1 / 30);
+r.x = 8;   // from the left, so he doesn't reach the screen's right edge (the scroll's pace caps him there) while measured
 const lx0 = r.x + S.scroll;
 let onScreen = [];
 for (let i = 0; i < 30; i++) { G.titleStep(S, 1 / 30); onScreen.push(Math.round(r.x)); }

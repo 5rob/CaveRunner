@@ -5,6 +5,16 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.68 — CaveRunner Auto: the owner's Dev report as defaults (branch `autobattler`)
+Released 2026-10-13 on the branch. PM alone.
+- New defaults (src/dev/knobs.js): move 1.2; fireSpread hi 0.6; firePlant 3–7; fireArch hi 9; autoGunBase 100; autoExoPrice 175;
+  autoLvlMin 2, autoLvlPace 2, autoLvlHurry 1.75, autoLvlChest 0.75, autoLvlEase 2; autoZoneOpen 0; autoVineFire 1, autoVineSpread 4,
+  autoVineAsh 8, autoFireJump 2; autoMoveK 0.75; autoFireSpread 0.2, autoWebFire 4; fireFlare 0.5; labJetH 120; fxSmRate 3,
+  fxSmAlpha 0:0 0.159:0.285 0.547:0.342 1:0; autoSilkSpread 3, autoSilkCut 0.1; autoLootExo 7.
+- Fix found by it: a hand-steered saw started from a stale screen speed (`r.vx`), sliding him ~20 units at the faster pace.
+- Suites that leaned on the old numbers pin the knobs they measure (auto-vinefire, auto-firelab, auto-tall's zone check, auto-level)
+  or read them (auto-run, auto-hub × DEV.move); auto-speed measures from the screen's left (the right edge caps him at the pace).
+
 ## v1.0.67 — CaveRunner Auto: the gun preview runs the level's own code; Follow Me on every shot; burning vines bright and lighting the cave (branch `autobattler`)
 Released 2026-10-13 on the branch. Preview by an agent (worktree `cr-preview`, two rounds, ~25 min), the rest PM; owner OK'd the shots.
 - The gun panel's firing window is a small room of the level's scene (`src/auto/preview.js`): the same shot flight, looks, trails,

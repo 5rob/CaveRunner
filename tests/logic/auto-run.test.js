@@ -144,7 +144,7 @@ check('unfitPerk', G.unfitPerk(run, 0, 5) && run.players[0].perks[5] === null &&
 
 // ---- prices and scrap ----
 check('autoGunPrice: knob base at tier 1, climbing', G.autoGunPrice(1) === G.DEV.autoGunBase && G.autoGunPrice(3) > G.autoGunPrice(2));
-check('autoExoPrice: 60% of the gun price (rounded to 5)', G.autoExoPrice(1) === Math.round(G.autoGunPrice(1) * 0.6 / 5) * 5);
+check('autoExoPrice: that % of the gun price (rounded to 5)', G.autoExoPrice(1) === Math.round(G.autoGunPrice(1) * G.DEV.autoExoPrice / 100 / 5) * 5);
 check('scrap: gold is itself', G.scrap({ kind: 'gold', n: 12 }, 3) === 12);
 check('scrap: a gun is 25% of the price', G.scrap({ kind: 'gun', gun: gun(), n: 1 }, 1) === Math.round(G.autoGunPrice(1) / 4));
 check('scrap: a red gem 40 × goldScale', G.scrap({ kind: 'red', n: 1 }, 1) === 40 && G.scrap({ kind: 'red', n: 1 }, 3) === Math.round(40 * G.goldScale(3)));

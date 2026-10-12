@@ -14,7 +14,7 @@ import { HEX_RE, hexMix, hsvAdjust } from '../core/util.js';
 // localStorage touch is wrapped: it throws in a private window and does not exist at all
 // under Node (the logic tests eval this file), and a missing store just means "defaults".
 /** @type {DevKnobs} */
-export const DEV_DEFAULTS = { zoom: 1.7, renderScale: 1.5, torch: 0.7, fogDark: 0.99, fogDim: 0.9, move: 1, sputDip: 45, aggro: 0.6, loseAggro: 2, aimDist: 44, bhPull: 65, bhSpeed: 50, vol: 1, amb: 0.4, jetVol: 0.05,
+export const DEV_DEFAULTS = { zoom: 1.7, renderScale: 1.5, torch: 0.7, fogDark: 0.99, fogDim: 0.9, move: 1.2, sputDip: 45, aggro: 0.6, loseAggro: 2, aimDist: 44, bhPull: 65, bhSpeed: 50, vol: 1, amb: 0.4, jetVol: 0.05,
   vSpell: 0.6, vBoom: 1, vHit: 1, vEnemy: 1, vEnemyFire: 1, vWorld: 1, vDrip: 0.5, vStep: 1, vUi: 1, bagSpeed: 1,
   holoAlpha: 1, bloom: 2, bloomBlur: 35, bloomBright: 1.3, pixelFx: 1, holoPx: 1.5,
   holoMin: 0, holoMax: 1, holoFade: 3, holoC1x: 0.41, holoC1y: 0.97, holoC2x: 0.45, holoC2y: -0.02,
@@ -549,7 +549,7 @@ export const ARCH_KNOBS = rangeKnobs('arch', [
 ]);
 // Fire (v86): see fireStep. Every knob a min/max range like the creatures'.
 export const FIRE_KNOBS = rangeKnobs('fire', [
-  ['fireSpread', 'Spread chance per tick',            0, 1, 0.01,    0.02, 0.2],
+  ['fireSpread', 'Spread chance per tick',            0, 1, 0.01,    0.02, 0.6],
   ['fireGrass',  'Grass burns for (s)',               0.05, 5, 0.05, 0.4, 1.5],
   ['fireMoss',   'Moss burns for (s)',                0.05, 8, 0.05, 1, 4],
   ['fireWood',   'Timber burns for (s)',              0.1, 20, 0.1,  3, 9],
@@ -558,8 +558,8 @@ export const FIRE_KNOBS = rangeKnobs('fire', [
   ['fireDps',    'Creature burn damage per s',        0, 20, 0.1,    1, 3],
   ['fireYou',    'You burn for (s)',                  0, 10, 0.1,    1.2, 2],
   ['fireYouDps', 'Your burn damage per s',            0, 40, 0.5,    5, 8],
-  ['firePlant',  'Vines burn up at (px/s)',           1, 200, 1,     5, 25],
-  ['fireArch',   'Arched vines burn along at (px/s)', 1, 400, 1,     5, 25],
+  ['firePlant',  'Vines burn up at (px/s)',           1, 200, 1,     3, 7],
+  ['fireArch',   'Arched vines burn along at (px/s)', 1, 400, 1,     5, 9],
 ]);
 // The Carrot stat (an Exo Suit stat perk): one level, 0-5, stretching several reaches at once.
 // Each is a multiplier: min = no Carrot fitted, max = Carrot V, levels in between evenly (carrotAt).
@@ -586,7 +586,7 @@ DEV_META.push(
   { k: 'aaDot',   g: 'aimassist', label: 'Centre dot when snapped (px, 0 none)', min: 0, max: 6, step: 0.5 });
 DEV_GROUPS.push(['aimassist', 'Aim Assist']);
 // CaveRunner Auto's economy (auto/run.js, AUTOBATTLER.md section 6): the machines' prices and scrap
-Object.assign(DEV_DEFAULTS, { autoGunBase: 120, autoGunGrow: 1.35, autoExoPrice: 60, autoScrap: 25,
+Object.assign(DEV_DEFAULTS, { autoGunBase: 100, autoGunGrow: 1.35, autoExoPrice: 175, autoScrap: 25,
   autoRed: 40, autoGreen: 150, autoModGold: 15 });
 DEV_META.push(
   { k: 'autoGunBase',  g: 'auto', label: 'Gun machine: price at tier 1 (gold)', min: 5, max: 2000, step: 5 },
@@ -613,8 +613,8 @@ DEV_META.push(
   { k: 'autoMapStep',  g: 'automaps', label: 'Each map starts this many tiers harder than the one before', min: 0, max: 50, step: 1 });
 DEV_GROUPS.push(['automaps', 'Auto: maps']);
 // CaveRunner Auto's level (auto/level.js, auto/pilot.js, stage 4a): its length and the team's pace
-Object.assign(DEV_DEFAULTS, { autoLvlMin: 5, autoLvlPace: 1, autoLvlHurry: 1.6, autoLvlSlow: 0.3, autoLvlElite: 0.4, autoLvlChest: 0.5,
-  autoLvlEliteR: 120, autoLvlChestR: 50, autoLvlBossT: 120, autoLvlEase: 1.5, autoClearT: 3, autoClearWait: 4 });
+Object.assign(DEV_DEFAULTS, { autoLvlMin: 2, autoLvlPace: 2, autoLvlHurry: 1.75, autoLvlSlow: 0.3, autoLvlElite: 0.4, autoLvlChest: 0.75,
+  autoLvlEliteR: 120, autoLvlChestR: 50, autoLvlBossT: 120, autoLvlEase: 2, autoClearT: 3, autoClearWait: 4 });
 DEV_META.push(
   { k: 'autoLvlMin',    g: 'autolevel', label: 'Level length (minutes at normal pace)', min: 0.2, max: 20, step: 0.1 },
   { k: 'autoLvlPace',   g: 'autolevel', label: 'Normal pace (× the menu’s scroll, 34 world units / s)', min: 0.1, max: 4, step: 0.05 },
@@ -629,7 +629,7 @@ DEV_META.push(
   { k: 'autoClearT',    g: 'autolevel', label: 'LEVEL CLEARED shows for (s; then the team walks to the exit)', min: 1, max: 10, step: 0.1 },
   { k: 'autoClearWait', g: 'autolevel', label: 'LEVEL CLEARED waits for the boss’s loot at most (s; a full bag leaves it lying)', min: 0, max: 20, step: 0.5 });
 // (Auto zones) which zone a point of a tall level looks like: titlescene.js titleZoneLook (the old game's warped noise zones)
-Object.assign(DEV_DEFAULTS, { autoZoneWarp: 170, autoZoneScale: 150, autoZoneRag: 0.8, autoZoneIsle: 0.12, autoZoneOpen: 1, autoHardDeep: 90, autoHardEdge: 8 });
+Object.assign(DEV_DEFAULTS, { autoZoneWarp: 170, autoZoneScale: 150, autoZoneRag: 0.8, autoZoneIsle: 0.12, autoZoneOpen: 0, autoHardDeep: 90, autoHardEdge: 8 });
 DEV_META.push(
   { k: 'autoZoneWarp',  g: 'autolevel', label: 'Zones: borders curve up to this far either way (world units; 0 straight)', min: 0, max: 400, step: 5 },
   { k: 'autoZoneScale', g: 'autolevel', label: 'Zones: the curves’ size (world units)', min: 30, max: 600, step: 5 },
@@ -700,7 +700,7 @@ DEV_META.push(
 DEV_GROUPS.push(['autofoes', 'Auto: enemies']);
 // the jetpack (art/titlescene.js jetStep, feedback round 2: the old game's flame and smoke) and a death (auto/death.js: the ragdoll,
 // the slow stop, Tap A, the helmet light, the blast, home)
-Object.assign(DEV_DEFAULTS, { autoMoveK: 0.55, autoJetTilt: 1, autoJetSmoke: 1, autoDeathStop: 1.5, autoTpBlink: 1, autoTpBoomWait: 0.6, autoTpBoomR: 60, autoFuelDrain: 1, autoFuelRegen: 1, autoCtlWait: 3, autoVineFire: 3, autoVineSpread: 24, autoVineJitter: 0.8, autoVineAsh: 6, autoFireJump: 14, autoFireJumpP: 0.5, autoNavCut: 0.8, autoNavGive: 1.2 });
+Object.assign(DEV_DEFAULTS, { autoMoveK: 0.75, autoJetTilt: 1, autoJetSmoke: 1, autoDeathStop: 1.5, autoTpBlink: 1, autoTpBoomWait: 0.6, autoTpBoomR: 60, autoFuelDrain: 1, autoFuelRegen: 1, autoCtlWait: 3, autoVineFire: 1, autoVineSpread: 4, autoVineJitter: 0.8, autoVineAsh: 8, autoFireJump: 2, autoFireJumpP: 0.5, autoNavCut: 0.8, autoNavGive: 1.2 });
 DEV_META.push(
   { k: 'autoVineFire',   g: 'autofire', label: 'Vines burn up at this × the old game speed (the title menu: 0.1)', min: 0.1, max: 5, step: 0.1 },
   { k: 'autoVineSpread', g: 'autofire', label: 'Auto levels: the flames climb a vine this × faster than it burns away (1: only the tip burns)', min: 1, max: 40, step: 0.5 },
@@ -729,7 +729,7 @@ DEV_META.push(
   { k: 'autoAimEdge', g: 'autoguns', label: '… but none in a strip this wide down the right side of the screen, or past it (units; the screen is 220 across)', min: 0, max: 100, step: 1 },
   { k: 'autoAimLeft', g: 'autoguns', label: '… and on the left, a hail mary at ones up to this far past the edge (units)', min: 0, max: 100, step: 1 });
 // (owner v1.0.56: full controls for fire in Auto) the level's own fire knobs; the old game's (burn times, creatures) show here too
-Object.assign(DEV_DEFAULTS, { autoFireSpread: 0.1, autoWebFire: 3, autoVineCatch: 0.25, autoLeafReach: 5, autoLeafLight: 0.15, autoBurnCut: 0.015, autoBurnSpin: 2.5, fireTwinkle: 1, fireFlare: 0.06 });
+Object.assign(DEV_DEFAULTS, { autoFireSpread: 0.2, autoWebFire: 4, autoVineCatch: 0.25, autoLeafReach: 5, autoLeafLight: 0.15, autoBurnCut: 0.015, autoBurnSpin: 2.5, fireTwinkle: 1, fireFlare: 0.5 });
 DEV_META.push(
   { k: 'autoFireSpread', g: 'autofire', label: 'Auto levels: fire spreads cell to cell, and onto vines and webs from burning ground, at this × the old game', min: 0, max: 3, step: 0.05 },
   { k: 'autoWebFire',    g: 'firesilk', label: 'Auto levels: silk burns up this × faster than vines', min: 0.1, max: 10, step: 0.1 },
@@ -750,7 +750,7 @@ DEV_META.push(
   { k: 'autoBurnGlow',     g: 'autofire', label: '… and a warm orange glow round them this strong (0: none)', min: 0, max: 0.6, step: 0.01 });
 DEV_GROUPS.push(['autofire', 'Auto: fire']);
 // Dev → Fire sim's flame jets (art/firelab.js labStep, owner v1.0.58): Fire held, jets out of the floor
-Object.assign(DEV_DEFAULTS, { labJetGap: 0.35, labJetH: 50, labJetT: 0.7 });
+Object.assign(DEV_DEFAULTS, { labJetGap: 0.35, labJetH: 120, labJetT: 0.7 });
 DEV_META.push(
   { k: 'labJetGap', g: 'firelab', label: 'Fire held: a new jet about every (s, at random)', min: 0.02, max: 3, step: 0.01 },
   { k: 'labJetH',   g: 'firelab', label: '… up to this high (units, each its own strength)', min: 5, max: 120, step: 1 },
@@ -771,9 +771,9 @@ rangeKnobs('firefx', [
   ['fxSmRise', 'Smoke: rise speed',                           0, 120, 1,     25, 45],
   ['fxSmSide', 'Smoke: sideways speed (either way)',          0, 40, 1,      0, 6],
 ]);
-Object.assign(DEV_DEFAULTS, { fxFlRate: 1, fxFlColJit: 0.25, fxFlAlphaJit: 0.2, fxSmRate: 1, fxSmColJit: 0.2, fxSmAlphaJit: 0.3,
+Object.assign(DEV_DEFAULTS, { fxFlRate: 1, fxFlColJit: 0.25, fxFlAlphaJit: 0.2, fxSmRate: 3, fxSmColJit: 0.2, fxSmAlphaJit: 0.3,
   fxFlGrad: '0:#fff0a0 0.3:#ffd35a 0.6:#ff8a2a 1:#e8461c', fxFlAlpha: '0:1 0.7:1 1:0',
-  fxSmGrad: '0:#3a3430 1:#1e1c1c', fxSmAlpha: '0:0 0.1:0.35 1:0' });
+  fxSmGrad: '0:#3a3430 1:#1e1c1c', fxSmAlpha: '0:0 0.159:0.285 0.547:0.342 1:0' });
 DEV_META.push(
   { k: 'fxFlRate',     g: 'firefx', label: 'Flame specks: how many (× the usual)', min: 0, max: 5, step: 0.05 },
   { k: 'fxFlColJit',   g: 'firefx', label: 'Flame specks: colour randomness (each shifted along the gradient, ±)', min: 0, max: 1, step: 0.01 },
@@ -788,7 +788,7 @@ DEV_META.push(
 DEV_GROUPS.push(['firefx', 'Fire: flames and smoke']);
 // (owner v1.0.61) silk's own (art/titlescene.js stepFire's burning strands; webs are cut into hanging strands when they catch): the
 // same as the vines' (their defaults), plus how much it smokes and flames
-Object.assign(DEV_DEFAULTS, { autoSilkSpread: 24, autoSilkJitter: 0.8, autoSilkAsh: 6, autoSilkCut: 0.015, autoSilkSpin: 2.5, autoSilkJump: 14, autoSilkJumpP: 0.5, autoSilkSmoke: 10, autoSilkFlames: 1 });
+Object.assign(DEV_DEFAULTS, { autoSilkSpread: 3, autoSilkJitter: 0.8, autoSilkAsh: 6, autoSilkCut: 0.1, autoSilkSpin: 2.5, autoSilkJump: 14, autoSilkJumpP: 0.5, autoSilkSmoke: 10, autoSilkFlames: 1 });
 DEV_META.push(
   { k: 'autoSilkSpread', g: 'firesilk', label: 'Silk: the flames climb a strand this × faster than it burns away', min: 1, max: 40, step: 0.5 },
   { k: 'autoSilkJitter', g: 'firesilk', label: 'Silk: the climb spurts and stalls by this much either way (0: even)', min: 0, max: 1, step: 0.05 },
@@ -801,7 +801,7 @@ DEV_META.push(
   { k: 'autoSilkFlames', g: 'firesilk', label: 'Silk: flame specks (× the vines\' amount)', min: 0, max: 5, step: 0.05 });
 DEV_GROUPS.push(['firesilk', 'Fire: webs (silk)']);
 // the level's drops (auto/loot.js, stage 6 part 2): gun mods, gems and exo mods from kills
-Object.assign(DEV_DEFAULTS, { autoLootMod: 6, autoLootRed: 2, autoLootExo: 30, autoLootEliteGold: 3, autoLootBossGold: 10 });
+Object.assign(DEV_DEFAULTS, { autoLootMod: 6, autoLootRed: 2, autoLootExo: 7, autoLootEliteGold: 3, autoLootBossGold: 10 });
 DEV_META.push(
   { k: 'autoLootMod',       g: 'autoloot', label: 'A kill drops a gun mod (% chance)', min: 0, max: 100, step: 0.5 },
   { k: 'autoLootRed',       g: 'autoloot', label: 'An elite drops red gems (count)', min: 0, max: 10, step: 1 },

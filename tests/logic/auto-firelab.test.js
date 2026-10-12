@@ -5,6 +5,8 @@ const G = require('../load');
 let fails = 0;
 const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FAIL'} ${n}${x !== undefined ? ' -> ' + JSON.stringify(x) : ''}`); };
 const D = G.DEV, dt = 1 / 30, VH = 120;
+// the fire knobs these were measured at (the owner retunes the defaults: v1.0.68 slowed the burn)
+Object.assign(D, { autoVineFire: 3, autoVineSpread: 24, autoFireJump: 14, autoFireSpread: 0.1, autoWebFire: 3, autoSilkSpread: 24, autoSilkCut: 0.015, autoVineAsh: 6 });
 
 {
   const { S, pts } = G.labScene(VH, 3);

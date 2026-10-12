@@ -3,6 +3,8 @@
 // (v1.0.55): unburnt to p.lit, burning p.lit..p.ch, charred and crumbling p.ch..p.len (DEV.autoVineAsh). Every loop has a frame cap.
 const G = require('../load');
 G.DEV.autoFoeDmg = 0; G.DEV.autoWallMin = G.DEV.autoWallMax = 0;
+// the fire knobs these were measured at (the owner retunes the defaults: v1.0.68 slowed the climb and the jump)
+Object.assign(G.DEV, { autoVineFire: 3, autoVineSpread: 24, autoFireJump: 14, autoFireSpread: 0.1, autoWebFire: 3, autoZoneOpen: 1 });
 let fails = 0;
 const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FAIL'} ${n}${x !== undefined ? ' -> ' + JSON.stringify(x) : ''}`); };
 const dt = 1 / 60;
