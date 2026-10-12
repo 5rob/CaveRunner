@@ -15461,7 +15461,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         s.vx *= k;
         s.vy *= k;
       }
-      if (s.follow && !s.beam) shotFollow(S2, s, dt);
+      if (s.follow && !s.beam && !s.heal) shotFollow(S2, s, dt);
       s.x += s.vx * dt;
       s.y += s.vy * dt;
       s.life -= dt;
