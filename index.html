@@ -977,6 +977,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .alvlinfo b{font:900 14px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.08em;color:#f1ecff;text-shadow:0 1px 0 #000,0 0 6px rgba(0,0,0,0.8)}
 .alvlinfo span{font:800 11px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.1em;color:#c9b8ff;text-shadow:0 1px 0 #000,0 0 6px rgba(0,0,0,0.8)}
 .alvlinfo span.atoplvl{color:#ffb35a;font-size:10px}
+/* the Dev performance graphs' tap area (drawn on the play canvas, AutoScreen.js perfDraw) */
+.aperf{position:absolute;z-index:2;pointer-events:auto;touch-action:none}
 .ajourney{position:relative;height:20px;border-radius:6px;background:rgba(0,0,0,0.2);border:2px solid #3d2f5c;box-sizing:border-box;
   pointer-events:auto;touch-action:none;transition:opacity .2s}
 .ajourney.off{opacity:0}
@@ -31810,6 +31812,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         for (let i = 0; i < (m.warm ?? 40); i++) titleStep(S2, 1 / 30);
       }
       const now = performance.now(), dt = (now - last) / 1e3;
+      let t1 = now;
       last = now;
       if (!(o.paused && o.paused())) {
         for (let left = Math.min(dt, 0.2); left > 1e-4; left -= 0.05) titleStep(S2, Math.min(left, 0.05));
@@ -31821,9 +31824,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         camStep(C, S2, Math.min(dt, 0.1));
         if (o.quiet) S2.snd.length = 0;
         else titleSound(S2, C, loops, Math.min(dt, 0.1));
+        t1 = performance.now();
       }
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       titleDraw(ctx, S2, w, hh2, C);
+      if (o.perf) {
+        o.perf.step = t1 - now;
+        o.perf.draw = performance.now() - t1;
+      }
       if (o.over) o.over(ctx, S2, w, hh2);
       c.dataset.kills = String(S2.kills);
       c.dataset.t = S2.t.toFixed(2);
@@ -35811,19 +35819,45 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   // src/auto/fps.js
   var FPS_DT = 0.25;
   var FPS_N = 60;
-  var fpsNew = () => ({ t0: -1, n: 0, graph: [] });
-  function fpsTick(F2, now) {
+  var PERF_ROWS = [
+    { key: "fps", label: "fps", col: "#5ee05a", unit: "", mode: "fps", floor: 60 },
+    { key: "worst", label: "worst", col: "#ffc94a", unit: "ms", mode: "max", floor: 33 },
+    { key: "step", label: "update", col: "#4ac3ff", unit: "ms", mode: "avg", floor: 8 },
+    { key: "draw", label: "draw", col: "#b28cff", unit: "ms", mode: "avg", floor: 8 },
+    { key: "shots", label: "shots", col: "#ff9a3c", unit: "", mode: "max", floor: 10 },
+    { key: "parts", label: "parts", col: "#ff7ad9", unit: "", mode: "max", floor: 50 },
+    { key: "foes", label: "foes", col: "#ff4a4a", unit: "", mode: "max", floor: 10 },
+    { key: "burn", label: "fire", col: "#ffe14a", unit: "", mode: "max", floor: 50 }
+  ];
+  function fpsNew() {
+    const graphs = {};
+    for (const r of PERF_ROWS) graphs[r.key] = [];
+    return { t0: -1, last: -1, n: 0, acc: {}, graphs };
+  }
+  function fpsTick(F2, now, read = {}) {
     if (F2.t0 < 0) {
-      F2.t0 = now;
+      F2.t0 = F2.last = now;
       return;
     }
     F2.n++;
+    const A = F2.acc;
+    read = Object.assign({}, read, { worst: now - F2.last });
+    F2.last = now;
+    for (const r of PERF_ROWS) {
+      const v = read[r.key];
+      if (v === void 0 || r.mode === "fps") continue;
+      A[r.key] = r.mode === "max" ? Math.max(A[r.key] || 0, v) : (A[r.key] || 0) + v;
+    }
     const el = (now - F2.t0) / 1e3;
     if (el < FPS_DT) return;
-    F2.graph.push(F2.n / el);
-    if (F2.graph.length > FPS_N) F2.graph.shift();
+    for (const r of PERF_ROWS) {
+      const g = F2.graphs[r.key];
+      g.push(r.mode === "fps" ? F2.n / el : r.mode === "avg" ? (A[r.key] || 0) / F2.n : A[r.key] || 0);
+      if (g.length > FPS_N) g.shift();
+    }
     F2.t0 = now;
     F2.n = 0;
+    F2.acc = {};
   }
 
   // src/auto/addrunner.js
@@ -35897,6 +35931,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const pausedRef = useRef(false);
     const [devOn, setDevOn] = useState(devShown);
     const [devOpen, setDevOpen] = useState(false);
+    const devRef = useRef(devOn);
+    devRef.current = devOn;
+    const perfShow = useRef(true);
     const [manual, setManual] = useState(-1);
     const [, setHpKey] = useState("");
     pausedRef.current = paused || devOpen;
@@ -35996,8 +36033,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     useEffect(() => {
       const c = cvs.current;
       if (!c) return void 0;
-      const fps = fpsNew();
+      const fps = fpsNew(), perf = { step: 0, draw: 0 };
       return runScene(c, {
+        perf,
         size: () => ({ w: c.clientWidth, hh: c.clientHeight }),
         make: (w, hh2, seed) => {
           const k = w / TITLE_VW, vh = Math.max(1, hh2 - bigPlayRef.current) / k;
@@ -36052,9 +36090,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           const a = levelClearedAge(S2);
           if (a >= 0) clearedText(ctx, a, DEV.autoClearT, w, hh2 * 0.14);
           if (jcvs.current) journeyDraw(jcvs.current, S2, run, cam.current);
-          fpsTick(fps, performance.now());
-          fpsDraw(ctx, fps.graph, w, hh2);
-          c.dataset.fps = String(fps.graph.length);
+          if (devRef.current) {
+            fpsTick(fps, performance.now(), { step: perf.step, draw: perf.draw, shots: S2.shots.length, parts: S2.parts.length, foes: S2.foes.length, burn: S2.burning ? S2.burning.size : 0 });
+            perfDraw(ctx, fps, w, hh2, perfShow.current);
+            c.dataset.fps = String(fps.graphs.fps.length);
+          }
           if (levelDeathPrompt(S2)) {
             const k = w / 150;
             ctx.save();
@@ -36711,6 +36751,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           style: { flexBasis: "calc(55% + " + bigPlay + "px)", marginBottom: -bigPlay + "px" }
         },
         h("canvas", { ref: cvs, className: "aplaycvs" }),
+        devOn ? h("div", {
+          className: "aperf",
+          style: { width: PERF_W + "px", height: PERF_ROWS.length * PERF_ROW_H + "px", right: PERF_PAD + "px", bottom: PERF_PAD + "px" },
+          onPointerDown: (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            perfShow.current = !perfShow.current;
+          }
+        }) : null,
         blocked ? h("div", { className: "ablocked" }, "Path blocked") : null,
         bgunAt >= 0 && bgun ? h(BagGunView, { gun: bgun, down, drag, close: () => {
           SFX.fx("close");
@@ -37381,30 +37430,45 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }, c.gun ? h(GunIcon, { gun: c.gun }) : null);
     }));
   }
-  function fpsDraw(ctx, vals, w, hh2) {
-    const bw = 96, bh = 34, x = w - bw - 6, y = hh2 - bh - 6, top = y + 13, bot = y + bh - 3;
+  var PERF_W = 100, PERF_ROW_H = 24, PERF_PAD = 6;
+  function perfDraw(ctx, F2, w, hh2, shown) {
+    const x = w - PERF_W - PERF_PAD;
     ctx.save();
-    const now = vals.length ? vals[vals.length - 1] : 0, peak = Math.max(60, ...vals);
-    ctx.font = "700 10px ui-monospace,SFMono-Regular,Menlo,monospace";
+    ctx.font = "700 9px ui-monospace,SFMono-Regular,Menlo,monospace";
     ctx.textAlign = "left";
     ctx.textBaseline = "top";
-    ctx.fillStyle = now >= 50 ? "#5ee05a" : now >= 30 ? "#ffc94a" : "#ff4a4a";
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = "rgba(0,0,0,0.8)";
-    ctx.strokeText(Math.round(now) + " fps", x + 4, y + 2);
-    ctx.fillText(Math.round(now) + " fps", x + 4, y + 2);
-    if (vals.length > 1) {
-      const step = (bw - 4) / (FPS_N - 1), x0 = x + bw - 2 - (vals.length - 1) * step;
-      ctx.strokeStyle = "#5ee05a";
-      ctx.lineWidth = 1.2;
-      ctx.beginPath();
-      vals.forEach((v, i) => {
-        const px = x0 + i * step, py = bot - v / peak * (bot - top);
-        if (i) ctx.lineTo(px, py);
-        else ctx.moveTo(px, py);
-      });
-      ctx.stroke();
+    ctx.lineJoin = "round";
+    if (!shown) {
+      ctx.globalAlpha = 0.35;
+      ctx.fillStyle = "#fff";
+      ctx.textAlign = "right";
+      ctx.textBaseline = "bottom";
+      ctx.fillText("perf", w - PERF_PAD, hh2 - PERF_PAD);
+      ctx.restore();
+      return;
     }
+    PERF_ROWS.forEach((row, k) => {
+      const vals = F2.graphs[row.key], y = hh2 - PERF_PAD - (k + 1) * PERF_ROW_H, top = y + 11, bot = y + PERF_ROW_H - 2;
+      const now = vals.length ? vals[vals.length - 1] : 0, peak = Math.max(row.floor, ...vals);
+      const txt = row.label + " " + (row.unit === "ms" ? now.toFixed(1) + "ms" : Math.round(now));
+      ctx.fillStyle = row.key !== "fps" ? row.col : now >= 50 ? "#5ee05a" : now >= 30 ? "#ffc94a" : "#ff4a4a";
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = "rgba(0,0,0,0.8)";
+      ctx.strokeText(txt, x + 2, y + 1);
+      ctx.fillText(txt, x + 2, y + 1);
+      if (vals.length > 1) {
+        const step = (PERF_W - 2) / (FPS_N - 1), x0 = x + PERF_W - 1 - (vals.length - 1) * step;
+        ctx.strokeStyle = row.col;
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        vals.forEach((v, i) => {
+          const px = x0 + i * step, py = bot - Math.min(1, v / peak) * (bot - top);
+          if (i) ctx.lineTo(px, py);
+          else ctx.moveTo(px, py);
+        });
+        ctx.stroke();
+      }
+    });
     ctx.restore();
   }
   function paintGraph(c, vals, col) {
@@ -37546,10 +37610,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ctx.imageSmoothingEnabled = false;
     if (C) {
       const a = camAt(C, 0, 0), b = camAt(C, TITLE_VW, C.view || S2.vh);
-      const lw = Math.max(1, dpr), fy = (ch - 2 * m) / S2.vh;
+      const lw = 2 * dpr, fy = (ch - 2 * m) / S2.vh;
       const x0 = Math.max(lw / 2, (a.x + S2.scroll) / W * cw), x1 = Math.min(cw - lw / 2, (b.x + S2.scroll) / W * cw);
       const y0 = Math.max(m, m + a.y * fy), y1 = Math.min(ch - m, m + b.y * fy);
-      ctx.strokeStyle = "rgba(255,255,255,0.75)";
+      ctx.strokeStyle = "#5a4788";
       ctx.lineWidth = lw;
       if (x1 > x0 && y1 > y0) ctx.strokeRect(x0, y0, x1 - x0, y1 - y0);
       c.dataset.view = [x0, x1].map((v) => (v / cw).toFixed(3)).join(" ");
