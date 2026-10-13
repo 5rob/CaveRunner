@@ -468,3 +468,30 @@ it. If a stage is blocked on a question only the owner can answer, ask them brie
 next stage that doesn't depend on it.
 Start with stage 0.
 ```
+
+### Kick-start for a play-and-notes round (2026-10-13)
+
+```
+You're the PM for CaveRunner Auto (branch `autobattler`, live at /CaveRunner/auto/, v1.0.73, nothing waiting).
+Read CLAUDE.md, then HANDOVER.md's BRANCH section ("Next session" and "Open, in order") and AUTOBATTLER.md section 8
+(agent limits) and section 7 (the Log, newest rows at the top of the feedback block). Don't start anything off the open
+list yet: I'll guide this round with notes from playing on my phone.
+
+How to work:
+- Batch my notes by area. Do small fixes yourself; an agent only for a big new stage, one at a time, in a hand-made
+  worktree (`git worktree add -q -b <br> ../<br> autobattler`, node_modules linked with `cmd /c mklink /J`), section 8's
+  TIME BOX text word for word in every brief, check on it about every 10 minutes. A follow-up round on an agent's own
+  work: resume that agent (SendMessage) rather than a fresh one.
+- After each batch: `node tests/run.js logic` (known failure: spider; flaky: auto-wall, auto-roam, slots) and
+  `node tests/run.js auto-` (auto-steer is flaky: re-run alone).
+- Anything I'll see: 412x880 screenshots via SendUserFile, then wait for my OK. Tools: tools/*shots.js (previewshots,
+  trajshots, discrimshots, shotlookshots, vinefireshots, devshots, ...).
+- Release: bump src/version.js, update the docs (HANDOVER, CHANGELOG, folder READMEs, the AUTOBATTLER.md Log row, the
+  CLAUDE.md version line), commit, push `autobattler` (never `main`), confirm
+  https://5rob.github.io/CaveRunner/auto/version.txt, tell me briefly.
+- A Dev-panel report or a trajectory Edit "Copy" I paste becomes the new defaults.
+- Keep messages short and plain. Mind my credits.
+
+Start by asking me for my first notes, and whether to start the perks stage (every perk working in Auto with fancy
+looks) next.
+```
