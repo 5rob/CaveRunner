@@ -5,8 +5,8 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
-## Unreleased — CaveRunner Auto: the owner's 7 notes after v1.0.74, and the spider zone (branch `autobattler`)
-Waiting on the owner's OK for the looks. PM alone.
+## v1.0.75 — CaveRunner Auto: the owner's 7 notes after v1.0.74, and the spider zone (branch `autobattler`)
+Owner OK'd the screenshots. PM alone.
 - After the boss nobody takes off: everyone comes down and runs along the floor to the exit (S.huddle in a level).
 - Normal pace by level: `autoLvlPace` 1 at level 1 → `autoLvlPaceTop` 3 by `autoLvlPaceLv` 20 (pilot.js `lvlPace`).
 - Bag: a dragged group keeps its layout, green outlines where it lands (`bagGroupPlan`). A bag gun tapped opens in the play area; drag its mods off into the bag (`BagGunView`, `bagGunModOut`).

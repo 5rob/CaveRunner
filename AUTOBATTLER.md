@@ -378,6 +378,7 @@ chest slow ×0.5. Grab radius 35% of a tile.
 | feedback round 2 (g) | done | v1.0.31 | PM alone. Owner: the jetpack way too fast and strong → `autoJetK` 0.55 (climb, sideways, push). |
 | gun drag | done | v1.0.43 | PM alone. Owner: drag a gun out of the nav's Guns row into the bag (`gunToBag`, `gunMove`; slide off a gun circle before the hold). |
 | play round (23 notes) | done | v1.0.74 | PM + one agent (bag drag, ~12 min, merged). Owner's phone notes: boss → guns down, straight to the exit, heads pop at the exit pad; pads one at a time; Borer past Bounce; Vigour + Discriminate; jelly turn by level; roam height goals; beam fade; fire particle room; spider legs; camera on the last down; Top N, version, stick knob, nugget icons, distinct shot glyphs, orange fields, Dev mod grid; bag rows/edge scroll/group/insert. Owner OK'd (rows push the stack up). |
+| 7 notes + spider zone | done | v1.0.75 | PM alone. Post-boss run to the exit on foot, pace by level (1 → 3 by level 20), bag group keeps its layout (green outlines), bag gun view in the play area (drag mods off), Dev mod grid grab circles, no trigger variants in it; orb webs (world/orbweb.js), the spider zone (rocks / vines / beams, levels only), spider mines; fuel-wait hover fixed. Owner OK'd. |
 | damper colour | done | v1.0.73 | PM alone. Owner's audit note: Recoil and Recoil Damper moved to red (Damage). |
 | switches | done | v1.0.72 | PM alone. Owner: Double / Triple / Quad Switch (pink): the next n groups take turns, one a pull (planCast `sw`, `g.swc`); rounded-box icons. |
 | discriminate | done | v1.0.71 | Agent ~17 min, 2 rounds (worktree `cr-discrim`): hold the tile for a target popup (rats, jellyfish, spiders, gold, red, green, P1–P4); shots hit only it, a White Hole pulls only it (the gravity gun remade). |
@@ -473,7 +474,7 @@ Start with stage 0.
 ### Kick-start for a play-and-notes round (2026-10-13)
 
 ```
-You're the PM for CaveRunner Auto (branch `autobattler`, live at /CaveRunner/auto/, v1.0.74, nothing waiting).
+You're the PM for CaveRunner Auto (branch `autobattler`, live at /CaveRunner/auto/, v1.0.75, nothing waiting).
 Read CLAUDE.md, then HANDOVER.md's BRANCH section ("Next session" and "Open, in order") and AUTOBATTLER.md section 8
 (agent limits) and section 7 (the Log, newest rows at the top of the feedback block). Don't start anything off the open
 list yet: I'll guide this round with notes from playing on my phone.
