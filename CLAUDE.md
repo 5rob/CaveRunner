@@ -67,6 +67,8 @@ Runs of 30–50 minutes burned the owner's credits (Level 2, stage 4). The main 
 - Hand over the facts the agent needs (files, knobs, what was tried), so it doesn't re-explore.
 - **Check on it about every 10 minutes**. Stop it if it loops, or if it is past its box with nothing committed.
 - One agent at a time on the same files.
+- **Worktrees (extra checkouts) go in `.claude/worktrees/<name>`**, never `../` (that is the owner's Desktop: 23
+  `cr-*` folders piled up there). Remove one (`git worktree remove`, then `git branch -d`) once it is merged or its shots are taken.
 
 ## The loop
 

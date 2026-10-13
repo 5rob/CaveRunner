@@ -34,8 +34,8 @@ Discriminate popup has no light-mode colours; Orbit reads small at radius 20 (`t
    `S.top + 30`; mine works' extra tunnels aren't covered by a blocked zone's blockage. Rough edges not yet reported: the view
    doesn't follow a hand-steered player inside the boss arena; after a wipe the camera doesn't move onto the last ragdoll.
 The owner may paste a Dev-panel report ("Copy Dev settings", panel via ⏸ held 5 s then ⚙️; green bars = knobs Auto reads): it
-becomes the new defaults (`src/dev/knobs.js`). Leftover worktree folders `../cr-*`, `../oldmain` can't be deleted (Permission
-denied; git prints it on every push): harmless. Known flakes: browser `auto-steer` "stick right…"/"stick left…", logic `auto-wall` seed 5, `slots` spiders, and `auto-roam` "stick left…"
+becomes the new defaults (`src/dev/knobs.js`). Leftover worktree folders `../cr-*` (all merged; the 8 plain copies and the `cr-*` branches were removed
+2026-10-14): the sandbox can't delete them, the owner can (CLAUDE.md: new worktrees go in `.claude/worktrees/`). Known flakes: browser `auto-steer` "stick right…"/"stick left…", logic `auto-wall` seed 5, `slots` spiders, and `auto-roam` "stick left…"
 (timing; re-run alone), logic `spider` fails every run (known). Measured 2026-10-14 (4 runs each): `spider` 4/4 failed,
 `auto-steer` 2/4, the rest passed; all of them are archived now (not in `tests/essentials.js`). Screenshot tools: `tools/*shots.js` (`firesimshots <out> <spot>
 <ms>`, `twinkleshots`, `vinefireshots <out> <spread> <cut>`, `devshots`, …).
@@ -77,7 +77,7 @@ Open, in order of weight:
    the menu icons small after the ×1.5 padding; only bag items scrap/drop (not slot items); dragging a gun out of
    its circle done v1.0.43 (slot-to-slot moves within a row: done in v1.0.23); `auto-loot` flakes rarely in a full run (logic and browser: chance, passes alone).
 5. Old-game code still bundled through `cards.js` / `editor.js` (GunIcon) / `pause.js` (`save/save.js`).
-How the PM worked: one agent per stage in a hand-made worktree (`git worktree add ../cr-stageN -b stageN autobattler`
+How the PM worked: one agent per stage in a hand-made worktree (`git worktree add .claude/worktrees/stageN -b stageN autobattler`
 + `node_modules`; the Agent tool's own worktree option fails on the path's casing), the time-box brief word for word
 (AUTOBATTLER.md section 8), small feedback rounds done by the PM. Tests on this branch (2026-10-14): `node tests/run.js` runs only the essentials (`tests/essentials.js`),
 `related` adds the archived suites naming a changed file, `all` everything (known failure `spider`); the old game's browser
