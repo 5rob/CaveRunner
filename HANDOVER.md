@@ -34,7 +34,8 @@ Discriminate popup has no light-mode colours; Orbit reads small at radius 20 (`t
 The owner may paste a Dev-panel report ("Copy Dev settings", panel via ⏸ held 5 s then ⚙️; green bars = knobs Auto reads): it
 becomes the new defaults (`src/dev/knobs.js`). Leftover worktree folders `../cr-*`, `../oldmain` can't be deleted (Permission
 denied; git prints it on every push): harmless. Known flakes: browser `auto-steer` "stick right…"/"stick left…", logic `auto-wall` seed 5, `slots` spiders, and `auto-roam` "stick left…"
-(timing; re-run alone), logic `spider` fails every run (known). Screenshot tools: `tools/*shots.js` (`firesimshots <out> <spot>
+(timing; re-run alone), logic `spider` fails every run (known). Measured 2026-10-14 (4 runs each): `spider` 4/4 failed,
+`auto-steer` 2/4, the rest passed; all of them are archived now (not in `tests/essentials.js`). Screenshot tools: `tools/*shots.js` (`firesimshots <out> <spot>
 <ms>`, `twinkleshots`, `vinefireshots <out> <spread> <cut>`, `devshots`, …).
 
 **The item audit is back** (owner's notes, 2026-10-11: `docs/auto-item-audit-notes.txt`, each line marked done or which
@@ -76,8 +77,8 @@ Open, in order of weight:
 5. Old-game code still bundled through `cards.js` / `editor.js` (GunIcon) / `pause.js` (`save/save.js`).
 How the PM worked: one agent per stage in a hand-made worktree (`git worktree add ../cr-stageN -b stageN autobattler`
 + `node_modules`; the Agent tool's own worktree option fails on the path's casing), the time-box brief word for word
-(AUTOBATTLER.md section 8), small feedback rounds done by the PM. Tests on this branch: `node tests/run.js logic`
-(known failure `spider`), `node tests/run.js auto-` (logic + browser), browser `title`; the old game's browser
+(AUTOBATTLER.md section 8), small feedback rounds done by the PM. Tests on this branch (2026-10-14): `node tests/run.js` runs only the essentials (`tests/essentials.js`),
+`related` adds the archived suites naming a changed file, `all` everything (known failure `spider`); the old game's browser
 suites are in `tests/retired/` and `tests/determinism.js` no longer applies here.
 - **Stage 0 done (v1.0.0):** the branch deploys to `https://5rob.github.io/CaveRunner/auto/` and builds the
   CaveRunner Auto APK (release `app-auto`); `android/README.md` has how. The only change on `main` was the shared
@@ -489,7 +490,7 @@ Essentials in `CLAUDE.md`, details in `android/README.md`.
 
 ## Testing on this machine (Windows PC)
 
-`npm install` once; `node tests/run.js` (everything), `logic`, `browser`, or one filter. Browser suites
+`npm install` once; `node tests/run.js` (the essentials), `related`, `all`, `logic`, `browser`, or one filter. Browser suites
 find playwright-core in `node_modules/` and the installed Chrome by themselves (never
 `playwright install`). A `node serve.js` may already be running from an earlier session
 (`EADDRINUSE` on a second one is harmless).

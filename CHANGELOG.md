@@ -5,6 +5,12 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## After v1.0.77 (tooling, no game change) — the test suite: essentials and an archive
+Owner: the whole suite had got slow enough to hold development up. `node tests/run.js` now runs only `tests/essentials.js`
+(17 logic + 4 browser suites, quick and never flaky); the rest are archived in place: `related` adds those that name a
+`src/` file changed since HEAD, a name runs any suite, `all` runs every one. Logic essentials ~12 s (the full logic set
+~4 minutes; ~200 s of that was the old game's cave suites).
+
 ## v1.0.77 — CaveRunner Auto: orb webs break apart (branch `autobattler`)
 Owner: "full webs suspended on nothing when players break the main lines". Owner OK'd the screenshots (tools/cutshots.js).
 - world/orbweb.js `orbHeld` (pure): a frame holds while its rock does; a spoke while its rock or held frame does; the hub while `ORB_HUB` (3) spokes hold; a spiral thread while both ends sit on held spokes. art/titlescene.js `orbSettle` after every orb thread cut or burnt, and every 0.2 s for webs on screen (their rock dug or blasted): what doesn't hold falls as loose silk, spokes still on rock hang from it.

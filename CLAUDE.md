@@ -61,8 +61,8 @@ Runs of 30–50 minutes burned the owner's credits (Level 2, stage 4). The main 
 - **Agents are only for a big new stage.** Their brief must include these limits:
   - a **time box** (about 20 minutes) and a **stop rule**: "stuck, or past the box → commit what passes,
     stop, report where you got to";
-  - **targeted tests while iterating** (`node tests/run.js <name>`), the full `logic` run **once at the end**,
-    and a browser suite only if it covers the change;
+  - **targeted tests while iterating** (`node tests/run.js <name>`), `node tests/run.js related` **once at
+    the end** (not `all`), and a browser suite only if it covers the change;
   - **at most 2 screenshot rounds**.
 - Hand over the facts the agent needs (files, knobs, what was tried), so it doesn't re-explore.
 - **Check on it about every 10 minutes**. Stop it if it loops, or if it is past its box with nothing committed.
@@ -71,7 +71,7 @@ Runs of 30–50 minutes burned the owner's credits (Level 2, stage 4). The main 
 ## The loop
 
 1. Change `src/` (the folder READMEs say where things are and the rules there).
-2. Test: `node tests/run.js` (see **Testing**). Add a suite for anything new.
+2. Test: `node tests/run.js related` (see **Testing**: essentials + what the change touches). Add a suite for anything new.
 3. **Looks changed? Screenshots to the owner, and their OK** before going on (above).
 4. Bump the version in `src/version.js` (below), and **update the docs** (above: HANDOVER, CHANGELOG,
    the folder READMEs, `README.md` for player-facing changes).
@@ -140,13 +140,22 @@ scripts, not `sed -i`; Git Bash heredocs eat backslashes.
 moves into `tests/`. No machine paths, no assuming LF (loaders normalise `\r\n`). Before finishing,
 `git status`: untracked files under `tests/` are about to be lost.
 
+**Essentials first, the archive only when related (the owner's rule, 2026-10-14):** the whole suite got
+slow enough to hold development up. `tests/essentials.js` lists the few suites run by default (quick,
+broad, never flaky); every other suite in `tests/logic/` and `tests/browser/` is **archived**: it stays,
+but runs only when a change touches what it covers (`related`, or by name). Something still broken after
+that → `all`. A new suite goes into the folder as usual and is archived by default; it joins the
+essentials only if breaking it would mean the game can't start, save, play a level or fire a gun.
+
 ```
-node tests/run.js           # everything
-node tests/run.js logic     # the fast ones, ~2.5 minutes
-node tests/run.js browser   # Chromium, ~12 minutes, one at a time
-node tests/run.js advice    # anything matching "advice" (one filter)
-node tests/determinism.js   # same scripted run on HEAD's build and this tree's, frame by frame
+node tests/run.js           # the essentials, ~1 minute logic + browser
+node tests/run.js logic     # the logic essentials, ~12 s
+node tests/run.js related   # essentials + archived suites that name a src/ file changed since HEAD
+node tests/run.js advice    # anything matching "advice", archived too (one filter)
+node tests/run.js all       # every suite: logic ~4 min, browser ~3.5 min
+node tests/determinism.js   # (old game only) same scripted run on HEAD's build and this tree's
 ```
+`logic` / `browser` after `all` or `related` keeps to that kind (`node tests/run.js all logic`).
 
 Every run first builds, then the **undefined-name check** (ESLint, only `no-undef`, over `src/`: a
 forgotten import fails only when its line runs) and the **type check** (`tsc --noEmit -p .`; alone:

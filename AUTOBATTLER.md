@@ -441,7 +441,7 @@ How you run it:
 - Every brief carries these limits, word for word:
   "TIME BOX: 20 minutes. STOP RULE: if you are stuck, looping on the same failure, or past the box,
   commit what passes, stop, and report exactly where you got to and what's left. Use targeted tests while
-  iterating (node tests/run.js <name>); run the full `logic` set ONCE at the end; run a browser suite only
+  iterating (node tests/run.js <name>); run `node tests/run.js related` ONCE at the end (not `all`); run a browser suite only
   if it covers your change. Never wait on a test without a cap; if a suite hangs or fails the same way
   twice, stop and report it rather than retrying. At most 2 screenshot rounds (412x880, saved under the
   repo's tools/ shot scripts, not the scratchpad). Do not push. Do not merge. Report: what you built,
@@ -455,7 +455,7 @@ How you run it:
 After each stage:
 1. Review the diff in its worktree: does it fit with what's already there (names, layers, README rows,
    pure where it can be, the menu animation and `slots` still passing)? Fix small misfits yourself.
-2. Merge it into `autobattler`. Run `node tests/run.js logic` (known failures: `spider`; browser
+2. Merge it into `autobattler`. Run `node tests/run.js related` (`all` only if something still fails; was: known failures `spider`; browser
    `vendshop`). Old-game suites retired by a stage must be listed in its report.
 3. Looks? Send the owner the screenshots (SendUserFile, a line each), and WAIT for their OK or changes
    before releasing. Do their change rounds yourself if small.
@@ -486,8 +486,8 @@ How to work:
   worktree (`git worktree add -q -b <br> ../<br> autobattler`, node_modules linked with `cmd /c mklink /J`), section 8's
   TIME BOX text word for word in every brief, check on it about every 10 minutes. A follow-up round on an agent's own
   work: resume that agent (SendMessage) rather than a fresh one.
-- After each batch: `node tests/run.js logic` (known failure: spider; flaky: auto-wall, auto-roam, slots) and
-  `node tests/run.js auto-` (auto-steer is flaky: re-run alone).
+- After each batch: `node tests/run.js related` (essentials + archived suites naming a changed file; `all` only if
+  something still fails. In the archive: spider always fails; auto-steer, auto-wall, auto-roam, slots flaky: re-run alone).
 - Anything I'll see: 412x880 screenshots via SendUserFile, then wait for my OK. Tools: tools/*shots.js (previewshots,
   trajshots, discrimshots, shotlookshots, vinefireshots, devshots, ...).
 - Release: bump src/version.js, update the docs (HANDOVER, CHANGELOG, folder READMEs, the AUTOBATTLER.md Log row, the

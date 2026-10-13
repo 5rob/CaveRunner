@@ -1,5 +1,7 @@
-// Runs the test suites. `node tests/run.js` does the lot; `node tests/run.js logic`
-// does just the fast ones; `node tests/run.js advice` runs whatever matches "advice".
+// Runs the test suites. `node tests/run.js` runs the essentials (tests/essentials.js);
+// `node tests/run.js related` adds the archived suites that name a file you've changed;
+// `node tests/run.js all` runs every suite; `node tests/run.js advice` runs whatever matches
+// "advice", archived or not. `logic` or `browser` after any of them keeps to that kind.
 //
 // Logic suites are plain node: they slice the <script> block out of index.html and
 // eval it, so they can call planCast, gunRate, tracePath and friends directly. They
@@ -42,20 +44,48 @@ try {
   for (const line of ((e.stdout || '') + (e.stderr || '') || e.message).trim().split('\n').slice(0, 30)) console.log('      ' + line);
 }
 
-const filter = process.argv[2] || '';
-const only = filter === 'logic' || filter === 'browser' ? filter : '';
-const match = only ? '' : filter;
+// Which suites: the essentials (tests/essentials.js) unless asked for more. `all` runs every suite,
+// `related` the essentials plus the archived suites that name a file changed since HEAD, any other
+// word the suites whose names contain it (archived ones too).
+const ESS = require('./essentials');
+const args = process.argv.slice(2);
+const mode = args[0] === 'all' || args[0] === 'related' ? args.shift() : 'ess';
+const only = args[0] === 'logic' || args[0] === 'browser' ? args.shift() : '';
+const match = args[0] || '';
 
-const list = dir => fs.readdirSync(path.join(__dirname, dir))
-  .filter(f => f.endsWith('.test.js') && (!match || f.includes(match)))
-  .sort()
-  .map(f => path.join(__dirname, dir, f));
+const all = dir => fs.readdirSync(path.join(__dirname, dir)).filter(f => f.endsWith('.test.js')).sort();
+for (const dir of ['logic', 'browser']) for (const n of ESS[dir])
+  if (!all(dir).includes(n + '.test.js')) { failed.push('essentials'); console.log(`tests/essentials.js: no suite ${dir}/${n}`); }
+let related = null;
+if (mode === 'related') {
+  // changed files (staged, unstaged, untracked) → suites whose text names them, or the suite itself
+  const git = a => { try { return execFileSync('git', a, { cwd: path.join(__dirname, '..'), encoding: 'utf8' }); } catch (e) { return ''; } };
+  const changed = (git(['diff', '--name-only', 'HEAD']) + git(['ls-files', '--others', '--exclude-standard']))
+    .split('\n').map(s => s.trim()).filter(Boolean);
+  related = new Map();
+  for (const dir of ['logic', 'browser']) for (const f of all(dir)) {
+    const text = fs.readFileSync(path.join(__dirname, dir, f), 'utf8');
+    const why = changed.filter(c => c === `tests/${dir}/${f}` ||
+      (c.startsWith('src/') && /\.(js|css|html)$/.test(c) && !c.endsWith('.d.ts') && new RegExp('\\b' + path.basename(c).replace(/[.$]/g, '\\$&') + '\\b').test(text)));
+    if (why.length) related.set(f, why.map(c => path.basename(c)));
+  }
+  console.log('changed: ' + (changed.join(', ') || 'nothing'));
+}
+const pick = (dir, f) => {
+  const name = path.basename(f, '.test.js');
+  if (match) return name.includes(match);
+  if (mode === 'all') return true;
+  return ESS[dir].includes(name) || !!(related && related.has(f));
+};
+const list = dir => all(dir).filter(f => pick(dir, f)).map(f => path.join(__dirname, dir, f));
 
 // seconds a suite may take before it is called stuck: logic suites run in ~1s, the
 // slowest browser suite (everymod) in well under a minute
 const LOGIC_CAP = 30, BROWSER_CAP = 120;
 const run = (file, kind) => {
   const name = path.basename(file, '.test.js');
+  const why = related && related.get(path.basename(file));
+  if (why && !ESS[kind].includes(name)) console.log(`  (${name}: names ${why.join(', ')})`);
   process.stdout.write(`${kind === 'logic' ? '  ' : '  '}${name.padEnd(24)}`);
   try {
     // a hard cap per suite, so a test that is stuck fails in minutes instead of running forever
