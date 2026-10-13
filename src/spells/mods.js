@@ -324,7 +324,7 @@ export const MODS = {
   kick:    { name: 'Recoil', kind: 'mod', glyph: '⇤', col: '#ff7a5a', mana: 2, d: -0.02,
              info: 'More kick. Handy if you like being launched',
              f: s => { s.recoil += 70; s.dmg += 0.4; } },
-  damper:  { name: 'Recoil Damper', kind: 'mod', glyph: '⊖', col: '#3fcf8e', mana: 3, d: 0.02,
+  damper:  { name: 'Recoil Damper', kind: 'mod', glyph: '⊖', col: '#ff5a52', mana: 3, d: 0.02,
              info: 'Takes the shove out of a heavy gun', f: s => { s.recoil *= 0.2; } },
   crit:    { name: 'Critical Plus', kind: 'mod', glyph: '✴', col: '#ff5a52', mana: 6, d: 0.04,
              info: '+25% chance of a hit doing triple damage', f: s => { s.crit += 0.25; } },
@@ -463,14 +463,14 @@ export const FAMILY_OF = {
   refresh: 'upkeep', farcast: 'cast', telecast: 'cast',
   warpcast: 'cast', sawstorm: 'cast', alpha: 'cast', gamma: 'cast', tau: 'cast',
   omega: 'cast', phi: 'cast', sigma: 'cast', mu: 'cast', zeta: 'cast',
-  knock: 'dmg', kick: 'upkeep', crit: 'dmg', flat: 'path', lust: 'dmg', manapow: 'dmg',
+  knock: 'dmg', kick: 'dmg', crit: 'dmg', flat: 'path', lust: 'dmg', manapow: 'dmg',
   bboom: 'dmg', bpower: 'dmg', gpower: 'dmg',
   gravmod: 'path', float: 'path',   // owner (v1.0.35): trajectory mods are purple
   boomer: 'path', spiral: 'path', pong: 'path', orbit: 'path', autoaim: 'path', aimassist: 'path', discrim: 'path',
   nearhome: 'path', eater: 'path',
   split: 'pattern', cluster: 'pattern', oct: 'pattern', myriad: 'pattern', bifur: 'pattern',
   trifur: 'pattern', behind: 'pattern',
-  damper: 'upkeep', hspread: 'pattern', blood: 'upkeep',   // owner (v1.0.35) colour sweep: Recoil with its Damper, Heavy Spread with Reduce Spread, Wand Refresh a recharge mod
+  damper: 'dmg', hspread: 'pattern', blood: 'upkeep',   // owner (v1.0.35) colour sweep: Recoil with its Damper (both red since v1.0.73, owner), Heavy Spread with Reduce Spread, Wand Refresh a recharge mod
   addtrig: 'cast', addtimer: 'cast', adddeath: 'cast',
 };
 /** @type {Record<string, string>} */

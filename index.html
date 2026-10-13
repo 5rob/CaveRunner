@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v1.0.72</title>
-<!-- VERSION = 'v1000072' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v1.0.73</title>
+<!-- VERSION = 'v1000073' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -1144,7 +1144,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v1.0.72';</script>
+<script>const VERSION = 'v1.0.73';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -3842,7 +3842,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       name: "Recoil Damper",
       kind: "mod",
       glyph: "⊖",
-      col: "#3fcf8e",
+      col: "#ff5a52",
       mana: 3,
       d: 0.02,
       info: "Takes the shove out of a heavy gun",
@@ -4399,7 +4399,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     mu: "cast",
     zeta: "cast",
     knock: "dmg",
-    kick: "upkeep",
+    kick: "dmg",
     crit: "dmg",
     flat: "path",
     lust: "dmg",
@@ -4426,10 +4426,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     bifur: "pattern",
     trifur: "pattern",
     behind: "pattern",
-    damper: "upkeep",
+    damper: "dmg",
     hspread: "pattern",
     blood: "upkeep",
-    // owner (v1.0.35) colour sweep: Recoil with its Damper, Heavy Spread with Reduce Spread, Wand Refresh a recharge mod
+    // owner (v1.0.35) colour sweep: Recoil with its Damper (both red since v1.0.73, owner), Heavy Spread with Reduce Spread, Wand Refresh a recharge mod
     addtrig: "cast",
     addtimer: "cast",
     adddeath: "cast"

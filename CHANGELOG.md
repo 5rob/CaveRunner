@@ -5,6 +5,10 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.73 — CaveRunner Auto: Recoil and Recoil Damper in the red Damage group (branch `autobattler`)
+Released 2026-10-13 on the branch. PM alone (owner's audit note: Damper the wrong colour group; owner chose red for both).
+- `FAMILY_OF` kick, damper: 'dmg' (were 'upkeep', green); Damper's own col red.
+
 ## v1.0.72 — CaveRunner Auto: Double / Triple / Quad Switch mods (branch `autobattler`)
 Released 2026-10-13 on the branch. PM alone; owner OK'd the shots.
 - New pattern mods `switch2/3/4` (`swN`): of the next 2 / 3 / 4 groups (a spell with the modifiers before it, a carrier with its

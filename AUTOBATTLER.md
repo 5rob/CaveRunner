@@ -377,6 +377,7 @@ chest slow ×0.5. Grab radius 35% of a tile.
 | feedback round 2 (f) | done | v1.0.30 | PM: B hides the nav (a play tap shows it), one fixed camera (no gestures), jet thrust by the stick's height, auto-loot race. Agent (~13 min, worktree `cr-roam`): hold a helmet in a level → manual mode (scroll stops, damped follow forward/back, team behind, B lets go). Open: the view doesn't follow inside the arena; followers can trail the wrong side backing up. |
 | feedback round 2 (g) | done | v1.0.31 | PM alone. Owner: the jetpack way too fast and strong → `autoJetK` 0.55 (climb, sideways, push). |
 | gun drag | done | v1.0.43 | PM alone. Owner: drag a gun out of the nav's Guns row into the bag (`gunToBag`, `gunMove`; slide off a gun circle before the hold). |
+| damper colour | done | v1.0.73 | PM alone. Owner's audit note: Recoil and Recoil Damper moved to red (Damage). |
 | switches | done | v1.0.72 | PM alone. Owner: Double / Triple / Quad Switch (pink): the next n groups take turns, one a pull (planCast `sw`, `g.swc`); rounded-box icons. |
 | discriminate | done | v1.0.71 | Agent ~17 min, 2 rounds (worktree `cr-discrim`): hold the tile for a target popup (rats, jellyfish, spiders, gold, red, green, P1–P4); shots hit only it, a White Hole pulls only it (the gravity gun remade). |
 | trajectory B | done | v1.0.70 | Agent ~9 min (worktree `cr-traj`, resumed): homing, seeker, nearhome, autoaim, gravmod, float, flat in Auto (`trajHome/Aim/Grav/Lob`), each with Edit knobs. Next: Discriminate. auto-wall flaked once (passed alone). |
