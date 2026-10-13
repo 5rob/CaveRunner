@@ -84,7 +84,13 @@ const same = [];
 for (const id of G.ALL_IDS.filter(k => k !== 'bolt' && k !== 'discrim')) {
   const M = G.MODS[id], shot = M.kind === 'shot' || M.kind === 'static';
   let changed;
-  if (shot) {
+  if (M.swN) {
+    // a Switch (v1.0.72): its turns show over two pulls (bolt, then spark)
+    const g = gunOf([id, 'bolt', 'spark']), a = G.planCast(g);
+    if (a.wrap) g.idx = 0;
+    const b = G.planCast(g);
+    changed = a.defs.length === 1 && b.defs.length === 1 && a.defs[0] !== b.defs[0];
+  } else if (shot) {
     const a = sig([id], true), b = sig(['bolt'], true);
     changed = a.n > 0 && a.s !== b.s;
   } else {

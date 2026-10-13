@@ -50,7 +50,7 @@ interface Mod {
   f?: (s: Shot) => void;
   d?: number;                 // cast delay it adds (a modifier's; a shot's own is `delay`)
   setDelay?: number;          // resets cast delay outright (Buzzsaw)
-  multi?: number; myriad?: number; form?: number[]; copy?: string; addTrig?: TrigKind;
+  multi?: number; swN?: number; myriad?: number; form?: number[]; copy?: string; addTrig?: TrigKind;
   manaMul?: number; hp?: number; act?: string;
   // what it does to the gun from anywhere on it (gunPassives)
   rech?: number; rechMul?: number; manaMax?: number; manaRegen?: number;
@@ -68,6 +68,7 @@ interface Gun {
   castDelay: number; recharge: number;
   manaMax: number; manaRegen: number;
   spread: number; speedMul: number; multi: number; shuffle: boolean;
+  swc?: Record<number, number>;   // each Switch's pulls so far, by its slot (spells/cast.js planCast)
   slots: (string | null)[];   // mod ids, null for an empty slot
   boosted?: boolean;          // rolled by the gun machine's crystal reroll (spells/gunshop.js boostGun)
   hue?: number;               // its colour; a gun without one (an old save, a preview) hashes its name (gunHue)
@@ -115,6 +116,7 @@ interface Plan {
   shots: Shot[];
   defs: Mod[];                // the spells cast, in order
   start: number;              // g.idx before the pull
+  swc0?: Record<number, number>;   // g.swc before the pull (rolled back with idx when the mana's short)
   cost: number;               // mana
   acts: string[];             // util acts to run
   hp: number;                 // health it costs

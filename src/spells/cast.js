@@ -98,6 +98,11 @@ export function planCast(g, others) {
   let addTrig = null;                   // an Add Trigger waiting for the next projectile
   let boost = 1;                        // a buff or nerf waiting for the next mod drawn
   let multi = g.multi, cost = 0, manaMul = 1, ran = false, wrapped = 0;
+  // a Switch (owner v1.0.72) running: of the next n groups (a spell and the modifiers before it), only group `pick` casts;
+  // the rest are drawn past, costing nothing. Which one turns over each pull, counted per switch slot in g.swc
+  /** @type {{ n: number, pick: number, i: number, carry: Mod[], cost: number, hp: number, delay: number, multi: number } | null} */
+  let sw = null;
+  const swc0 = g.swc;
   // delay is walked in draw order: most mods nudge it, a few reset it outright,
   // and anything drawn after a reset adds its own delay back on top
   let delay = g.castDelay;
@@ -195,7 +200,7 @@ export function planCast(g, others) {
     return out;
   };
 
-  for (let guard = 0; defs.length < multi && guard < 96; guard++) {
+  for (let guard = 0; (defs.length < multi || sw) && guard < 96; guard++) {
     let id, copied = false;
     if (queue.length) { id = queue.shift(); copied = true; }
     else {
@@ -223,6 +228,15 @@ export function planCast(g, others) {
       // Copies and multicasts only open up on the first pass. Once the gun has
       // wrapped round to the front they are skipped, or a Myriad would widen the
       // cast every time it came round and never finish.
+      if (m.swN && !copied && !wrapped && !sw) {
+        // a Switch: the next swN groups take turns, one a pull (a new object, so a copy of the gun never moves the real one's count)
+        const slot = g.order[g.idx - 1], seen = (g.swc && g.swc[slot]) || 0;
+        g.swc = Object.assign({}, g.swc, { [slot]: seen + 1 });
+        sw = { n: m.swN, pick: seen % m.swN, i: 0, carry: mods, cost, hp, delay, multi };
+        mods = [];
+        timing(m);
+        continue;
+      }
       if (!copied && !wrapped) {
         if (m.multi) multi += m.multi;
         if (m.form) form = m.form;
@@ -245,11 +259,22 @@ export function planCast(g, others) {
       timing(m);
       continue;
     }
+    if (sw && sw.i !== sw.pick) {
+      // a Switch's group that isn't up this pull: drawn past (and a carrier's payload with it), nothing paid or cast
+      const kindS = m.trig || (m.kind === 'shot' && addTrig) || null;
+      if (m.kind === 'shot') addTrig = null;
+      if (kindS) payloadOf(m.draw || 1, 1);
+      mods = []; cost = sw.cost; hp = sw.hp; delay = sw.delay; multi = sw.multi;
+      if (++sw.i >= sw.n) sw = null;
+      continue;
+    }
+    if (sw) { mods = sw.carry.concat(mods); multi = Math.max(multi, defs.length + 1); }
     defs.push(m);
     modsOf.push(mods);
     mods = [];
     cost += m.mana;
     timing(m);
+    if (sw) { if (++sw.i >= sw.n) sw = null; else { sw.cost = cost; sw.hp = hp; sw.delay = delay; sw.multi = multi; } }
     // a carrier (a "with Trigger" spell, or any projectile after Add Trigger) draws its
     // payload right now, so the spells it takes are not cast from the barrel as well
     const kind = m.trig || (m.kind === 'shot' && addTrig) || null;
@@ -268,7 +293,7 @@ export function planCast(g, others) {
     const k = id && MODS[id].kind;
     if (k === 'shot' || k === 'static') { more = true; break; }
   }
-  return { shots, defs, start, cost: cost * manaMul, acts, hp,
+  return { shots, defs, start, swc0, cost: cost * manaMul, acts, hp,
     delay: Math.max(MIN_CAST, delay),
     wrap: ran || !more };
 }

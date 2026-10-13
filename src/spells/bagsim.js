@@ -126,7 +126,7 @@ export function fireSimStep(S, dt) {
   const start = g.idx;
   const plan = planCast(g);
   if (!plan.shots.length) { wrap(); return; }
-  if (S.mana < plan.cost) { g.idx = plan.start; S.delayT = S.delayMax = 0.12; return; }
+  if (S.mana < plan.cost) { g.idx = plan.start; g.swc = plan.swc0; S.delayT = S.delayMax = 0.12; return; }
   S.mana -= plan.cost;
   const end = plan.wrap || g.idx <= start ? g.order.length : g.idx;
   const slots = [];

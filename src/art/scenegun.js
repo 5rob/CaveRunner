@@ -58,7 +58,7 @@ export function gunPull(g, others) {
   const wrap = () => { g.idx = 0; g.rechT = g.rechLen = g.skipRech ? 0 : effRecharge(g); g.skipRech = false; shuffleOrder(g); };
   const plan = planCast(g, others);
   if (!plan.shots.length) { wrap(); return null; }
-  if ((g.mana || 0) < plan.cost) { g.idx = plan.start; g.delayT = 0.12; return null; }
+  if ((g.mana || 0) < plan.cost) { g.idx = plan.start; g.swc = plan.swc0; g.delayT = 0.12; return null; }
   g.mana = (g.mana || 0) - plan.cost;
   g.delayT = g.delayMax = plan.delay;
   g.pulls = (g.pulls || 0) + 1;

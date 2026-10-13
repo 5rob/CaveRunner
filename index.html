@@ -3000,6 +3000,35 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       info: "fires the next 4 shots at once",
       multi: 3
     },
+    // owner (v1.0.72): Switches. Like a multicast, but of the next n groups (a spell and the modifiers on it) only one casts,
+    // taking turns each pull (spells/cast.js planCast `sw`)
+    switch2: {
+      name: "Double Switch",
+      kind: "mod",
+      glyph: "⓶",
+      col: "#ffe066",
+      mana: 0,
+      info: "Takes turns between the next 2 spells (each with its own modifiers): one a pull",
+      swN: 2
+    },
+    switch3: {
+      name: "Triple Switch",
+      kind: "mod",
+      glyph: "⓷",
+      col: "#ffe066",
+      mana: 1,
+      info: "Takes turns between the next 3 spells (each with its own modifiers): one a pull",
+      swN: 3
+    },
+    switch4: {
+      name: "Quad Switch",
+      kind: "mod",
+      glyph: "⓸",
+      col: "#ffe066",
+      mana: 2,
+      info: "Takes turns between the next 4 spells (each with its own modifiers): one a pull",
+      swN: 4
+    },
     cheap: {
       name: "Efficient",
       kind: "mod",
@@ -4313,6 +4342,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     double: "pattern",
     triple: "pattern",
     quad: "pattern",
+    switch2: "pattern",
+    switch3: "pattern",
+    switch4: "pattern",
     fast: "upkeep",
     trigger: "upkeep",
     cold: "upkeep",
@@ -4456,6 +4488,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     double: 45,
     triple: 60,
     quad: 75,
+    switch2: 40,
+    switch3: 55,
+    switch4: 70,
     cheap: 40,
     saw: 80,
     trigger: 35,
@@ -4593,6 +4628,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     range: 2,
     borer: 2,
     double: 2,
+    switch2: 2,
+    switch3: 3,
+    switch4: 4,
     over: 2,
     trigger: 2,
     esph: 2,
@@ -9704,6 +9742,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     let addTrig = null;
     let boost = 1;
     let multi = g.multi, cost2 = 0, manaMul = 1, ran = false, wrapped = 0;
+    let sw = null;
+    const swc0 = g.swc;
     let delay = g.castDelay;
     let form = null, hp = 0;
     const acts = [];
@@ -9797,7 +9837,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       });
       return out;
     };
-    for (let guard = 0; defs.length < multi && guard < 96; guard++) {
+    for (let guard = 0; (defs.length < multi || sw) && guard < 96; guard++) {
       let id, copied = false;
       if (queue.length) {
         id = queue.shift();
@@ -9823,6 +9863,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         if (m.manaMul) manaMul *= m.manaMul;
         if (m.f) mods.push(m);
         if (m.addTrig) addTrig = m.addTrig;
+        if (m.swN && !copied && !wrapped && !sw) {
+          const slot = g.order[g.idx - 1], seen = g.swc && g.swc[slot] || 0;
+          g.swc = Object.assign({}, g.swc, { [slot]: seen + 1 });
+          sw = { n: m.swN, pick: seen % m.swN, i: 0, carry: mods, cost: cost2, hp, delay, multi };
+          mods = [];
+          timing(m);
+          continue;
+        }
         if (!copied && !wrapped) {
           if (m.multi) multi += m.multi;
           if (m.form) form = m.form;
@@ -9850,11 +9898,36 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         timing(m);
         continue;
       }
+      if (sw && sw.i !== sw.pick) {
+        const kindS = m.trig || m.kind === "shot" && addTrig || null;
+        if (m.kind === "shot") addTrig = null;
+        if (kindS) payloadOf(m.draw || 1, 1);
+        mods = [];
+        cost2 = sw.cost;
+        hp = sw.hp;
+        delay = sw.delay;
+        multi = sw.multi;
+        if (++sw.i >= sw.n) sw = null;
+        continue;
+      }
+      if (sw) {
+        mods = sw.carry.concat(mods);
+        multi = Math.max(multi, defs.length + 1);
+      }
       defs.push(m);
       modsOf.push(mods);
       mods = [];
       cost2 += m.mana;
       timing(m);
+      if (sw) {
+        if (++sw.i >= sw.n) sw = null;
+        else {
+          sw.cost = cost2;
+          sw.hp = hp;
+          sw.delay = delay;
+          sw.multi = multi;
+        }
+      }
       const kind = m.trig || m.kind === "shot" && addTrig || null;
       if (m.kind === "shot") addTrig = null;
       if (kind) holds[defs.length - 1] = { kind, list: payloadOf(m.draw || 1, 1) };
@@ -9883,6 +9956,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       shots,
       defs,
       start,
+      swc0,
       cost: cost2 * manaMul,
       acts,
       hp,
@@ -10357,6 +10431,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     double: "BURST_2",
     triple: "BURST_3",
     quad: "BURST_4",
+    switch2: "BURST_2",
+    switch3: "BURST_3",
+    switch4: "BURST_4",
     cheap: "MANA_REDUCE",
     trigger: "RECHARGE",
     over_heat: "DAMAGE_RANDOM",
@@ -12468,6 +12545,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     if ((g.mana || 0) < plan.cost) {
       g.idx = plan.start;
+      g.swc = plan.swc0;
       g.delayT = 0.12;
       return null;
     }
@@ -32974,6 +33052,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     if (S2.mana < plan.cost) {
       g.idx = plan.start;
+      g.swc = plan.swc0;
       S2.delayT = S2.delayMax = 0.12;
       return;
     }

@@ -32,7 +32,7 @@ export function cast(W, G, g, gx, gy, nx, ny) {
   const plan = planCast(g, G.input.current.loadout.guns);
   if (!plan.shots.length) { wrap(); return; }        // modifiers with nothing to modify
   const cost = W.pb.mana === 0 ? 0 : plan.cost;        // Unlimited Spells: nothing costs mana
-  if (g.mana < cost) { g.idx = plan.start; g.delayT = 0.12; g.delayMax = 0.12; SFX.ui('empty'); return; }
+  if (g.mana < cost) { g.idx = plan.start; g.swc = plan.swc0; g.delayT = 0.12; g.delayMax = 0.12; SFX.ui('empty'); return; }
   g.mana -= cost;
 
   const base = Math.atan2(ny, nx);

@@ -19,11 +19,14 @@ const GUNS = [
   ['c-follow-big', ['follow', 'bolt', 'bolt'], 'Follow Me + Spark Bolt, double-tapped: the window grown over the stats, him at the new left edge', true],
   ['d-orbit-big', ['orbit', 'bolt', 'bolt'], 'Orbit + Spark Bolt, grown', true],
   ['e-blast', ['blast', 'blast'], 'Bomb: holes in the floor and wall, part grown back (DEV.autoPvRegrow cells/s)'],
+  ['f-switch', ['switch2', 'bolt', 'fball', 'switch3', 'spark', 'slug', 'disc'], 'Double Switch (bolt / fireball) and Triple Switch (spark / slug / disc), grown: one of each group a pull', true],
 ];
 
 (async () => {
   const browser = await launch();
+  const ONLY = process.argv[3] ? process.argv[3].split(',') : null;   // node tools/previewshots.js <outdir> f-switch
   for (const [n, slots, what, big] of GUNS) {
+    if (ONLY && !ONLY.includes(n)) continue;
     const ctx = await browser.newContext({ viewport: { width: 412, height: 880 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2.625 });
     await ctx.addInitScript(() => { window.__TEST_TITLE = true; window.__TITLE_SEED = 101; localStorage.removeItem('caverunner-auto-run'); });
     const page = await ctx.newPage();
