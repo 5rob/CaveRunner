@@ -2107,6 +2107,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   DEV_GROUPS.push(["autoperks", "Auto: perks"]);
   Object.assign(DEV_DEFAULTS, { autoFoeGap0: 4, autoFoeGap1: 1.5, autoFoeCap0: 3, autoFoeCap1: 10, autoFoeDmg: 0.5, autoFoeElites: 2, autoBossSize: 4, autoBossHp: 12, autoBossDmg: 3, autoTierHp: 1.45, autoTierDmg: 1.15 });
   DEV_META.push(
+    { k: "autoRoamT", g: "autofoes", label: "Tall levels: the team picks a new height to roam at every … s", min: 1, max: 30, step: 0.5 },
+    { k: "autoRoamHi", g: "autofoes", label: "… the top third, at this chance", min: 0, max: 1, step: 0.05 },
+    { k: "autoRoamMid", g: "autofoes", label: "… the middle third, at this chance (the rest: the bottom)", min: 0, max: 1, step: 0.05 },
+    { k: "autoRoamFly", g: "autofoes", label: "… and flights last this × longer", min: 0.5, max: 4, step: 0.1 },
+    { k: "autoRoamRun", g: "autofoes", label: "… and walks between them last this × as long", min: 0.1, max: 2, step: 0.05 },
     { k: "autoJeTurnTier", g: "autofoes", label: "Jellyfish turn this much faster each level past the first (× their turn rate)", min: 0, max: 1, step: 0.05 },
     { k: "autoJeTurnMax", g: "autofoes", label: "… at most this × (so they never snap round)", min: 1, max: 6, step: 0.1 },
     { k: "autoFoeGap0", g: "autofoes", label: "A new creature every … s, at the level’s start (a trickle)", min: 0.2, max: 20, step: 0.1 },
@@ -2122,7 +2127,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "autoBossDmg", g: "autofoes", label: "Boss damage (× a normal one)", min: 0.5, max: 10, step: 0.25 }
   );
   DEV_GROUPS.push(["autofoes", "Auto: enemies"]);
-  Object.assign(DEV_DEFAULTS, { autoMoveK: 0.75, autoJetTilt: 1, autoJetSmoke: 1, autoDeathStop: 1.5, autoTpBlink: 1, autoTpBoomWait: 0.6, autoTpBoomR: 60, autoExitPopGap: 0.5, autoJeTurnTier: 0.2, autoJeTurnMax: 2.5, autoExitRagT: 1.6, autoExitPopR: 40, autoFuelDrain: 1, autoFuelRegen: 1, autoCtlWait: 3, autoVineFire: 1, autoVineSpread: 4, autoVineJitter: 0.8, autoVineAsh: 8, autoFireJump: 2, autoFireJumpP: 0.5, autoNavCut: 0.8, autoNavGive: 1.2 });
+  Object.assign(DEV_DEFAULTS, { autoMoveK: 0.75, autoJetTilt: 1, autoJetSmoke: 1, autoDeathStop: 1.5, autoTpBlink: 1, autoTpBoomWait: 0.6, autoTpBoomR: 60, autoExitPopGap: 0.5, autoRoamT: 8, autoRoamHi: 0.45, autoRoamMid: 0.4, autoRoamFly: 2.5, autoRoamRun: 0.4, autoJeTurnTier: 0.2, autoJeTurnMax: 2.5, autoExitRagT: 1.6, autoExitPopR: 40, autoFuelDrain: 1, autoFuelRegen: 1, autoCtlWait: 3, autoVineFire: 1, autoVineSpread: 4, autoVineJitter: 0.8, autoVineAsh: 8, autoFireJump: 2, autoFireJumpP: 0.5, autoNavCut: 0.8, autoNavGive: 1.2 });
   DEV_META.push(
     { k: "autoVineFire", g: "autofire", label: "Vines burn up at this × the old game speed (the title menu: 0.1)", min: 0.1, max: 5, step: 0.1 },
     { k: "autoVineSpread", g: "autofire", label: "Auto levels: the flames climb a vine this × faster than it burns away (1: only the tip burns)", min: 1, max: 40, step: 0.5 },
@@ -14950,11 +14955,20 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (bandK(S2) > 1.2) {
       const os = S2.runners.filter((o) => o !== r && !o.hide && !o.out);
       if (os.length) {
-        const oy = os.reduce((a, o) => a + o.y, 0) / os.length, m = S2.huddle ? oy : (oy + S2.top + (S2.bot - S2.top - PH) * titleNoise(S2.scroll / 260 + S2.seed % 97, 1.7)) / 2, lo = Math.max(c + 4, m - TITLE_PACKY), hi = Math.min(f - PH - 4, m + TITLE_PACKY);
+        const oy = os.reduce((a, o) => a + o.y, 0) / os.length, m = S2.huddle ? oy : S2.lvl ? roamGoal(S2) * 0.7 + oy * 0.3 : (oy + S2.top + (S2.bot - S2.top - PH) * titleNoise(S2.scroll / 260 + S2.seed % 97, 1.7)) / 2, lo = Math.max(c + 4, m - TITLE_PACKY), hi = Math.min(f - PH - 4, m + TITLE_PACKY);
         r.ty = lo <= hi ? Math.max(lo, Math.min(hi, r.ty)) : Math.max(m - TITLE_PACKY, Math.min(m + TITLE_PACKY, r.ty));
       }
     }
     r.retarget = 0.8 + R() * 1.6;
+  }
+  var tallK = (S2, k) => S2.lvl && bandK(S2) > 1.2 ? k : 1;
+  function roamGoal(S2) {
+    if (S2.hgoal == null || S2.t >= (S2.hgoalT || 0)) {
+      const R = S2.rnd, roll = R(), band = S2.bot - S2.top - PH, third = roll < DEV.autoRoamHi ? 0 : roll < DEV.autoRoamHi + DEV.autoRoamMid ? 1 : 2;
+      S2.hgoal = S2.top + band * (third + 0.2 + R() * 0.6) / 3;
+      S2.hgoalT = S2.t + DEV.autoRoamT * (0.7 + R() * 0.6);
+    }
+    return S2.hgoal;
   }
   function startDig(S2, r, dx, dy, why) {
     if (navAround(S2, r, dx, dy, why)) return;
@@ -15275,7 +15289,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       snd(S2, "step", cx, r.y + PH);
     }
     if (r.modeT <= 0 && !(fuelOn(S2) && fuelOf(r) < FUEL_TAKEOFF)) {
-      setMode(S2, r, "fly", flyTime(R));
+      setMode(S2, r, "fly", flyTime(R) * tallK(S2, DEV.autoRoamFly));
       pickTarget(S2, r);
       r.vy = -40;
       r.ground = false;
@@ -15335,7 +15349,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (r.vy > 100) snd(S2, "land", cx, g0, r.vy * 2);
       r.y = g0 - PH;
       r.vy = 0;
-      setMode(S2, r, "run", runTime(R));
+      setMode(S2, r, "run", runTime(R) * tallK(S2, DEV.autoRoamRun));
       r.vx = 0;
       r.ground = true;
       r.retarget = 0;
@@ -15353,7 +15367,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       r.y = g2 - PH;
       r.vy = 0;
       if (landing) {
-        setMode(S2, r, "run", runTime(R));
+        setMode(S2, r, "run", runTime(R) * tallK(S2, DEV.autoRoamRun));
         r.vx = 0;
         r.ground = true;
         r.retarget = 0;
@@ -16392,7 +16406,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     camClamp(C);
   }
   function camPack(C, S2, e) {
-    const up = S2.runners.filter((r) => !r.out), shown = up.filter((r) => !r.hide), rs = shown.length ? shown : up;
+    const last = [];
+    for (const r of S2.runners) if (r.out && (!last[0] || (r.outT || 0) >= (last[0].outT || 0))) last[0] = r;
+    const up = S2.runners.filter((r) => !r.out), shown = up.filter((r) => !r.hide), rs = shown.length ? shown : up.length ? up : last;
     const y = rs.length ? (Math.min(...rs.map((r) => r.y)) + Math.max(...rs.map((r) => r.y))) / 2 + PH / 2 : C.by / 2;
     C.y += (y - C.y) * e;
     camClamp(C);
@@ -28241,6 +28257,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     "autoRed",
     "autoRoamBack",
     "autoRoamCam",
+    "autoRoamFly",
+    "autoRoamHi",
+    "autoRoamMid",
+    "autoRoamRun",
+    "autoRoamT",
     "autoScrap",
     "autoShieldT",
     "autoSilkAsh",

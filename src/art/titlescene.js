@@ -152,7 +152,7 @@ export const TITLE_HOME = {
  *   fire: TFire[], dirty: number[][], dirtyAll: boolean, carved: number, burnt: number, swaps: number, groundT: number, flyT: number, kinds: Record<string, number>,
  *   webs: WebLine[], cut: number, lineT: number, silk: { x: number, y: number, ax: number, ay: number, vx: number, vy: number, life: number }[],
  *   nav: { F: any, fx: number, fy: number, t: number }, fireAcc: number, fireN: number, burning: Set<number>, gotN: number, pops: number, lampsPopped: number, kitNames: Set<string>,
- *   digT: number, digs: number, digWhy: Record<string, number>, still?: boolean, zp: TitlePlan, snd: TSnd[], hub?: TitleHub, lvl?: TitleLevel, lab?: boolean, back?: (ctx: CanvasRenderingContext2D, S: TitleScene) => void, pace?: number, team?: RunPlayer[], blocked?: number, blockedKind?: string, huddle?: boolean, gunsOff?: boolean, fuelWait?: number, tier?: number, loot?: TLoot[],
+ *   digT: number, digs: number, digWhy: Record<string, number>, still?: boolean, zp: TitlePlan, snd: TSnd[], hub?: TitleHub, lvl?: TitleLevel, lab?: boolean, back?: (ctx: CanvasRenderingContext2D, S: TitleScene) => void, pace?: number, team?: RunPlayer[], blocked?: number, blockedKind?: string, huddle?: boolean, gunsOff?: boolean, hgoal?: number, hgoalT?: number, fuelWait?: number, tier?: number, loot?: TLoot[],
  *   onTake?: (it: BagItem, x: number, y: number) => void }} TitleScene */
 // a finite level in the scrolling ring (CaveRunner Auto, auto/level.js levelScene): zp its plan (made whole up front); step runs
 // after titleStep's own; data is the level's own state. S.pace (0..) scales the scroll (auto/pilot.js)
@@ -1380,11 +1380,25 @@ function pickTarget(S, r) {
   if (bandK(S) > 1.2) {
     const os = S.runners.filter(o => o !== r && !o.hide && !o.out);
     if (os.length) {
-      const oy = os.reduce((a, o) => a + o.y, 0) / os.length, m = S.huddle ? oy : (oy + S.top + (S.bot - S.top - PH) * titleNoise(S.scroll / 260 + S.seed % 97, 1.7)) / 2, lo = Math.max(c + 4, m - TITLE_PACKY), hi = Math.min(f - PH - 4, m + TITLE_PACKY);
+      const oy = os.reduce((a, o) => a + o.y, 0) / os.length, m = S.huddle ? oy : S.lvl ? roamGoal(S) * 0.7 + oy * 0.3 : (oy + S.top + (S.bot - S.top - PH) * titleNoise(S.scroll / 260 + S.seed % 97, 1.7)) / 2, lo = Math.max(c + 4, m - TITLE_PACKY), hi = Math.min(f - PH - 4, m + TITLE_PACKY);
       r.ty = lo <= hi ? Math.max(lo, Math.min(hi, r.ty)) : Math.max(m - TITLE_PACKY, Math.min(m + TITLE_PACKY, r.ty));
     }
   }
   r.retarget = 0.8 + R() * 1.6;
+}
+// (owner v1.0.74: "they tend to just walk the bottom of frame") a tall level's team height goal: every DEV.autoRoamT s a new
+// one, in the top third (chance DEV.autoRoamHi), the middle (DEV.autoRoamMid) or the bottom (the rest); the flyers head
+// there (pickTarget), kept together
+/** @param {TitleScene} S @param {number} k a knob: it in a tall level, else 1 */
+const tallK = (S, k) => (S.lvl && bandK(S) > 1.2 ? k : 1);
+/** @param {TitleScene} S */
+function roamGoal(S) {
+  if (S.hgoal == null || S.t >= (S.hgoalT || 0)) {
+    const R = S.rnd, roll = R(), band = S.bot - S.top - PH, third = roll < DEV.autoRoamHi ? 0 : roll < DEV.autoRoamHi + DEV.autoRoamMid ? 1 : 2;
+    S.hgoal = S.top + band * (third + 0.2 + R() * 0.6) / 3;
+    S.hgoalT = S.t + DEV.autoRoamT * (0.7 + R() * 0.6);
+  }
+  return S.hgoal;
 }
 // rock in his way: out comes the Buzzsaw (TITLE_SAW), and he cuts through until he's in the open again
 /** @param {TitleScene} S @param {TRunner} r @param {number} dx @param {number} dy @param {string} why (counted in S.digWhy) */
@@ -1658,7 +1672,7 @@ function runStep(S, r, dt) {
   r.x += vx * dt;
   r.gait += (sv(S) + vx) * dt * 0.38;
   if ((r.stepT = (r.stepT || 0) - dt * Math.abs(sv(S) + vx) / 20) <= 0) { r.stepT = 1; snd(S, 'step', cx, r.y + PH); }
-  if (r.modeT <= 0 && !(fuelOn(S) && fuelOf(r) < FUEL_TAKEOFF)) { setMode(S, r, 'fly', flyTime(R));   // (low on fuel: he runs on till it's refilled)
+  if (r.modeT <= 0 && !(fuelOn(S) && fuelOf(r) < FUEL_TAKEOFF)) { setMode(S, r, 'fly', flyTime(R) * tallK(S, DEV.autoRoamFly));   // (a tall level: longer flights, owner v1.0.74) (low on fuel: he runs on till it's refilled)
     pickTarget(S, r); r.vy = -40; r.ground = false; r.burst = R() < r.bursty; r.jet = r.burst; r.jetT = 0.3; r.jetCd = 0; }
 }
 /** @param {TitleScene} S @param {TRunner} r @param {number} dt */
@@ -1697,14 +1711,14 @@ function flyStep(S, r, dt) {
   if (g0 < r.y + PH && g0 >= r.y + PH - 9 && !boxRock(S, r.x, g0 - PH)) r.y = g0 - PH;
   if (boxRock(S, r.x, r.y)) { startDig(S, r, r.vx + sv(S), r.vy, 'came'); return; }
   // coming down to land: once his feet are at the floor, he's running
-  if (landing && g0 - (r.y + PH) < 1.5) { if (r.vy > 100) snd(S, 'land', cx, g0, r.vy * 2); r.y = g0 - PH; r.vy = 0; setMode(S, r, 'run', runTime(R)); r.vx = 0; r.ground = true; r.retarget = 0; return; }
+  if (landing && g0 - (r.y + PH) < 1.5) { if (r.vy > 100) snd(S, 'land', cx, g0, r.vy * 2); r.y = g0 - PH; r.vy = 0; setMode(S, r, 'run', runTime(R) * tallK(S, DEV.autoRoamRun)); r.vx = 0; r.ground = true; r.retarget = 0; return; }
   const nx = r.x + r.vx * dt, ny = r.y + r.vy * dt;
   if (!boxRock(S, nx, ny)) { r.x = nx; r.y = ny; return; }
   // the floor under him, going down and not aiming into it: he lands on it (or skims it, on his way)
   const g2 = titleSurf(S, nx + PW / 2, r.y + PH - 9, 1), into = r.ty + PH > g2 + 4;
   if (!into && g2 >= r.y + PH - 9 && g2 - (r.y + PH) < 6 + Math.max(0, r.vy) * dt && !boxRock(S, nx, g2 - PH)) {   // (falling fast: the floor's further in a frame)
     r.x = nx; r.y = g2 - PH; r.vy = 0;
-    if (landing) { setMode(S, r, 'run', runTime(R)); r.vx = 0; r.ground = true; r.retarget = 0; }
+    if (landing) { setMode(S, r, 'run', runTime(R) * tallK(S, DEV.autoRoamRun)); r.vx = 0; r.ground = true; r.retarget = 0; }
     return;
   }
   startDig(S, r, r.vx + sv(S), r.vy, into ? 'aim' : 'fly');
@@ -2548,10 +2562,14 @@ export function camStep(C, S, dt) {
   camClamp(C);
 }
 // (CaveRunner Auto's tall level) ease the camera's y a fraction e toward the team's middle height (the living, shown
-// runners; none shown yet: where they'll land; none at all: the level's middle), kept inside the level
+// runners; none shown yet: where they'll land; all fallen: the last to fall; none at all: the level's middle), kept inside the level
 /** @param {TitleCam} C @param {TitleScene} S @param {number} e 0..1 (1: there at once) */
 export function camPack(C, S, e) {
-  const up = S.runners.filter(r => !r.out), shown = up.filter(r => !r.hide), rs = shown.length ? shown : up;
+  // (owner v1.0.74) everyone down: the last one to fall (his ragdoll: deathRags keeps his box on its hip)
+  /** @type {TRunner[]} */
+  const last = [];
+  for (const r of S.runners) if (r.out && (!last[0] || (r.outT || 0) >= (last[0].outT || 0))) last[0] = r;
+  const up = S.runners.filter(r => !r.out), shown = up.filter(r => !r.hide), rs = shown.length ? shown : up.length ? up : last;
   const y = rs.length ? (Math.min(...rs.map(r => r.y)) + Math.max(...rs.map(r => r.y))) / 2 + PH / 2 : C.by / 2;
   C.y += (y - C.y) * e;
   camClamp(C);
