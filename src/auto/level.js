@@ -11,7 +11,7 @@
 import { PH, PW } from '../core/consts.js';
 import { DEV } from '../dev/knobs.js';
 import { TITLE_BACK, TITLE_VW, TITLE_ZLEN, ctlOn, titleClearWebs, titleRng, titleFloor, titlePlan, titleScene, titleSurf, titleZoneAdd } from '../art/titlescene.js';
-import { hubArriveT } from './hub.js';
+import { PAD_HALF, padNext } from './hub.js';
 import { meterAdd, meterNew, meterSet, meterStep } from './meters.js';
 import { pilotEase, pilotPace } from './pilot.js';
 import { clearPower, teamClearer } from './clear.js';
@@ -158,7 +158,7 @@ export function levelScene(vh, seed, n, plan = levelPlan(seed), team, tier = 1, 
   S.foes.length = 0;
   const fy = titleFloor(plan.padX, S);
   S.runners.forEach((r, i) => {
-    r.x = plan.padX - PW / 2 + (i - (S.runners.length - 1) / 2) * 7; r.y = fy - PH; r.vx = r.vy = 0;
+    r.x = plan.padX - PW / 2; r.y = fy - PH; r.vx = r.vy = 0;   // (owner v1.0.74) all on the pad, one at a time
     r.mode = 'run'; r.ground = true; r.hide = true; r.face = 1; r.ang = 0.2; r.flame = 0;
     L.arrived[i] = false;
   });
@@ -240,7 +240,7 @@ export function levelStep(S, dt) {
   if (L.phase === 'arrive') {
     const fy = titleFloor(P.padX, S);
     S.runners.forEach((r, i) => {
-      if (!L.arrived[i] && S.t >= hubArriveT(i)) {
+      if (padNext(S, L.arrived, i, P.padX, S.scroll)) {
         L.arrived[i] = true; L.zap = S.t; r.hide = false;
         S.flash = Math.max(S.flash, 0.5);
         const cx = r.x + PW / 2;
@@ -252,6 +252,7 @@ export function levelStep(S, dt) {
         S.snd.push({ k: 'arc', x: cx, y: fy - PH / 2 });
       }
     });
+    stepOff(S, L, dt);
     if (L.arrived.every(a => a)) {
       if (L.goT < 0) L.goT = S.t;
       if (S.t - L.goT >= LVL_GO) { L.phase = 'run'; S.still = false; S.runners.forEach(r => { r.retarget = 0; r.modeT = 0.6 + r.id * 0.5; }); }
@@ -371,6 +372,20 @@ function exitStep(S, L, dt) {
   const P = L.popT;
   S.runners.forEach((r, i) => { if (!r.out && S.t >= P[i]) exitPop(S, r); });
   if (L.doneT < 0 && S.runners.every(r => r.out) && S.t >= Math.max(...P) + DEV.autoExitRagT) L.doneT = S.t;
+}
+
+// (owner v1.0.74) through the start pad, each walks off it to the right (a line, the first furthest) to clear it for the next
+/** @param {import('../art/titlescene.js').TitleScene} S @param {LevelState} L @param {number} dt */
+function stepOff(S, L, dt) {
+  const px = L.plan.padX - S.scroll;
+  S.runners.forEach((r, i) => {
+    if (!L.arrived[i] || r.out) return;
+    const tx = px + PAD_HALF + 4 + (S.runners.length - 1 - i) * 9 - PW / 2, d = tx - r.x, mv = Math.sign(d) * Math.min(Math.abs(d), LVL_WALK * dt);
+    r.x += mv;
+    if (Math.abs(mv) > 1e-3) { r.face = 1; r.gait += Math.abs(mv) * 0.3; }
+    r.stand = Math.abs(mv) <= 1e-3;
+    r.y = titleSurf(S, r.x + PW / 2, r.y + PH - 6, 1) - PH;
+  });
 }
 
 // At the exit: the saws put away, everyone down on the floor and walking onto the pad, side by side

@@ -686,6 +686,8 @@ DEV_GROUPS.push(['autoperks', 'Auto: perks']);
 // the level's enemies (auto/enemies.js, stage 6): how hard they hit, the elites, the boss
 Object.assign(DEV_DEFAULTS, { autoFoeGap0: 4, autoFoeGap1: 1.5, autoFoeCap0: 3, autoFoeCap1: 10, autoFoeDmg: 0.5, autoFoeElites: 2, autoBossSize: 4, autoBossHp: 12, autoBossDmg: 3, autoTierHp: 1.45, autoTierDmg: 1.15 });
 DEV_META.push(
+  { k: 'autoJeTurnTier', g: 'autofoes', label: 'Jellyfish turn this much faster each level past the first (× their turn rate)', min: 0, max: 1, step: 0.05 },
+  { k: 'autoJeTurnMax',  g: 'autofoes', label: '… at most this × (so they never snap round)', min: 1, max: 6, step: 0.1 },
   { k: 'autoFoeGap0',   g: 'autofoes', label: 'A new creature every … s, at the level’s start (a trickle)', min: 0.2, max: 20, step: 0.1 },
   { k: 'autoFoeGap1',   g: 'autofoes', label: '… easing to every … s by the boss', min: 0.2, max: 20, step: 0.1 },
   { k: 'autoFoeCap0',   g: 'autofoes', label: 'At most … alive at the start', min: 0, max: 24, step: 1 },
@@ -700,7 +702,7 @@ DEV_META.push(
 DEV_GROUPS.push(['autofoes', 'Auto: enemies']);
 // the jetpack (art/titlescene.js jetStep, feedback round 2: the old game's flame and smoke) and a death (auto/death.js: the ragdoll,
 // the slow stop, Tap A, the helmet light, the blast, home)
-Object.assign(DEV_DEFAULTS, { autoMoveK: 0.75, autoJetTilt: 1, autoJetSmoke: 1, autoDeathStop: 1.5, autoTpBlink: 1, autoTpBoomWait: 0.6, autoTpBoomR: 60, autoExitPopGap: 0.5, autoExitRagT: 1.6, autoExitPopR: 40, autoFuelDrain: 1, autoFuelRegen: 1, autoCtlWait: 3, autoVineFire: 1, autoVineSpread: 4, autoVineJitter: 0.8, autoVineAsh: 8, autoFireJump: 2, autoFireJumpP: 0.5, autoNavCut: 0.8, autoNavGive: 1.2 });
+Object.assign(DEV_DEFAULTS, { autoMoveK: 0.75, autoJetTilt: 1, autoJetSmoke: 1, autoDeathStop: 1.5, autoTpBlink: 1, autoTpBoomWait: 0.6, autoTpBoomR: 60, autoExitPopGap: 0.5, autoJeTurnTier: 0.2, autoJeTurnMax: 2.5, autoExitRagT: 1.6, autoExitPopR: 40, autoFuelDrain: 1, autoFuelRegen: 1, autoCtlWait: 3, autoVineFire: 1, autoVineSpread: 4, autoVineJitter: 0.8, autoVineAsh: 8, autoFireJump: 2, autoFireJumpP: 0.5, autoNavCut: 0.8, autoNavGive: 1.2 });
 DEV_META.push(
   { k: 'autoVineFire',   g: 'autofire', label: 'Vines burn up at this × the old game speed (the title menu: 0.1)', min: 0.1, max: 5, step: 0.1 },
   { k: 'autoVineSpread', g: 'autofire', label: 'Auto levels: the flames climb a vine this × faster than it burns away (1: only the tip burns)', min: 1, max: 40, step: 0.5 },

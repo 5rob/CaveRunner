@@ -2107,6 +2107,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   DEV_GROUPS.push(["autoperks", "Auto: perks"]);
   Object.assign(DEV_DEFAULTS, { autoFoeGap0: 4, autoFoeGap1: 1.5, autoFoeCap0: 3, autoFoeCap1: 10, autoFoeDmg: 0.5, autoFoeElites: 2, autoBossSize: 4, autoBossHp: 12, autoBossDmg: 3, autoTierHp: 1.45, autoTierDmg: 1.15 });
   DEV_META.push(
+    { k: "autoJeTurnTier", g: "autofoes", label: "Jellyfish turn this much faster each level past the first (× their turn rate)", min: 0, max: 1, step: 0.05 },
+    { k: "autoJeTurnMax", g: "autofoes", label: "… at most this × (so they never snap round)", min: 1, max: 6, step: 0.1 },
     { k: "autoFoeGap0", g: "autofoes", label: "A new creature every … s, at the level’s start (a trickle)", min: 0.2, max: 20, step: 0.1 },
     { k: "autoFoeGap1", g: "autofoes", label: "… easing to every … s by the boss", min: 0.2, max: 20, step: 0.1 },
     { k: "autoFoeCap0", g: "autofoes", label: "At most … alive at the start", min: 0, max: 24, step: 1 },
@@ -2120,7 +2122,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "autoBossDmg", g: "autofoes", label: "Boss damage (× a normal one)", min: 0.5, max: 10, step: 0.25 }
   );
   DEV_GROUPS.push(["autofoes", "Auto: enemies"]);
-  Object.assign(DEV_DEFAULTS, { autoMoveK: 0.75, autoJetTilt: 1, autoJetSmoke: 1, autoDeathStop: 1.5, autoTpBlink: 1, autoTpBoomWait: 0.6, autoTpBoomR: 60, autoExitPopGap: 0.5, autoExitRagT: 1.6, autoExitPopR: 40, autoFuelDrain: 1, autoFuelRegen: 1, autoCtlWait: 3, autoVineFire: 1, autoVineSpread: 4, autoVineJitter: 0.8, autoVineAsh: 8, autoFireJump: 2, autoFireJumpP: 0.5, autoNavCut: 0.8, autoNavGive: 1.2 });
+  Object.assign(DEV_DEFAULTS, { autoMoveK: 0.75, autoJetTilt: 1, autoJetSmoke: 1, autoDeathStop: 1.5, autoTpBlink: 1, autoTpBoomWait: 0.6, autoTpBoomR: 60, autoExitPopGap: 0.5, autoJeTurnTier: 0.2, autoJeTurnMax: 2.5, autoExitRagT: 1.6, autoExitPopR: 40, autoFuelDrain: 1, autoFuelRegen: 1, autoCtlWait: 3, autoVineFire: 1, autoVineSpread: 4, autoVineJitter: 0.8, autoVineAsh: 8, autoFireJump: 2, autoFireJumpP: 0.5, autoNavCut: 0.8, autoNavGive: 1.2 });
   DEV_META.push(
     { k: "autoVineFire", g: "autofire", label: "Vines burn up at this × the old game speed (the title menu: 0.1)", min: 0.1, max: 5, step: 0.1 },
     { k: "autoVineSpread", g: "autofire", label: "Auto levels: the flames climb a vine this × faster than it burns away (1: only the tip burns)", min: 1, max: 40, step: 0.5 },
@@ -7015,7 +7017,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const gx = goal.x - e.x, gy = goal.y - e.y, gd = Math.hypot(gx, gy);
     const range = S2.range * (env.rangeMul || 1);
     const want = !hunt && gd < 12 ? -Math.PI / 2 : Math.atan2(gy, gx);
-    S2.hd = turnToward(S2.hd, want, S2.turn * Math.PI / 180 * mul * dt);
+    S2.hd = turnToward(S2.hd, want, S2.turn * Math.PI / 180 * mul * (env.turnMul || 1) * dt);
     const off = Math.abs(angDiff(want, S2.hd)) * 180 / Math.PI;
     S2.inRange = hunt && gd < range;
     S2.aimed = hunt && off < S2.aimTol;
@@ -12723,7 +12725,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       pull: 0,
       heal: sh.r || 36,
       tick: 0,
-      follow: sh.follow || 0
+      follow: sh.follow || 0,
+      only: sh.only || null
     };
   }
 
@@ -15631,6 +15634,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     for (const r of S2.runners) {
       const pl = S2.team[r.id], cx = r.x + PW / 2, cy = r.y + PH / 2;
       if (!pl || pl.alive === false || r.out || Math.hypot(cx - s.x, cy - s.y) > (s.heal || 0)) continue;
+      if (!matchesTarget(s.only, { kind: "player", id: String(r.id + 1) })) continue;
       const st = playerStats(pl);
       if (pl.hp >= st.maxHp) continue;
       pl.hp = Math.min(st.maxHp, pl.hp + VIG_HP * (st.heal || 1));
@@ -15738,7 +15742,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   function jellyAct(S2, e, hunting, goal, sees, CS, dt) {
     const R = S2.rnd;
-    jellyStep(e, { solidCell: CS, hunting, goal, rnd: R, speedMul: 1, rangeMul: sees, stay: (x) => built(x, S2) === 0 }, dt);
+    const turnMul = S2.lvl ? Math.min(DEV.autoJeTurnMax, 1 + DEV.autoJeTurnTier * Math.max(0, (S2.tier || 1) - 1)) : 1;
+    jellyStep(e, { solidCell: CS, hunting, goal, rnd: R, speedMul: 1, rangeMul: sees, turnMul, stay: (x) => built(x, S2) === 0 }, dt);
     const J = e.je;
     if (hunting && J && J.inRange && J.aimed && e.cd <= 0) {
       e.cd = 0.25;
@@ -24056,7 +24061,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     };
     const S2 = titleScene(vh, seed, fy - HUB_ROOM, fy, { runners: n, hub: { w: HUB_W / TCELL, cell: hubCell(fy), step: hubStep, data: H } });
     S2.runners.forEach((r, i) => {
-      r.x = hubStopX("enter") - PW / 2 - i * 18;
+      r.x = hubStopX("enter") - PW / 2;
       r.y = fy - PH;
       r.vx = r.vy = 0;
       r.mode = "run";
@@ -24071,11 +24076,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return S2;
   }
   var hubArriveT = (i) => HUB_ARRIVE + i * 0.5;
+  var padBusy = (S2, arrived, px, sx = 0) => S2.runners.some((r, i) => arrived[i] && !r.hide && !r.out && Math.abs(r.x + PW / 2 + sx - px) < PAD_HALF);
+  var PAD_HALF = 15;
+  var padNext = (S2, arrived, i, px, sx = 0) => !arrived[i] && S2.t >= hubArriveT(i) && arrived.slice(0, i).every((a) => a) && !padBusy(S2, arrived, px, sx);
   function hubStep(S2, dt) {
     const H = hubState(S2);
     if (!H) return;
     S2.runners.forEach((r, i) => {
-      if (!H.arrived[i] && S2.t >= hubArriveT(i)) {
+      if (padNext(S2, H.arrived, i, hubStopX("enter"))) {
         H.arrived[i] = true;
         H.zap = S2.t;
         r.hide = false;
@@ -24104,7 +24112,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         r.mode = "run";
       }
     });
-    hubMove(S2, H, dt);
+    if (H.exitT >= 0) exitQueue(S2, H, dt);
+    else hubMove(S2, H, dt);
     stepThrown(S2, H, dt);
     stepPay(S2, H);
     stepMap(S2, H);
@@ -24225,39 +24234,67 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const H = hubState(S2);
     if (!H || H.exitT >= 0 || !hubAtExit(S2)) return false;
     H.exitT = S2.t;
-    S2.flash = Math.max(S2.flash, 0.5);
-    S2.snd.push({ k: "arc", x: hubStopX("exit"), y: H.fy - PH / 2 });
-    for (const r of S2.runners) {
-      const cx = r.x + PW / 2, cy = r.y + PH / 2;
-      for (let k = 0; k < 12; k++) {
-        const a = S2.rnd() * Math.PI * 2, sp = 20 + S2.rnd() * 60;
-        S2.parts.push({
-          x: cx,
-          y: cy,
-          vx: Math.cos(a) * sp,
-          vy: Math.sin(a) * sp - 20,
-          life: 0.5,
-          max: 0.5,
-          r: 1.2,
-          col: k % 3 ? "#7cc8ff" : "#e6f6ff",
-          kind: "spark"
-        });
-      }
-      r.hide = true;
-      r.vx = 0;
-      r.vy = 0;
-      r.flame = 0;
-    }
     H.stick = { active: false, nx: 0, ny: 0, mag: 0, dy: 0 };
+    exitQueue(S2, H, 0);
     return true;
   }
+  function exitQueue(S2, H, dt) {
+    const px = hubStopX("exit");
+    let rank = 0;
+    S2.runners.forEach((r, i) => {
+      if (r.hide || !H.arrived[i]) return;
+      const tx = px - rank * 12, cx = r.x + PW / 2, mv = walkTo(cx, tx, dt, 1.25);
+      r.x += mv;
+      r.flame = 0;
+      r.vx = 0;
+      if (r.y + PH < H.fy) {
+        r.vy = Math.min((r.vy || 0) + GRAVITY * dt, 900);
+        r.y = Math.min(H.fy - PH, r.y + r.vy * dt);
+        r.ground = false;
+        r.mode = "fly";
+      } else {
+        r.y = H.fy - PH;
+        r.vy = 0;
+        r.ground = true;
+        r.mode = "run";
+      }
+      if (Math.abs(mv) > 1e-3) {
+        r.face = Math.sign(mv);
+        r.gait += Math.abs(mv) * 0.3;
+      }
+      r.stand = Math.abs(mv) <= 1e-3;
+      if (rank === 0 && r.ground && Math.abs(r.x + PW / 2 - px) <= (i === 0 ? HUB_PAD : 1) && S2.t - (H.exitZ ?? -99) >= EXIT_GAP) {
+        H.exitZ = S2.t;
+        S2.flash = Math.max(S2.flash, 0.5);
+        S2.snd.push({ k: "arc", x: px, y: H.fy - PH / 2 });
+        const cy = r.y + PH / 2;
+        for (let k = 0; k < 12; k++) {
+          const a = S2.rnd() * Math.PI * 2, sp = 20 + S2.rnd() * 60;
+          S2.parts.push({
+            x: px,
+            y: cy,
+            vx: Math.cos(a) * sp,
+            vy: Math.sin(a) * sp - 20,
+            life: 0.5,
+            max: 0.5,
+            r: 1.2,
+            col: k % 3 ? "#7cc8ff" : "#e6f6ff",
+            kind: "spark"
+          });
+        }
+        r.hide = true;
+      }
+      rank++;
+    });
+  }
+  var EXIT_GAP = 0.35;
   function hubLeft(S2) {
     const H = hubState(S2);
-    return !!H && H.exitT >= 0 && S2.t - H.exitT >= HUB_LEAVE;
+    return !!H && H.exitT >= 0 && S2.runners.every((r) => r.hide) && S2.t - (H.exitZ ?? H.exitT) >= HUB_LEAVE;
   }
   function hubExitFlash(S2) {
     const H = hubState(S2);
-    return H ? Math.max(0, Math.min(1, 1 - (S2.t - H.exitT) / HUB_FLASH)) : 0;
+    return H ? Math.max(0, Math.min(1, 1 - (S2.t - (H.exitZ ?? -99)) / HUB_FLASH)) : 0;
   }
   var MAP_FLICK = 0.55;
   var MAP_UPRIGHT = 0.7;
@@ -25180,7 +25217,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     S2.foes.length = 0;
     const fy = titleFloor(plan.padX, S2);
     S2.runners.forEach((r, i) => {
-      r.x = plan.padX - PW / 2 + (i - (S2.runners.length - 1) / 2) * 7;
+      r.x = plan.padX - PW / 2;
       r.y = fy - PH;
       r.vx = r.vy = 0;
       r.mode = "run";
@@ -25261,7 +25298,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (L.phase === "arrive") {
       const fy = titleFloor(P2.padX, S2);
       S2.runners.forEach((r, i) => {
-        if (!L.arrived[i] && S2.t >= hubArriveT(i)) {
+        if (padNext(S2, L.arrived, i, P2.padX, S2.scroll)) {
           L.arrived[i] = true;
           L.zap = S2.t;
           r.hide = false;
@@ -25284,6 +25321,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           S2.snd.push({ k: "arc", x: cx, y: fy - PH / 2 });
         }
       });
+      stepOff(S2, L, dt);
       if (L.arrived.every((a) => a)) {
         if (L.goT < 0) L.goT = S2.t;
         if (S2.t - L.goT >= LVL_GO) {
@@ -25415,6 +25453,20 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (!r.out && S2.t >= P2[i]) exitPop(S2, r);
     });
     if (L.doneT < 0 && S2.runners.every((r) => r.out) && S2.t >= Math.max(...P2) + DEV.autoExitRagT) L.doneT = S2.t;
+  }
+  function stepOff(S2, L, dt) {
+    const px = L.plan.padX - S2.scroll;
+    S2.runners.forEach((r, i) => {
+      if (!L.arrived[i] || r.out) return;
+      const tx = px + PAD_HALF + 4 + (S2.runners.length - 1 - i) * 9 - PW / 2, d = tx - r.x, mv = Math.sign(d) * Math.min(Math.abs(d), LVL_WALK * dt);
+      r.x += mv;
+      if (Math.abs(mv) > 1e-3) {
+        r.face = 1;
+        r.gait += Math.abs(mv) * 0.3;
+      }
+      r.stand = Math.abs(mv) <= 1e-3;
+      r.y = titleSurf(S2, r.x + PW / 2, r.y + PH - 6, 1) - PH;
+    });
   }
   function gather(S2, L, dt) {
     const n = S2.runners.length, px = L.plan.exitX - S2.scroll;
@@ -27210,7 +27262,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         ctx.fill();
         coneDust(ctx, x, y + 5, fy, lv, t, i);
       }
-      if (st.id === "enter" || st.id === "exit") padGlow(ctx, S2, x, fy, i, st.id === "enter" ? hubCharge(S2) : { ch: 0, fl: hubExitFlash(S2) }, st.id === "enter" ? H.zap : H.exitT);
+      if (st.id === "enter" || st.id === "exit") padGlow(ctx, S2, x, fy, i, st.id === "enter" ? hubCharge(S2) : { ch: 0, fl: hubExitFlash(S2) }, st.id === "enter" ? H.zap : H.exitZ ?? -99);
     });
     ctx.restore();
     hubDemo(ctx, S2);
@@ -28152,6 +28204,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     "autoHubDemoNear",
     "autoHubSpace",
     "autoHubWalk",
+    "autoJeTurnMax",
+    "autoJeTurnTier",
     "autoJetSmoke",
     "autoJetTilt",
     "autoLeafLight",

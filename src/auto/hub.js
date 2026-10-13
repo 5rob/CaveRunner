@@ -75,7 +75,7 @@ const hubCell = fy => (c, r) => {
 // (-99 never); stick: the pill stick's push (hubStick)
 /** @typedef {{ active: boolean, nx: number, ny: number, mag: number, dy: number }} HubStick */
 /** @typedef {{ fy: number, roof: number, on: number[], zap: number, arrived: boolean[], tier: number,
- *   lx: number, dir: number, exitT: number, stick: HubStick, thrown: import('./throw.js').HubThrow[],
+ *   lx: number, dir: number, exitT: number, exitZ?: number, stick: HubStick, thrown: import('./throw.js').HubThrow[],
  *   paid: Record<string, number>, back: { kind: import('./throw.js').Cash, n: number }[],
  *   vend: Record<string, number>, paidV: number, demo: Record<string, HubDemo>,
  *   run?: AutoRun, mapSel: number, mapFlick: number, mapT: number }} HubState */
@@ -95,7 +95,7 @@ export function hubScene(vh, seed, n, tier = 1, paid = {}, run) {
     thrown: [], paid, back: [], vend: {}, paidV: 0, demo: {}, run, mapSel: run ? run.map || 0 : 0, mapFlick: 0, mapT: -99 };
   const S = titleScene(vh, seed, fy - HUB_ROOM, fy, { runners: n, hub: { w: HUB_W / TCELL, cell: hubCell(fy), step: hubStep, data: H } });
   S.runners.forEach((r, i) => {
-    r.x = hubStopX('enter') - PW / 2 - i * 18; r.y = fy - PH; r.vx = r.vy = 0;
+    r.x = hubStopX('enter') - PW / 2; r.y = fy - PH; r.vx = r.vy = 0;   // (owner v1.0.74) all on the pad, one at a time
     r.mode = 'run'; r.ground = true; r.stand = true; r.hide = true; r.face = 1; r.ang = HUB_GUN_ANG; r.flame = 0;
     H.arrived[i] = false;
   });
@@ -105,6 +105,14 @@ export function hubScene(vh, seed, n, tier = 1, paid = {}, run) {
 // when player i comes through the enter pad (s into the run)
 /** @param {number} i */
 export const hubArriveT = i => HUB_ARRIVE + i * 0.5;
+// (owner v1.0.74) a pad takes one at a time: is anyone who has come through still standing on the pad at world x px?
+// (sx: the runners' screen x is world x less sx; the hub's 0)
+/** @param {import('../art/titlescene.js').TitleScene} S @param {boolean[]} arrived @param {number} px @param {number} [sx] */
+export const padBusy = (S, arrived, px, sx = 0) => S.runners.some((r, i) => arrived[i] && !r.hide && !r.out && Math.abs(r.x + PW / 2 + sx - px) < PAD_HALF);
+export const PAD_HALF = 15;           // half the pad's width (game/render/pads.js PAD_W)
+// player i may come through now: his time, everyone before him through, the pad clear
+/** @param {import('../art/titlescene.js').TitleScene} S @param {boolean[]} arrived @param {number} i @param {number} px @param {number} [sx] */
+export const padNext = (S, arrived, i, px, sx = 0) => !arrived[i] && S.t >= hubArriveT(i) && arrived.slice(0, i).every(a => a) && !padBusy(S, arrived, px, sx);
 
 // One step (titleStep calls it after its own): the players arriving and standing on the floor, the tubes coming on
 /** @param {import('../art/titlescene.js').TitleScene} S @param {number} dt */
@@ -112,7 +120,7 @@ export function hubStep(S, dt) {
   const H = hubState(S);
   if (!H) return;
   S.runners.forEach((r, i) => {
-    if (!H.arrived[i] && S.t >= hubArriveT(i)) {
+    if (padNext(S, H.arrived, i, hubStopX('enter'))) {
       H.arrived[i] = true; H.zap = S.t; r.hide = false;
       S.flash = Math.max(S.flash, 0.5);
       const cx = r.x + PW / 2;
@@ -125,7 +133,7 @@ export function hubStep(S, dt) {
     }
     if (!H.arrived[i]) { r.y = H.fy - PH; r.vy = 0; r.ground = true; r.mode = 'run'; }
   });
-  hubMove(S, H, dt);
+  if (H.exitT >= 0) exitQueue(S, H, dt); else hubMove(S, H, dt);
   stepThrown(S, H, dt);
   stepPay(S, H);
   stepMap(S, H);
@@ -257,32 +265,51 @@ export function hubAtExit(S) {
 export function hubExit(S) {
   const H = hubState(S);
   if (!H || H.exitT >= 0 || !hubAtExit(S)) return false;
-  H.exitT = S.t; S.flash = Math.max(S.flash, 0.5);
-  S.snd.push({ k: 'arc', x: hubStopX('exit'), y: H.fy - PH / 2 });
-  // everyone goes in the flash (stage 4b), sparks where each stood
-  for (const r of S.runners) {
-    const cx = r.x + PW / 2, cy = r.y + PH / 2;
-    for (let k = 0; k < 12; k++) {
-      const a = S.rnd() * Math.PI * 2, sp = 20 + S.rnd() * 60;
-      S.parts.push({ x: cx, y: cy, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 20, life: 0.5, max: 0.5, r: 1.2,
-        col: k % 3 ? '#7cc8ff' : '#e6f6ff', kind: 'spark' });
-    }
-    r.hide = true; r.vx = 0; r.vy = 0; r.flame = 0;
-  }
+  H.exitT = S.t;
   H.stick = { active: false, nx: 0, ny: 0, mag: 0, dy: 0 };
+  exitQueue(S, H, 0);   // he goes at once
   return true;
 }
+// (owner v1.0.74) after A at the exit pad: one at a time, each walks onto the pad (the rest queue behind) and goes through
+// in its flash, sparks where he stood
+/** @param {import('../art/titlescene.js').TitleScene} S @param {HubState} H @param {number} dt */
+function exitQueue(S, H, dt) {
+  const px = hubStopX('exit');
+  let rank = 0;
+  S.runners.forEach((r, i) => {
+    if (r.hide || !H.arrived[i]) return;
+    const tx = px - rank * 12, cx = r.x + PW / 2, mv = walkTo(cx, tx, dt, 1.25);
+    r.x += mv; r.flame = 0; r.vx = 0;
+    if (r.y + PH < H.fy) { r.vy = Math.min((r.vy || 0) + GRAVITY * dt, 900); r.y = Math.min(H.fy - PH, r.y + r.vy * dt); r.ground = false; r.mode = 'fly'; }
+    else { r.y = H.fy - PH; r.vy = 0; r.ground = true; r.mode = 'run'; }
+    if (Math.abs(mv) > 1e-3) { r.face = Math.sign(mv); r.gait += Math.abs(mv) * 0.3; }
+    r.stand = Math.abs(mv) <= 1e-3;
+    if (rank === 0 && r.ground && Math.abs(r.x + PW / 2 - px) <= (i === 0 ? HUB_PAD : 1) && S.t - (H.exitZ ?? -99) >= EXIT_GAP) {
+      H.exitZ = S.t; S.flash = Math.max(S.flash, 0.5);
+      S.snd.push({ k: 'arc', x: px, y: H.fy - PH / 2 });
+      const cy = r.y + PH / 2;
+      for (let k = 0; k < 12; k++) {
+        const a = S.rnd() * Math.PI * 2, sp = 20 + S.rnd() * 60;
+        S.parts.push({ x: px, y: cy, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 20, life: 0.5, max: 0.5, r: 1.2,
+          col: k % 3 ? '#7cc8ff' : '#e6f6ff', kind: 'spark' });
+      }
+      r.hide = true;
+    }
+    rank++;
+  });
+}
+const EXIT_GAP = 0.35;                 // (s) at least this between two going through the exit pad
 // the team has gone through the exit pad and the flash has faded: the screen loads the level (stage 4b)
 /** @param {import('../art/titlescene.js').TitleScene} S */
 export function hubLeft(S) {
   const H = hubState(S);
-  return !!H && H.exitT >= 0 && S.t - H.exitT >= HUB_LEAVE;
+  return !!H && H.exitT >= 0 && S.runners.every(r => r.hide) && S.t - (H.exitZ ?? H.exitT) >= HUB_LEAVE;
 }
 // what's left of the exit pad's flash (0-1)
 /** @param {import('../art/titlescene.js').TitleScene} S */
 export function hubExitFlash(S) {
   const H = hubState(S);
-  return H ? Math.max(0, Math.min(1, 1 - (S.t - H.exitT) / HUB_FLASH)) : 0;
+  return H ? Math.max(0, Math.min(1, 1 - (S.t - (H.exitZ ?? -99)) / HUB_FLASH)) : 0;
 }
 
 // ---- the map machine (auto/maps.js) ----

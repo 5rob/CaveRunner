@@ -77,7 +77,7 @@ export function jellyStep(e, env, dt) {
   const range = S.range * (env.rangeMul || 1);
   // turn, no faster than the limit. Idle with nowhere to be, it rights itself, head up
   const want = !hunt && gd < 12 ? -Math.PI / 2 : Math.atan2(gy, gx);
-  S.hd = turnToward(S.hd, want, S.turn * Math.PI / 180 * mul * dt);
+  S.hd = turnToward(S.hd, want, S.turn * Math.PI / 180 * mul * (env.turnMul || 1) * dt);
   const off = Math.abs(angDiff(want, S.hd)) * 180 / Math.PI;
   S.inRange = hunt && gd < range;
   S.aimed = hunt && off < S.aimTol;

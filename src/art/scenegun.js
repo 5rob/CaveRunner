@@ -129,5 +129,5 @@ export function vigourCircle(sh, x, y, by) {
   return { x, y, vx: 0, vy: 0, size: 2, col: sh.col || '#46c48c', look: '', life, max: life,
     foe: false, spin: 0, grav: 0, drag: 0, explode: 0, pit: 0, fire: 0, bounce: 0, bounceE: 0, pierce: 0, dmg: 0, homing: 0, accel: 0, vmax: 0, chain: 0,
     real: true, by: by == null ? -1 : by, trig: null, timer: 0, pay: null, age: 0, sid: 'vigour', light: '70,196,140', lightR: 30,
-    beam: 0, ang: 0, pull: 0, heal: sh.r || 36, tick: 0, follow: sh.follow || 0 };
+    beam: 0, ang: 0, pull: 0, heal: sh.r || 36, tick: 0, follow: sh.follow || 0, only: sh.only || null };
 }

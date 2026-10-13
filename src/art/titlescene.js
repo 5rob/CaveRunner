@@ -1911,7 +1911,7 @@ function shotFollow(S, s, dt) {
   if (sp > sp0) { s.vx *= sp0 / sp; s.vy *= sp0 / sp; }
 }
 // Circle of Vigour (owner v1.0.66; art/scenegun.js vigourCircle): each living player inside, under his max, heals VIG_HP (× his
-// heal perks) every VIG_TICK s, a green sparkle and the old game's heal tick
+// heal perks; players only, never creatures) every VIG_TICK s, a green sparkle and the old game's heal tick
 /** @param {TitleScene} S @param {TShot} s @param {number} dt */
 function vigourStep(S, s, dt) {
   if ((s.tick = (s.tick || 0) - dt) > 0 || !S.team) return;
@@ -1919,6 +1919,7 @@ function vigourStep(S, s, dt) {
   for (const r of S.runners) {
     const pl = S.team[r.id], cx = r.x + PW / 2, cy = r.y + PH / 2;
     if (!pl || pl.alive === false || r.out || Math.hypot(cx - s.x, cy - s.y) > (s.heal || 0)) continue;
+    if (!matchesTarget(s.only, { kind: 'player', id: String(r.id + 1) })) continue;   // (owner v1.0.74) Discriminate: only its player (never a creature)
     const st = playerStats(pl);
     if (pl.hp >= st.maxHp) continue;
     pl.hp = Math.min(st.maxHp, pl.hp + VIG_HP * (st.heal || 1)); healed = true;
@@ -2012,7 +2013,9 @@ function stepFoes(S, dt) {
 /** @param {TitleScene} S @param {Enemy} e @param {boolean} hunting @param {Pt} goal @param {number} sees @param {(cx: number, cy: number) => number} CS @param {number} dt */
 function jellyAct(S, e, hunting, goal, sees, CS, dt) {
   const R = S.rnd;
-  jellyStep(e, { solidCell: CS, hunting, goal, rnd: R, speedMul: 1, rangeMul: sees, stay: x => built(x, S) === 0 }, dt);
+  // (owner v1.0.74) deeper levels: it turns faster, DEV.autoJeTurnTier more a level past the first, at most × DEV.autoJeTurnMax
+  const turnMul = S.lvl ? Math.min(DEV.autoJeTurnMax, 1 + DEV.autoJeTurnTier * Math.max(0, (S.tier || 1) - 1)) : 1;
+  jellyStep(e, { solidCell: CS, hunting, goal, rnd: R, speedMul: 1, rangeMul: sees, turnMul, stay: x => built(x, S) === 0 }, dt);
   const J = e.je;
   if (hunting && J && J.inRange && J.aimed && e.cd <= 0) {
     e.cd = 0.25;                                // no clear line: look again shortly

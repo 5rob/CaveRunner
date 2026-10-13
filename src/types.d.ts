@@ -264,7 +264,7 @@ interface JellyBrain extends RoamState {
 /** what jellyStep is handed */
 interface JellyEnv {
   solidCell: SolidCell; rnd: Rnd; goal: Pt | null; hunting: boolean;
-  speedMul?: number; rangeMul?: number; stay?: ((x: number, y: number) => boolean) | null;
+  speedMul?: number; rangeMul?: number; turnMul?: number; stay?: ((x: number, y: number) => boolean) | null;
 }
 
 /** a nest's state, `e.nest` (made in makeLevel from a ratNests entry) */

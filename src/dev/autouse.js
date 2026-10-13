@@ -91,6 +91,8 @@ export const AUTO_KNOBS = new Set([
   'autoHubDemoNear',
   'autoHubSpace',
   'autoHubWalk',
+  'autoJeTurnMax',
+  'autoJeTurnTier',
   'autoJetSmoke',
   'autoJetTilt',
   'autoLeafLight',

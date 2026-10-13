@@ -278,7 +278,7 @@ export function hubGlow(ctx, S) {
       ctx.fillStyle = pl; ctx.beginPath(); ctx.ellipse(x, fy, TUBE_W / 2 + 26, 7, 0, 0, Math.PI * 2); ctx.fill();
       coneDust(ctx, x, y + 5, fy, lv, t, i);   // the dust hanging in the cone (render/shoplights.js)
     }
-    if (st.id === 'enter' || st.id === 'exit') padGlow(ctx, S, x, fy, i, st.id === 'enter' ? hubCharge(S) : { ch: 0, fl: hubExitFlash(S) }, st.id === 'enter' ? H.zap : H.exitT);
+    if (st.id === 'enter' || st.id === 'exit') padGlow(ctx, S, x, fy, i, st.id === 'enter' ? hubCharge(S) : { ch: 0, fl: hubExitFlash(S) }, st.id === 'enter' ? H.zap : H.exitZ ?? -99);
   });
   ctx.restore();
   hubDemo(ctx, S);

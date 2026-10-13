@@ -92,11 +92,25 @@ stick(T, 0, -1); step(T, 10);
 check('over the pad but in the air: no exit', !G.hubAtExit(T) && G.hubExit(T) === false);
 stick(T, 0, 0, 0); step(T, 120);
 check('back on the exit pad', G.hubAtExit(T));
-check('on the exit pad: A flashes it, everyone goes', G.hubExit(T) === true && G.hubExitFlash(T) > 0.9 && T.runners.every(r => r.hide), G.hubExitFlash(T));
+check('on the exit pad: A flashes it, he goes', G.hubExit(T) === true && G.hubExitFlash(T) > 0.9 && T.runners.every(r => r.hide), G.hubExitFlash(T));
 check('not yet left (the flash), A again does nothing', !G.hubLeft(T) && G.hubExit(T) === false);
 const lx0 = L.x;
 stick(T, 1, 0); step(T, 30); stick(T, 0, 0, 0);
 check('the flash fades, the team has left; the stick no longer moves him', G.hubExitFlash(T) === 0 && G.hubLeft(T) && L.x === lx0);
+
+// (owner v1.0.74) 3 players at the exit: one at a time onto the pad, each through in his own flash, then the team has left
+{
+  const Q = G.hubScene(vh, 9, 3), QH = G.hubState(Q);
+  step(Q, 200);
+  const ex = G.hubStopX('exit'), Q0 = Q.runners[0];
+  Q0.x = ex - G.PW / 2; Q.runners.forEach((r, i) => { r.x = ex - G.PW / 2 - 14 * i; r.hide = false; QH.arrived[i] = true; });
+  const zaps = [];
+  step(Q, 2);
+  let f = 0, seen = 1;
+  check('3 players: A at the exit pad', G.hubExit(Q) === true && Q0.hide && !Q.runners[1].hide);
+  for (; f < 600 && !G.hubLeft(Q); f++) { G.titleStep(Q, 1 / 60); const n = Q.runners.filter(r => r.hide).length; if (n > seen) { zaps.push(+(Q.t).toFixed(2)); seen = n; } }
+  check('each went through on his own, a gap apart, then the team left', zaps.length === 2 && Q.runners.every(r => r.hide) && G.hubLeft(Q) && zaps[1] - zaps[0] >= 0.3, zaps);
+}
 
 // 3 players: they line up behind the leader, in order, SP apart
 const P = G.hubScene(vh, 9, 3), PHs = G.hubState(P);
