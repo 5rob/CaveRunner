@@ -25,6 +25,20 @@ for (let s = 1; s < 120; s++) for (const Z of G.levelPlan(s, undefined, 0).zp.z)
 check('the spider zone\'s vines look goes with its box', vinesLook === 0, vinesLook);
 Object.assign(D, { zv_veg_moss: 0, zv_veg_spider: 1, zv_spid_timber: 1, zv_spid_webs: 0 });
 
+// (Dev → Zones) each kind's own knobs: length, roof, density; at their defaults the plan is what it was
+{
+  const zs = () => G.levelPlan(4, undefined, 0).zp.z.filter(q => !q.flat && q.z === 'moss');
+  const a = zs();
+  check('a knob per kind for each layout/look number', G.ZONE_KINDS.every(([z]) => G.ZONE_KNOBS.every(([k]) => ('zl_' + z + '_' + k) in D)));
+  D.zl_moss_len = 2; D.zl_moss_roof = 20; D.zl_moss_dens = 0.5;
+  const b = zs();
+  check('moss knobs: twice as long, roof 20 lower, half the density', a.length && b.length && Math.abs((b[0].x1 - b[0].x0) / (a[0].x1 - a[0].x0) - 2) < 1e-9 && Math.abs(b[0].co - a[0].co - 20) < 1e-9 && Math.abs(b[0].dens / a[0].dens - 0.5) < 1e-9, [a.length, b.length]);
+  D.zl_moss_len = 1; D.zl_moss_roof = 0; D.zl_moss_dens = 1;
+  const v1 = s => G.zoneLabScene(260, 5, 'moss', { veg: true }).S.props.filter(p => p.k === 'climb').length;
+  const n0 = v1(); D.zl_moss_vegThick = 0; const n1 = v1(); D.zl_moss_vegThick = 1;
+  check('heavy vegetation thickness 0: its patches are gone', n1 < n0 / 3, [n0, n1]);
+}
+
 // the preview: each zone, plain and with each variant forced
 const vines = S => S.props.filter(p => p.k === 'climb' && !p.arc && !p.host).length;
 for (const z of G.TITLE_ZONES) {

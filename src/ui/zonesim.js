@@ -3,9 +3,11 @@
 // dragged to pan along it and up and down it; under it a card per zone kind: Show it plain or with a variant (heavy vegetation,
 // spider web filled), a check box per variant for whether that zone kind may roll it in a level (DEV.zv_<variant>_<zone>,
 // art/titlescene.js zoneMay), and a note box per zone and variant (kept in localStorage). Copy zone notes: the boxes changed from
-// their defaults, the page's knobs changed and every note, as text for Claude.
+// their defaults, the page's knobs changed and every note, as text for Claude. Each row's Tweak opens its knobs (the zone's own
+// group zone_<zone>, dev/knobs.js ZONE_KNOBS: shape and plants under Plain, veg* under Heavy vegetation, spidOrb under Spider web
+// filled; the grove's arches and the spider zone's boulders too); the window makes the zone again once they've held still ZS_SETTLE ms.
 import { VERSION } from '../version.js';
-import { DEV, DEV_DEFAULTS, DEV_META, devSet } from '../dev/knobs.js';
+import { DEV, DEV_DEFAULTS, DEV_GROUPS, DEV_META, devSet } from '../dev/knobs.js';
 import { TITLE_VW, TITLE_ZONES, ZONE_VARIANTS, titleCam } from '../art/titlescene.js';
 import { zoneLabClamp, zoneLabScene } from '../art/zonelab.js';
 import { h, useEffect, useRef, useState } from './h.js';
@@ -39,7 +41,7 @@ function zonePicture(L, pic) {
   return cvs;
 }
 /** @typedef {{ z: string, v: string }} ZonePick (v: '' plain, else a ZONE_VARIANTS id) */
-/** @typedef {{ L: import('../art/zonelab.js').ZoneLab | null, C: any, again: boolean, seed: number, x: number, y: number, pick: ZonePick, whole: boolean, pic: HTMLCanvasElement | null, picT: number, ox: number }} ZoneSimState */
+/** @typedef {{ L: import('../art/zonelab.js').ZoneLab | null, C: any, again: boolean, seed: number, x: number, y: number, pick: ZonePick, whole: boolean, pic: HTMLCanvasElement | null, picT: number, ox: number, sig?: string, sigT?: number, built?: string }} ZoneSimState */
 
 /** @returns {Record<string, string>} */
 function loadNotes() { try { return JSON.parse(localStorage.getItem(NOTES_KEY) || '{}') || {}; } catch (_) { return {}; } }
@@ -49,7 +51,17 @@ function saveNotes(n) { try { localStorage.setItem(NOTES_KEY, JSON.stringify(n))
 const vk = (z, v) => 'zv_' + v + '_' + z;
 /** @param {string} z @param {string} v */
 const rowName = (z, v) => ZONE_NAMES[z] + (v ? ' · ' + (ZONE_VARIANTS.find(x => x[0] === v) || ['', v])[1].toLowerCase() : ' (plain)');
-const ZONE_GROUPS = ['autozones', 'autoorb'];
+const ZONE_GROUPS = ['autozones', 'autoorb', 'arch', ...TITLE_ZONES.map(z => 'zone_' + z)];
+const ZS_SETTLE = 250;                // a knob changed: the zone is made again once they've all held still this long (ms)
+// every knob the page's zones read (a change makes the window's zone again)
+const SIG_KEYS = [...DEV_META.filter(m => ZONE_GROUPS.includes(m.g)).map(m => m.k), ...Object.keys(DEV_DEFAULTS).filter(k => k.startsWith('zv_'))];
+const zoneSig = () => SIG_KEYS.map(k => DEV[k]).join();
+// a row's knobs: Plain the zone's shape and plants (and its kind's own: the grove's arches, the spider zone's boulders), a variant its own
+/** @param {string} z @param {string} v */
+const rowKnobs = (z, v) => DEV_META.filter(m => (m.g === 'zone_' + z && (v === 'veg' ? m.k.endsWith('_vegPatch') || m.k.endsWith('_vegThick') || m.k.endsWith('_vegLen')
+  : v === 'spid' ? m.k.endsWith('_spidOrb') : !/_(veg|spid)[A-Z]/.test(m.k))) || (!v && z === 'grove' && m.g === 'arch'));
+/** @param {string} g */
+const groupName = g => (DEV_GROUPS.find(x => x[0] === g) || [g, g])[1];
 
 // the text Copy zone notes gives
 /** @param {Record<string, string>} notes */
@@ -62,7 +74,7 @@ export function zoneNotesText(notes) {
   }
   lines.push('Variants a zone may have (changed):', ...(boxes.length ? boxes : ['(none changed)']), '');
   const knobs = DEV_META.filter(m => ZONE_GROUPS.includes(m.g) && DEV[m.k] !== DEV_DEFAULTS[m.k]);
-  lines.push('Zone knobs (changed):', ...(knobs.length ? knobs.map(m => '- ' + m.label + ' (DEV.' + m.k + '): ' + DEV[m.k] + '   [default ' + DEV_DEFAULTS[m.k] + ']') : ['(none changed)']), '');
+  lines.push('Zone knobs (changed):', ...(knobs.length ? knobs.map(m => '- ' + groupName(m.g) + ': ' + m.label + ' (DEV.' + m.k + '): ' + DEV[m.k] + '   [default ' + DEV_DEFAULTS[m.k] + ']') : ['(none changed)']), '');
   const said = [];
   for (const z of TITLE_ZONES) for (const v of ['', ...ZONE_VARIANTS.map(x => x[0])]) {
     const t = (notes[z + '/' + v] || '').trim();
@@ -72,7 +84,8 @@ export function zoneNotesText(notes) {
   return lines.join('\n');
 }
 
-export function ZoneSim() {
+/** @param {{ Row: (p: { meta: DevRow }) => any }} props the Dev panel's knob row (devpanel.js DevRow) */
+export function ZoneSim({ Row }) {
   /** @type {{ current: HTMLCanvasElement | null }} */
   const cv = useRef(null);
   /** @type {{ current: ZoneSimState }} */
@@ -81,6 +94,9 @@ export function ZoneSim() {
   const [pick, setPick] = useState(st.current.pick);
   const [notes, setNotes] = useState(loadNotes);
   const [, bump] = useState(0);
+  /** @type {Record<string, boolean>} */
+  const shut = {};
+  const [open, setOpen] = useState(shut);
   /** @type {{ text: string, ok: boolean } | null} */
   const none = null;
   const [copied, setCopied] = useState(none);
@@ -95,14 +111,22 @@ export function ZoneSim() {
         const L = zoneLabScene(levelVh(), st.current.seed, p.z, p.v === 'veg' ? { veg: true } : p.v === 'spid' ? { spid: true } : {});
         const vh = L.S.vh;
         L.S.scroll = zoneLabClamp(L, st.current.x);
-        st.current.L = L; st.current.pic = null;
+        st.current.L = L; st.current.pic = null; st.current.built = st.current.sig = zoneSig();
         const C = titleCam(view / 2, vh);
         C.view = view; C.y = st.current.y < 0 ? vh / 2 : st.current.y;
         st.current.C = C;
         if (window.__TEST) window.__zonesim = st.current;     // the browser suite's and shot scripts' reach
         return { S: L.S, C, warm: 0 };
       },
-      next: () => { if (!st.current.again) return false; st.current.again = false; return true; },
+      // made again: Show, Respawn, or the knobs changed and then held still ZS_SETTLE ms
+      next: () => {
+        const Z = st.current, sig = zoneSig(), now = performance.now();
+        if (sig !== Z.sig) { Z.sig = sig; Z.sigT = now; }
+        if (Z.sig !== Z.built && now - Z.sigT >= ZS_SETTLE) Z.again = true;
+        if (!Z.again) return false;
+        Z.again = false; Z.built = Z.sig;
+        return true;
+      },
       // the whole zone: over the live view, the stitched picture fitted to the window's height
       over: (ctx, S, w, hh) => {
         const Z = st.current;
@@ -165,7 +189,7 @@ export function ZoneSim() {
       copied ? h('p', { className: 'devnote devcopied' + (copied.ok ? ' ok' : '') }, copied.ok ? 'Copied — paste it to Claude.' : 'Could not reach the clipboard — press and hold the text below to copy it.') : null,
       copied && !copied.ok ? h('textarea', { className: 'devcopytext', readOnly: true, value: copied.text }) : null));
   const cards = h('div', { className: 'zcards' },
-    h('p', { className: 'devnote' }, 'Drag the window to look round the zone. Show puts a zone in it with that look forced; the box says whether that zone can have it in a level. Notes save on their own.'),
+    h('p', { className: 'devnote' }, 'Drag the window to look round the zone. Show puts a zone in it with that look forced; the box says whether that zone can have it in a level; Tweak opens its knobs (the window follows them). Notes save on their own.'),
     TITLE_ZONES.map(z => h('div', { key: z, className: 'zcard', 'data-zone': z },
       h('div', { className: 'zchead' }, ZONE_NAMES[z]),
       ['', ...ZONE_VARIANTS.map(x => x[0])].map(v => {
@@ -177,7 +201,9 @@ export function ZoneSim() {
             v ? h('label', { className: 'zmay' },
               h('input', { type: 'checkbox', className: 'zcheck', checked: always || !!DEV[key], disabled: always,
                 onChange: (/** @type {any} */ e) => { devSet(key, e.target.checked ? 1 : 0); bump(n => n + 1); } }),
-              always ? 'always' : 'can have') : null),
+              always ? 'always' : 'can have') : null,
+            h('button', { className: 'dbg ztweak' + (open[z + '/' + v] ? ' on' : ''), onClick: () => setOpen(o => Object.assign({}, o, { [z + '/' + v]: !o[z + '/' + v] })) }, open[z + '/' + v] ? 'Tweak ▾' : 'Tweak ▸')),
+          open[z + '/' + v] ? h('div', { className: 'devvars zknobs' }, rowKnobs(z, v).map(m => h(Row, { key: m.k, meta: m }))) : null,
           h('textarea', { className: 'znote', rows: 2, placeholder: 'Notes on ' + rowName(z, v) + '…', value: notes[z + '/' + v] || '',
             onChange: (/** @type {any} */ e) => note(z, v, e.target.value) }));
       }))));

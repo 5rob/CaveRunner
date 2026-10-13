@@ -553,6 +553,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .zlabel{flex:1;font-size:13px}
 .zmay{display:flex;align-items:center;gap:4px;font-size:12px;opacity:.85;white-space:nowrap}
 .zcheck{width:20px;height:20px}
+.zrowtop .ztweak{flex:0 0 auto;padding:6px 8px}
+.ztweak.on{background:#3a4458}
+.zknobs{margin-top:6px;padding:4px 0;border-top:1px solid var(--ring)}
 .znote{display:block;box-sizing:border-box;width:100%;margin-top:6px;font:inherit;font-size:13px;padding:6px;border-radius:6px;border:1px solid var(--ring);background:rgba(0,0,0,.25);color:inherit;resize:vertical}
 .devtab{position:relative;flex:1 0 auto;height:42px;padding:0 10px;border:0;border-bottom:3px solid transparent;
   background:none;color:var(--muted);font:700 13px system-ui,sans-serif;white-space:nowrap}

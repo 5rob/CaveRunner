@@ -229,10 +229,12 @@ export const titleZoneAdd = (P, x0) => { const z = mkZone(P.R, x0, P.z, P.kinds)
 /** @param {() => number} R @param {number} x0 @param {TZone[]} Z the zones so far @param {string[]} kinds @returns {TZone} */
 function mkZone(R, x0, Z, kinds) {
   const last = Z.slice(-2).map(q => q.z), can = kinds.filter(z => !last.includes(z));
-  const z = can[Math.floor(R() * can.length)], len = TITLE_ZLEN[0] + R() * (TITLE_ZLEN[1] - TITLE_ZLEN[0]);
+  const z = can[Math.floor(R() * can.length)], len = (TITLE_ZLEN[0] + R() * (TITLE_ZLEN[1] - TITLE_ZLEN[0])) * zk(z, 'len');
+  // (Dev → Zones) each kind's own knobs (zk) scale what's rolled: hills, how close they are, roof and floor up or down, density
   /** @type {TZone} */
   const Zn = { z, x0, x1: x0 + len, i: Z.length, ph: [R() * 99, R() * 99, R() * 99, R() * 99, R() * 99],
-    ca: 0.5 + R() * 0.9, fa: 0.5 + R() * 0.9, cf: 0.6 + R() * 0.8, ff: 0.6 + R() * 0.8, co: -6 + R() * 16, fo: -10 + R() * 16, dens: 0.6 + R() * 0.8,
+    ca: (0.5 + R() * 0.9) * zk(z, 'hillsC'), fa: (0.5 + R() * 0.9) * zk(z, 'hillsF'), cf: (0.6 + R() * 0.8) * zk(z, 'close'), ff: (0.6 + R() * 0.8) * zk(z, 'close'),
+    co: -6 + R() * 16 + zk(z, 'roof', 0), fo: -10 + R() * 16 + zk(z, 'floor', 0), dens: (0.6 + R() * 0.8) * zk(z, 'dens'),
     mine: z === 'timber' ? mkMine(R, x0, x0 + len) : undefined };
   // (owner, after v1.0.74) the spider zone's variant, and the spiders' mines: their own numbers (seeded by x0), so the plan's
   // draws stay as they were
@@ -244,6 +246,9 @@ function mkZone(R, x0, Z, kinds) {
   if (z !== 'spider' && zoneMay(z, 'spid') && v < DEV.autoSpiderMine) Zn.spid = true;
   return Zn;
 }
+// (Dev → Zones) zone kind z's knob k (DEV.zl_<z>_<k>; d when it has none: a kind without that knob, the old numbers)
+/** @param {string} z @param {string} k @param {number} [d] */
+export const zk = (z, k, d = 1) => { const v = DEV['zl_' + z + '_' + k]; return typeof v === 'number' ? v : d; };
 // The zone variants (Dev → Zones, ui/zonesim.js): heavy vegetation, spider web filled. Which zone kinds may roll each is a Dev
 // flag (DEV.zv_<variant>_<zone>, 1 / 0, set on that page); the spider zone is always web filled
 /** @type {[string, string][]} */
@@ -635,7 +640,7 @@ function genCol(S, c) {
   // (owner, after v1.0.74) and now and then an orb web (world/orbweb.js): a hub in the open between roof and floor, spokes to
   // the rock round it, the spiral across them; each thread a web line (L.orb: its web, L.sp: a spiral thread)
   const spz = zr === 'spider' || !!Zn.spid;   // (the spider zone, a spider mine: more orb webs, hubs anywhere up the height)
-  if ((zr === 'webs' || spz) && (b === 0 || Zn.spid) && !(c % 4) && R() < DEV.autoOrbChance * (spz ? 3 : 1) * Zr.dens && (S.orbHub || []).filter(h => h.x > wx - TITLE_VW * 1.5).length < DEV.autoOrbMax) {
+  if ((zr === 'webs' || spz) && (b === 0 || Zn.spid) && !(c % 4) && R() < DEV.autoOrbChance * (spz ? zk(Zr.spid ? Zr.z : 'spider', 'spidOrb', 3) : 1) * Zr.dens && (S.orbHub || []).filter(h => h.x > wx - TITLE_VW * 1.5).length < DEV.autoOrbMax) {
     // (at most autoOrbMax over the last screen and a half, after v1.0.75: the old cap, by all still kept, used them all up at a zone's start)
     // (the stretch behind this column is made: the hub at most a spoke's reach back from it, near the floor or the roof)
     // (owner, after v1.0.75: large ones too) each its own size, autoOrbRMin..autoOrbR; bigger: more spokes, the spiral wider spaced
@@ -713,23 +718,23 @@ function genCol(S, c) {
   }
   // ('vines', owner after v1.0.74) the spider zone's big patches of vines: hung thick from the roof and the boulders' undersides;
   // (Dev → Zones) any zone with heavy vegetation (Z.veg)
-  if (Zr.veg && !(c % 2) && titleNoise(wx / 70 + Zr.ph[4], 3.3) > 0.5) {
+  if (Zr.veg && !(c % 2) && titleNoise(wx / 70 + Zr.ph[4], 3.3) > 1 - zk(zr, 'vegPatch', 0.5)) {
     const r0 = Math.floor(rcy / TCELL);
     for (let r = r0; r < S.rows - 1; r++) {
       const top = r === r0, y = top ? rcy : (r + 1) * TCELL;
       if (y >= fy - 8) break;
-      if (!(top || (SOLID[S.cells[base + r]] && !SOLID[S.cells[base + r + 1]])) || R() > (top ? 0.75 : 0.5) * Zr.dens) continue;
+      if (!(top || (SOLID[S.cells[base + r]] && !SOLID[S.cells[base + r + 1]])) || R() > (top ? 0.75 : 0.5) * Zr.dens * zk(zr, 'vegThick')) continue;
       const room = titleSurf(S, wx - S.scroll, y + 2, 1) - y;
       if (room < 10) continue;
-      S.props.push({ k: 'climb', st: R() < 0.85 ? 'vine' : 'root', ox: wx, x: 0, y, len: room * (0.25 + R() * 0.5), seed: R(), side: 1, burn: 0, ac: c, ar: Math.floor((y - 1) / TCELL) });
+      S.props.push({ k: 'climb', st: R() < 0.85 ? 'vine' : 'root', ox: wx, x: 0, y, len: room * Math.min(0.95, (0.25 + R() * 0.5) * zk(zr, 'vegLen')), seed: R(), side: 1, burn: 0, ac: c, ar: Math.floor((y - 1) / TCELL) });
     }
     return;
   }
   if (c % 3) return;
   const p = R();
-  if (!grove && p < (zr === 'moss' ? 0.2 : 0.04) * Math.max(nat, 0.2) * Zr.dens) {
+  if (!grove && p < (zr === 'moss' ? 0.2 : 0.04) * zk(zr, 'plants') * Math.max(nat, 0.2) * Zr.dens) {
     const st = R() < 0.5 ? 'vine' : R() < 0.5 ? 'myc' : 'root';
-    S.props.push({ k: 'climb', st, ox: wx, x: 0, y: rcy, len: 10 + R() * (zr === 'moss' ? 40 : 24), seed: R(), side: 1, burn: 0,
+    S.props.push({ k: 'climb', st, ox: wx, x: 0, y: rcy, len: (10 + R() * (zr === 'moss' ? 40 : 24)) * zk(zr, 'plantLen'), seed: R(), side: 1, burn: 0,
       ac: c, ar: Math.floor((rcy - 1) / TCELL) });
   } else if (zr === 'paved' && b > 0.5 && p < 0.08) {
     S.props.push({ k: 'climb', st: 'chain', ox: wx, x: 0, y: rcy, len: 8 + R() * 16, seed: R(), side: 1, burn: 0, ac: c, ar: Math.floor((rcy - 1) / TCELL) });

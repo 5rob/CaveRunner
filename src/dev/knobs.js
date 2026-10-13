@@ -675,7 +675,7 @@ DEV_GROUPS.push(['autoorb', 'Auto: orb webs']);
 // (owner, after v1.0.74) the spider zone (art/titlescene.js spiderRock): its scattered rock; and mines the spiders took over
 Object.assign(DEV_DEFAULTS, { autoSpiderRock: 0.28, autoSpiderMine: 0.35 });
 DEV_META.push(
-  { k: 'autoSpiderRock', g: 'autoorb', label: 'Spider zone: boulders in its open air (share; more: more rock)', min: 0, max: 0.6, step: 0.01 },
+  { k: 'autoSpiderRock', g: 'zone_spider', label: 'Spider zone: boulders in its open air (share; more: more rock)', min: 0, max: 0.6, step: 0.01 },
   { k: 'autoSpiderMine', g: 'autozones', label: 'Spider web filled: chance a zone that may have it does (Zones page; was mines only)', min: 0, max: 1, step: 0.05 });
 // (Dev → Zones, ui/zonesim.js) the zone variants: which zone kinds may have each (art/titlescene.js zoneMay; DEV.zv_<variant>_<zone>, 1 / 0,
 // the page's check boxes, not rows), and how often heavy vegetation comes up where it may
@@ -683,6 +683,30 @@ Object.assign(DEV_DEFAULTS, { autoVegChance: 0.35, zv_veg_moss: 0, zv_veg_webs: 
   zv_spid_moss: 0, zv_spid_webs: 0, zv_spid_timber: 1, zv_spid_paved: 0, zv_spid_grove: 0, zv_spid_winding: 0 });
 DEV_META.push({ k: 'autoVegChance', g: 'autozones', label: 'Heavy vegetation: chance a zone that may have it does (the spider zone: its vines look, 30%)', min: 0, max: 1, step: 0.05 });
 DEV_GROUPS.push(['autozones', 'Auto: zone variants']);
+// (Dev → Zones) each zone kind's own layout and looks (art/titlescene.js zk: DEV.zl_<zone>_<k>), shown in its card on that page
+// (group zone_<zone>): what a zone rolls, scaled or moved; the variants' rows (veg*, spidOrb) under that variant's row. Defaults:
+// the old numbers. (The kinds: art/titlescene.js TITLE_ZONES, which this layer can't import)
+export const ZONE_KINDS = [['moss', 'Mossy caves'], ['webs', 'Webs'], ['timber', 'Mine works'], ['paved', 'Brick works'], ['grove', 'Grove'], ['winding', 'Winding caves'], ['spider', 'Spider zone']];
+/** @type {[string, number, string, number, number, number][]} key, default, label, min, max, step */
+export const ZONE_KNOBS = [
+  ['len', 1, 'Length (× the length it rolls)', 0.3, 3, 0.05],
+  ['roof', 0, 'Roof: lower (+) / higher (−) (world units)', -80, 80, 1],
+  ['floor', 0, 'Floor: lower (+) / higher (−) (world units)', -80, 80, 1],
+  ['hillsC', 1, 'Roof: how hilly (×)', 0, 4, 0.05],
+  ['hillsF', 1, 'Floor: how hilly (×)', 0, 4, 0.05],
+  ['close', 1, 'Hills: how close together (×; more: bumpier)', 0.2, 4, 0.05],
+  ['dens', 1, 'Plants and webs: density (×)', 0, 3, 0.05],
+  ['plants', 1, 'Hanging vines, roots, mycelium: how many (×)', 0, 6, 0.1],
+  ['plantLen', 1, 'Hanging vines, roots, mycelium: length (×)', 0.2, 4, 0.05],
+  ['vegPatch', 0.5, 'Heavy vegetation: share of the zone in patches', 0, 1, 0.05],
+  ['vegThick', 1, 'Heavy vegetation: how thick (×)', 0, 3, 0.05],
+  ['vegLen', 1, 'Heavy vegetation: vine length (×)', 0.2, 1.9, 0.05],
+  ['spidOrb', 3, 'Spider web filled: orb webs (× the Webs zone chance)', 0, 12, 0.25],
+];
+for (const [z, name] of ZONE_KINDS) {
+  for (const [k, d, label, min, max, step] of ZONE_KNOBS) { DEV_DEFAULTS['zl_' + z + '_' + k] = d; DEV_META.push({ k: 'zl_' + z + '_' + k, g: 'zone_' + z, label, min, max, step, type: 'slider' }); }
+  DEV_GROUPS.push(['zone_' + z, 'Zone: ' + name]);
+}
 // CaveRunner Auto's starter gun (auto/run.js starterKit, stage 5a): its numbers, for each new player
 Object.assign(DEV_DEFAULTS, { autoGunDelay: 0.25, autoGunRech: 0.8, autoGunMana: 120, autoGunRegen: 40, autoGunSpread: 4 });
 DEV_META.push(
@@ -1000,7 +1024,7 @@ export function devReportOf(g, name) {
 DEV_TABS.splice(DEV_TABS.length - 1, 0, ['firesim', 'Fire sim', ['firelab', 'firefx', 'autofire', 'firesilk', 'fire']]);
 DEV_TABS.splice(DEV_TABS.length - 2, 0, ['traj', 'Trajectory', ['trajorbit', 'trajspiral', 'trajboomer', 'trajpong', 'trajhoming', 'trajseeker', 'trajnear', 'trajaim', 'trajgrav', 'trajfloat', 'trajflat']]);
 // (Dev → Zones) the level zones' preview (ui/zonesim.js) over their knobs
-DEV_TABS.splice(DEV_TABS.length - 2, 0, ['zones', 'Zones', ['autozones', 'autoorb']]);
+DEV_TABS.splice(DEV_TABS.length - 2, 0, ['zones', 'Zones', ['autozones', 'autoorb', 'moss', 'webs', 'timber', 'paved', 'grove', 'winding', 'spider'].map(g => (g.startsWith('auto') ? g : 'zone_' + g))]);
 DEV_TABS.splice(DEV_TABS.length - 2, 0, ['auto', 'Auto', ['auto', 'autohub', 'automaps', 'autolevel', 'autoblocks', 'autoguns', 'autoperks', 'autofoes', 'autodeath', 'autoloot', 'autochests', 'autobag', 'autothrow']]);
 export const DEV_KEY = 'caverunner-dev';
 /** @type {DevKnobs} */

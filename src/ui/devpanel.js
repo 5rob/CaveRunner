@@ -606,7 +606,8 @@ export function DevPanel({ input, refresh, close, onRestart, onSpawnGun, onSpawn
   const needle = q.trim().toLowerCase();
   const tabName = t => (DEV_TABS.find(x => x[0] === t) || DEV_TABS[0])[1];
   // the groups to show: this tab's, or with a search, every group holding a match (opened, matches only)
-  const shown = DEV_GROUPS.filter(([g]) => needle || devTabOf(g) === tab).map(([g, name]) => {
+  const shown = DEV_GROUPS.filter(([g]) => needle || (devTabOf(g) === tab && !g.startsWith('zone_'))).map(   // (a zone's own group: in its card, ui/zonesim.js)
+    ([g, name]) => {
     const rows = DEV_META.filter(m => m.g === g);
     const nameHit = needle && name.toLowerCase().includes(needle);
     const hits = needle && !nameHit ? rows.filter(m => (m.label + ' ' + m.k).toLowerCase().includes(needle)) : rows;
@@ -651,7 +652,7 @@ export function DevPanel({ input, refresh, close, onRestart, onSpawnGun, onSpawn
       // (v1.0.62) the fire sim's window and buttons stay put over the knobs, which scroll under them
       !needle && tab === 'firesim' ? h('div', { className: 'firesimtop' }, h(FireSim, null)) : null,
       // (Dev → Zones) the zone preview, sticky like the fire sim's, and its zone cards
-      !needle && tab === 'zones' ? h(ZoneSim, null) : null,
+      !needle && tab === 'zones' ? h(ZoneSim, { Row: DevRow }) : null,
       grid && onMod ? h(ModGrid, { onMod }) : null,
       h('div', { className: 'devbody' },
         h('p', { className: 'devkey' }, h('i', { className: 'devauto' }), 'works in Auto ', h('i', { className: 'devsome' }), 'some ', h('i', { className: 'devold' }), 'old game only'),

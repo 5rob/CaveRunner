@@ -2,6 +2,7 @@
 //   node tools/zonesimshots.js [outdir]      (default tests/build/zonesim)
 //   zs-a-page.png     the page: the window (Mossy caves, plain), Respawn / Copy zone notes, the first zone cards
 //   zs-b-cards.png    scrolled down: the cards (Show, can-have boxes, notes) under the sticky window
+//   zs-d-tweak.png    Mossy caves' Plain knobs open, hills × 3, plants × 4; zs-e-vegtweak.png its heavy vegetation knobs
 //   zs-c-<zone>.png   each zone plain / heavy vegetation / spider web filled: the whole-zone window, one under another
 const { launch } = require('../tests/chromium');
 const path = require('path');
@@ -31,6 +32,19 @@ require('../tests/build')();
   await page.locator('.zcard[data-zone=timber]').evaluate(e => e.scrollIntoView({ block: 'center' }));
   await page.waitForTimeout(300);
   await page.screenshot({ path: path.join(OUT, 'zs-b-cards.png') });
+  // (after the owner's ask for knobs) Mossy caves' Plain row's Tweak open, hills × 3 and density × 3: the window follows
+  await page.locator('.zcard[data-zone=moss] .zrow[data-v=plain] .zshow').click();
+  await page.locator('.zcard[data-zone=moss] .zrow[data-v=plain] .ztweak').click();
+  await page.evaluate(() => { DEV.zl_moss_hillsC = 3; DEV.zl_moss_hillsF = 3; DEV.zl_moss_plants = 4; });
+  await page.locator('.zcard[data-zone=moss] .zknobs').evaluate(e => e.scrollIntoView({ block: 'end' }));
+  await page.waitForTimeout(1200);
+  await page.screenshot({ path: path.join(OUT, 'zs-d-tweak.png') });
+  await page.evaluate(() => { DEV.zl_moss_hillsC = 1; DEV.zl_moss_hillsF = 1; DEV.zl_moss_plants = 1; });
+  await page.locator('.zcard[data-zone=moss] .zrow[data-v=veg] .ztweak').click();
+  await page.locator('.zcard[data-zone=moss] .zrow[data-v=veg] .zshow').click();
+  await page.locator('.zcard[data-zone=moss] .zrow[data-v=veg] .zknobs').evaluate(e => e.scrollIntoView({ block: 'end' }));
+  await page.waitForTimeout(1200);
+  await page.screenshot({ path: path.join(OUT, 'zs-e-vegtweak.png') });
   // each zone: the whole-zone window plain / heavy vegetation / spider web filled, one under another
   const zones = (process.argv[3] || 'moss,webs,timber,paved,grove,winding,spider').split(',');
   for (const z of zones) {
