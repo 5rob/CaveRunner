@@ -84,7 +84,7 @@ Runs of 30–50 minutes burned the owner's credits (Level 2, stage 4). The main 
    `https://5rob.github.io/CaveRunner/version.txt` shows the new `<number> vX.Y.Z` and the app offers the update.
    (No artifact publish; `https://claude.ai/artifact/2rarFzJoTseCKXhTPwMyLT` and `serve.js` are fallbacks.)
 
-**Current version: v0.0.176** (release channel `main`); the `autobattler` branch counts its own from **v1.0.0** (AUTOBATTLER.md; **v1.0.78** as of 2026-10-14, live at `/CaveRunner/auto/`; HANDOVER's BRANCH section says where it stands; **on `autobattler` the release is a push to `autobattler`, never `main`**: confirm at `https://5rob.github.io/CaveRunner/auto/version.txt`). **The version number is not optional.**
+**Current version: v0.0.176** (release channel `main`); the `autobattler` branch counts its own from **v1.0.0** (AUTOBATTLER.md; **v1.0.79** as of 2026-10-14, live at `/CaveRunner/auto/`; HANDOVER's BRANCH section says where it stands; **on `autobattler` the release is a push to `autobattler`, never `main`**: confirm at `https://5rob.github.io/CaveRunner/auto/version.txt`). **The version number is not optional.**
 It's **major.minor.patch** (since v0.0.132; before it a single `vNN`, up to v131): the owner's
 grouping — a **major release** bumps X, a **major update** Y, a **minor update** Z (reset the parts
 after the one you bump). Ask the owner which kind a release is if it isn't obvious; small fixes and

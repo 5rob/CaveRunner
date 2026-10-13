@@ -380,6 +380,7 @@ chest slow ×0.5. Grab radius 35% of a tile.
 | play round (23 notes) | done | v1.0.74 | PM + one agent (bag drag, ~12 min, merged). Owner's phone notes: boss → guns down, straight to the exit, heads pop at the exit pad; pads one at a time; Borer past Bounce; Vigour + Discriminate; jelly turn by level; roam height goals; beam fade; fire particle room; spider legs; camera on the last down; Top N, version, stick knob, nugget icons, distinct shot glyphs, orange fields, Dev mod grid; bag rows/edge scroll/group/insert. Owner OK'd (rows push the stack up). |
 | 7 notes + spider zone | done | v1.0.75 | PM alone. Post-boss run to the exit on foot, pace by level (1 → 3 by level 20), bag group keeps its layout (green outlines), bag gun view in the play area (drag mods off), Dev mod grid grab circles, no trigger variants in it; orb webs (world/orbweb.js), the spider zone (rocks / vines / beams, levels only), spider mines; fuel-wait hover fixed. Owner OK'd. |
 | webs round | done | v1.0.76 | PM alone. No scenery straight strands in a level's webs / spider zones (spiders still spin lines); orb webs sized 30–150, up to 5 near the screen, kept apart. Owner OK'd. |
+| perf + DPS history | done | v1.0.79 | PM alone. Gun window's DPS graph keeps its history over gun changes (marked); Dev performance graphs (fps, worst frame, update, draw, counts) bottom right, tap to hide; the level map outlines the view. Owner OK'd. |
 | Dev → Zones | done | v1.0.78 | PM alone. Dev tab Zones: a zone preview (whole zone / close up), per-zone can-have boxes for heavy vegetation and spider web filled (`zv_*`), Tweak sliders per zone and variant (`zl_*`), a notes box per zone and variant, Copy zone notes. Owner OK'd. |
 | webs break | done | v1.0.77 | PM alone. Orb webs come apart when threads are cut / burnt / their rock goes (`orbHeld`, `orbSettle`); webs anchored only on real rock. Owner OK'd. |
 | damper colour | done | v1.0.73 | PM alone. Owner's audit note: Recoil and Recoil Damper moved to red (Damage). |
@@ -477,7 +478,7 @@ Start with stage 0.
 ### Kick-start for a play-and-notes round (2026-10-13)
 
 ```
-You're the PM for CaveRunner Auto (branch `autobattler`, live at /CaveRunner/auto/, v1.0.78, nothing waiting).
+You're the PM for CaveRunner Auto (branch `autobattler`, live at /CaveRunner/auto/, v1.0.79, nothing waiting).
 Read CLAUDE.md, then HANDOVER.md's BRANCH section ("Next session" and "Open, in order") and AUTOBATTLER.md section 8
 (agent limits) and section 7 (the Log, newest rows at the top of the feedback block). Don't start anything off the open
 list yet: I'll guide this round with notes from playing on my phone.

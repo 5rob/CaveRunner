@@ -10,7 +10,8 @@ this folder only shows them and takes the taps.
     `runScene` (pinch, drag, tap a player to follow), `titleScene(…, { runners: run.players.length })`;
     **Top bar** (v1.0.44, `.atop`, a column over the play area): the active map's name and level (`mapInfo`, `auto/maps.js`),
     the journey box `.ajourney` in a level (`journeyDraw`, from `runScene`'s `over` each frame: the level at its own
-    width-to-height shape, the players' helmets where they are; a tap toggles it hidden, its place stays tappable), the boss bar.
+    width-to-height shape, the players' helmets where they are, v1.0.79: an outline round the camera's view in the box's purple a little brighter; a tap toggles it hidden, its place stays tappable), the boss bar.
+    **Dev performance graphs** (v1.0.79, Dev mode only): `perfDraw` from `over`, bottom right, no box: `auto/fps.js` `PERF_ROWS` stacked (fps, worst frame, update, draw from `runScene`'s `perf`, shots, parts, foes, fire); `.aperf` over them: a tap hides / shows (`perfShow`). **Gun window** (`PreviewWindow`): the DPS graph carried over its scene rebuilds (`hist`), a dotted line at each gun change.
     **Big play area** (v1.0.47): a double tap on `.aplay` (`playTap`, `BIG_TAP`) sets `bigPlay` (px): its flex-basis grows by it and a negative bottom margin takes it back, so it covers the nav and bag down to the bag's bottom edge (`.aplay.big`; `.abtns` stays above); again, or B, back. The scene keeps its height, and one made while grown is made at the normal height (`bigPlayRef`, v1.0.48).
     **Big bag** (v1.0.46): a double tap on an empty slot (`emptyDown`, `BIG_TAP`) sets `bigBag` (px): the bag's top margin pulled up to the play area's top (`.abag.big`, over the nav; `.abtns` stays above it); again, or B, back.
     ⏸ (`.pausebtn`) opens `ui/pause.js` `PauseMenu` (label `Tier n`; Save / Exit write the run) and holds the scene.

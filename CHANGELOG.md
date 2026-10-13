@@ -5,6 +5,12 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.79 — CaveRunner Auto: DPS graph keeps its history, Dev performance graphs, view outline (branch `autobattler`)
+Released 2026-10-14 on the branch; owner OK'd the screenshots (tools/pvgraphshots.js, tools/fpsshots.js).
+- Owner: the gun window's DPS graph mustn't reset on a gun change (to compare). The preview scene is still rebuilt each change, but `PreviewWindow` carries the graph into the new one (`hist`), a dotted line where it changed (`pv.gmark`, `pv.mark`); the graph now holds 10 s (`PV_GRAPH_N` 100). Suite `auto-pvgraph` (drags a bolt off mid-run).
+- Owner: an FPS history graph bottom right of the play area, then the other live measures stacked over it in their own colours, no background, **Dev mode only**: fps (yellow under 50, red under 30), worst frame (ms), update and draw (ms a frame, `runScene`'s new `perf` option), shots, particles, creatures, burning cells. 0.25 s buckets, 15 s kept (`auto/fps.js`, `PERF_ROWS`; drawn by AutoScreen.js `perfDraw`). A tap on their place (`.aperf`) hides them (a dim "perf" stays) or shows them. Suite `auto-fps`.
+- Owner: the level map (journey box) outlines the part on screen (the camera's view), in the box's purple a little brighter (`#5a4788`).
+
 ## v1.0.78 — CaveRunner Auto: Dev → Zones (branch `autobattler`)
 Released 2026-10-14 on the branch; owner OK'd the screenshots.
 Owner: a Dev page for reviewing the level's zones, like the fire sim's.
