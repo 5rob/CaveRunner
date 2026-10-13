@@ -35808,6 +35808,24 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     );
   }
 
+  // src/auto/fps.js
+  var FPS_DT = 0.25;
+  var FPS_N = 60;
+  var fpsNew = () => ({ t0: -1, n: 0, graph: [] });
+  function fpsTick(F2, now) {
+    if (F2.t0 < 0) {
+      F2.t0 = now;
+      return;
+    }
+    F2.n++;
+    const el = (now - F2.t0) / 1e3;
+    if (el < FPS_DT) return;
+    F2.graph.push(F2.n / el);
+    if (F2.graph.length > FPS_N) F2.graph.shift();
+    F2.t0 = now;
+    F2.n = 0;
+  }
+
   // src/auto/addrunner.js
   function sceneAddRunner(S2) {
     const i = S2.runners.length, lead = S2.runners[0];
@@ -35978,6 +35996,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     useEffect(() => {
       const c = cvs.current;
       if (!c) return void 0;
+      const fps = fpsNew();
       return runScene(c, {
         size: () => ({ w: c.clientWidth, hh: c.clientHeight }),
         make: (w, hh2, seed) => {
@@ -36033,6 +36052,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           const a = levelClearedAge(S2);
           if (a >= 0) clearedText(ctx, a, DEV.autoClearT, w, hh2 * 0.14);
           if (jcvs.current) journeyDraw(jcvs.current, S2, run);
+          fpsTick(fps, performance.now());
+          fpsDraw(ctx, fps.graph, w, hh2);
+          c.dataset.fps = String(fps.graph.length);
           if (levelDeathPrompt(S2)) {
             const k = w / 150;
             ctx.save();
@@ -37358,6 +37380,31 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         style
       }, c.gun ? h(GunIcon, { gun: c.gun }) : null);
     }));
+  }
+  function fpsDraw(ctx, vals, w, hh2) {
+    const bw = 96, bh = 34, x = w - bw - 6, y = hh2 - bh - 6, top = y + 13, bot = y + bh - 3;
+    ctx.save();
+    ctx.fillStyle = "rgba(0,0,0,0.5)";
+    ctx.fillRect(x, y, bw, bh);
+    const now = vals.length ? vals[vals.length - 1] : 0, peak = Math.max(60, ...vals);
+    ctx.font = "700 10px ui-monospace,SFMono-Regular,Menlo,monospace";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+    ctx.fillStyle = now >= 50 ? "#5ee05a" : now >= 30 ? "#ffc94a" : "#ff4a4a";
+    ctx.fillText(Math.round(now) + " fps", x + 4, y + 2);
+    if (vals.length > 1) {
+      const step = (bw - 4) / (FPS_N - 1), x0 = x + bw - 2 - (vals.length - 1) * step;
+      ctx.strokeStyle = "#5ee05a";
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      vals.forEach((v, i) => {
+        const px = x0 + i * step, py = bot - v / peak * (bot - top);
+        if (i) ctx.lineTo(px, py);
+        else ctx.moveTo(px, py);
+      });
+      ctx.stroke();
+    }
+    ctx.restore();
   }
   function paintGraph(c, vals, col) {
     if (!c) return;

@@ -69,6 +69,7 @@ export * from './art/cleared.js';
 export * from './auto/run.js';
 export * from './auto/traj.js';
 export * from './auto/maps.js';
+export * from './auto/fps.js';
 export * from './auto/fuel.js';
 export * from './auto/hang.js';
 export * from './auto/hub.js';

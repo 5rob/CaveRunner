@@ -49,6 +49,7 @@ import { PauseMenu } from '../pause.js';
 import { DevPanel } from '../devpanel.js';
 import { DEV_HOLD_MS, devShown, setDevShown } from '../devmode.js';
 import { runScene } from '../scenecanvas.js';
+import { FPS_N, fpsNew, fpsTick } from '../../auto/fps.js';
 import { leaveItem } from '../../art/titlescene.js';
 import { drawRunner, helmetIcon } from '../../art/sprites.js';
 import { sceneAddRunner } from '../../auto/addrunner.js';
@@ -211,6 +212,7 @@ export function AutoScreen() {
   useEffect(() => {
     const c = cvs.current;
     if (!c) return undefined;
+    const fps = fpsNew();
     return runScene(c, {
       size: () => ({ w: c.clientWidth, hh: c.clientHeight }),
       make: (w, hh, seed) => {
@@ -255,6 +257,7 @@ export function AutoScreen() {
       over: (ctx, S, w, hh) => {
         const a = levelClearedAge(S); if (a >= 0) clearedText(ctx, a, DEV.autoClearT, w, hh * 0.14);
         if (jcvs.current) journeyDraw(jcvs.current, S, run);
+        fpsTick(fps, performance.now()); fpsDraw(ctx, fps.graph, w, hh); c.dataset.fps = String(fps.graph.length);
         if (levelDeathPrompt(S)) { const k = w / 150; ctx.save(); ctx.scale(k, k); drawHint(ctx, w / 2 / k, hh * 0.3 / k, 'Tap A to Teleport back to Hub', S.t); ctx.restore(); }
       },
       // through the exit pad: to the level; the level's exit pad: home, tier + 1, healed (saved); everyone fallen: home, same tier
@@ -1285,6 +1288,26 @@ function GunArc({ arc, run }) {
     return h('div', { key: c.key, className: 'anavc gun aarcc' + (c.dim ? ' locked' : ' on') + (c.sel ? ' sel' : '') + (arc.hi === i ? ' drop' : ''),
       'data-arc': i, style }, c.gun ? h(GunIcon, { gun: c.gun }) : null);
   }));
+}
+
+// the FPS graph, bottom right of the play area (auto/fps.js): a small dark box, a green line scaled to 60 fps (more on a
+// faster screen), the frames per second now over it
+/** @param {CanvasRenderingContext2D} ctx @param {number[]} vals @param {number} w @param {number} hh */
+function fpsDraw(ctx, vals, w, hh) {
+  const bw = 96, bh = 34, x = w - bw - 6, y = hh - bh - 6, top = y + 13, bot = y + bh - 3;
+  ctx.save();
+  ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(x, y, bw, bh);
+  const now = vals.length ? vals[vals.length - 1] : 0, peak = Math.max(60, ...vals);
+  ctx.font = '700 10px ui-monospace,SFMono-Regular,Menlo,monospace'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+  ctx.fillStyle = now >= 50 ? '#5ee05a' : now >= 30 ? '#ffc94a' : '#ff4a4a';
+  ctx.fillText(Math.round(now) + ' fps', x + 4, y + 2);
+  if (vals.length > 1) {
+    const step = (bw - 4) / (FPS_N - 1), x0 = x + bw - 2 - (vals.length - 1) * step;
+    ctx.strokeStyle = '#5ee05a'; ctx.lineWidth = 1.2; ctx.beginPath();
+    vals.forEach((v, i) => { const px = x0 + i * step, py = bot - (v / peak) * (bot - top); if (i) ctx.lineTo(px, py); else ctx.moveTo(px, py); });
+    ctx.stroke();
+  }
+  ctx.restore();
 }
 
 // one running graph (the old Bag's DPS graph, ui/editor.js GunFire): a thin line, oldest at the left, scaled to its
