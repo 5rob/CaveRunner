@@ -21,7 +21,7 @@ and `game/systems/shotlooks.js`.
 
 ## Rules
 
-- **`planCast(g, others)` mutates `g.idx`**: it walks the slots from where the gun left off.
+- **`planCast(g, others)` mutates `g.idx`**: it walks the slots from where the gun left off. (v1.0.72) It also replaces `g.swc` (each Switch's turn, by slot) with a new object, never edits it, so a copy of the gun can plan freely; roll back both on a short pull: `g.idx = plan.start; g.swc = plan.swc0`.
   Callers that only look (previews, the advisor, `castGroups`, the fire preview) pass a copy.
   It returns `{ shots, defs, start, cost, delay, acts, hp, wrap }`.
 - **Spell kinds.** `shot` (a projectile) and `static` (a field that stays put) take a cast slot,

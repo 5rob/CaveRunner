@@ -5,6 +5,15 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.72 — CaveRunner Auto: Double / Triple / Quad Switch mods (branch `autobattler`)
+Released 2026-10-13 on the branch. PM alone; owner OK'd the shots.
+- New pattern mods `switch2/3/4` (`swN`): of the next 2 / 3 / 4 groups (a spell with the modifiers before it, a carrier with its
+  payload) only one casts each pull, taking turns; the others are drawn past free. spells/cast.js planCast `sw`; the turn is per
+  switch slot in `g.swc` (replaced, never mutated, so a gun's copy in a sim leaves it alone; rolled back with `idx` via
+  `plan.swc0` when the mana's short). Icons: '[n]' glyphs drawn as the digit in a rounded box (art/itemicon.js `inkGlyph`).
+  Suite `switch`; `auto-guns` checks a switch over two pulls; shot `tools/previewshots.js <out> f-switch`.
+- `auto-wall` (logic) is flaky since the faster pace (seed 5's time varies 55–89 s): re-run alone.
+
 ## v1.0.71 — CaveRunner Auto: Discriminate works (hold its tile to pick a target) (branch `autobattler`)
 Released 2026-10-13 on the branch. Agent ~17 min, 2 rounds (worktree `cr-discrim`); owner OK'd the shots.
 - Hold a Discriminate tile (bag or gun slot, `DEV.autoHoldMs`): a popup of targets with the game's pictures: rats, jellyfish, spiders,
