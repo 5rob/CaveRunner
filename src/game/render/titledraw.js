@@ -225,7 +225,11 @@ export function titleDraw(ctx, S, cw, ch, cam) {
     /** @type {any} */
     const G2 = { ctx: c };
     c.globalCompositeOperation = 'lighter';
-    for (const z of S.zaps) drawBolt(G2, z.pts, z.col, 1, z.t / 0.16);
+    for (const z of S.zaps) {
+      if (!z.fade) { drawBolt(G2, z.pts, z.col, 1, z.t / 0.16); continue; }
+      const n = z.pts.length - 1;   // (owner v1.0.74) a teleport's: faded in from its top, a piece at a time
+      for (let k = 0; k < n; k++) drawBolt(G2, [z.pts[k], z.pts[k + 1]], z.col, 1, z.t / 0.16 * Math.min(1, (k + 0.5) / (n * 0.6)));
+    }
     // their light trails: a line along the way they came, fading to nothing at its end
     for (const s of S.shots) if (s.ptr && s.ptr.length >= 4) {
       const L = trajLook(s), p = s.ptr, n = p.length / 2;

@@ -309,7 +309,10 @@ export function padGlow(ctx, S, x, y, seed, c, zapAt) {
     fg.addColorStop(0, 'rgba(235,250,255,' + (0.95 * fl).toFixed(3) + ')'); fg.addColorStop(0.4, 'rgba(120,200,255,' + (0.45 * fl).toFixed(3) + ')');
     fg.addColorStop(1, 'rgba(90,185,255,0)');
     ctx.fillStyle = fg; ctx.fillRect(x - 70, y - 82, 140, 140);
-    ctx.fillStyle = 'rgba(235,250,255,' + (0.8 * fl * fl).toFixed(3) + ')';
+    // (owner v1.0.74) the flash's column fades out up its top half (a tall level showed its flat end)
+    const a = (0.8 * fl * fl).toFixed(3), cg = ctx.createLinearGradient(0, y, 0, y - BEAM_H * 1.6);
+    cg.addColorStop(0, 'rgba(235,250,255,' + a + ')'); cg.addColorStop(0.45, 'rgba(235,250,255,' + a + ')'); cg.addColorStop(1, 'rgba(235,250,255,0)');
+    ctx.fillStyle = cg;
     ctx.fillRect(x - 7 * fl - 2, y - BEAM_H * 1.6, 14 * fl + 4, BEAM_H * 1.6);
   }
   for (const [wf, a, hf] of [[0.95, 0.16, 1], [0.66, 0.2, 0.8], [0.34, 0.28, 0.6]]) {
@@ -349,7 +352,8 @@ export function padGlow(ctx, S, x, y, seed, c, zapAt) {
       bx = Math.max(x - PAD_W / 2, Math.min(x + PAD_W / 2, bx));
       pts.push({ x: bx, y: by });
     }
-    drawBolt(G, pts, '#7cc8ff', 0.9, Math.max(0, 1 - age));
+    // (owner v1.0.74) fading out toward its top, a piece at a time
+    for (let k = 0; k < steps; k++) drawBolt(G, [pts[k], pts[k + 1]], '#7cc8ff', 0.9, Math.max(0, 1 - age) * Math.min(1, 1.6 * (1 - k / steps)));
   }
 }
 

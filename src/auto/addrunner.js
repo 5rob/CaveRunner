@@ -47,6 +47,6 @@ function arrive(S, cx, cy) {
     S.parts.push({ x: cx, y: cy, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 20, life: 0.5, max: 0.5, r: 1.2,
       col: k % 3 ? '#7cc8ff' : '#e6f6ff', kind: 'spark' });
   }
-  for (let k = 0; k < 3; k++) zapArc(S, cx + (S.rnd() - 0.5) * 16, cy - 40, cx + (S.rnd() - 0.5) * 6, cy + PH / 2, k ? '#7cc8ff' : '#e6f6ff');
+  for (let k = 0; k < 3; k++) zapArc(S, cx + (S.rnd() - 0.5) * 16, cy - 40, cx + (S.rnd() - 0.5) * 6, cy + PH / 2, k ? '#7cc8ff' : '#e6f6ff', true);
   S.snd.push({ k: 'arc', x: cx, y: cy });
 }

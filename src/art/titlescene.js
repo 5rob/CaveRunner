@@ -139,7 +139,7 @@ export const TITLE_HOME = {
  *   beam?: number, ang?: number, bx?: number, by2?: number, pull?: number, vac?: number, heal?: number, tick?: number, follow?: number, sp0?: number, orbit?: number, spiral?: number, boomer?: number, pong?: number, born?: number, back?: number, caught?: number, oa?: number, or0?: number, odir?: number, pdir?: number, ptr?: number[], homN?: number, seekN?: number, nearN?: number, autoaim?: number, aimed?: number, gravN?: number, floatN?: number, flat?: number, tgt?: Enemy | null, sp1?: number, max?: number, hopT?: number, hx?: number, hy?: number, only?: DiscrimTarget | null }} TShot */
 /** @typedef {{ x: number, y: number, vx: number, vy: number, life: number, max: number, r: number, col: string, kind: string, to?: { x: number, y: number, life: number }, fx?: boolean, u?: number, a?: number, g?: number }} TPart */
 /** @typedef {{ x: number, y: number, r: number, t: number, max: number, sid?: string }} TBoom */
-/** @typedef {{ pts: { x: number, y: number }[], t: number, col: string }} TZap */
+/** @typedef {{ pts: { x: number, y: number }[], t: number, col: string, fade?: boolean }} TZap */
 // a prop: `ox` its world x (not `wx`: art/props.js reads that as an arch's or a vine's sideways bend)
 /** @typedef {{ k: string, st: string, ox: number, x: number, y: number, len: number, seed: number, side: number, burn: number, ac: number, ar: number, lit?: number, ch?: number, rot?: number, rv?: number, rp?: number[], rq?: number[], rs?: number,
  *   arc?: number[][], thick?: number, t?: number, span?: number, host?: TProp, gone?: boolean, u0?: number, u1?: number, alen?: number, u?: number,
@@ -1943,12 +1943,12 @@ function vigourStep(S, s, dt) {
 }
 
 // a lightning arc from one point to another (drawn with the game's drawBolt)
-/** @param {TitleScene} S @param {number} x0 @param {number} y0 @param {number} x1 @param {number} y1 @param {string} col */
-export function zapArc(S, x0, y0, x1, y1, col) {
+/** @param {TitleScene} S @param {number} x0 @param {number} y0 @param {number} x1 @param {number} y1 @param {string} col @param {boolean} [fade] fading in from its start (a teleport's, from above) */
+export function zapArc(S, x0, y0, x1, y1, col, fade) {
   const R = S.rnd, pts = [{ x: x0, y: y0 }];
   for (let i = 1; i < 7; i++) { const k = i / 7; pts.push({ x: x0 + (x1 - x0) * k + (R() - 0.5) * 9, y: y0 + (y1 - y0) * k + (R() - 0.5) * 9 }); }
   pts.push({ x: x1, y: y1 });
-  S.zaps.push({ pts, t: 0.16, col });
+  S.zaps.push({ pts, t: 0.16, col, fade });
 }
 
 // blasts and fire cut the web lines they touch
