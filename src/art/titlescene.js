@@ -157,7 +157,7 @@ export const zoneHome = Z => TITLE_HOME[Z.spid ? 'spider' : Z.z] || TITLE_HOME.m
  *   kills: number, gold: number, got: number, runner: TRunner, runners: TRunner[], foes: Enemy[], shots: TShot[], parts: TPart[], coins: Coin[],
  *   booms: TBoom[], zaps: TZap[], flash: number, rows: number, ncol: number, cells: Uint8Array, gen: number, props: TProp[],
  *   fire: TFire[], dirty: number[][], dirtyAll: boolean, carved: number, burnt: number, swaps: number, groundT: number, flyT: number, kinds: Record<string, number>,
- *   webs: WebLine[], orbN?: number, cut: number, lineT: number, silk: { x: number, y: number, ax: number, ay: number, vx: number, vy: number, life: number }[],
+ *   webs: WebLine[], orbN?: number, orbHub?: { x: number, y: number, r: number }[], cut: number, lineT: number, silk: { x: number, y: number, ax: number, ay: number, vx: number, vy: number, life: number }[],
  *   nav: { F: any, fx: number, fy: number, t: number }, fireAcc: number, fireN: number, burning: Set<number>, gotN: number, pops: number, lampsPopped: number, kitNames: Set<string>,
  *   digT: number, digs: number, digWhy: Record<string, number>, still?: boolean, zp: TitlePlan, snd: TSnd[], hub?: TitleHub, lvl?: TitleLevel, lab?: boolean, back?: (ctx: CanvasRenderingContext2D, S: TitleScene) => void, pace?: number, team?: RunPlayer[], blocked?: number, blockedKind?: string, huddle?: boolean, gunsOff?: boolean, hgoal?: number, hgoalT?: number, fuelWait?: number, tier?: number, loot?: TLoot[],
  *   onTake?: (it: BagItem, x: number, y: number) => void }} TitleScene */
@@ -615,13 +615,20 @@ function genCol(S, c) {
   // (owner, after v1.0.74) and now and then an orb web (world/orbweb.js): a hub in the open between roof and floor, spokes to
   // the rock round it, the spiral across them; each thread a web line (L.orb: its web, L.sp: a spiral thread)
   const spz = zr === 'spider' || !!Zn.spid;   // (the spider zone, a spider mine: more orb webs, hubs anywhere up the height)
-  if ((zr === 'webs' || spz) && (b === 0 || Zn.spid) && !(c % 4) && R() < DEV.autoOrbChance * (spz ? 3 : 1) * Zr.dens && new Set(S.webs.filter(L => L.orb).map(L => L.orb)).size < DEV.autoOrbMax) {
+  if ((zr === 'webs' || spz) && (b === 0 || Zn.spid) && !(c % 4) && R() < DEV.autoOrbChance * (spz ? 3 : 1) * Zr.dens && (S.orbHub || []).filter(h => h.x > wx - TITLE_VW * 1.5).length < DEV.autoOrbMax) {
+    // (at most autoOrbMax over the last screen and a half, after v1.0.75: the old cap, by all still kept, used them all up at a zone's start)
     // (the stretch behind this column is made: the hub at most a spoke's reach back from it, near the floor or the roof)
-    const hx = wx - DEV.autoOrbR - 8 - R() * 30, hr = titleRoof(hx, S), hf = titleFloor(hx, S), pick = R();
+    // (owner, after v1.0.75: large ones too) each its own size, autoOrbRMin..autoOrbR; bigger: more spokes, the spiral wider spaced
+    const rr = DEV.autoOrbRMin + R() * Math.max(0, DEV.autoOrbR - DEV.autoOrbRMin), sz = Math.sqrt(rr / 50);
+    const hx = wx - rr - 8 - R() * 30, hr = titleRoof(hx, S), hf = titleFloor(hx, S), pick = R();
     const hy = spz && pick < 0.6 ? hr + (hf - hr) * (0.1 + R() * 0.8) : pick < 0.8 ? hf - 12 - R() * 25 : hr + 12 + R() * 25;
     const W = orbPlace((x, y) => x >= wx || !!HOLDS[titleCell(S, Math.floor(x / TCELL), Math.floor(y / TCELL))], hx, hy, R,   // (timber holds a web too)
-      { spokes: DEV.autoOrbSpokes, maxR: DEV.autoOrbR, gap: DEV.autoOrbGap, tries: 6, spread: 25 });
-    if (W) {
+      { spokes: Math.round(DEV.autoOrbSpokes * Math.max(1, sz)), maxR: rr, gap: DEV.autoOrbGap * Math.max(1, sz), hole: 4 * Math.max(1, sz), tries: 6, spread: 25 * Math.max(1, sz) });
+    // (kept apart: none over another's hub)
+    const hub = W && W.find(t => !t.spiral && !t.bin) || null, apart = !!hub && !(S.orbHub || []).some(h => Math.hypot(h.x - hub.bx, h.y - hub.by) < (h.r + rr) * 0.6);
+    if (W && apart) {
+      S.orbHub = (S.orbHub || []).filter(h => h.x > wx - TITLE_VW * 3);
+      S.orbHub.push({ x: hub.bx, y: hub.by, r: rr });
       const id = (S.orbN = (S.orbN || 0) + 1);
       for (const t of W) {
         /** @type {WebLine} */
@@ -631,7 +638,8 @@ function genCol(S, c) {
       }
     }
   }
-  if ((zr === 'webs' || zr === 'spider') && b === 0 && !(c % 4) && R() < 0.42 * Zr.dens && S.webs.filter(L => !L.orb).length < TITLE_WEBS) {
+  // (owner, after v1.0.75: too many tall single strands) a level's webs and spider zones: orb webs only (spiders spin their own lines)
+  if ((zr === 'webs' || zr === 'spider') && !S.lvl && b === 0 && !(c % 4) && R() < 0.42 * Zr.dens && S.webs.filter(L => !L.orb).length < TITLE_WEBS) {
     const down = R() < 0.55, bx = down ? wx + (R() - 0.35) * 70 : wx + 18 + R() * 44;
     const by = down ? titleFloor(bx, S) - 0.5 : titleRoof(bx, S) + 0.5;
     /** @type {WebLine} */

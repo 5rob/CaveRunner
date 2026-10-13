@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v1.0.75</title>
-<!-- VERSION = 'v1000075' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v1.0.76</title>
+<!-- VERSION = 'v1000076' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -1183,7 +1183,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v1.0.75';</script>
+<script>const VERSION = 'v1.0.76';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -2125,12 +2125,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "autoWebHalt", g: "autoblocks", label: "Slowed below this the team halts (clears the webs, or is blocked)", min: 0, max: 1, step: 0.01 }
   );
   DEV_GROUPS.push(["autoblocks", "Auto: blocks"]);
-  Object.assign(DEV_DEFAULTS, { autoOrbChance: 0.1, autoOrbMax: 3, autoOrbSpokes: 9, autoOrbR: 50, autoOrbGap: 5 });
+  Object.assign(DEV_DEFAULTS, { autoOrbChance: 0.25, autoOrbMax: 5, autoOrbSpokes: 9, autoOrbRMin: 30, autoOrbR: 150, autoOrbGap: 5 });
   DEV_META.push(
     { k: "autoOrbChance", g: "autoorb", label: "Orb web: chance at each spot in the webs zone (× its density)", min: 0, max: 1, step: 0.01 },
     { k: "autoOrbMax", g: "autoorb", label: "Orb webs at once at most", min: 0, max: 10, step: 1 },
     { k: "autoOrbSpokes", g: "autoorb", label: "Orb web: spokes tried", min: 5, max: 16, step: 1 },
-    { k: "autoOrbR", g: "autoorb", label: "Orb web: longest spoke (world units)", min: 15, max: 120, step: 1 },
+    { k: "autoOrbRMin", g: "autoorb", label: "Orb web: size, smallest (its longest spoke, world units)", min: 15, max: 250, step: 1 },
+    { k: "autoOrbR", g: "autoorb", label: "Orb web: size, largest (its longest spoke, world units)", min: 15, max: 250, step: 1 },
     { k: "autoOrbGap", g: "autoorb", label: "Orb web: spiral spacing (world units)", min: 2, max: 15, step: 0.5 }
   );
   DEV_GROUPS.push(["autoorb", "Auto: orb webs"]);
@@ -14141,8 +14142,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       lamp(S2, c, wx, cy + 10, 14 + R() * 30);
     const rcy = titleRoof(wx, S2), Zr = S2.lvl ? titleZoneLook(wx, rcy + 1, S2) : Zn, Zf = S2.lvl ? titleZoneLook(wx, fy - 1, S2) : Zn, zr = Zr.z;
     const spz = zr === "spider" || !!Zn.spid;
-    if ((zr === "webs" || spz) && (b === 0 || Zn.spid) && !(c % 4) && R() < DEV.autoOrbChance * (spz ? 3 : 1) * Zr.dens && new Set(S2.webs.filter((L) => L.orb).map((L) => L.orb)).size < DEV.autoOrbMax) {
-      const hx = wx - DEV.autoOrbR - 8 - R() * 30, hr = titleRoof(hx, S2), hf = titleFloor(hx, S2), pick = R();
+    if ((zr === "webs" || spz) && (b === 0 || Zn.spid) && !(c % 4) && R() < DEV.autoOrbChance * (spz ? 3 : 1) * Zr.dens && (S2.orbHub || []).filter((h3) => h3.x > wx - TITLE_VW * 1.5).length < DEV.autoOrbMax) {
+      const rr2 = DEV.autoOrbRMin + R() * Math.max(0, DEV.autoOrbR - DEV.autoOrbRMin), sz = Math.sqrt(rr2 / 50);
+      const hx = wx - rr2 - 8 - R() * 30, hr = titleRoof(hx, S2), hf = titleFloor(hx, S2), pick = R();
       const hy = spz && pick < 0.6 ? hr + (hf - hr) * (0.1 + R() * 0.8) : pick < 0.8 ? hf - 12 - R() * 25 : hr + 12 + R() * 25;
       const W = orbPlace(
         (x, y) => x >= wx || !!HOLDS[titleCell(S2, Math.floor(x / TCELL), Math.floor(y / TCELL))],
@@ -14150,9 +14152,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         hy,
         R,
         // (timber holds a web too)
-        { spokes: DEV.autoOrbSpokes, maxR: DEV.autoOrbR, gap: DEV.autoOrbGap, tries: 6, spread: 25 }
+        { spokes: Math.round(DEV.autoOrbSpokes * Math.max(1, sz)), maxR: rr2, gap: DEV.autoOrbGap * Math.max(1, sz), hole: 4 * Math.max(1, sz), tries: 6, spread: 25 * Math.max(1, sz) }
       );
-      if (W) {
+      const hub = W && W.find((t) => !t.spiral && !t.bin) || null, apart = !!hub && !(S2.orbHub || []).some((h3) => Math.hypot(h3.x - hub.bx, h3.y - hub.by) < (h3.r + rr2) * 0.6);
+      if (W && apart) {
+        S2.orbHub = (S2.orbHub || []).filter((h3) => h3.x > wx - TITLE_VW * 3);
+        S2.orbHub.push({ x: hub.bx, y: hub.by, r: rr2 });
         const id = S2.orbN = (S2.orbN || 0) + 1;
         for (const t of W) {
           const L = { ax: t.ax, ay: t.ay, bx: t.bx, by: t.by, a0x: t.ax, a0y: t.ay, b0x: t.bx, b0y: t.by, ain: t.ain, bin: t.bin || { x: t.bx, y: t.by }, owner: null, orb: id, sp: t.spiral };
@@ -14161,7 +14166,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
       }
     }
-    if ((zr === "webs" || zr === "spider") && b === 0 && !(c % 4) && R() < 0.42 * Zr.dens && S2.webs.filter((L) => !L.orb).length < TITLE_WEBS) {
+    if ((zr === "webs" || zr === "spider") && !S2.lvl && b === 0 && !(c % 4) && R() < 0.42 * Zr.dens && S2.webs.filter((L) => !L.orb).length < TITLE_WEBS) {
       const down = R() < 0.55, bx = down ? wx + (R() - 0.35) * 70 : wx + 18 + R() * 44;
       const by = down ? titleFloor(bx, S2) - 0.5 : titleRoof(bx, S2) + 0.5;
       const L = { ax: wx, ay: rcy + 0.5, bx, by, a0x: wx, a0y: rcy + 0.5, b0x: bx, b0y: by, ain: { x: wx, y: rcy - 1 }, bin: { x: bx, y: down ? by + 1.5 : by - 1.5 }, owner: null, sag: 0 };
@@ -28590,6 +28595,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     "autoOrbGap",
     "autoOrbMax",
     "autoOrbR",
+    "autoOrbRMin",
     "autoOrbSpokes",
     "autoPayHold",
     "autoPayK",

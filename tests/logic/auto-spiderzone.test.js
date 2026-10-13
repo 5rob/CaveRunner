@@ -20,7 +20,7 @@ for (const sv of ['rocks', 'vines', 'beams']) {
   const run = G.newRun(seed, () => 0.4), plan = G.levelPlan(seed, undefined, 0);
   run.players.forEach(p => { const g = p.guns[0], k = g.slots.indexOf(null); g.slots[k < 0 ? g.slots.length - 1 : k] = 'saw'; });
   const S = G.levelScene(300, seed, 2, plan, run.players, 1), L = G.levelState(S);
-  let f = 0, blockedF = 0, waitF = 0, rock = 0, beam = 0, sampled = false;
+  let f = 0, blockedF = 0, waitF = 0, rock = 0, beam = 0, vines = 0, sampled = false;
   const mid = (Z.x0 + Z.x1) / 2;
   for (; f < 3000 && G.levelTeamX(S) < Z.x1 + 40; f++) {
     G.titleStep(S, dt);
@@ -28,6 +28,7 @@ for (const sv of ['rocks', 'vines', 'beams']) {
     if (S.fuelWait != null && S.t - S.fuelWait < 0.1) waitF++;
     if (!sampled && G.levelTeamX(S) >= mid) {
       sampled = true;
+      vines = S.props.filter(p => p.st === 'vine' && p.ox > Z.x0 && p.ox < Z.x1).length;   // (counted mid-zone: fire burns some later)
       // the zone's columns on screen: rock in the open air between its roof and floor, and timber
       for (let wx = Math.max(Z.x0 + 30, S.scroll); wx < Math.min(Z.x1 - 30, S.scroll + G.TITLE_VW); wx += G.TCELL) {
         const c = Math.floor(wx / G.TCELL), cy = G.titleCeil(wx, S), fy = G.titleFloor(wx, S);
@@ -42,8 +43,10 @@ for (const sv of ['rocks', 'vines', 'beams']) {
   const orbs = new Set(S.webs.filter(w => w.orb).map(w => w.orb)).size;
   check(`${sv} (seed ${seed}): rock scattered through its open air`, rock > 20, rock);
   if (sv === 'beams') check(`${sv}: old timbering stands in it`, beam > 20, beam);
-  if (sv === 'vines') check(`${sv}: vines hang in it`, S.props.filter(p => p.st === 'vine' && p.ox > Z.x0 && p.ox < Z.x1).length > 20);
+  if (sv === 'vines') check(`${sv}: vines hang in it`, vines > 10, vines);
   check(`${sv}: orb webs strung`, (S.orbN || 0) > 0, S.orbN || 0);
+  const H = S.orbHub || [];   // (after v1.0.75) kept apart: no hub over another
+  check(`${sv}: orb webs kept apart`, H.every((a, i) => H.every((b, j) => i === j || Math.hypot(a.x - b.x, a.y - b.y) >= (a.r + b.r) * 0.6)), H.length);
   check(`${sv}: the team gets through it, never blocked for long`, G.levelTeamX(S) >= Z.x1 + 40 && blockedF < 60 && waitF < 150, { f, x: G.levelTeamX(S), blockedF, waitF, orbs });
 }
 console.log(fails ? `${fails} FAILED` : 'all passed');

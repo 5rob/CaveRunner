@@ -5,6 +5,12 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.76 — CaveRunner Auto: just orb webs, and large ones (branch `autobattler`)
+Owner: "too many really tall single strands, not enough webs; just webs (spiders still spin their own lines); large ones too". Owner OK'd the screenshots.
+- A level's webs and spider zones lose the scenery's straight web lines (the title menu keeps them).
+- Orb webs each their own size, `autoOrbRMin` 30 … `autoOrbR` 150 (bigger: more spokes, wider spiral); `autoOrbChance` 0.25, `autoOrbMax` 5 counted over the last screen and a half (the old cap counted all kept, so a zone's first few used it up), hubs kept apart (`S.orbHub`).
+- Tests: auto-speed on seed 9 (7's start grew a bump), auto-speed / auto-traj / auto-vigour turn orb webs off; auto-spiderzone counts vines mid-zone and checks the webs are apart.
+
 ## v1.0.75 — CaveRunner Auto: the owner's 7 notes after v1.0.74, and the spider zone (branch `autobattler`)
 Owner OK'd the screenshots. PM alone.
 - After the boss nobody takes off: everyone comes down and runs along the floor to the exit (S.huddle in a level).

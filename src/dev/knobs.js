@@ -663,12 +663,13 @@ DEV_META.push(
   { k: 'autoWebHalt',   g: 'autoblocks', label: 'Slowed below this the team halts (clears the webs, or is blocked)', min: 0, max: 1, step: 0.01 });
 DEV_GROUPS.push(['autoblocks', 'Auto: blocks']);
 // (owner, after v1.0.74) orb webs in the spiders' zone (world/orbweb.js, placed by art/titlescene.js)
-Object.assign(DEV_DEFAULTS, { autoOrbChance: 0.1, autoOrbMax: 3, autoOrbSpokes: 9, autoOrbR: 50, autoOrbGap: 5 });
+Object.assign(DEV_DEFAULTS, { autoOrbChance: 0.25, autoOrbMax: 5, autoOrbSpokes: 9, autoOrbRMin: 30, autoOrbR: 150, autoOrbGap: 5 });
 DEV_META.push(
   { k: 'autoOrbChance', g: 'autoorb', label: 'Orb web: chance at each spot in the webs zone (× its density)', min: 0, max: 1, step: 0.01 },
   { k: 'autoOrbMax',    g: 'autoorb', label: 'Orb webs at once at most', min: 0, max: 10, step: 1 },
   { k: 'autoOrbSpokes', g: 'autoorb', label: 'Orb web: spokes tried', min: 5, max: 16, step: 1 },
-  { k: 'autoOrbR',      g: 'autoorb', label: 'Orb web: longest spoke (world units)', min: 15, max: 120, step: 1 },
+  { k: 'autoOrbRMin',   g: 'autoorb', label: 'Orb web: size, smallest (its longest spoke, world units)', min: 15, max: 250, step: 1 },
+  { k: 'autoOrbR',      g: 'autoorb', label: 'Orb web: size, largest (its longest spoke, world units)', min: 15, max: 250, step: 1 },
   { k: 'autoOrbGap',    g: 'autoorb', label: 'Orb web: spiral spacing (world units)', min: 2, max: 15, step: 0.5 });
 DEV_GROUPS.push(['autoorb', 'Auto: orb webs']);
 // (owner, after v1.0.74) the spider zone (art/titlescene.js spiderRock): its scattered rock; and mines the spiders took over

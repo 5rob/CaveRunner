@@ -125,6 +125,7 @@ export const AUTO_KNOBS = new Set([
   'autoOrbGap',
   'autoOrbMax',
   'autoOrbR',
+  'autoOrbRMin',
   'autoOrbSpokes',
   'autoPayHold',
   'autoPayK',

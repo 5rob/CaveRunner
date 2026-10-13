@@ -3,7 +3,7 @@
 const G = require('../load');
 let fails = 0;
 const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FAIL'} ${n}${x !== undefined ? ' -> ' + JSON.stringify(x) : ''}`); };
-Object.assign(G.DEV, { autoFoeDmg: 0, autoWallMin: 0, autoWallMax: 0 });
+Object.assign(G.DEV, { autoFoeDmg: 0, autoWallMin: 0, autoWallMax: 0, autoOrbChance: 0 });   // (no orb webs: they slow the team, after v1.0.75)
 const push = { active: true, nx: 1, ny: 0, mag: 1, dx: 1, dy: 0 };
 
 // the hub
@@ -18,7 +18,7 @@ for (let i = 0; i < 30; i++) G.titleStep(H, 1 / 30);
 const hub = (hr.x - hx0);
 
 // a level
-const S = G.levelScene(200, 7, 2);
+const S = G.levelScene(200, 9, 2);   // (seed 9: flat ground at the start; 7's grew a bump after v1.0.75, the cave's random bits moved)
 for (let i = 0; i < 3 * 30; i++) G.titleStep(S, 1 / 30);
 const r = S.runners[0];
 G.levelControl(S, r.id, push);

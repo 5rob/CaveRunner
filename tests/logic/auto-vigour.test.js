@@ -6,6 +6,7 @@ let fails = 0;
 const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FAIL'} ${n}${x !== undefined ? ' -> ' + JSON.stringify(x) : ''}`); };
 const keep = G.DEV.autoFoeElites;
 G.DEV.autoFoeElites = 0;
+G.DEV.autoOrbChance = 0;   // (no orb webs slowing the level, after v1.0.75)
 check('Vigour is off GUN_TODO', !G.GUN_TODO.includes('vigour'));
 const plan = { shots: [{ sid: 'vigour', still: true, r: 36, life: 5, col: '#46c48c' }] };
 const out = G.planShots(plan, 0, 50, 60, () => 0.5, 0);

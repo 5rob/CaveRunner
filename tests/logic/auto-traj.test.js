@@ -19,6 +19,7 @@ for (const id of ['orbit', 'spiral', 'boomer', 'pong']) check(id + ' is off GUN_
 }
 const keep = G.DEV.autoFoeElites;
 G.DEV.autoFoeElites = 0;
+G.DEV.autoOrbChance = 0;   // (no orb webs in the way of the shots, after v1.0.75)
 /** @param {string[]} slots @param {(s: any, home: {x: number, y: number}, st: any) => void} see */
 function watch(slots, see) {
   const run = G.newRun(3), pl = run.players[0], g = pl.guns[pl.active];
