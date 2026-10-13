@@ -206,6 +206,7 @@ interface SpiderBrain extends RoamState, SurfState {
   vy: number; on: number; rest: number; side: number;
   line: WebLine | null; u: number; dir: number; shot: SpiderShot | null; high: boolean;
   webT?: number; spd?: number; arrive?: number; dot?: number; go?: boolean;
+  gait?: number;              // (CaveRunner Auto) the legs' cycle by the distance walked (drawSpider uses it over the clock)
 }
 /** what spiderStep is handed */
 interface SpiderEnv {

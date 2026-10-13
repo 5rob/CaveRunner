@@ -44,6 +44,7 @@ import { ghostHome, ghostTarget, perkOn, shieldTick } from '../auto/perks.js';
 export const TITLE_VW = 220;          // world units across the screen
 export const TITLE_FOES = 24;         // at most this many creatures at once (a rat swarm counts each rat; v0.0.165: ×2)
 export const TITLE_PARTS = 320;       // particle cap
+export const FIRE_PARTS = 200;        // (owner v1.0.74: burning vines and silk lost their flames and smoke) room kept over the cap for the fire's specks (rock chunks filled it)
 export const TITLE_GOLD = 90;         // nugget cap
 export const TITLE_FIRE = 600;        // burning terrain cells at once
 export const TCELL = 2;               // the terrain grid's cell (world units)
@@ -780,7 +781,7 @@ function burst(S, x, y, n, col, spd, kind, life) {
 // fire colours, gone in half a second or on rock; and its smoke (fireSmoke): a dark puff, swelling as it rises
 /** @param {TitleScene} S @param {number} x @param {number} y */
 function flameAt(S, x, y) {
-  if (S.parts.length >= TITLE_PARTS) return;
+  if (S.parts.length >= TITLE_PARTS + FIRE_PARTS) return;
   const R = S.rnd;
   if (autoOn(S)) {   // (owner v1.0.60) Dev → Fire: flames and smoke
     for (let n = fxCount(R, DEV.fxFlRate); n > 0; n--)
@@ -798,7 +799,7 @@ const fxCount = (R, rate) => Math.floor(rate) + (R() < rate % 1 ? 1 : 0);
 // the colour (u), its own opacity (a), smoke's growth (g)
 /** @param {TitleScene} S @param {string} kind @param {number} x @param {number} y @param {number} vx @param {number} vy @param {number} life @param {number} r */
 function fxPart(S, kind, x, y, vx, vy, life, r) {
-  if (S.parts.length >= TITLE_PARTS) return;
+  if (S.parts.length >= TITLE_PARTS + FIRE_PARTS) return;
   const R = S.rnd, sm = kind === 'fsmoke';
   S.parts.push({ x, y, vx, vy, life, max: life, r, col: '', kind, fx: true, u: R(), a: 1 - (sm ? DEV.fxSmAlphaJit : DEV.fxFlAlphaJit) * R(), g: sm ? kr('fxSmGrow', R) : 0 });
 }
@@ -817,7 +818,7 @@ export function titleJet(S, sx, fy, h, dt) {
 }
 /** @param {TitleScene} S @param {number} x @param {number} y */
 function fireSmoke(S, x, y) {
-  if (S.parts.length >= TITLE_PARTS) return;
+  if (S.parts.length >= TITLE_PARTS + FIRE_PARTS) return;
   const R = S.rnd;
   if (autoOn(S)) {   // (owner v1.0.60) Dev → Fire: flames and smoke
     for (let n = fxCount(R, DEV.fxSmRate); n > 0; n--)
@@ -2048,8 +2049,12 @@ function spiderAct(S, e, hunting, goal, sees, dist, dx, dy, CS, dt) {
   const R = S.rnd;
   // on a line it rides the line's sag, which spiderStep doesn't know about: last frame's off, this frame's on
   if (e.wox || e.woy) { e.x -= e.wox || 0; e.y -= e.woy || 0; e.wox = e.woy = 0; }
+  const x0 = e.x, y0 = e.y;
   if (spiderStep(e, { solidCell: CS, webs: S.webs, hunting, goal, rnd: R, speedMul: 1 }, dt) === 'web') snd(S, 'lash', e.x - S.scroll, e.y);
   const P = e.sp;
+  // (owner v1.0.74: the boss's and elites' legs didn't walk) a level's spider: the legs cycle by the distance walked, a stride
+  // as long as DEV.autoSpStride × its size (not falling)
+  if (P && S.lvl) P.gait = (P.gait || 0) + (P.mode === 'fall' ? 0 : Math.hypot(e.x - x0, e.y - y0) / Math.max(0.5, e.r * DEV.autoSpStride));
   if (P && P.mode === 'line' && P.line) {
     S.lineT += dt;
     const L = P.line, vx = L.b0x - L.a0x, vy = L.b0y - L.a0y, u = Math.max(0, Math.min(1, ((e.x - L.a0x) * vx + (e.y - L.a0y) * vy) / (vx * vx + vy * vy || 1)));

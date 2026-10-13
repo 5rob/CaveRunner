@@ -144,6 +144,7 @@ export const AUTO_KNOBS = new Set([
   'autoSilkSmoke',
   'autoSilkSpin',
   'autoSilkSpread',
+  'autoSpStride',
   'autoStreamBigN',
   'autoStreamBigT',
   'autoStreamGrow',

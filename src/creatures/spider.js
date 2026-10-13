@@ -233,7 +233,7 @@ export function drawSpider(ctx, x, y, r, time, phase, flash, col, S) {
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(Math.atan2(nx, -ny));
-  const t = moving ? time * 38 + phase : phase;
+  const t = S && S.gait != null ? S.gait + phase : moving ? time * 38 + phase : phase;
   ctx.strokeStyle = flash ? '#ffffff' : col.b;
   ctx.lineWidth = r * 0.16; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
   for (let i = 0; i < 4; i++) {
