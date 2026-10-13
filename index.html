@@ -36051,7 +36051,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         over: (ctx, S2, w, hh2) => {
           const a = levelClearedAge(S2);
           if (a >= 0) clearedText(ctx, a, DEV.autoClearT, w, hh2 * 0.14);
-          if (jcvs.current) journeyDraw(jcvs.current, S2, run);
+          if (jcvs.current) journeyDraw(jcvs.current, S2, run, cam.current);
           fpsTick(fps, performance.now());
           fpsDraw(ctx, fps.graph, w, hh2);
           c.dataset.fps = String(fps.graph.length);
@@ -37530,7 +37530,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     return helmCache[col];
   }
-  function journeyDraw(c, S2, run) {
+  function journeyDraw(c, S2, run, C) {
     const L = levelState(S2), box = c.parentElement;
     if (!L || !box) return;
     const W = L.plan.z1 + L.plan.z0, bw = box.clientWidth, bh = Math.max(6, bw * S2.vh / W);
@@ -37544,6 +37544,16 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (!ctx) return;
     ctx.clearRect(0, 0, cw, ch);
     ctx.imageSmoothingEnabled = false;
+    if (C) {
+      const a = camAt(C, 0, 0), b = camAt(C, TITLE_VW, C.view || S2.vh);
+      const lw = Math.max(1, dpr), fy = (ch - 2 * m) / S2.vh;
+      const x0 = Math.max(lw / 2, (a.x + S2.scroll) / W * cw), x1 = Math.min(cw - lw / 2, (b.x + S2.scroll) / W * cw);
+      const y0 = Math.max(m, m + a.y * fy), y1 = Math.min(ch - m, m + b.y * fy);
+      ctx.strokeStyle = "rgba(255,255,255,0.75)";
+      ctx.lineWidth = lw;
+      if (x1 > x0 && y1 > y0) ctx.strokeRect(x0, y0, x1 - x0, y1 - y0);
+      c.dataset.view = [x0, x1].map((v) => (v / cw).toFixed(3)).join(" ");
+    }
     const s = HELM_PX * dpr;
     for (const r of S2.runners) {
       const q = run.players[r.id];

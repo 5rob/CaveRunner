@@ -256,7 +256,7 @@ export function AutoScreen() {
       // (feedback round 2) everyone down: "Tap A to Teleport back to Hub" (the hub's hint look), on the screen whatever the zoom
       over: (ctx, S, w, hh) => {
         const a = levelClearedAge(S); if (a >= 0) clearedText(ctx, a, DEV.autoClearT, w, hh * 0.14);
-        if (jcvs.current) journeyDraw(jcvs.current, S, run);
+        if (jcvs.current) journeyDraw(jcvs.current, S, run, cam.current);
         fpsTick(fps, performance.now()); fpsDraw(ctx, fps.graph, w, hh); c.dataset.fps = String(fps.graph.length);
         if (levelDeathPrompt(S)) { const k = w / 150; ctx.save(); ctx.scale(k, k); drawHint(ctx, w / 2 / k, hh * 0.3 / k, 'Tap A to Teleport back to Hub', S.t); ctx.restore(); }
       },
@@ -1419,7 +1419,8 @@ function mapInfo(run) {
   return { name: MAP_NAMES[i], level: m.level, top: Math.max(m.level, (m.best || 0) + 1) };
 }
 // (owner) the journey box: the whole level at its own width-to-height shape, across the play area; each player's helmet
-// (the scene's sprite, pixelated) where he is in it; the fallen and the hidden left out
+// (the scene's sprite, pixelated) where he is in it; the fallen and the hidden left out; (owner, v1.0.79) an outline round
+// the part the play area shows now (the camera's view)
 const HELM_PX = 12;   // a helmet in the box (px); the canvas reaches HELM_PX / 2 past the box's top and bottom (a thin box)
 /** @type {Record<string, HTMLCanvasElement>} */
 const helmCache = {};
@@ -1433,8 +1434,8 @@ function helmSprite(col) {
   }
   return helmCache[col];
 }
-/** @param {HTMLCanvasElement} c @param {import('../../art/titlescene.js').TitleScene} S @param {AutoRun} run */
-function journeyDraw(c, S, run) {
+/** @param {HTMLCanvasElement} c @param {import('../../art/titlescene.js').TitleScene} S @param {AutoRun} run @param {TitleCam | null} C */
+function journeyDraw(c, S, run, C) {
   const L = levelState(S), box = c.parentElement;
   if (!L || !box) return;
   const W = L.plan.z1 + L.plan.z0, bw = box.clientWidth, bh = Math.max(6, bw * S.vh / W);
@@ -1445,6 +1446,15 @@ function journeyDraw(c, S, run) {
   if (!ctx) return;
   ctx.clearRect(0, 0, cw, ch);
   ctx.imageSmoothingEnabled = false;
+  if (C) {
+    const a = camAt(C, 0, 0), b = camAt(C, TITLE_VW, C.view || S.vh);
+    const lw = Math.max(1, dpr), fy = (ch - 2 * m) / S.vh;
+    const x0 = Math.max(lw / 2, (a.x + S.scroll) / W * cw), x1 = Math.min(cw - lw / 2, (b.x + S.scroll) / W * cw);
+    const y0 = Math.max(m, m + a.y * fy), y1 = Math.min(ch - m, m + b.y * fy);
+    ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = lw;
+    if (x1 > x0 && y1 > y0) ctx.strokeRect(x0, y0, x1 - x0, y1 - y0);
+    c.dataset.view = [x0, x1].map(v => (v / cw).toFixed(3)).join(' ');
+  }
   const s = HELM_PX * dpr;
   for (const r of S.runners) {
     const q = run.players[r.id];
