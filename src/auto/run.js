@@ -346,6 +346,67 @@ export function rowMove(run, p, row, a, b) {
   const t = arr[a]; arr[a] = arr[b]; arr[b] = t;
   return true;
 }
+// (owner, bag-drag round) a mod dropped between two of a gun's mods: one from bag slot i goes in before mod slot b; the
+// mods from b on shift right into the first empty slot at or after b. No empty slot there: refused (nothing changed)
+/** @param {AutoRun} run @param {number} i @param {number} p @param {number} gi @param {number} b @returns {boolean} */
+export function insertMod(run, i, p, gi, b) {
+  const it = run.bag[i], pl = run.players[p], g = pl && pl.guns[gi];
+  if (!it || it.kind !== 'mod' || !it.id || !g || b < 0 || b >= g.slots.length) return false;
+  const k = g.slots.indexOf(null, b);
+  if (k < 0) return false;
+  for (let j = k; j > b; j--) g.slots[j] = g.slots[j - 1];
+  g.slots[b] = it.id;
+  takeOne(run, i);
+  return true;
+}
+// a gun's mod slot a moved to just before slot b (b = slots.length: the end) in the same gun: the ones between slide
+// over one (an insert, not a swap). False if a is empty or the move changes nothing
+/** @param {AutoRun} run @param {number} p @param {number} gi @param {number} a @param {number} b @returns {boolean} */
+export function modMoveTo(run, p, gi, a, b) {
+  const pl = run.players[p], g = pl && pl.guns[gi];
+  if (!g || a < 0 || a >= g.slots.length || b < 0 || b > g.slots.length || !g.slots[a] || b === a || b === a + 1) return false;
+  const s = g.slots, id = s[a];
+  if (a < b) { for (let j = a; j < b - 1; j++) s[j] = s[j + 1]; s[b - 1] = id; }
+  else { for (let j = a; j > b; j--) s[j] = s[j - 1]; s[b] = id; }
+  return true;
+}
+// (owner, bag-drag round) a group of bag slots moved together onto bag slot j: they leave their slots, then go (in bag
+// order) into the empty slots from j on (round to the top if the end is reached). Always fits: they freed as many
+/** @param {AutoRun} run @param {number[]} idxs @param {number} j @returns {boolean} */
+export function bagGroupMove(run, idxs, j) {
+  const from = [...new Set(idxs)].filter(i => i >= 0 && i < run.bag.length && !!run.bag[i]).sort((a, b) => a - b);
+  if (!from.length || j < 0 || j >= run.bag.length) return false;
+  const items = from.map(i => run.bag[i]);
+  from.forEach(i => { run.bag[i] = null; });
+  const N = run.bag.length;
+  let k = j;
+  for (const it of items) {
+    let t = 0;
+    while (run.bag[k] && t < N) { k = (k + 1) % N; t++; }
+    run.bag[k] = it;
+  }
+  return true;
+}
+// a group of bag slots into a gun's mod slots: the mods (one per slot, a stack's copies one after another) fill the
+// gun's empty slots from s on, as many as fit; the rest (and anything not a mod) stay in the bag. Returns how many went in
+/** @param {AutoRun} run @param {number[]} idxs @param {number} p @param {number} gi @param {number} s @returns {number} */
+export function fitMods(run, idxs, p, gi, s) {
+  const pl = run.players[p], g = pl && pl.guns[gi];
+  if (!g || s < 0 || s >= g.slots.length) return 0;
+  const from = [...new Set(idxs)].sort((a, b) => a - b);
+  let n = 0, k = s;
+  for (const i of from) {
+    while (run.bag[i] && run.bag[i].kind === 'mod' && run.bag[i].id) {
+      k = g.slots.indexOf(null, k);
+      if (k < 0) return n;
+      g.slots[k] = run.bag[i].id;
+      takeOne(run, i);
+      n++;
+    }
+  }
+  return n;
+}
+
 // slot s of a row into bag slot j: an empty slot or the same stack takes it; a single item there that fits the row swaps
 // with it; anything else: false (the screen falls back to the first free bag slot)
 /** @param {AutoRun} run @param {number} p @param {SlotRow} row @param {number} s @param {number} j @returns {boolean} */

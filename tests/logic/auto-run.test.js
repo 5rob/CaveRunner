@@ -238,6 +238,29 @@ check('the Auto tab holds the auto group', G.DEV_TABS.some(t => t[0] === 'auto' 
   check('an empty slot moves nothing', !G.rowMove(run, 0, { gun: 0 }, 0, 1));
 }
 
+// (owner, bag-drag round) insert between two mods, slot-to-slot inserts, group moves
+{
+  const run = G.newRun(8), g = run.players[0].guns[0];
+  run.bag = run.bag.map(() => null);
+  run.bag[0] = { kind: 'mod', id: 'bolt', n: 2 };
+  g.slots = ['a', 'b', 'c', null, 'd'];
+  check('insertMod: before slot 1, the rest shift into the first empty', G.insertMod(run, 0, 0, 0, 1) && g.slots.join() === 'a,bolt,b,c,d' && run.bag[0].n === 1, g.slots);
+  check('insertMod: no empty slot at or after: refused, nothing changed', !G.insertMod(run, 0, 0, 0, 1) && g.slots.join() === 'a,bolt,b,c,d' && run.bag[0].n === 1);
+  g.slots = ['a', 'b', 'c', 'd', null];
+  check('modMoveTo: forward (0 before 3)', G.modMoveTo(run, 0, 0, 0, 3) && g.slots.join() === 'b,c,a,d,', g.slots);
+  check('modMoveTo: back (3 before 0)', G.modMoveTo(run, 0, 0, 3, 0) && g.slots.join() === 'd,b,c,a,', g.slots);
+  check('modMoveTo: onto itself refused', !G.modMoveTo(run, 0, 0, 1, 1) && !G.modMoveTo(run, 0, 0, 1, 2));
+  run.bag = run.bag.map(() => null);
+  run.bag[1] = { kind: 'mod', id: 'x', n: 1 }; run.bag[3] = { kind: 'gold', n: 9 }; run.bag[5] = { kind: 'mod', id: 'y', n: 1 }; run.bag[11] = { kind: 'mod', id: 'z', n: 1 };
+  check('bagGroupMove: into the empty slots from j on, in order', G.bagGroupMove(run, [5, 1, 3], 10) && run.bag[10].id === 'x' && run.bag[11].id === 'z' && run.bag[12].kind === 'gold' && run.bag[13].id === 'y'
+    && !run.bag[1] && !run.bag[3] && !run.bag[5]);
+  g.slots = ['a', null, 'b', null, null];
+  run.bag[13].n = 2;
+  check('fitMods: fills empty slots from s on, the rest stay', G.fitMods(run, [10, 12, 13], 0, 0, 1) === 3 && g.slots.join() === 'a,x,b,y,y' && !run.bag[10] && !run.bag[13] && run.bag[12].kind === 'gold', g.slots);
+  run.bag[0] = { kind: 'mod', id: 'q', n: 1 };
+  check('fitMods: no room: none', G.fitMods(run, [0], 0, 0, 0) === 0 && run.bag[0].id === 'q');
+}
+
 // (owner, v1.0.43) a gun out of the Guns row into a chosen bag slot; swaps between gun slots
 {
   const run = G.newRun(5), pl = run.players[0], g0 = pl.guns[0];
