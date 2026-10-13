@@ -1009,6 +1009,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .anavg{font:900 24px system-ui,sans-serif;line-height:1;display:flex;align-items:center;justify-content:center}
 .apix,.ahelm{display:block;flex:none;pointer-events:none}
 .apixg{display:block;flex:none;width:64%;height:64%;image-rendering:pixelated;pointer-events:none}
+.anug{display:block;flex:none;width:72%;height:72%;image-rendering:pixelated;pointer-events:none}   /* (v1.0.74) gold and crystals: the world sprite (icons.js NuggetIcon) */
 .anavrow.slots{justify-content:flex-start;gap:6px;overflow-x:auto;overflow-y:hidden;touch-action:pan-x;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
 .anavs{flex:0 0 48px;width:48px;height:48px}
 .anavs:not(.full){opacity:.55}
@@ -1151,6 +1152,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .mgtile.off{opacity:.4}
 .mgtile.on{box-shadow:0 0 0 2px #fff}
 .mgtile.got{transform:scale(1.18);background:#4a3a78}
-.mginfo{margin-top:8px;font-size:13px;color:#d8cff0}
+.mginfo{margin:2px 0 8px;font-size:13px;color:#d8cff0}
 .mginfo b{font-weight:800}
 .mginfo p{margin:4px 0 0;color:#b9add8}

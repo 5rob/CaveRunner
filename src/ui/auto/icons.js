@@ -119,5 +119,5 @@ export function NuggetIcon({ kind }) {
     if (kind === 'gold') drawNugget(ctx, NUG_PX / 2, NUG_PX / 2 + 1, NUG_PX * 0.42, 2.3, 0);
     else drawNugget(ctx, NUG_PX / 2, NUG_PX / 2, NUG_PX * 0.46, 3.7, 0, kind === 'green' ? GREEN_PAL : CRYSTAL_PAL);
   }, [kind]);
-  return h('canvas', { ref, className: 'apixg anug' });
+  return h('canvas', { ref, className: 'anug' });
 }

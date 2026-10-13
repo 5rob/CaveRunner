@@ -132,6 +132,7 @@ for (const id of ['eorb', 'esph', 'zap', 'chain', 'void', 'cross', 'nuke', 'mete
   for (let t = 0; t < 2; t += 1 / 60) G.titleStep(S, 1 / 60);
   const r = S.runners[0];
   S.lvl.step = null; S.pace = 0; S.spawn = 1e9; S.still = false; S.foes.length = 0;
+  r.mode = 'run'; r.dig = 0; r.y = G.titleFloor(S.scroll + r.x + G.PW / 2, S) - G.PH;   // (v1.0.74: tall levels' flights end anywhere) on the floor
   const k = G.enemyFor('rotta', 1), fy = r.y + G.PH - k.r - 1;
   const foe = { x: S.scroll + r.x + 50, y: fy, ty: fy, r: k.r, phase: 0, hp: 9999, hpMax: 9999, cd: 99, flash: 0, lx: 0, ly: 1,
     hx: S.scroll + r.x + 50, hy: fy, tgt: null, rest: 99, k, touch: 0, charge: 0 };

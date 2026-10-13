@@ -122,7 +122,8 @@ check('… and ignores one out of its reach', neFar.first < 0, neFar);
 /** @param {string[]} slots */
 function drop(slots) {
   let dy = 0, n = 0, vyMax = 0;
-  watch(['auto'].concat(slots, 'bolt'), (s) => { if (s.y0 == null) s.y0 = s.y; if (s.age > 0.15 && s.age < 0.25) { dy += s.y - s.y0; n++; } vyMax = Math.max(vyMax, Math.abs(s.vy)); });
+  // (v1.0.74) its fall: the speed down it gains (s.vy less its first), not the drop (that hangs on the way he aims)
+  watch(['auto'].concat(slots, 'bolt'), (s) => { if (s.vy0 == null) s.vy0 = s.vy; if (s.age > 0.15 && s.age < 0.25) { dy += (s.vy - s.vy0) * 0.1; n++; } vyMax = Math.max(vyMax, Math.abs(s.vy)); });
   return { dy: n ? dy / n : 0, vyMax };
 }
 const pd = drop([]), gd = drop(['gravmod']), fd = drop(['float']), fl = drop(['flat']);

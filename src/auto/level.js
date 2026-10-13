@@ -378,13 +378,14 @@ function exitStep(S, L, dt) {
 /** @param {import('../art/titlescene.js').TitleScene} S @param {LevelState} L @param {number} dt */
 function stepOff(S, L, dt) {
   const px = L.plan.padX - S.scroll;
+  if (S.runners.length < 2) return;   // (alone: he waits on the pad as ever)
   S.runners.forEach((r, i) => {
     if (!L.arrived[i] || r.out) return;
     const tx = px + PAD_HALF + 4 + (S.runners.length - 1 - i) * 9 - PW / 2, d = tx - r.x, mv = Math.sign(d) * Math.min(Math.abs(d), LVL_WALK * dt);
     r.x += mv;
     if (Math.abs(mv) > 1e-3) { r.face = 1; r.gait += Math.abs(mv) * 0.3; }
     r.stand = Math.abs(mv) <= 1e-3;
-    r.y = titleSurf(S, r.x + PW / 2, r.y + PH - 6, 1) - PH;
+    r.y = titleFloor(S.scroll + r.x + PW / 2, S) - PH;   // (the level's floor, as the pad's)
   });
 }
 

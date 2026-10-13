@@ -123,7 +123,8 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   check('the scene kept running (no pause)', await page.$eval('.aplaycvs', c => c.dataset.t) !== t1);
 
   // stage 4b: A on the exit pad takes the team into the level; the level's exit pad brings it home, tier + 1, healed
-  await page.evaluate(() => { const S = window.__title.S, r = S.runners[0]; r.x = hubStopX('exit') - PW / 2; r.vx = 0; hubState(S).lx = hubStopX('exit'); });
+  // (v1.0.74: they go through the pad one at a time) the team lined up behind him, as it follows him
+  await page.evaluate(() => { const S = window.__title.S; S.runners.forEach((r, i) => { r.x = hubStopX('exit') - PW / 2 - 16 * i; r.vx = 0; }); hubState(S).lx = hubStopX('exit'); });
   await page.waitForTimeout(100);
   await page.locator('.abtn.aa').dispatchEvent('pointerdown');
   let lvl = false;

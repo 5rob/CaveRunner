@@ -45,15 +45,15 @@ export function ModGrid({ onMod }) {
   const m = pick ? MODS[pick] : null;
   return h('div', { className: 'modgrid' },
     h('p', { className: 'devnote' }, 'Tap a mod for what it does; hold it to put one in the bag.'),
+    m ? h('div', { className: 'mginfo' },
+      h('b', { style: { color: famCol(pick || '') } }, m.name),
+      h('span', null, ' · ' + ((FAMILIES[FAMILY_OF[pick || ''] || 'shots'] || FAMILIES.shots).name) + (m.off ? ' · off in Auto' : '') + ' · ' + (m.mana || 0) + ' mana'),
+      m.info ? h('p', null, m.info) : null) : null,
     h('div', { className: 'mgtiles' }, gridIds().map(id => {
       const M = MODS[id], col = famCol(id);
       return h('button', { key: id, className: 'mgtile' + (M.off ? ' off' : '') + (id === pick ? ' on' : '') + (id === got ? ' got' : ''), 'data-mod': id,
         style: { borderColor: col }, title: M.name,
         onPointerDown: e => down(e, id), onPointerUp: up, onPointerLeave: cancel, onPointerCancel: cancel, onContextMenu: e => e.preventDefault() },
         h(GlyphIcon, { glyph: M.glyph || '?', col }));
-    })),
-    m ? h('div', { className: 'mginfo' },
-      h('b', { style: { color: famCol(pick || '') } }, m.name),
-      h('span', null, ' · ' + ((FAMILIES[FAMILY_OF[pick || ''] || 'shots'] || FAMILIES.shots).name) + (m.off ? ' · off in Auto' : '') + ' · ' + (m.mana || 0) + ' mana'),
-      m.info ? h('p', null, m.info) : null) : null);
+    })));
 }
