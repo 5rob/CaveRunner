@@ -1056,6 +1056,19 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 /* (owner, v1.0.46) grown up over the play area: above the nav and the play area's buttons */
 .abag.big{z-index:8;background:#0e091a}
 .abag.big+.abtns{z-index:9}   /* the stick's dome still over it */
+/* (owner, after v1.0.74) a bag gun's view over the play area (AutoScreen.js BagGunView) */
+.abgun{--text:#f1ecff;--muted:rgba(241,236,255,0.62);--pad:#1d1531;--ring:#2a2140;--good:#5ee05a;--bad:#ff6a5a;position:absolute;inset:0;z-index:6;
+  display:flex;flex-direction:column;gap:6px;padding:8px;box-sizing:border-box;background:#0e091a;color:var(--text);overflow:hidden}
+.abghead{display:flex;align-items:center;gap:8px;font:700 14px system-ui,sans-serif;padding-right:96px}   /* (clear of the Dev and pause buttons over it) */
+.abghead>span{color:var(--muted);font-size:11px;font-weight:500}
+.abgicon{width:34px;height:34px;display:flex;align-items:center;justify-content:center}
+.abgclose{margin-left:auto;width:34px;height:34px;border-radius:50%;border:2px solid #3d2f5c;background:#1d1531;color:#f1ecff;font:700 18px system-ui,sans-serif;padding:0}
+.abgbody{flex:1 1 0;min-height:0;display:flex;gap:8px}
+.abgbody .gstats{flex:0 0 44%;border:1px solid var(--ring);padding:4px 7px 2px;overflow-y:auto}
+.abgbody .gsrow{font:700 9.5px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.04em;text-transform:uppercase}
+.abgbody .gsrow b{font:800 10.5px ui-monospace,SFMono-Regular,Menlo,monospace}
+.abgmods{flex:1 1 0;min-width:0;overflow-y:auto;display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:min-content;gap:6px;align-content:start;touch-action:pan-y}
+.abgnote{margin:0;font:500 11px system-ui,sans-serif;color:var(--muted);text-align:center}
 .aslot{position:relative;aspect-ratio:1;border-radius:10px;background:#1d1531;border:2px solid rgba(255,255,255,0.1);
   box-sizing:border-box;display:flex;align-items:center;justify-content:center;overflow:hidden}
 .aslot.full{border-color:var(--ic,rgba(255,179,90,0.45));background:#2c1f45}
@@ -1156,7 +1169,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 /* (owner v1.0.74) the Dev panel's mod grid (ui/modgrid.js) */
 .modgrid{padding:6px 10px 10px;border-bottom:1px solid #3d2f5c}
 .mgtiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(44px,1fr));gap:5px}
-.mgtile{aspect-ratio:1;display:flex;align-items:center;justify-content:center;padding:0;background:#2c1f45;border:2px solid #555;border-radius:8px;touch-action:none;user-select:none;-webkit-user-select:none;transition:transform .12s}
+.mgtile{position:relative;aspect-ratio:1;display:flex;align-items:center;justify-content:center;padding:0;background:#2c1f45;border:2px solid #555;border-radius:8px;touch-action:pan-y;user-select:none;-webkit-user-select:none;transition:transform .12s}
 .mgtile .apixg{width:70%;height:70%}
 .mgtile.off{opacity:.4}
 .mgtile.on{box-shadow:0 0 0 2px #fff}
@@ -2052,7 +2065,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   DEV_GROUPS.push(["automaps", "Auto: maps"]);
   Object.assign(DEV_DEFAULTS, {
     autoLvlMin: 2,
-    autoLvlPace: 2,
+    autoLvlPace: 1,
+    autoLvlPaceTop: 3,
+    autoLvlPaceLv: 20,
     autoLvlHurry: 1.75,
     autoLvlSlow: 0.3,
     autoLvlElite: 0.4,
@@ -2066,7 +2081,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   });
   DEV_META.push(
     { k: "autoLvlMin", g: "autolevel", label: "Level length (minutes at normal pace)", min: 0.2, max: 20, step: 0.1 },
-    { k: "autoLvlPace", g: "autolevel", label: "Normal pace (× the menu’s scroll, 34 world units / s)", min: 0.1, max: 4, step: 0.05 },
+    { k: "autoLvlPace", g: "autolevel", label: "Normal pace at level 1 (× the menu’s scroll, 34 world units / s)", min: 0.1, max: 4, step: 0.05 },
+    { k: "autoLvlPaceTop", g: "autolevel", label: "Normal pace rises evenly to this (× the menu’s scroll) …", min: 0.1, max: 6, step: 0.05 },
+    { k: "autoLvlPaceLv", g: "autolevel", label: "… by this level (held after)", min: 2, max: 100, step: 1 },
     { k: "autoLvlHurry", g: "autolevel", label: "Stick pushed all the way right hurries to (× pace)", min: 1, max: 4, step: 0.05 },
     { k: "autoLvlSlow", g: "autolevel", label: "Stick pushed all the way left slows to (× pace; never stops)", min: 0.05, max: 1, step: 0.05 },
     { k: "autoLvlElite", g: "autolevel", label: "An elite alive and near slows to (× pace)", min: 0, max: 1, step: 0.05 },
@@ -2108,6 +2125,20 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "autoWebHalt", g: "autoblocks", label: "Slowed below this the team halts (clears the webs, or is blocked)", min: 0, max: 1, step: 0.01 }
   );
   DEV_GROUPS.push(["autoblocks", "Auto: blocks"]);
+  Object.assign(DEV_DEFAULTS, { autoOrbChance: 0.1, autoOrbMax: 3, autoOrbSpokes: 9, autoOrbR: 50, autoOrbGap: 5 });
+  DEV_META.push(
+    { k: "autoOrbChance", g: "autoorb", label: "Orb web: chance at each spot in the webs zone (× its density)", min: 0, max: 1, step: 0.01 },
+    { k: "autoOrbMax", g: "autoorb", label: "Orb webs at once at most", min: 0, max: 10, step: 1 },
+    { k: "autoOrbSpokes", g: "autoorb", label: "Orb web: spokes tried", min: 5, max: 16, step: 1 },
+    { k: "autoOrbR", g: "autoorb", label: "Orb web: longest spoke (world units)", min: 15, max: 120, step: 1 },
+    { k: "autoOrbGap", g: "autoorb", label: "Orb web: spiral spacing (world units)", min: 2, max: 15, step: 0.5 }
+  );
+  DEV_GROUPS.push(["autoorb", "Auto: orb webs"]);
+  Object.assign(DEV_DEFAULTS, { autoSpiderRock: 0.28, autoSpiderMine: 0.35 });
+  DEV_META.push(
+    { k: "autoSpiderRock", g: "autoorb", label: "Spider zone: boulders in its open air (share; more: more rock)", min: 0, max: 0.6, step: 0.01 },
+    { k: "autoSpiderMine", g: "autoorb", label: "A mine works taken over by spiders (chance; webs between its frames)", min: 0, max: 1, step: 0.05 }
+  );
   Object.assign(DEV_DEFAULTS, { autoGunDelay: 0.25, autoGunRech: 0.8, autoGunMana: 120, autoGunRegen: 40, autoGunSpread: 4 });
   DEV_META.push(
     { k: "autoGunDelay", g: "autoguns", label: "Starter gun: cast delay (s)", min: 0.02, max: 2, step: 0.01 },
@@ -2450,7 +2481,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   DEV_TABS.splice(DEV_TABS.length - 1, 0, ["firesim", "Fire sim", ["firelab", "firefx", "autofire", "firesilk", "fire"]]);
   DEV_TABS.splice(DEV_TABS.length - 2, 0, ["traj", "Trajectory", ["trajorbit", "trajspiral", "trajboomer", "trajpong", "trajhoming", "trajseeker", "trajnear", "trajaim", "trajgrav", "trajfloat", "trajflat"]]);
-  DEV_TABS.splice(DEV_TABS.length - 2, 0, ["auto", "Auto", ["auto", "autohub", "automaps", "autolevel", "autoblocks", "autoguns", "autoperks", "autofoes", "autodeath", "autoloot", "autochests", "autobag", "autothrow"]]);
+  DEV_TABS.splice(DEV_TABS.length - 2, 0, ["auto", "Auto", ["auto", "autohub", "automaps", "autolevel", "autoblocks", "autoorb", "autoguns", "autoperks", "autofoes", "autodeath", "autoloot", "autochests", "autobag", "autothrow"]]);
   var DEV_KEY = "caverunner-dev";
   var DEV = Object.assign({}, DEV_DEFAULTS);
   var dueMs = (floor) => floor === 1 ? DEV.due1 * 6e4 : DEADLINE_MS;
@@ -9662,6 +9693,89 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return false;
   }
 
+  // src/world/orbweb.js
+  var ORB_GAP = 2.1;
+  var ORB_FRAME = 2.9;
+  var ORB_DROP = 0.12;
+  function orbWeb(solid, cx, cy, R, o = {}) {
+    const N = o.spokes ?? 9, maxR = o.maxR ?? 50, minR = o.minR ?? 8, gap = o.gap ?? 5, hole = o.hole ?? 4;
+    if (solid(cx, cy)) return null;
+    const a0 = R() * Math.PI * 2;
+    const ray = [];
+    for (let i = 0; i < N; i++) {
+      const a = a0 + (i + (R() - 0.5) * 0.45) * Math.PI * 2 / N, dx = Math.cos(a), dy = Math.sin(a);
+      let d = 1;
+      while (d <= maxR && !solid(cx + dx * d, cy + dy * d)) d += 1;
+      if (d <= maxR && d < minR) return null;
+      ray.push({ a, dx, dy, len: d - 1, hit: d <= maxR });
+    }
+    const hits = ray.filter((r) => r.hit);
+    if (hits.length < 3) return null;
+    const frames = [];
+    for (let k = 0; k < hits.length; k++) {
+      const A = hits[k], B = hits[(k + 1) % hits.length], g = (k + 1 < hits.length ? B.a : B.a + Math.PI * 2) - A.a;
+      if (g <= ORB_GAP) continue;
+      if (frames.length || g > ORB_FRAME) return null;
+      const ax = cx + A.dx * A.len, ay = cy + A.dy * A.len, bx = cx + B.dx * B.len, by = cy + B.dy * B.len;
+      if (solid((ax + bx) / 2, (ay + by) / 2)) return null;
+      frames.push({ ax, ay, bx, by, spiral: false, ain: { x: cx + A.dx * (A.len + 2), y: cy + A.dy * (A.len + 2) }, bin: { x: cx + B.dx * (B.len + 2), y: cy + B.dy * (B.len + 2) } });
+      const ex = bx - ax, ey = by - ay;
+      for (const r of ray) {
+        if (r.hit) continue;
+        const u = ((r.a - A.a) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+        if (u <= 0 || u >= g) continue;
+        const den = r.dx * ey - r.dy * ex;
+        if (Math.abs(den) < 1e-6) continue;
+        const t = ((ax - cx) * ey - (ay - cy) * ex) / den;
+        if (t >= minR && t <= maxR * 1.6) {
+          r.len = t;
+          r.hit = true;
+          r.frame = true;
+        }
+      }
+    }
+    const sp = ray.filter((r) => r.hit);
+    if (sp.length < 5) return null;
+    const out = sp.map((s) => ({
+      ax: cx + s.dx * s.len,
+      ay: cy + s.dy * s.len,
+      bx: cx,
+      by: cy,
+      spiral: false,
+      ain: s.frame ? null : { x: cx + s.dx * (s.len + 2), y: cy + s.dy * (s.len + 2) }
+    }));
+    out.push(...frames);
+    const n = sp.length, jit = () => (R() - 0.5) * gap * 0.25;
+    const far = Math.max(...sp.map((s) => s.len));
+    const at = (k, i) => {
+      const s = sp[i], r = hole + gap * (k + i / n) + jit();
+      return { x: cx + s.dx * r, y: cy + s.dy * r, ok: r <= s.len * 0.9 };
+    };
+    let p = at(0, 0);
+    for (let k = 0; hole + gap * k < far; k++) for (let i = 0; i < n; i++) {
+      const q = i + 1 < n ? at(k, i + 1) : at(k + 1, 0);
+      if (p.ok && q.ok && !solid((p.x + q.x) / 2, (p.y + q.y) / 2)) out.push({ ax: p.x, ay: p.y, bx: q.x, by: q.y, spiral: true, ain: null });
+      p = q;
+    }
+    return out;
+  }
+  function orbPlace(solid, cx, cy, R, o = {}) {
+    const tries = o.tries ?? 4, spread = o.spread ?? 20;
+    let best = null;
+    for (let t = 0; t < tries; t++) {
+      const x = cx + (t ? (R() - 0.5) * 2 * spread : 0), y = cy + (t ? (R() - 0.5) * 2 * spread : 0);
+      const W0 = orbWeb(solid, x, y, R, o);
+      if (!W0) continue;
+      const sp = W0.filter((s) => !s.spiral), n = sp.length;
+      const mx = sp.reduce((a, s) => a + s.ax, 0) / n, my = sp.reduce((a, s) => a + s.ay, 0) / n;
+      const len = sp.reduce((a, s) => a + Math.hypot(s.ax - x, s.ay - y), 0) / n;
+      const W = orbWeb(solid, mx, my + len * ORB_DROP, R, o) || W0;
+      const m = W.filter((s) => !s.spiral).length;
+      if (!best || m > best.n || m === best.n && len < best.len) best = { W, n: m, len };
+    }
+    return best ? best.W : null;
+  }
+
   // src/spells/cast.js
   var MIN_CAST = 0.016;
   var MIN_RECH = 0.05;
@@ -13179,23 +13293,42 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     return true;
   }
-  function bagGroupMove(run, idxs, j) {
-    const from = [...new Set(idxs)].filter((i) => i >= 0 && i < run.bag.length && !!run.bag[i]).sort((a, b) => a - b);
-    if (!from.length || j < 0 || j >= run.bag.length) return false;
-    const items = from.map((i) => run.bag[i]);
-    from.forEach((i) => {
-      run.bag[i] = null;
-    });
-    const N = run.bag.length;
+  function bagGroupPlan(run, idxs, j, anchor) {
+    const from = [...new Set(idxs)].filter((i) => i >= 0 && i < run.bag.length && !!run.bag[i]).sort((a2, b) => a2 - b);
+    if (!from.length || j < 0 || j >= run.bag.length) return null;
+    const N = run.bag.length, a = anchor != null && from.includes(anchor) ? anchor : -1;
+    const ar = Math.floor(a / BAG_COLS), ac = a % BAG_COLS, jr = Math.floor(j / BAG_COLS), jc = j % BAG_COLS;
+    const to = [];
+    if (a >= 0) for (const i of from) {
+      const r = jr + Math.floor(i / BAG_COLS) - ar, c = jc + i % BAG_COLS - ac, k2 = r * BAG_COLS + c;
+      if (c < 0 || c >= BAG_COLS || r < 0 || k2 >= N || run.bag[k2] && !from.includes(k2)) break;
+      to.push(k2);
+    }
+    if (a >= 0 && to.length === from.length) return { from, to, shape: true };
+    const busy = run.bag.map((it, i) => !!it && !from.includes(i));
+    to.length = 0;
     let k = j;
-    for (const it of items) {
+    for (let n = 0; n < from.length; n++) {
       let t = 0;
-      while (run.bag[k] && t < N) {
+      while (busy[k] && t < N) {
         k = (k + 1) % N;
         t++;
       }
-      run.bag[k] = it;
+      busy[k] = true;
+      to.push(k);
     }
+    return { from, to, shape: false };
+  }
+  function bagGroupMove(run, idxs, j, anchor) {
+    const P2 = bagGroupPlan(run, idxs, j, anchor);
+    if (!P2) return false;
+    const items = P2.from.map((i) => run.bag[i]);
+    P2.from.forEach((i) => {
+      run.bag[i] = null;
+    });
+    P2.to.forEach((k, n) => {
+      run.bag[k] = items[n];
+    });
     return true;
   }
   function fitMods(run, idxs, p, gi, s) {
@@ -13234,6 +13367,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       return true;
     }
     return false;
+  }
+  function bagGunModOut(run, b, s, j) {
+    const it = run.bag[b], g = it && it.kind === "gun" ? it.gun : null, id = g ? g.slots[s] : null;
+    if (!g || !id) return false;
+    const out = { kind: "mod", id, n: 1 };
+    const t = j >= 0 && j < run.bag.length ? run.bag[j] : void 0;
+    if (t === null) run.bag[j] = out;
+    else if (t && itemKey(t) === itemKey(out)) t.n += 1;
+    else if (bagAdd(run, out)) return false;
+    g.slots[s] = null;
+    return true;
   }
   function gunToBag(run, p, gs, j) {
     const pl = run.players[p], g = pl && pl.guns[gs], b = run.bag[j];
@@ -13537,7 +13681,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var TITLE_FIRE = 600;
   var TCELL = 2;
   var TITLE_ZLEN = [200, 360];
-  var TITLE_ZONES = ["moss", "webs", "timber", "paved", "grove", "winding"];
+  var TITLE_ZONES = ["moss", "webs", "timber", "paved", "grove", "winding", "spider"];
+  var TITLE_MENU_ZONES = TITLE_ZONES.filter((z) => z !== "spider");
   var ZMIX = 40;
   var ZBLEND = 28;
   var TITLE_PACKY = 45;
@@ -13640,8 +13785,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     // spiders turn up in the layers too (the level's roster spawns anywhere)
     paved: [["rotta", 1]],
     grove: [["meduusa", 3], ["rotta", 1]],
-    winding: [["meduusa", 2], ["hamahakki", 1], ["rotta", 1]]
+    winding: [["meduusa", 2], ["hamahakki", 1], ["rotta", 1]],
+    spider: [["hamahakki", 5], ["meduusa", 1]]
   };
+  var zoneHome = (Z) => TITLE_HOME[Z.spid ? "spider" : Z.z] || TITLE_HOME.moss;
   function titleRng(seed) {
     let a = seed >>> 0;
     return () => {
@@ -13652,13 +13799,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       return ((t ^ t >>> 14) >>> 0) / 4294967296;
     };
   }
-  function titlePlan(seed) {
-    return { R: titleRng(seed * 7919 + 13 >>> 0), z: [] };
+  function titlePlan(seed, kinds = TITLE_MENU_ZONES) {
+    return { R: titleRng(seed * 7919 + 13 >>> 0), z: [], kinds };
   }
   function zoneIn(P2, wx) {
     const Z = P2.z, R = P2.R;
-    if (!Z.length) Z.push(mkZone(R, -300, []));
-    while (Z[Z.length - 1].x1 <= wx) Z.push(mkZone(R, Z[Z.length - 1].x1, Z));
+    if (!Z.length) Z.push(mkZone(R, -300, [], P2.kinds));
+    while (Z[Z.length - 1].x1 <= wx) Z.push(mkZone(R, Z[Z.length - 1].x1, Z, P2.kinds));
     let lo = 0, hi = Z.length - 1;
     if (wx < Z[0].x0) return Z[0];
     while (lo < hi) {
@@ -13669,14 +13816,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return Z[lo];
   }
   var titleZoneAdd = (P2, x0) => {
-    const z = mkZone(P2.R, x0, P2.z);
+    const z = mkZone(P2.R, x0, P2.z, P2.kinds);
     P2.z.push(z);
     return z;
   };
-  function mkZone(R, x0, Z) {
-    const last = Z.slice(-2).map((q) => q.z), can = TITLE_ZONES.filter((z2) => !last.includes(z2));
+  function mkZone(R, x0, Z, kinds) {
+    const last = Z.slice(-2).map((q) => q.z), can = kinds.filter((z2) => !last.includes(z2));
     const z = can[Math.floor(R() * can.length)], len = TITLE_ZLEN[0] + R() * (TITLE_ZLEN[1] - TITLE_ZLEN[0]);
-    return {
+    const Zn = {
       z,
       x0,
       x1: x0 + len,
@@ -13691,6 +13838,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       dens: 0.6 + R() * 0.8,
       mine: z === "timber" ? mkMine(R, x0, x0 + len) : void 0
     };
+    const v = titleRng(Math.floor(x0) * 53 + 11 >>> 0)();
+    if (z === "spider") Zn.sv = v < 0.4 ? "rocks" : v < 0.7 ? "vines" : "beams";
+    if (z === "timber" && v < DEV.autoSpiderMine) Zn.spid = true;
+    return Zn;
   }
   function mkMine(R, x0, x1) {
     const n = R() < 0.3 ? 1 : R() < 0.55 ? 2 : 3, ein = Math.floor(R() * n), eout = Math.floor(R() * n);
@@ -13812,6 +13963,36 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   var zCeil = (x, Z, B) => Z.z === "winding" ? windMid(x, Z, B) - windHalf(x, Z) : B.top - 4 + Z.co + (Math.sin(x * 0.018 * Z.cf + Z.ph[0]) * 10 + Math.sin(x * 0.049 * Z.cf + Z.ph[1]) * 6) * Z.ca * bandK(B) + (bandK(B) - 1) * 45 * titleNoise(x / 90 + Z.ph[2], 9.1);
   var zFloor = (x, Z, B) => Z.z === "winding" ? windMid(x, Z, B) + windHalf(x, Z) : B.bot - 22 + Z.fo + (Math.sin(x * 0.021 * Z.ff + Z.ph[2]) * 7 + Math.sin(x * 0.057 * Z.ff + Z.ph[3]) * 4) * Z.fa * bandK(B) - (bandK(B) - 1) * 30 * titleNoise(x / 80 + Z.ph[3], 4.3);
+  function spiderRock(wx, y, Z, cy, fy) {
+    const edge = Math.min(wx - Z.x0, Z.x1 - wx);
+    if (edge < 24 || y < cy || y > fy) return false;
+    const fade = Math.max(0, (70 - edge) / 70) * 0.15;
+    if (y > cy + 22 && y < fy - 26) {
+      const n = titleNoise(wx / 32 + Z.ph[0], y / 24 + Z.ph[1]) * 0.84 + titleNoise(wx / 8 + Z.ph[2], y / 8 + Z.ph[3]) * 0.16;
+      if (n > 1 - DEV.autoSpiderRock + fade) return true;
+    }
+    const k = Math.floor(wx / 34), i = Z.i * 7, sx = k * 34 + 8 + h2(k, i + 21) * 18, sw = 3 + h2(k, i + 22) * 5, d = Math.abs(wx - sx) / sw;
+    if (d < 1 && h2(k, i + 25) < 0.6) {
+      const len = (16 + h2(k, i + 23) * 44) * (1 - d * d) * (1 - fade * 3);
+      return h2(k, i + 24) < 0.55 ? y < cy + len : y > fy - len * 0.6;
+    }
+    return false;
+  }
+  function spiderBeam(wx, y, Z, cy, fy) {
+    if (Math.min(wx - Z.x0, Z.x1 - wx) < 30 || y < cy || y >= fy) return -1;
+    for (let j = 0; j < 2; j++) {
+      const k = Math.floor(wx / 64), q = k * 2 + j, i = Z.i * 5;
+      if (h2(q, i + 31) > 0.7) continue;
+      const x0 = k * 64 + h2(q, i + 32) * 24, w = 24 + h2(q, i + 33) * 34, by = cy + 18 + h2(q, i + 34) * Math.max(0, fy - cy - 50), u = wx - x0;
+      if (u < 0 || u >= w || y < by) continue;
+      const under = y - by;
+      if (under < 2) return TM.BEAM;
+      if (under < 4) return TM.BEAMD;
+      if (u < 3 || u >= w - 3) return u < 1.5 || u >= w - 3 && u < w - 1.5 ? TM.BEAM : TM.BEAMD;
+      if (u >= 3 && u <= 11 && Math.abs(under - 4 - (11 - u)) < 1 || u >= w - 11 && u < w - 3 && Math.abs(under - 4 - (u - (w - 11))) < 1) return TM.BEAMD;
+    }
+    return -1;
+  }
   var titleCeil = (wx, B) => {
     const nat = zoneMix(wx, B, (x, Z) => zCeil(x, Z, B)) + Math.sin(wx * 0.11) * 2;
     const T2 = mineNear(wx, B);
@@ -13908,7 +14089,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const rub = !Zn.flat && z !== "paved" && h2(rk, 3) < 0.45 && Math.abs(rd) < 1 ? (2 + h2(rk, 4) * 2.5) * (1 - rd * rd) : 0;
     const lk = Math.floor(wx / 90), lx0 = lk * 90 + 15 + h2(lk, 8) * 35, lw = 14 + h2(lk, 9) * 14;
     const lmid = lx0 + lw / 2, lc = titleCeil(lmid, S2), lf = titleFloor(lmid, S2), ly = lc + 14 + h2(lk, 10) * Math.max(0, lf - lc - 52);
-    const ledge = !Zn.flat && (z === "moss" || z === "grove" || z === "webs") && built(lmid, S2) === 0 && h2(lk, 11) < 0.5 && wx >= lx0 && wx < lx0 + lw && lf - lc > 60;
+    const ledge = !Zn.flat && (z === "moss" || z === "grove" || z === "webs" || z === "spider") && built(lmid, S2) === 0 && h2(lk, 11) < 0.5 && wx >= lx0 && wx < lx0 + lw && lf - lc > 60;
     const bk0 = Zn.blk, bk = bk0 && S2.lvl && S2.lvl.blockCell ? S2.lvl.blockCell : null;
     const by0 = M && bands.length ? bands[Math.min(M.n, bands.length) - 1].c - 14 : cy, by1 = M && bands.length ? bands[0].f + 3 : fy;
     if (bk0 && S2.lvl && S2.lvl.blockCol) S2.lvl.blockCol(S2, bk0, c, wx, by0, by1);
@@ -13932,7 +14113,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         m = TM.ROCK;
         if (zc === "paved" && b > 0.3 && y < fy + 6) m = TM.BRICK;
         else if (y < fy + mossDeep * TCELL) m = TM.MOSS;
-      } else if (ledge && y >= ly && y < ly + 4) m = TM.BRICK;
+      } else if (z === "spider" && spiderRock(wx, y, Zn, cy, fy)) m = spiderRock(wx, y - 2 * TCELL, Zn, cy, fy) ? TM.ROCK : TM.MOSS;
+      else if (z === "spider" && Zn.sv === "beams" && spiderBeam(wx, y, Zn, cy, fy) >= 0) m = spiderBeam(wx, y, Zn, cy, fy);
+      else if (ledge && y >= ly && y < ly + 4) m = TM.BRICK;
       else if (ledge && y >= ly - 2 && y < ly && tuft) m = TM.GRASS;
       if (m === TM.AIR && y >= fy - rub && y < fy) m = y < fy - rub + 2 && h2(c, r) < 0.7 ? TM.RUBM : TM.RUB;
       if (m === TM.AIR && y >= fy - tuft * TCELL && y < fy && zc !== "paved") m = TM.GRASS;
@@ -13957,7 +14140,28 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (z === "paved" && b > 0.9 && Math.abs(u - FRAME_GAP / 2) < 1 && R() < 0.8)
       lamp(S2, c, wx, cy + 10, 14 + R() * 30);
     const rcy = titleRoof(wx, S2), Zr = S2.lvl ? titleZoneLook(wx, rcy + 1, S2) : Zn, Zf = S2.lvl ? titleZoneLook(wx, fy - 1, S2) : Zn, zr = Zr.z;
-    if (zr === "webs" && b === 0 && !(c % 4) && R() < 0.42 * Zr.dens && S2.webs.length < TITLE_WEBS) {
+    const spz = zr === "spider" || !!Zn.spid;
+    if ((zr === "webs" || spz) && (b === 0 || Zn.spid) && !(c % 4) && R() < DEV.autoOrbChance * (spz ? 3 : 1) * Zr.dens && new Set(S2.webs.filter((L) => L.orb).map((L) => L.orb)).size < DEV.autoOrbMax) {
+      const hx = wx - DEV.autoOrbR - 8 - R() * 30, hr = titleRoof(hx, S2), hf = titleFloor(hx, S2), pick = R();
+      const hy = spz && pick < 0.6 ? hr + (hf - hr) * (0.1 + R() * 0.8) : pick < 0.8 ? hf - 12 - R() * 25 : hr + 12 + R() * 25;
+      const W = orbPlace(
+        (x, y) => x >= wx || !!HOLDS[titleCell(S2, Math.floor(x / TCELL), Math.floor(y / TCELL))],
+        hx,
+        hy,
+        R,
+        // (timber holds a web too)
+        { spokes: DEV.autoOrbSpokes, maxR: DEV.autoOrbR, gap: DEV.autoOrbGap, tries: 6, spread: 25 }
+      );
+      if (W) {
+        const id = S2.orbN = (S2.orbN || 0) + 1;
+        for (const t of W) {
+          const L = { ax: t.ax, ay: t.ay, bx: t.bx, by: t.by, a0x: t.ax, a0y: t.ay, b0x: t.bx, b0y: t.by, ain: t.ain, bin: t.bin || { x: t.bx, y: t.by }, owner: null, orb: id, sp: t.spiral };
+          L.sag = DEV.webSag * Math.hypot(t.bx - t.ax, t.by - t.ay) * (t.spiral ? 0.6 : 0.3);
+          S2.webs.push(L);
+        }
+      }
+    }
+    if ((zr === "webs" || zr === "spider") && b === 0 && !(c % 4) && R() < 0.42 * Zr.dens && S2.webs.filter((L) => !L.orb).length < TITLE_WEBS) {
       const down = R() < 0.55, bx = down ? wx + (R() - 0.35) * 70 : wx + 18 + R() * 44;
       const by = down ? titleFloor(bx, S2) - 0.5 : titleRoof(bx, S2) + 0.5;
       const L = { ax: wx, ay: rcy + 0.5, bx, by, a0x: wx, a0y: rcy + 0.5, b0x: bx, b0y: by, ain: { x: wx, y: rcy - 1 }, bin: { x: bx, y: down ? by + 1.5 : by - 1.5 }, owner: null, sag: 0 };
@@ -14026,6 +14230,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         });
         return;
       }
+    }
+    if (zr === "spider" && Zr.sv === "vines" && !(c % 2) && titleNoise(wx / 70 + Zr.ph[4], 3.3) > 0.5) {
+      const r0 = Math.floor(rcy / TCELL);
+      for (let r = r0; r < S2.rows - 1; r++) {
+        const top = r === r0, y = top ? rcy : (r + 1) * TCELL;
+        if (y >= fy - 8) break;
+        if (!(top || SOLID[S2.cells[base + r]] && !SOLID[S2.cells[base + r + 1]]) || R() > (top ? 0.75 : 0.5) * Zr.dens) continue;
+        const room = titleSurf(S2, wx - S2.scroll, y + 2, 1) - y;
+        if (room < 10) continue;
+        S2.props.push({ k: "climb", st: R() < 0.85 ? "vine" : "root", ox: wx, x: 0, y, len: room * (0.25 + R() * 0.5), seed: R(), side: 1, burn: 0, ac: c, ar: Math.floor((y - 1) / TCELL) });
+      }
+      return;
     }
     if (c % 3) return;
     const p = R();
@@ -14275,7 +14491,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   };
   function addFoe(S2, x, cap = TITLE_FOES) {
     const R = S2.rnd, wx = (x === void 0 ? TITLE_VW + 16 : x) + S2.scroll;
-    const home = TITLE_HOME[titleZone(wx, S2)];
+    const home = zoneHome(titleZoneSpan(wx, S2));
     let roll = R() * home.reduce((a, h3) => a + h3[1], 0), id = home[0][0];
     for (const [q, w] of home) {
       if (roll < w) {
@@ -14550,6 +14766,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     L.fu = null;
     S2.cut++;
     S2.webs = S2.webs.filter((o) => o !== L);
+    if (L.sp) return;
     const pts = [];
     for (let i = 0; i <= 8; i++) pts.push(titleWebAt(L, u * i / 8));
     const qts = [];
@@ -15163,6 +15380,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           if (!wait) return false;
           S2.fuelWait = S2.t;
           r.x = Math.max(8, r.x - 1);
+          if (!r.ground && r.mode === "fly") {
+            r.modeT = Math.min(r.modeT, 0);
+            r.vy = Math.max(r.vy, 40);
+            r.x = Math.max(8, r.x - 1);
+            if (!boxRock(S2, r.x, r.y + 2)) r.y += 2;
+          }
           return true;
         }
         setMode(S2, r, "fly", 1.5);
@@ -15277,7 +15500,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     r.cvx = r.cvx || 0;
     r.ctlIdle = m > 0 ? 0 : (r.ctlIdle || 0) + dt;
     r.hangGo = (r.hangGo || 0) - dt;
-    const hold = hangFind(S2.props, S2.webs, r.x + PW / 2 + S2.scroll, r.y, r.hangGo > 0), tied = hold.webMul;
+    const hold = hangFind(S2.props, S2.webs.filter((L) => !L.sp), r.x + PW / 2 + S2.scroll, r.y, r.hangGo > 0), tied = hold.webMul;
     r.hang = hold.climb && !jet ? hold.climb : null;
     if (r.hang) hangSteer(r, hold, st.nx, st.ny, m, r.x + PW / 2 + S2.scroll, r.y, DEV.autoMoveK * mv, dt);
     else if (jet) {
@@ -15376,7 +15599,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       r.stepT = 1;
       snd(S2, "step", cx, r.y + PH);
     }
-    if (r.modeT <= 0 && !(fuelOn(S2) && fuelOf(r) < FUEL_TAKEOFF)) {
+    if (r.modeT <= 0 && !(S2.huddle && S2.lvl) && !(fuelOn(S2) && fuelOf(r) < FUEL_TAKEOFF)) {
       setMode(S2, r, "fly", flyTime(R) * tallK(S2, DEV.autoRoamFly));
       pickTarget(S2, r);
       r.vy = -40;
@@ -15391,7 +15614,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const R = S2.rnd, cx = r.x + PW / 2;
     S2.flyT += dt;
     r.ground = false;
-    const landing = r.modeT <= 0;
+    const landing = r.modeT <= 0 || !!S2.huddle && !!S2.lvl;
     if (landing && r.modeT < -4) r.modeT = flyTime(R);
     if (!landing && (r.retarget <= 0 || Math.hypot(r.tx - r.x, r.ty - r.y) < 6)) pickTarget(S2, r);
     if (landing) {
@@ -24718,9 +24941,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   // src/auto/pilot.js
   var PILOT_BRAKE = 60;
   var PILOT_CRAWL = 0.08;
+  function lvlPace(tier) {
+    const t = Math.max(0, Math.min(1, (tier - 1) / Math.max(1, DEV.autoLvlPaceLv - 1)));
+    return DEV.autoLvlPace + (DEV.autoLvlPaceTop - DEV.autoLvlPace) * t;
+  }
   function pilotPace(P2) {
     if (P2.blocked) return 0;
-    const base = DEV.autoLvlPace;
+    const base = P2.base ?? DEV.autoLvlPace;
     let k = base;
     if (P2.elites && P2.elites.some((e) => e.alive !== false && Math.abs(e.x - P2.x) < DEV.autoLvlEliteR)) k *= DEV.autoLvlElite;
     if (P2.chests && P2.chests.some((c) => !c.open && Math.abs(c.x - P2.x) < DEV.autoLvlChestR)) k *= DEV.autoLvlChest;
@@ -24737,8 +24964,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const c = Math.max(-1, Math.min(1, h3));
     return c >= 0 ? 1 + (DEV.autoLvlHurry - 1) * c : 1 + (Math.max(0.01, DEV.autoLvlSlow) - 1) * -c;
   }
-  function pilotEase(cur, want, dt) {
-    const v = DEV.autoLvlEase * DEV.autoLvlPace * dt;
+  function pilotEase(cur, want, dt, base = DEV.autoLvlPace) {
+    const v = DEV.autoLvlEase * base * dt;
     return cur < want ? Math.min(want, cur + v) : Math.max(want, cur - v);
   }
 
@@ -24746,15 +24973,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var BLOCK_VARIANTS = [
     { id: "collapse", name: "Collapse", bases: ["timber", "paved"], clears: "rock", look: "rubble heap with broken frames" },
     { id: "deadend", name: "Rounded dead end", bases: ["moss", "grove"], clears: "rock", look: "a mossy rounded rock face" },
-    { id: "thicket", name: "Web thicket", bases: ["webs", "winding"], clears: "web", look: "webs criss-crossed roof to floor" },
+    { id: "thicket", name: "Web thicket", bases: ["webs", "winding", "spider"], clears: "web", look: "webs criss-crossed roof to floor" },
     { id: "timberfall", name: "Fallen timber", bases: ["timber", "paved", "grove"], clears: "timber", look: "crossed logs heaped up" },
     { id: "rockslide", name: "Rockslide", bases: ["moss", "winding", "webs"], clears: "rock", look: "a long scree slope" },
     { id: "roots", name: "Root tangle", bases: ["grove", "moss"], clears: "timber", look: "roots hanging from the roof" },
     { id: "silt", name: "Silted pass", bases: ["winding", "moss"], clears: "rock", look: "flat banded mud" },
     { id: "cart", name: "Jammed mine cart", bases: ["timber"], clears: "rock", look: "an iron cart on its side in rubble" },
     { id: "brickwall", name: "Brick wall", bases: ["paved", "timber"], clears: "rock", look: "a straight brick wall" },
-    { id: "stalactites", name: "Stalactites and stalagmites", bases: ["moss", "webs", "winding"], clears: "rock", look: "rock spikes, floor and roof (owner: the ground rock)" },
-    { id: "nest", name: "Nest plug", bases: ["webs", "grove"], clears: "web", look: "a resin plug wrapped in webs" }
+    { id: "stalactites", name: "Stalactites and stalagmites", bases: ["moss", "webs", "winding", "spider"], clears: "rock", look: "rock spikes, floor and roof (owner: the ground rock)" },
+    { id: "nest", name: "Nest plug", bases: ["webs", "grove", "spider"], clears: "web", look: "a resin plug wrapped in webs" }
   ];
   var blockVariant = (id) => BLOCK_VARIANTS.find((v) => v.id === id) || BLOCK_VARIANTS[0];
   var variantsFor = (base) => BLOCK_VARIANTS.filter((v) => v.bases.includes(base));
@@ -24921,11 +25148,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function websOn(S2, r) {
     const cx = r.x + PW / 2 + S2.scroll, cy = r.y + PH / 2;
     let n = 0;
+    const orbs = /* @__PURE__ */ new Set();
     for (const L of S2.webs) {
-      if (L.out || cx < Math.min(L.a0x, L.b0x) - 6 || cx > Math.max(L.a0x, L.b0x) + 6) continue;
+      if (L.out || L.orb && orbs.has(L.orb) || cx < Math.min(L.a0x, L.b0x) - 6 || cx > Math.max(L.a0x, L.b0x) + 6) continue;
       const vx = L.b0x - L.a0x, vy = L.b0y - L.a0y, u = Math.max(0, Math.min(1, ((cx - L.a0x) * vx + (cy - L.a0y) * vy) / (vx * vx + vy * vy || 1)));
       const w = titleWebAt(L, u);
-      if (Math.hypot(w.x - cx, w.y - cy) < 6) n++;
+      if (Math.hypot(w.x - cx, w.y - cy) < 6) {
+        n++;
+        if (L.orb) orbs.add(L.orb);
+      }
     }
     return n;
   }
@@ -25047,7 +25278,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return out;
   }
   function homeKind(S2, x) {
-    const home = TITLE_HOME[titleZone(x, S2)] || TITLE_HOME.moss;
+    const home = zoneHome(titleZoneSpan(x, S2));
     let roll = S2.rnd() * home.reduce((a, h3) => a + h3[1], 0);
     for (const [q, w] of home) {
       if (roll < w) return q;
@@ -25219,10 +25450,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     P2.z.push(z);
     return z;
   }
-  function levelPlan(seed, minutes = DEV.autoLvlMin, blocks = DEV.autoBlockN) {
-    const P2 = titlePlan(seed);
+  function levelPlan(seed, minutes = DEV.autoLvlMin, blocks = DEV.autoBlockN, pace = DEV.autoLvlPace) {
+    const P2 = titlePlan(seed, TITLE_ZONES);
     flatZone(P2, -300, LVL_PAD, 0);
-    const want = Math.max(TITLE_ZLEN[0], minutes * 60 * LVL_SCROLL * DEV.autoLvlPace);
+    const want = Math.max(TITLE_ZLEN[0], minutes * 60 * LVL_SCROLL * pace);
     let x = LVL_PAD;
     const zs = [];
     while (x - LVL_PAD < want) {
@@ -25231,7 +25462,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       x = z.x1;
     }
     planBlocks(P2, zs, seed, blocks);
-    const wallX = plantWall(P2, zs, seed);
+    const wallX = plantWall(P2, zs, seed, pace);
     const a = flatZone(P2, x, x + LVL_ARENA, -14);
     const e = flatZone(P2, a.x1, a.x1 + LVL_EXITW, 0);
     flatZone(P2, e.x1, 1e9, 400);
@@ -25252,9 +25483,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return DEV.autoWallMin + u * Math.max(0, DEV.autoWallMax - DEV.autoWallMin);
   }
   var WALL_FREE = 40;
-  function plantWall(P2, zs, seed) {
+  function plantWall(P2, zs, seed, pace) {
     if (DEV.autoWallMax <= 0) return -Infinity;
-    const x = LVL_PAD + levelWallT(seed) * LVL_SCROLL * DEV.autoLvlPace * DEV.autoLvlHurry;
+    const x = LVL_PAD + levelWallT(seed) * LVL_SCROLL * pace * DEV.autoLvlHurry;
     const i = zs.find((j) => P2.z[j].x0 >= x);
     if (i == null) return Infinity;
     const Z = P2.z[i];
@@ -25280,9 +25511,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   var levelState = (S2) => S2.lvl && S2.lvl.data || null;
   var levelTeamX = (S2) => S2.scroll + LVL_TEAM;
-  function levelScene(vh, seed, n, plan = levelPlan(seed), team, tier = 1, run = null) {
+  function levelScene(vh, seed, n, plan, team, tier = 1, run = null) {
+    const base = lvlPace(tier);
+    if (!plan) plan = levelPlan(seed, void 0, void 0, base);
     const L = {
       plan,
+      base,
       phase: "arrive",
       arrived: [],
       zap: -99,
@@ -25504,8 +25738,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       roamStep2(S2, L, lead);
       return;
     }
-    const want = L.webK * pilotPace({ x: levelTeamX(S2), stopX: stop, elites: L.elites, chests: L.chests, hold: L.hold, blocked: L.blocked || S2.fuelWait != null && S2.t - S2.fuelWait < 0.3 });
-    S2.pace = pilotEase(S2.pace || 0, want, dt);
+    const want = L.webK * pilotPace({ base: L.base, x: levelTeamX(S2), stopX: stop, elites: L.elites, chests: L.chests, hold: L.hold, blocked: L.blocked || S2.fuelWait != null && S2.t - S2.fuelWait < 0.3 });
+    S2.pace = pilotEase(S2.pace || 0, want, dt, L.base);
   }
   var levelLead = (S2) => S2.runners.find((r) => ctlOn(r) && !r.out) || null;
   var levelPicked = (S2) => S2.runners.find((r) => !!r.ctl && !r.out) || null;
@@ -28342,6 +28576,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     "autoLvlHurry",
     "autoLvlMin",
     "autoLvlPace",
+    "autoLvlPaceLv",
+    "autoLvlPaceTop",
     "autoLvlSlow",
     "autoMapGrow",
     "autoMapPrice",
@@ -28350,6 +28586,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     "autoMoveK",
     "autoNavCut",
     "autoNavGive",
+    "autoOrbChance",
+    "autoOrbGap",
+    "autoOrbMax",
+    "autoOrbR",
+    "autoOrbSpokes",
     "autoPayHold",
     "autoPayK",
     "autoPayReach",
@@ -28376,6 +28617,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     "autoSilkSpin",
     "autoSilkSpread",
     "autoSpStride",
+    "autoSpiderMine",
+    "autoSpiderRock",
     "autoStreamBigN",
     "autoStreamBigT",
     "autoStreamGrow",
@@ -30412,7 +30655,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     c.globalAlpha = 1;
     c.beginPath();
     for (const L of S2.webs) {
-      if (Math.max(L.a0x, L.b0x) < S2.scroll - 10 || Math.min(L.a0x, L.b0x) > S2.scroll + TITLE_VW + 10) continue;
+      if (L.sp || Math.max(L.a0x, L.b0x) < S2.scroll - 10 || Math.min(L.a0x, L.b0x) > S2.scroll + TITLE_VW + 10) continue;
       if (!L.fu) {
         c.moveTo(L.a0x - S2.scroll, L.a0y);
         for (let i = 1; i <= 8; i++) {
@@ -30435,6 +30678,20 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       c.lineTo(b.x - S2.scroll, b.y);
     }
     c.stroke();
+    c.lineWidth = 0.6;
+    c.globalAlpha = 0.75;
+    c.beginPath();
+    for (const L of S2.webs) {
+      if (!L.sp || Math.max(L.a0x, L.b0x) < S2.scroll - 10 || Math.min(L.a0x, L.b0x) > S2.scroll + TITLE_VW + 10) continue;
+      const [u0, u1] = L.fu ? [0, L.fu[0]] : [0, 1];
+      for (let i = 0; i <= 4; i++) {
+        const p = titleWebAt(L, u0 + (u1 - u0) * i / 4);
+        if (i) c.lineTo(p.x - S2.scroll, p.y);
+        else c.moveTo(p.x - S2.scroll, p.y);
+      }
+    }
+    c.stroke();
+    c.globalAlpha = 1;
     for (const g of S2.coins) drawNugget(c, g.x - S2.scroll, g.y, coinR(g), g.t, g.a || 0);
     if (!S2.hub) drawLoot(c, S2);
   }
@@ -31739,16 +31996,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   // src/ui/modgrid.js
   var gridIds = () => {
     const fams = Object.keys(FAMILIES);
-    return Object.keys(MODS).filter((id) => !id.includes(":")).sort((a, b) => fams.indexOf(FAMILY_OF[a] || "shots") - fams.indexOf(FAMILY_OF[b] || "shots") || MODS[a].name.localeCompare(MODS[b].name));
+    return Object.keys(MODS).filter((id) => !id.includes(":") && !MODS[id].trig).sort((a, b) => fams.indexOf(FAMILY_OF[a] || "shots") - fams.indexOf(FAMILY_OF[b] || "shots") || MODS[a].name.localeCompare(MODS[b].name));
   };
   function ModGrid({ onMod }) {
     const [pick, setPick] = useState(null);
     const [got, setGot] = useState("");
     const hold = useRef(null);
     const down = (e, id) => {
-      e.preventDefault();
       const H = { id, t: 0, done: false };
       hold.current = H;
+      if (!(e.target && e.target.closest && e.target.closest(".agrab"))) return;
+      e.preventDefault();
       H.t = window.setTimeout(() => {
         if (hold.current !== H) return;
         H.done = true;
@@ -31769,7 +32027,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (hold.current) window.clearTimeout(hold.current.t);
       hold.current = null;
     };
-    const m = pick ? MODS[pick] : null;
+    const m = pick ? MODS[pick] : null, grab = (200 * DEV.autoGrab).toFixed(1) + "%";
     return h(
       "div",
       { className: "modgrid" },
@@ -31797,7 +32055,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             onPointerCancel: cancel,
             onContextMenu: (e) => e.preventDefault()
           },
-          h(GlyphIcon, { glyph: M.glyph || "?", col })
+          h(GlyphIcon, { glyph: M.glyph || "?", col }),
+          h("i", { className: "agrab", style: { width: grab, height: grab } })
         );
       }))
     );
@@ -35215,6 +35474,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const [, setV] = useState(0);
     const noCard = null;
     const [card, setCard] = useState(noCard);
+    const noGun = null;
+    const [bgun, setBgun] = useState(noGun);
+    const bgunAt = bgun ? run.bag.findIndex((it) => !!it && it.kind === "gun" && it.gun === bgun) : -1;
+    const bgunRef = useRef(-1);
+    bgunRef.current = bgunAt;
     const noPop = null;
     const [dpop, setDpop] = useState(noPop);
     const noDrag = null;
@@ -35609,6 +35873,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         const pl = run.players[navRef.current.p], g = pl && pl.guns[src.i];
         return g ? { kind: "gun", gun: g, n: 1 } : null;
       }
+      if (src.from === "bgun") {
+        const b = run.bag[bgunRef.current], id = b && b.gun ? b.gun.slots[src.i] : null;
+        return id ? { kind: "mod", id, n: 1 } : null;
+      }
       const c = navRow(navRef.current, run, MAX_PLAYERS).cells[src.i];
       return c && c.item || null;
     };
@@ -35705,6 +35973,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             return;
           }
           const it = srcItem(src);
+          if (it && src.from === "bag" && it.kind === "gun" && it.gun) {
+            const g = it.gun;
+            SFX.fx(bgunRef.current === src.i ? "close" : "open");
+            setBgun((b) => b === g ? null : g);
+            return;
+          }
           if (it && hasCard(it)) {
             SFX.ui("tap");
             setCard(it);
@@ -35758,7 +36032,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (!t) return null;
       if (group) {
         const gs = el && el.closest(".abag [data-slot]");
-        if (gs) return { key: "s" + gs.dataset.slot, to: "bag", s: Number(gs.dataset.slot), ok: true };
+        if (gs) {
+          const s = Number(gs.dataset.slot), P2 = bagGroupPlan(run, group, s, src.i);
+          return { key: "s" + s, to: "bag", s, ok: !!P2, slots: P2 ? P2.to : [] };
+        }
         if (t.dataset.nslot !== void 0 && gun) {
           const s = Number(t.dataset.nslot);
           return { key: "n" + s, to: "nav", s, ok: gun.slots.indexOf(null, s) >= 0 && group.some((i) => !!run.bag[i] && run.bag[i].kind === "mod") };
@@ -35795,7 +36072,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const row = n.level === "gun" ? { gun: n.g } : n.level === "cat" ? { cat: n.cat } : n.level === "perks" ? { perks: true } : null;
       let done = false;
       if (at && at.ok && p.group) {
-        if (at.to === "bag") done = bagGroupMove(run, p.group, at.s);
+        if (at.to === "bag") done = bagGroupMove(run, p.group, at.s, src.i);
         else if (at.to === "nav" && n.level === "gun") done = fitMods(run, p.group, n.p, n.g, at.s) > 0;
         if (done) setSel([]);
       } else if (at && at.ok) {
@@ -35827,6 +36104,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         else if (src.from === "guns" && at.to === "gun") done = gunMove(run, n.p, src.i, at.s);
         else if (src.from === "guns" && at.to === "bag") done = at.s >= 0 && gunToBag(run, n.p, src.i, at.s) || unfitGun(run, n.p, src.i);
         else if (src.from === "bag" && at.to === "bag") done = bagMove(run, src.i, at.s);
+        else if (src.from === "bgun" && at.to === "bag") done = bagGunModOut(run, bgunRef.current, src.i, at.s);
         else if (src.from === "nav" && at.to === "nav") done = !!row && rowMove(run, n.p, row, src.i, at.s);
         else if (src.from === "nav" && at.to === "bag" && row && at.s >= 0 && rowToBag(run, n.p, row, src.i, at.s)) done = true;
         else if (src.from === "nav" && at.to === "bag") {
@@ -35973,6 +36251,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         },
         h("canvas", { ref: cvs, className: "aplaycvs" }),
         blocked ? h("div", { className: "ablocked" }, "Path blocked") : null,
+        bgunAt >= 0 && bgun ? h(BagGunView, { gun: bgun, down, drag, close: () => {
+          SFX.fx("close");
+          setBgun(null);
+        } }) : null,
         h(
           "div",
           { className: "atop" + (devOn ? " dev" : "") },
@@ -36003,7 +36285,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           empty: emptyDown,
           sel: sel.includes(i),
           lift: !!drag && (drag.src.from === "bag" && drag.src.i === i || !!drag.group && drag.group.includes(i)),
-          drop: !!drag && !!drag.over && drag.over.ok && drag.over.key === "s" + i
+          drop: !!drag && !!drag.over && drag.over.ok && (drag.over.slots ? drag.over.slots.includes(i) : drag.over.key === "s" + i)
         }))
       ),
       h(
@@ -36199,6 +36481,44 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       { className: "agunpanel " + cls + (big ? " big" : ""), style: { "--pc": col } },
       h(GunStats, { gun, sim, sig }),
       h(PreviewWindow, { sim, sig, onLit, pl, gi, flip })
+    );
+  }
+  function BagGunView({ gun, down, drag, close }) {
+    const sim = useRef(null);
+    const sig = gun.slots.join(",");
+    if (!sim.current || sim.current.sig !== sig) sim.current = Object.assign(fireSimNew(gun), { sig });
+    const lifted = drag && drag.src.from === "bgun" ? drag.src.i : -1;
+    const stop = (e) => e.stopPropagation();
+    return h(
+      "div",
+      { className: "abgun", onPointerDown: stop },
+      h(
+        "div",
+        { className: "abghead" },
+        h("span", { className: "abgicon" }, h(GunIcon, { gun })),
+        h("b", null, gun.name),
+        h("span", null, (gun.lvl ? "Lv " + gun.lvl + " · " : "") + gun.cap + " slots"),
+        h("button", { className: "abgclose", onPointerDown: (e) => {
+          e.preventDefault();
+          close();
+        } }, "×")
+      ),
+      h(
+        "div",
+        { className: "abgbody" },
+        h(GunStats, { gun, sim, sig }),
+        h("div", { className: "abgmods" }, gun.slots.map((id, i) => {
+          const it = id ? { kind: "mod", id, n: 1 } : null;
+          return h("div", {
+            key: i,
+            className: "aslot" + (it ? " full k-mod" : "") + (i === lifted ? " lift" : ""),
+            "data-bgslot": i,
+            style: itemEdge(it),
+            onPointerDown: it ? (e) => down(e, { from: "bgun", i }) : void 0
+          }, it ? h(ItemIcon, { it }) : null, it ? h(Grab) : null);
+        }))
+      ),
+      h("p", { className: "abgnote" }, "Drag a mod into the bag to take it off")
     );
   }
   var HOLO_P = 3;

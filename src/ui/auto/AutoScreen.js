@@ -33,7 +33,7 @@ import { levelBoss } from '../../auto/enemies.js';
 import { MODS, famCol } from '../../spells/mods.js';
 import { HUB_MACHINES } from '../../auto/hub.js';
 import { PERKS, STAT_PERKS } from '../../data/perks.js';
-import { bagFit, EXO_STATS, MAX_PLAYERS, addPlayer, bagAdd, bagSlotOf, fitExo, fitGun, fitMod, fitPerk, healRun, levelCleared, levelFailed, levelSeed, kitMissing, newRun, bagMove, rowMove, rowToBag, insertMod, modMoveTo, bagGroupMove, fitMods, gunToBag, gunMove, unfitGun,
+import { bagFit, EXO_STATS, MAX_PLAYERS, addPlayer, bagAdd, bagSlotOf, fitExo, fitGun, fitMod, fitPerk, healRun, levelCleared, levelFailed, levelSeed, kitMissing, newRun, bagMove, rowMove, rowToBag, insertMod, modMoveTo, bagGroupMove, bagGroupPlan, fitMods, gunToBag, gunMove, unfitGun, bagGunModOut,
   bagCount, scrapAt, setActive, spend, unfitExo, unfitMod, unfitPerk } from '../../auto/run.js';
 import { loadAutoRun, saveAutoRun } from '../../auto/save.js';
 import { EXO_NAMES, arcPick, gunArc, navBack, navOpen, navPath, navPick, navRow, navStart, hpFrac } from '../../auto/nav.js';
@@ -135,6 +135,12 @@ export function AutoScreen() {
   /** @type {BagItem | null} */
   const noCard = null;
   const [card, setCard] = useState(noCard);
+  /** @type {Gun | null} */
+  const noGun = null;
+  const [bgun, setBgun] = useState(noGun);   // (owner, after v1.0.74) a bag gun tapped: its view over the play area (BagGunView)
+  const bgunAt = bgun ? run.bag.findIndex(it => !!it && it.kind === 'gun' && it.gun === bgun) : -1;   // its bag slot (-1: gone, the view shuts)
+  const bgunRef = useRef(-1);
+  bgunRef.current = bgunAt;
   /** @type {DiscrimPopAt | null} */
   const noPop = null;
   const [dpop, setDpop] = useState(noPop);   // a held Discriminate tile's target popup (owner, v1.0.71)
@@ -410,6 +416,7 @@ export function AutoScreen() {
   const srcItem = src => {
     if (src.from === 'bag') return run.bag[src.i] || null;
     if (src.from === 'guns') { const pl = run.players[navRef.current.p], g = pl && pl.guns[src.i]; return g ? { kind: 'gun', gun: g, n: 1 } : null; }
+    if (src.from === 'bgun') { const b = run.bag[bgunRef.current], id = b && b.gun ? b.gun.slots[src.i] : null; return id ? { kind: 'mod', id, n: 1 } : null; }
     const c = navRow(navRef.current, run, MAX_PLAYERS).cells[src.i];
     return (c && c.item) || null;
   };
@@ -493,7 +500,10 @@ export function AutoScreen() {
       else if (Math.hypot(ev.clientX - p.x0, ev.clientY - p.y0) <= MOVE) {
         // picking: a tap puts a bag tile in or out of the group instead of its card
         if (src.from === 'bag' && selRef.current.length) { SFX.ui('tap'); setSel(s => s.includes(src.i) ? s.filter(k => k !== src.i) : [...s, src.i]); return; }
-        const it = srcItem(src); if (it && hasCard(it)) { SFX.ui('tap'); setCard(it); }
+        const it = srcItem(src);
+        // (owner, after v1.0.74) a bag gun: its view in the play area (again: shut), not a card
+        if (it && src.from === 'bag' && it.kind === 'gun' && it.gun) { const g = it.gun; SFX.fx(bgunRef.current === src.i ? 'close' : 'open'); setBgun(b => (b === g ? null : g)); return; }
+        if (it && hasCard(it)) { SFX.ui('tap'); setCard(it); }
       }
     };
     /** @param {any} ev */
@@ -540,7 +550,7 @@ export function AutoScreen() {
       // a group: into bag slots (from the one under the finger on), or a gun's empty mod slots (from this one on)
       /** @type {HTMLElement | null} */
       const gs = el && el.closest('.abag [data-slot]');
-      if (gs) return { key: 's' + gs.dataset.slot, to: 'bag', s: Number(gs.dataset.slot), ok: true };
+      if (gs) { const s = Number(gs.dataset.slot), P = bagGroupPlan(run, group, s, src.i); return { key: 's' + s, to: 'bag', s, ok: !!P, slots: P ? P.to : [] }; }   // (the slots they'd land in: green)
       if (t.dataset.nslot !== undefined && gun) {
         const s = Number(t.dataset.nslot);
         return { key: 'n' + s, to: 'nav', s, ok: gun.slots.indexOf(null, s) >= 0 && group.some(i => !!run.bag[i] && run.bag[i].kind === 'mod') };
@@ -582,7 +592,7 @@ export function AutoScreen() {
     const row = n.level === 'gun' ? { gun: n.g } : n.level === 'cat' ? { cat: n.cat } : n.level === 'perks' ? { perks: true } : null;
     let done = false;
     if (at && at.ok && p.group) {
-      if (at.to === 'bag') done = bagGroupMove(run, p.group, at.s);
+      if (at.to === 'bag') done = bagGroupMove(run, p.group, at.s, src.i);
       else if (at.to === 'nav' && n.level === 'gun') done = fitMods(run, p.group, n.p, n.g, at.s) > 0;
       if (done) setSel([]);
     } else if (at && at.ok) {
@@ -614,6 +624,7 @@ export function AutoScreen() {
       else if (src.from === 'guns' && at.to === 'gun') done = gunMove(run, n.p, src.i, at.s);
       else if (src.from === 'guns' && at.to === 'bag') done = (at.s >= 0 && gunToBag(run, n.p, src.i, at.s)) || unfitGun(run, n.p, src.i);
       else if (src.from === 'bag' && at.to === 'bag') done = bagMove(run, src.i, at.s);
+      else if (src.from === 'bgun' && at.to === 'bag') done = bagGunModOut(run, bgunRef.current, src.i, at.s);
       else if (src.from === 'nav' && at.to === 'nav') done = !!row && rowMove(run, n.p, row, src.i, at.s);
       else if (src.from === 'nav' && at.to === 'bag' && row && at.s >= 0 && rowToBag(run, n.p, row, src.i, at.s)) done = true;
       else if (src.from === 'nav' && at.to === 'bag') {
@@ -727,6 +738,7 @@ export function AutoScreen() {
       style: { flexBasis: 'calc(55% + ' + bigPlay + 'px)', marginBottom: -bigPlay + 'px' } },
       h('canvas', { ref: cvs, className: 'aplaycvs' }),
       blocked ? h('div', { className: 'ablocked' }, 'Path blocked') : null,
+      bgunAt >= 0 && bgun ? h(BagGunView, { gun: bgun, down, drag, close: () => { SFX.fx('close'); setBgun(null); } }) : null,
       h('div', { className: 'atop' + (devOn ? ' dev' : '') },
         h('div', { className: 'alvlinfo' }, h('b', null, mapInfo(run).name), h('span', null, 'Level ' + mapInfo(run).level), h('span', { className: 'atoplvl' }, 'Top ' + mapInfo(run).top)),
         inLvl ? h('div', { className: 'ajourney' + (jHid ? ' off' : ''), onPointerDown: jTap }, h('canvas', { ref: jcvs })) : null,
@@ -738,7 +750,7 @@ export function AutoScreen() {
     h('div', { className: 'abag' + (bigBag ? ' big' : '') + (drag && drag.over && drag.over.key === 'bag' && drag.over.ok ? ' drop' : ''), style: { marginTop: -bigBag + 'px' } },
       ...Array.from({ length: (bagFit(run), run.bag.length) }, (_, i) => h(BagSlot, { key: i, i, it: flies.some(f => f.fresh && f.slot === i) ? null : run.bag[i], down, empty: emptyDown, sel: sel.includes(i),
         lift: !!drag && ((drag.src.from === 'bag' && drag.src.i === i) || (!!drag.group && drag.group.includes(i))),
-        drop: !!drag && !!drag.over && drag.over.ok && drag.over.key === 's' + i }))),
+        drop: !!drag && !!drag.over && drag.over.ok && (drag.over.slots ? drag.over.slots.includes(i) : drag.over.key === 's' + i) }))),
     h('div', { className: 'abtns' },
       h(PillStick, { onMove: steer }),
       h('button', { className: 'abtn ab', onPointerDown: tap(pressB) }, 'B'),
@@ -907,6 +919,33 @@ function GunPanel({ gun, sig, col, onLit, cls, pl, gi }) {
   return h('div', { className: 'agunpanel ' + cls + (big ? ' big' : ''), style: { '--pc': col } },
     h(GunStats, { gun, sim, sig }),
     h(PreviewWindow, { sim, sig, onLit, pl, gi, flip }));
+}
+
+// (owner, after v1.0.74) a gun in the bag, tapped: its view over the play area (not a card over everything): name, level,
+// its stats (GunStats), and its mod slots as bag tiles; a mod's grab circle drags it off into the bag (bagGunModOut)
+// without the gun being fitted. × (or the gun tapped again) shuts it
+/** @param {{ gun: Gun, down: (e: any, src: DragSrc) => void, drag: Drag | null, close: () => void }} props */
+function BagGunView({ gun, down, drag, close }) {
+  /** @type {{ current: import('../../spells/bagsim.js').FireSim & { sig?: string } | null }} */
+  const sim = useRef(null);
+  const sig = gun.slots.join(',');
+  if (!sim.current || sim.current.sig !== sig) sim.current = Object.assign(fireSimNew(gun), { sig });
+  const lifted = drag && drag.src.from === 'bgun' ? drag.src.i : -1;
+  /** @param {any} e */
+  const stop = e => e.stopPropagation();
+  return h('div', { className: 'abgun', onPointerDown: stop },
+    h('div', { className: 'abghead' }, h('span', { className: 'abgicon' }, h(GunIcon, { gun })),
+      h('b', null, gun.name), h('span', null, (gun.lvl ? 'Lv ' + gun.lvl + ' · ' : '') + gun.cap + ' slots'),
+      h('button', { className: 'abgclose', onPointerDown: e => { e.preventDefault(); close(); } }, '×')),
+    h('div', { className: 'abgbody' },
+      h(GunStats, { gun, sim, sig }),
+      h('div', { className: 'abgmods' }, gun.slots.map((id, i) => {
+        /** @type {BagItem | null} */
+        const it = id ? { kind: 'mod', id, n: 1 } : null;
+        return h('div', { key: i, className: 'aslot' + (it ? ' full k-mod' : '') + (i === lifted ? ' lift' : ''), 'data-bgslot': i, style: itemEdge(it),
+          onPointerDown: it ? e => down(e, { from: 'bgun', i }) : undefined }, it ? h(ItemIcon, { it }) : null, it ? h(Grab) : null);
+      }))),
+    h('p', { className: 'abgnote' }, 'Drag a mod into the bag to take it off'));
 }
 
 // the firing window: the preview scene on a canvas, at the play area's scale (css px per world unit, as the level is drawn)
@@ -1080,8 +1119,8 @@ function ItemIcon({ it }) {
 }
 
 // ---- stage 8b: drag and drop, the cards ----
-/** @typedef {{ from: 'bag' | 'nav' | 'guns', i: number }} DragSrc */
-/** @typedef {{ key: string, to: 'nav' | 'gun' | 'bag' | 'scrap' | 'play' | 'player' | 'ins', s: number, ok: boolean }} DropAt */
+/** @typedef {{ from: 'bag' | 'nav' | 'guns' | 'bgun', i: number }} DragSrc */
+/** @typedef {{ key: string, to: 'nav' | 'gun' | 'bag' | 'scrap' | 'play' | 'player' | 'ins', s: number, ok: boolean, slots?: number[] }} DropAt */
 /** @typedef {{ src: DragSrc, x: number, y: number, over: DropAt | null, back: boolean, group?: number[] }} Drag */
 /** @typedef {{ id: number, x0: number, y0: number, src: DragSrc, grab: boolean, drag: boolean, held?: boolean, sweep?: boolean, group?: number[], lx: number, ly: number, raf: number }} Press */
 /** @typedef {{ src: DragSrc, pl: number, g: number, x: number, top: number, bottom: number }} DiscrimPopAt */

@@ -5,6 +5,15 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## Unreleased — CaveRunner Auto: the owner's 7 notes after v1.0.74, and the spider zone (branch `autobattler`)
+Waiting on the owner's OK for the looks. PM alone.
+- After the boss nobody takes off: everyone comes down and runs along the floor to the exit (S.huddle in a level).
+- Normal pace by level: `autoLvlPace` 1 at level 1 → `autoLvlPaceTop` 3 by `autoLvlPaceLv` 20 (pilot.js `lvlPace`).
+- Bag: a dragged group keeps its layout, green outlines where it lands (`bagGroupPlan`). A bag gun tapped opens in the play area; drag its mods off into the bag (`BagGunView`, `bagGunModOut`).
+- Dev mod grid: small grab circles (the rest scrolls), the trigger variants gone.
+- Orb webs (world/orbweb.js), the spider zone (`spider`: rocks / vines / beams; levels only) and spider mines (`Z.spid`); knobs "Auto: orb webs".
+- Fixed: a flyer waiting for fuel at rock hung in the air for ever (`jetOver`: he lands to refill).
+
 ## v1.0.74 — CaveRunner Auto: the owner's 23-note play round (branch `autobattler`)
 Released 2026-10-13 on the branch. PM (gameplay, looks) + one agent (bag drag, worktree `../cr-bagdrag`, ~12 min).
 - After the boss: guns down (`S.gunsOff`); loot in → straight out to the exit, LEVEL CLEARED shown on the way (`clearedWords`).

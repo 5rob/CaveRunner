@@ -13,7 +13,8 @@ check('same seed, same wall', G.levelPlan(9).wallX === G.levelPlan(9).wallX && G
 for (const [seed, hold] of [[2, 0], [5, 0], [6, 1], [7, 1]]) {
   const run = G.newRun(seed, () => 0.4);
   const S = G.levelScene(190, seed, 1, G.levelPlan(seed), run.players, 1), L = G.levelState(S);
-  let i = 0; for (; i < 30 * 90 && !L.blocked; i++) { L.hold = hold; G.titleStep(S, dt); }
+  // (up to 150 s: normal pace at level 1 is 1, after v1.0.74)
+  let i = 0; for (; i < 30 * 150 && !L.blocked; i++) { L.hold = hold; G.titleStep(S, dt); }
   const t = S.t - L.goT, x = G.levelTeamX(S);
   check(`seed ${seed} ${hold ? 'hurrying' : 'normal pace'}: first blocked after 20 s, at the wall (its blocked zone)`, L.blocked && t >= 20 && x < L.plan.wallX + 130, [+t.toFixed(1), Math.round(x), Math.round(L.plan.wallX)]);
 }

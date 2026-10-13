@@ -371,20 +371,40 @@ export function modMoveTo(run, p, gi, a, b) {
   return true;
 }
 // (owner, bag-drag round) a group of bag slots moved together onto bag slot j: they leave their slots, then go (in bag
-// order) into the empty slots from j on (round to the top if the end is reached). Always fits: they freed as many
-/** @param {AutoRun} run @param {number[]} idxs @param {number} j @returns {boolean} */
-export function bagGroupMove(run, idxs, j) {
+// order) into the empty slots from j on (round to the top if the end is reached). Always fits: they freed as many.
+// (owner, after v1.0.74) with the grabbed slot (anchor): first tried keeping their layout, each at its rows and columns
+// from the grabbed one, the grabbed one at j (a 2×2 lands 2×2); only if that falls off the bag's sides or onto an item
+// not in the group, the plain fill. bagGroupPlan: where they'd go (from[i] → to[i]; the screen's green outlines)
+/** @param {AutoRun} run @param {number[]} idxs @param {number} j @param {number} [anchor] @returns {{ from: number[], to: number[], shape: boolean } | null} */
+export function bagGroupPlan(run, idxs, j, anchor) {
   const from = [...new Set(idxs)].filter(i => i >= 0 && i < run.bag.length && !!run.bag[i]).sort((a, b) => a - b);
-  if (!from.length || j < 0 || j >= run.bag.length) return false;
-  const items = from.map(i => run.bag[i]);
-  from.forEach(i => { run.bag[i] = null; });
-  const N = run.bag.length;
-  let k = j;
-  for (const it of items) {
-    let t = 0;
-    while (run.bag[k] && t < N) { k = (k + 1) % N; t++; }
-    run.bag[k] = it;
+  if (!from.length || j < 0 || j >= run.bag.length) return null;
+  const N = run.bag.length, a = anchor != null && from.includes(anchor) ? anchor : -1;   // (no grabbed one: just the fill)
+  const ar = Math.floor(a / BAG_COLS), ac = a % BAG_COLS, jr = Math.floor(j / BAG_COLS), jc = j % BAG_COLS;
+  const to = [];
+  if (a >= 0) for (const i of from) {
+    const r = jr + Math.floor(i / BAG_COLS) - ar, c = jc + i % BAG_COLS - ac, k = r * BAG_COLS + c;
+    if (c < 0 || c >= BAG_COLS || r < 0 || k >= N || (run.bag[k] && !from.includes(k))) break;
+    to.push(k);
   }
+  if (a >= 0 && to.length === from.length) return { from, to, shape: true };
+  const busy = run.bag.map((it, i) => !!it && !from.includes(i));
+  to.length = 0;
+  let k = j;
+  for (let n = 0; n < from.length; n++) {
+    let t = 0;
+    while (busy[k] && t < N) { k = (k + 1) % N; t++; }
+    busy[k] = true; to.push(k);
+  }
+  return { from, to, shape: false };
+}
+/** @param {AutoRun} run @param {number[]} idxs @param {number} j @param {number} [anchor] @returns {boolean} */
+export function bagGroupMove(run, idxs, j, anchor) {
+  const P = bagGroupPlan(run, idxs, j, anchor);
+  if (!P) return false;
+  const items = P.from.map(i => run.bag[i]);
+  P.from.forEach(i => { run.bag[i] = null; });
+  P.to.forEach((k, n) => { run.bag[k] = items[n]; });
   return true;
 }
 // a group of bag slots into a gun's mod slots: the mods (one per slot, a stack's copies one after another) fill the
@@ -418,6 +438,23 @@ export function rowToBag(run, p, row, s, j) {
   if (itemKey(b) && itemKey(b) === itemKey(out)) { b.n += 1; arr[s] = null; return true; }
   if (b.n === 1 && rowFits(row, b)) { arr[s] = mod ? b.id : b; run.bag[j] = out; return true; }
   return false;
+}
+
+// (owner, after v1.0.74) a mod taken off a gun lying in the bag (bag slot b, its mod slot s; the screen's gun view) into
+// bag slot j: an empty one, or its own stack; else (j -1, or another item there) the first room (bagAdd). False: no mod
+// there, or no room for it
+/** @param {AutoRun} run @param {number} b @param {number} s @param {number} j @returns {boolean} */
+export function bagGunModOut(run, b, s, j) {
+  const it = run.bag[b], g = it && it.kind === 'gun' ? it.gun : null, id = g ? g.slots[s] : null;
+  if (!g || !id) return false;
+  /** @type {BagItem} */
+  const out = { kind: 'mod', id, n: 1 };
+  const t = j >= 0 && j < run.bag.length ? run.bag[j] : undefined;
+  if (t === null) run.bag[j] = out;
+  else if (t && itemKey(t) === itemKey(out)) t.n += 1;
+  else if (bagAdd(run, out)) return false;
+  g.slots[s] = null;
+  return true;
 }
 
 // (owner, v1.0.43) a fitted gun dragged out of the Guns row into bag slot j: an empty slot takes it, a gun there swaps

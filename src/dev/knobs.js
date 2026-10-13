@@ -613,11 +613,13 @@ DEV_META.push(
   { k: 'autoMapStep',  g: 'automaps', label: 'Each map starts this many tiers harder than the one before', min: 0, max: 50, step: 1 });
 DEV_GROUPS.push(['automaps', 'Auto: maps']);
 // CaveRunner Auto's level (auto/level.js, auto/pilot.js, stage 4a): its length and the team's pace
-Object.assign(DEV_DEFAULTS, { autoLvlMin: 2, autoLvlPace: 2, autoLvlHurry: 1.75, autoLvlSlow: 0.3, autoLvlElite: 0.4, autoLvlChest: 0.75,
+Object.assign(DEV_DEFAULTS, { autoLvlMin: 2, autoLvlPace: 1, autoLvlPaceTop: 3, autoLvlPaceLv: 20, autoLvlHurry: 1.75, autoLvlSlow: 0.3, autoLvlElite: 0.4, autoLvlChest: 0.75,
   autoLvlEliteR: 120, autoLvlChestR: 50, autoLvlBossT: 120, autoLvlEase: 2, autoClearT: 3, autoClearWait: 4 });
 DEV_META.push(
   { k: 'autoLvlMin',    g: 'autolevel', label: 'Level length (minutes at normal pace)', min: 0.2, max: 20, step: 0.1 },
-  { k: 'autoLvlPace',   g: 'autolevel', label: 'Normal pace (× the menu’s scroll, 34 world units / s)', min: 0.1, max: 4, step: 0.05 },
+  { k: 'autoLvlPace',   g: 'autolevel', label: 'Normal pace at level 1 (× the menu’s scroll, 34 world units / s)', min: 0.1, max: 4, step: 0.05 },
+  { k: 'autoLvlPaceTop', g: 'autolevel', label: 'Normal pace rises evenly to this (× the menu’s scroll) …', min: 0.1, max: 6, step: 0.05 },
+  { k: 'autoLvlPaceLv', g: 'autolevel', label: '… by this level (held after)', min: 2, max: 100, step: 1 },
   { k: 'autoLvlHurry',  g: 'autolevel', label: 'Stick pushed all the way right hurries to (× pace)', min: 1, max: 4, step: 0.05 },
   { k: 'autoLvlSlow',   g: 'autolevel', label: 'Stick pushed all the way left slows to (× pace; never stops)', min: 0.05, max: 1, step: 0.05 },
   { k: 'autoLvlElite',  g: 'autolevel', label: 'An elite alive and near slows to (× pace)', min: 0, max: 1, step: 0.05 },
@@ -660,6 +662,20 @@ DEV_META.push(
   { k: 'autoWebSlow',   g: 'autoblocks', label: 'Each web line a player is caught in slows him by (× pace; they multiply)', min: 0, max: 0.9, step: 0.01 },
   { k: 'autoWebHalt',   g: 'autoblocks', label: 'Slowed below this the team halts (clears the webs, or is blocked)', min: 0, max: 1, step: 0.01 });
 DEV_GROUPS.push(['autoblocks', 'Auto: blocks']);
+// (owner, after v1.0.74) orb webs in the spiders' zone (world/orbweb.js, placed by art/titlescene.js)
+Object.assign(DEV_DEFAULTS, { autoOrbChance: 0.1, autoOrbMax: 3, autoOrbSpokes: 9, autoOrbR: 50, autoOrbGap: 5 });
+DEV_META.push(
+  { k: 'autoOrbChance', g: 'autoorb', label: 'Orb web: chance at each spot in the webs zone (× its density)', min: 0, max: 1, step: 0.01 },
+  { k: 'autoOrbMax',    g: 'autoorb', label: 'Orb webs at once at most', min: 0, max: 10, step: 1 },
+  { k: 'autoOrbSpokes', g: 'autoorb', label: 'Orb web: spokes tried', min: 5, max: 16, step: 1 },
+  { k: 'autoOrbR',      g: 'autoorb', label: 'Orb web: longest spoke (world units)', min: 15, max: 120, step: 1 },
+  { k: 'autoOrbGap',    g: 'autoorb', label: 'Orb web: spiral spacing (world units)', min: 2, max: 15, step: 0.5 });
+DEV_GROUPS.push(['autoorb', 'Auto: orb webs']);
+// (owner, after v1.0.74) the spider zone (art/titlescene.js spiderRock): its scattered rock; and mines the spiders took over
+Object.assign(DEV_DEFAULTS, { autoSpiderRock: 0.28, autoSpiderMine: 0.35 });
+DEV_META.push(
+  { k: 'autoSpiderRock', g: 'autoorb', label: 'Spider zone: boulders in its open air (share; more: more rock)', min: 0, max: 0.6, step: 0.01 },
+  { k: 'autoSpiderMine', g: 'autoorb', label: 'A mine works taken over by spiders (chance; webs between its frames)', min: 0, max: 1, step: 0.05 });
 // CaveRunner Auto's starter gun (auto/run.js starterKit, stage 5a): its numbers, for each new player
 Object.assign(DEV_DEFAULTS, { autoGunDelay: 0.25, autoGunRech: 0.8, autoGunMana: 120, autoGunRegen: 40, autoGunSpread: 4 });
 DEV_META.push(
@@ -976,7 +992,7 @@ export function devReportOf(g, name) {
 // (owner v1.0.56) every fire knob on its own page, under the fire sim's window (ui/firesim.js)
 DEV_TABS.splice(DEV_TABS.length - 1, 0, ['firesim', 'Fire sim', ['firelab', 'firefx', 'autofire', 'firesilk', 'fire']]);
 DEV_TABS.splice(DEV_TABS.length - 2, 0, ['traj', 'Trajectory', ['trajorbit', 'trajspiral', 'trajboomer', 'trajpong', 'trajhoming', 'trajseeker', 'trajnear', 'trajaim', 'trajgrav', 'trajfloat', 'trajflat']]);
-DEV_TABS.splice(DEV_TABS.length - 2, 0, ['auto', 'Auto', ['auto', 'autohub', 'automaps', 'autolevel', 'autoblocks', 'autoguns', 'autoperks', 'autofoes', 'autodeath', 'autoloot', 'autochests', 'autobag', 'autothrow']]);
+DEV_TABS.splice(DEV_TABS.length - 2, 0, ['auto', 'Auto', ['auto', 'autohub', 'automaps', 'autolevel', 'autoblocks', 'autoorb', 'autoguns', 'autoperks', 'autofoes', 'autodeath', 'autoloot', 'autochests', 'autobag', 'autothrow']]);
 export const DEV_KEY = 'caverunner-dev';
 /** @type {DevKnobs} */
 export const DEV = Object.assign({}, DEV_DEFAULTS);

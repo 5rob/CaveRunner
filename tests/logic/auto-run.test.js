@@ -258,6 +258,27 @@ check('the Auto tab holds the auto group', G.DEV_TABS.some(t => t[0] === 'auto' 
   run.bag[13].n = 2;
   check('fitMods: fills empty slots from s on, the rest stay', G.fitMods(run, [10, 12, 13], 0, 0, 1) === 3 && g.slots.join() === 'a,x,b,y,y' && !run.bag[10] && !run.bag[13] && run.bag[12].kind === 'gold', g.slots);
   run.bag[0] = { kind: 'mod', id: 'q', n: 1 };
+  // (owner, after v1.0.74) a group grabbed by one of its tiles keeps its layout: a 2×2 lands 2×2
+  {
+    const b = run.bag.map(() => null), r2 = { ...run, bag: b };
+    b[0] = { kind: 'mod', id: 'a', n: 1 }; b[1] = { kind: 'mod', id: 'b', n: 1 }; b[7] = { kind: 'mod', id: 'c', n: 1 }; b[8] = { kind: 'mod', id: 'd', n: 1 };
+    const P = G.bagGroupPlan(r2, [0, 1, 7, 8], 23, 8);
+    check('bagGroupPlan: a 2×2 grabbed by its bottom right, dropped on 23: lands 2×2 (15, 16, 22, 23)', !!P && P.shape && P.to.join() === '15,16,22,23', P);
+    check('bagGroupMove: so', G.bagGroupMove(r2, [0, 1, 7, 8], 23, 8) && b[15].id === 'a' && b[16].id === 'b' && b[22].id === 'c' && b[23].id === 'd' && !b[0] && !b[8]);
+    const Q = G.bagGroupPlan(r2, [15, 16, 22, 23], 21, 15);
+    check("bagGroupPlan: off the bag's right side: the plain fill instead", !!Q && !Q.shape && Q.to.length === 4, Q);
+    b[30] = { kind: 'gold', n: 1 };
+    const Z = G.bagGroupPlan(r2, [15, 16, 22, 23], 23, 15);
+    check('bagGroupPlan: onto another item: the plain fill', !!Z && !Z.shape, Z);
+  }
+  // (owner, after v1.0.74) a mod off a gun lying in the bag, into the bag
+  {
+    const b = run.bag.map(() => null), r3 = { ...run, bag: b }, gun = { ...g, slots: ['p', 'q', null] };
+    b[2] = { kind: 'gun', gun, n: 1 }; b[4] = { kind: 'mod', id: 'q', n: 1 };
+    check('bagGunModOut: into an empty slot', G.bagGunModOut(r3, 2, 0, 6) && b[6].id === 'p' && gun.slots[0] === null);
+    check('bagGunModOut: onto its own stack', G.bagGunModOut(r3, 2, 1, 4) && b[4].n === 2 && gun.slots[1] === null);
+    check('bagGunModOut: an empty slot of the gun: nothing', !G.bagGunModOut(r3, 2, 2, 7));
+  }
   check('fitMods: no room: none', G.fitMods(run, [0], 0, 0, 0) === 0 && run.bag[0].id === 'q');
 }
 

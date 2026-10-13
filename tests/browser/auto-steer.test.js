@@ -15,7 +15,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   page.on('pageerror', e => { fails++; console.log('PAGEERROR', e.message); });
   await page.goto('file://' + path.join(__dirname, '..', 'build', 'test.html'));
   await page.waitForTimeout(300);
-  await page.evaluate(() => { Object.assign(DEV, { autoFoeDmg: 0, autoWallMin: 120, autoWallMax: 120 }); saveAutoRun(newRun()); });   // (no wall he can't clear in the way: rock stays free)
+  await page.evaluate(() => { Object.assign(DEV, { autoFoeDmg: 0, autoWallMin: 120, autoWallMax: 120, autoSpiderMine: 0 }); saveAutoRun(newRun()); });   // (no wall he can't clear in the way: rock stays free; level 5's mine not the spiders': their webs slow him)
   await page.locator('.tstart').dispatchEvent('pointerdown');
   for (let i = 0; i < 60 && !(await page.$('.auto')); i++) await page.waitForTimeout(50);
   await page.waitForTimeout(3500);

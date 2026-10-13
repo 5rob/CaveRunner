@@ -18,15 +18,15 @@ import { TM, titleNoise, titleRng, titleWebAt, titleZoneSpan } from '../art/titl
 export const BLOCK_VARIANTS = [
   { id: 'collapse',   name: 'Collapse',          bases: ['timber', 'paved'],          clears: 'rock',   look: 'rubble heap with broken frames' },
   { id: 'deadend',    name: 'Rounded dead end',  bases: ['moss', 'grove'],            clears: 'rock',   look: 'a mossy rounded rock face' },
-  { id: 'thicket',    name: 'Web thicket',       bases: ['webs', 'winding'],          clears: 'web',    look: 'webs criss-crossed roof to floor' },
+  { id: 'thicket',    name: 'Web thicket',       bases: ['webs', 'winding', 'spider'], clears: 'web',    look: 'webs criss-crossed roof to floor' },
   { id: 'timberfall', name: 'Fallen timber',     bases: ['timber', 'paved', 'grove'], clears: 'timber', look: 'crossed logs heaped up' },
   { id: 'rockslide',  name: 'Rockslide',         bases: ['moss', 'winding', 'webs'],  clears: 'rock',   look: 'a long scree slope' },
   { id: 'roots',      name: 'Root tangle',       bases: ['grove', 'moss'],            clears: 'timber', look: 'roots hanging from the roof' },
   { id: 'silt',       name: 'Silted pass',       bases: ['winding', 'moss'],          clears: 'rock',   look: 'flat banded mud' },
   { id: 'cart',       name: 'Jammed mine cart',  bases: ['timber'],                   clears: 'rock',   look: 'an iron cart on its side in rubble' },
   { id: 'brickwall',  name: 'Brick wall',        bases: ['paved', 'timber'],          clears: 'rock',   look: 'a straight brick wall' },
-  { id: 'stalactites', name: 'Stalactites and stalagmites', bases: ['moss', 'webs', 'winding'], clears: 'rock', look: 'rock spikes, floor and roof (owner: the ground rock)' },
-  { id: 'nest',       name: 'Nest plug',         bases: ['webs', 'grove'],            clears: 'web',    look: 'a resin plug wrapped in webs' },
+  { id: 'stalactites', name: 'Stalactites and stalagmites', bases: ['moss', 'webs', 'winding', 'spider'], clears: 'rock', look: 'rock spikes, floor and roof (owner: the ground rock)' },
+  { id: 'nest',       name: 'Nest plug',         bases: ['webs', 'grove', 'spider'],  clears: 'web',    look: 'a resin plug wrapped in webs' },
 ];
 /** @param {string} id */
 export const blockVariant = id => BLOCK_VARIANTS.find(v => v.id === id) || BLOCK_VARIANTS[0];
@@ -223,11 +223,12 @@ export function blockKind(S, wx) {
 export function websOn(S, r) {
   const cx = r.x + PW / 2 + S.scroll, cy = r.y + PH / 2;
   let n = 0;
+  const orbs = new Set();   // (an orb web, world/orbweb.js, counts once however many of its threads he's in)
   for (const L of S.webs) {
-    if (L.out || cx < Math.min(L.a0x, L.b0x) - 6 || cx > Math.max(L.a0x, L.b0x) + 6) continue;
+    if (L.out || (L.orb && orbs.has(L.orb)) || cx < Math.min(L.a0x, L.b0x) - 6 || cx > Math.max(L.a0x, L.b0x) + 6) continue;
     const vx = L.b0x - L.a0x, vy = L.b0y - L.a0y, u = Math.max(0, Math.min(1, ((cx - L.a0x) * vx + (cy - L.a0y) * vy) / (vx * vx + vy * vy || 1)));
     const w = titleWebAt(L, u);
-    if (Math.hypot(w.x - cx, w.y - cy) < 6) n++;
+    if (Math.hypot(w.x - cx, w.y - cy) < 6) { n++; if (L.orb) orbs.add(L.orb); }
   }
   return n;
 }

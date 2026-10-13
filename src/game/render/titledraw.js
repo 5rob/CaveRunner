@@ -366,7 +366,7 @@ function worldLayer(c, S) {
   c.strokeStyle = SILK; c.lineWidth = 0.9; c.globalAlpha = 1;
   c.beginPath();
   for (const L of S.webs) {
-    if (Math.max(L.a0x, L.b0x) < S.scroll - 10 || Math.min(L.a0x, L.b0x) > S.scroll + TITLE_VW + 10) continue;
+    if (L.sp || Math.max(L.a0x, L.b0x) < S.scroll - 10 || Math.min(L.a0x, L.b0x) > S.scroll + TITLE_VW + 10) continue;   // (an orb web's spiral: thinner, after)
     if (!L.fu) {
       c.moveTo(L.a0x - S.scroll, L.a0y);
       for (let i = 1; i <= 8; i++) { const p = titleWebAt(L, i / 8); c.lineTo(p.x - S.scroll, p.y); }
@@ -381,6 +381,16 @@ function worldLayer(c, S) {
   // the strings spiders shoot at him (as the game draws W.silk: a line from where it left)
   for (const b of S.silk) { c.moveTo(b.ax - S.scroll, b.ay); c.lineTo(b.x - S.scroll, b.y); }
   c.stroke();
+  // (owner, after v1.0.74) an orb web's spiral threads (world/orbweb.js): finer and fainter than its spokes
+  c.lineWidth = 0.6; c.globalAlpha = 0.75;
+  c.beginPath();
+  for (const L of S.webs) {
+    if (!L.sp || Math.max(L.a0x, L.b0x) < S.scroll - 10 || Math.min(L.a0x, L.b0x) > S.scroll + TITLE_VW + 10) continue;
+    const [u0, u1] = L.fu ? [0, L.fu[0]] : [0, 1];
+    for (let i = 0; i <= 4; i++) { const p = titleWebAt(L, u0 + (u1 - u0) * i / 4); if (i) c.lineTo(p.x - S.scroll, p.y); else c.moveTo(p.x - S.scroll, p.y); }
+  }
+  c.stroke();
+  c.globalAlpha = 1;
   // gold, the game's nuggets (its size from its amount: coinR), turned as they roll
   for (const g of S.coins) drawNugget(c, g.x - S.scroll, g.y, coinR(g), g.t, g.a || 0);
   if (!S.hub) drawLoot(c, S);   // (the hub's after its back wall, below: the wall hid a machine's item, feedback round 2)

@@ -35,7 +35,10 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
 // ---- a level: he fires his own gun ----
 {
   const run = G.newRun(3);
-  const S = G.levelScene(200, 3, 1, undefined, run.players);
+  // (a level whose first zone is open cave: the creature he shoots at stands in the open; zones shift when one's added)
+  let ls = 3;
+  while (G.levelPlan(ls).zp.z[1].z !== 'webs' && ls < 200) ls++;   // (not moss: the start pad is moss, and no zone follows its own kind)
+  const S = G.levelScene(200, ls, 1, undefined, run.players);
   const L = G.levelState(S);
   for (let t = 0; t < 4; t += 1 / 60) G.titleStep(S, 1 / 60);
   G.bagAdd(run, { kind: 'green', n: 1 });

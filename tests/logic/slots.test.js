@@ -5,7 +5,7 @@
 // gold he vacuums up; blasts carve the terrain and fire burns moss, timber and plants; all within caps.
 const { slotKey, slotSummary, SAVE_KEY, COLLECTION_KEY, PERK_COLLECTION_KEY, SLOTS,
   titleScene, titleStep, titleCell, titleZone, titleCarve, titleIgnite, TM, TCELL, TITLE_SHOTS, TITLE_MODS, TITLE_KINDS, ROSTERS, MODS, gunArt,
-  TITLE_FOES, TITLE_PARTS, TITLE_GOLD, TITLE_FIRE } = require('../load');
+  TITLE_FOES, TITLE_PARTS, FIRE_PARTS, TITLE_GOLD, TITLE_FIRE } = require('../load');
 const G = require('../load');
 
 let pass = 0, fail = 0;
@@ -88,7 +88,7 @@ check("only floor 1's creatures (its roster and its rats)", [...seenKinds].every
 check('they run on the game\'s own brains (jellyStep, spiderStep, ratStep)', brains > 1000 && noBrain < brains * 0.05, { brains, noBrain });
 check('aggro as the game: none hunts him from past its reach × loseAggro', aggroFar === 0, aggroFar);
 check('spiders spin their own lines', spun.size > 0, spun.size);
-check('within its caps', maxFoes <= TITLE_FOES && maxParts <= TITLE_PARTS && maxGold <= TITLE_GOLD && maxFire <= TITLE_FIRE, { maxFoes, maxParts, maxGold, maxFire });
+check('within its caps', maxFoes <= TITLE_FOES && maxParts <= TITLE_PARTS + FIRE_PARTS && maxGold <= TITLE_GOLD && maxFire <= TITLE_FIRE, { maxFoes, maxParts, maxGold, maxFire });   // (parts: the fire's specks have FIRE_PARTS over the cap, v1.0.74)
 check('the players never overlap (they collide)', overlap / pairs < 0.003, { overlap, pairs });
 check('…and keep a little apart (seldom tight together)', tight / pairs < 0.03, { tight, pairs });
 check('they run on the ground and they fly', S.groundT > 6 && S.flyT > 6, { ground: S.groundT, fly: S.flyT });
@@ -136,12 +136,12 @@ check('it travels through the zones', passed.size >= 3 && [...passed].every(z =>
 }
 // v0.0.168 (owner): every zone its own: a random order (none of the last two again), lengths, roof and floor
 {
-  const { titleZoneSpan, titleCeil, titleFloor, TITLE_ZLEN, TITLE_ZONES } = G;
+  const { titleZoneSpan, titleCeil, titleFloor, TITLE_ZLEN, TITLE_MENU_ZONES } = G;   // (the title's: the spider zone is the levels' only)
   const A = titleScene(470, 11, 139, 295), Bs = titleScene(470, 12, 139, 295);
   const zs = []; for (let Z = titleZoneSpan(0, A); zs.length < 30; Z = titleZoneSpan(Z.x1 + 1, A)) zs.push(Z);
   const order = zs.map(Z => Z.z).join(' ');
   check('the zones come in a random order, none twice in three', zs.every((Z, i) => i < 2 || (Z.z !== zs[i - 1].z && Z.z !== zs[i - 2].z))
-    && !/^(\S+ \S+ \S+ \S+ \S+) \1/.test(order) && TITLE_ZONES.every(z => zs.some(Z => Z.z === z)), order);
+    && !/^(\S+ \S+ \S+ \S+ \S+) \1/.test(order) && TITLE_MENU_ZONES.every(z => zs.some(Z => Z.z === z)) && !zs.some(Z => Z.z === 'spider'), order);
   const lens = zs.map(Z => Math.round(Z.x1 - Z.x0));
   check('each zone its own length', new Set(lens).size > 20 && lens.every(l => l >= TITLE_ZLEN[0] && l <= TITLE_ZLEN[1] + 1), lens.slice(0, 8));
   const o2 = []; for (let Z = titleZoneSpan(0, Bs); o2.length < 10; Z = titleZoneSpan(Z.x1 + 1, Bs)) o2.push(Z.z);
@@ -337,9 +337,9 @@ check('moss catches fire', !!mossAt && C.fire.length > 0, mossAt);
   check('burning silk lights the web it hangs along', caught(L2), L2.out);
   check('…but not one further off', !caught(L3), L3.out);
   // a web from the roof to the roof, lit: two burning halves hang from its ends; one in the air: they fall
-  // (a seed whose cave there is a natural one: a works' roof is low, timber in the way)
+  // (a seed whose cave there is a natural one: a works' roof is low, timber in the way; the spider zone's spikes hang off its roof)
   let ks = 7;
-  while (['timber', 'paved'].some(z => [60, 100].some(x => titleZone(x + 30 / 60 * 34, titleScene(470, ks, 139, 295)) === z))) ks++;
+  while (['timber', 'paved', 'spider'].some(z => [60, 100].some(x => titleZone(x + 30 / 60 * 34, titleScene(470, ks, 139, 295)) === z))) ks++;
   const K = titleScene(470, ks, 139, 295);
   quiet(K, 30);
   const x0 = K.scroll + 60, x1 = K.scroll + 100, c0 = G.titleCeil(x0, K) + 0.6, c1 = G.titleCeil(x1, K) + 0.6;

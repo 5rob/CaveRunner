@@ -42,6 +42,13 @@ check('stick half left: between', G.pilotPace({ x: 100, hold: -0.5 }) < base && 
 check('the push clamps to ±1', near(G.pilotPace({ x: 100, hold: -5 }), base * D.autoLvlSlow) && near(G.pilotPace({ x: 100, hold: 5 }), base * D.autoLvlHurry));
 check('a stop point: brakes before it, stops at it', G.pilotPace({ x: 100, stopX: 130 }) < base && G.pilotPace({ x: 100, stopX: 100 }) === 0
   && G.pilotPace({ x: 100, stopX: 400 }) === base && G.pilotPace({ x: 100, stopX: 100.5 }) > 0);
+{ // (owner, after v1.0.74) normal pace by level: autoLvlPace at 1, rising evenly to autoLvlPaceTop by autoLvlPaceLv, held after
+  const k = { a: D.autoLvlPace, b: D.autoLvlPaceTop, c: D.autoLvlPaceLv };
+  D.autoLvlPace = 1; D.autoLvlPaceTop = 3; D.autoLvlPaceLv = 20;
+  check('lvlPace: 1 at level 1, 2 half way, 3 at 20 and past', near(G.lvlPace(1), 1) && near(G.lvlPace(10.5), 2) && near(G.lvlPace(20), 3) && near(G.lvlPace(40), 3));
+  check("a level scene's pilot uses its tier's pace", near(G.levelState(G.levelScene(190, 3, 1, undefined, undefined, 20)).base, 3));
+  Object.assign(D, { autoLvlPace: k.a, autoLvlPaceTop: k.b, autoLvlPaceLv: k.c });
+}
 check('easing: a step at most the knob × dt', near(G.pilotEase(0, 1, 0.1), D.autoLvlEase * base * 0.1) && G.pilotEase(1, 1, 0.1) === 1);
 
 // ---- headless: pad → arena → exit ----

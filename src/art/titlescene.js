@@ -23,6 +23,7 @@ import { navField, navWay } from '../world/nav.js';
 import { collideNuggets, spillGold, stepNugget } from '../world/nuggets.js';
 import { losClear } from '../world/vision.js';
 import { archCurve, archNear } from '../world/decorate.js';
+import { orbPlace } from '../world/orbweb.js';
 import { bendPush, swingStep, swings, tailStep, vinePt, webAt, webNearU } from '../world/sway.js';
 import { MODS, VAC_PULL } from '../spells/mods.js';
 import { gunPassives } from '../spells/cast.js';
@@ -50,7 +51,8 @@ export const TITLE_FIRE = 600;        // burning terrain cells at once
 export const TCELL = 2;               // the terrain grid's cell (world units)
 export const TITLE_ZLEN = [200, 360]; // a zone's length, the shortest and longest (world units; each zone its own, titlePlan)
 // the zones it travels through (floor 1's natural and built-up looks), in a random order (owner: no repeats)
-export const TITLE_ZONES = ['moss', 'webs', 'timber', 'paved', 'grove', 'winding'];   // winding: v0.0.172 (owner)
+export const TITLE_ZONES = ['moss', 'webs', 'timber', 'paved', 'grove', 'winding', 'spider'];   // winding: v0.0.172 (owner); spider: after v1.0.74 (owner)
+export const TITLE_MENU_ZONES = TITLE_ZONES.filter(z => z !== 'spider');   // the title menu's (the spider zone is the levels' only)
 const ZMIX = 40;                      // the roof's and floor's shapes blend this far either side of a zone's border
 export const ZBLEND = 28;             // a zone's border frays this far (world units) each way, by noise
 export const TITLE_PACKY = 45;        // (Auto's tall level) a flyer's target at most this far up or down from the rest of the team
@@ -112,7 +114,11 @@ export const TITLE_HOME = {
   paved: [['rotta', 1]],
   grove: [['meduusa', 3], ['rotta', 1]],
   winding: [['meduusa', 2], ['hamahakki', 1], ['rotta', 1]],
+  spider: [['hamahakki', 5], ['meduusa', 1]],
 };
+// who comes into a zone: its TITLE_HOME list (a spider mine, Z.spid: the spiders')
+/** @param {TZone} Z */
+export const zoneHome = Z => TITLE_HOME[Z.spid ? 'spider' : Z.z] || TITLE_HOME.moss;
 
 /** @typedef {{ art: string, shot: string, mods: string[], name: string, cd: number, n: number, dmg: number, speed: number, spread: number, size: number,
  *   life: number, grav: number, drag: number, explode: number, pit: number, fire: number, bounce: number, bounceE: number, pierce: number, homing: number,
@@ -151,7 +157,7 @@ export const TITLE_HOME = {
  *   kills: number, gold: number, got: number, runner: TRunner, runners: TRunner[], foes: Enemy[], shots: TShot[], parts: TPart[], coins: Coin[],
  *   booms: TBoom[], zaps: TZap[], flash: number, rows: number, ncol: number, cells: Uint8Array, gen: number, props: TProp[],
  *   fire: TFire[], dirty: number[][], dirtyAll: boolean, carved: number, burnt: number, swaps: number, groundT: number, flyT: number, kinds: Record<string, number>,
- *   webs: WebLine[], cut: number, lineT: number, silk: { x: number, y: number, ax: number, ay: number, vx: number, vy: number, life: number }[],
+ *   webs: WebLine[], orbN?: number, cut: number, lineT: number, silk: { x: number, y: number, ax: number, ay: number, vx: number, vy: number, life: number }[],
  *   nav: { F: any, fx: number, fy: number, t: number }, fireAcc: number, fireN: number, burning: Set<number>, gotN: number, pops: number, lampsPopped: number, kitNames: Set<string>,
  *   digT: number, digs: number, digWhy: Record<string, number>, still?: boolean, zp: TitlePlan, snd: TSnd[], hub?: TitleHub, lvl?: TitleLevel, lab?: boolean, back?: (ctx: CanvasRenderingContext2D, S: TitleScene) => void, pace?: number, team?: RunPlayer[], blocked?: number, blockedKind?: string, huddle?: boolean, gunsOff?: boolean, hgoal?: number, hgoalT?: number, fuelWait?: number, tier?: number, loot?: TLoot[],
  *   onTake?: (it: BagItem, x: number, y: number) => void }} TitleScene */
@@ -173,7 +179,8 @@ export const TITLE_HOME = {
 /** @typedef {{ k: string, x: number, y: number, a?: any }} TSnd */
 // a zone of the plan (titlePlan): its kind, x0..x1, i its place in the plan; its roof's and floor's offset (co, fo), hills' height (ca, fa),
 // stretch (cf, ff) and phases (ph); dens its plants and webs
-/** @typedef {{ z: string, x0: number, x1: number, i: number, ph: number[], ca: number, fa: number, cf: number, ff: number, co: number, fo: number, dens: number, mine?: TMine, flat?: boolean, blk?: import('../auto/blocked.js').ZoneBlock }} TZone */
+/** @typedef {{ z: string, x0: number, x1: number, i: number, ph: number[], ca: number, fa: number, cf: number, ff: number, co: number, fo: number, dens: number, mine?: TMine, flat?: boolean, blk?: import('../auto/blocked.js').ZoneBlock, sv?: string, spid?: boolean }} TZone */
+// (sv: the spider zone's variant, 'rocks' / 'vines' / 'beams'; spid: a mine works the spiders have taken over)
 // (flat: a level's pad or arena, auto/level.js: no rubble, no ledges)
 // a mine works' own layout (v0.0.170, mkMine): n tunnels stacked (0 the lowest), `ein` the one the cave comes in at, `eout`
 // the one it leaves by; `lf` how high the stack sits (0 low .. 1 high, where there's room); `sh` the rock shelf over each;
@@ -181,7 +188,8 @@ export const TITLE_HOME = {
 // `steps`: where the way through moves to another tunnel (at a hole)
 /** @typedef {{ n: number, ein: number, eout: number, lf: number, sh: number[], L: number[], Rx: number[], holes: { k: number, x: number, w: number }[],
  *   steps: { x: number, to: number }[] }} TMine */
-/** @typedef {{ R: () => number, z: TZone[] }} TitlePlan */
+/** @typedef {{ R: () => number, z: TZone[], kinds: string[] }} TitlePlan */
+// (kinds: the zone kinds it picks from: the title's TITLE_MENU_ZONES, a level's all of TITLE_ZONES)
 // (still: the players stand where they are, for a test of something they'd otherwise saw through or shoot)
 
 /** @param {number} seed @returns {() => number} a seeded random 0..1 (mulberry32) */
@@ -200,15 +208,15 @@ export function titleRng(seed) {
 // scroll needs it, each zone a random kind (none of the last two), its own length (TITLE_ZLEN), and its
 // own roof and floor (how high, how hilly, how stretched, where the hills fall: `ph`), its plants'
 // and webs' density `dens`. Pure; S.zp. A band given without one (a test's { top, bot }) uses seed 7's
-/** @param {number} seed @returns {TitlePlan} */
-export function titlePlan(seed) {
-  return { R: titleRng((seed * 7919 + 13) >>> 0), z: [] };
+/** @param {number} seed @param {string[]} [kinds] @returns {TitlePlan} */
+export function titlePlan(seed, kinds = TITLE_MENU_ZONES) {
+  return { R: titleRng((seed * 7919 + 13) >>> 0), z: [], kinds };
 }
 /** @param {TitlePlan} P @param {number} wx @returns {TZone} the zone at world x (the plan grown to it) */
 function zoneIn(P, wx) {
   const Z = P.z, R = P.R;
-  if (!Z.length) Z.push(mkZone(R, -300, []));
-  while (Z[Z.length - 1].x1 <= wx) Z.push(mkZone(R, Z[Z.length - 1].x1, Z));
+  if (!Z.length) Z.push(mkZone(R, -300, [], P.kinds));
+  while (Z[Z.length - 1].x1 <= wx) Z.push(mkZone(R, Z[Z.length - 1].x1, Z, P.kinds));
   let lo = 0, hi = Z.length - 1;
   if (wx < Z[0].x0) return Z[0];
   while (lo < hi) { const m = (lo + hi + 1) >> 1; if (Z[m].x0 <= wx) lo = m; else hi = m - 1; }
@@ -216,14 +224,21 @@ function zoneIn(P, wx) {
 }
 // the plan's next zone from x0, by the same rules (CaveRunner Auto's finite level, auto/level.js)
 /** @param {TitlePlan} P @param {number} x0 @returns {TZone} */
-export const titleZoneAdd = (P, x0) => { const z = mkZone(P.R, x0, P.z); P.z.push(z); return z; };
-/** @param {() => number} R @param {number} x0 @param {TZone[]} Z the zones so far @returns {TZone} */
-function mkZone(R, x0, Z) {
-  const last = Z.slice(-2).map(q => q.z), can = TITLE_ZONES.filter(z => !last.includes(z));
+export const titleZoneAdd = (P, x0) => { const z = mkZone(P.R, x0, P.z, P.kinds); P.z.push(z); return z; };
+/** @param {() => number} R @param {number} x0 @param {TZone[]} Z the zones so far @param {string[]} kinds @returns {TZone} */
+function mkZone(R, x0, Z, kinds) {
+  const last = Z.slice(-2).map(q => q.z), can = kinds.filter(z => !last.includes(z));
   const z = can[Math.floor(R() * can.length)], len = TITLE_ZLEN[0] + R() * (TITLE_ZLEN[1] - TITLE_ZLEN[0]);
-  return { z, x0, x1: x0 + len, i: Z.length, ph: [R() * 99, R() * 99, R() * 99, R() * 99, R() * 99],
+  /** @type {TZone} */
+  const Zn = { z, x0, x1: x0 + len, i: Z.length, ph: [R() * 99, R() * 99, R() * 99, R() * 99, R() * 99],
     ca: 0.5 + R() * 0.9, fa: 0.5 + R() * 0.9, cf: 0.6 + R() * 0.8, ff: 0.6 + R() * 0.8, co: -6 + R() * 16, fo: -10 + R() * 16, dens: 0.6 + R() * 0.8,
     mine: z === 'timber' ? mkMine(R, x0, x0 + len) : undefined };
+  // (owner, after v1.0.74) the spider zone's variant, and the spiders' mines: their own numbers (seeded by x0), so the plan's
+  // draws stay as they were
+  const v = titleRng((Math.floor(x0) * 53 + 11) >>> 0)();
+  if (z === 'spider') Zn.sv = v < 0.4 ? 'rocks' : v < 0.7 ? 'vines' : 'beams';
+  if (z === 'timber' && v < DEV.autoSpiderMine) Zn.spid = true;
+  return Zn;
 }
 // A mine works' layout (owner, v0.0.170: it was always one low tunnel with a closed one over it): 1–3 tunnels,
 // come in at any of them and leave by any (a high way in, a low way out…), the others walled off at that end
@@ -377,6 +392,45 @@ const zCeil = (x, Z, B) => (Z.z === 'winding' ? windMid(x, Z, B) - windHalf(x, Z
 const zFloor = (x, Z, B) => (Z.z === 'winding' ? windMid(x, Z, B) + windHalf(x, Z)
   : B.bot - 22 + Z.fo + (Math.sin(x * 0.021 * Z.ff + Z.ph[2]) * 7 + Math.sin(x * 0.057 * Z.ff + Z.ph[3]) * 4) * Z.fa * bandK(B)
     - (bandK(B) - 1) * 30 * titleNoise(x / 80 + Z.ph[3], 4.3));
+// THE SPIDER ZONE (owner, after v1.0.74): the open cave (its roof and floor as moss's) with rock scattered through its
+// open air, natural: boulders (lumps of a noise field, DEV.autoSpiderRock their share), spikes down off the roof and up off
+// the floor; none near its ends. Something for webs to hang from (world/orbweb.js). Pure
+/** @param {number} wx @param {number} y @param {TZone} Z @param {number} cy @param {number} fy the column's roof and floor */
+export function spiderRock(wx, y, Z, cy, fy) {
+  const edge = Math.min(wx - Z.x0, Z.x1 - wx);
+  if (edge < 24 || y < cy || y > fy) return false;
+  const fade = Math.max(0, (70 - edge) / 70) * 0.15;
+  if (y > cy + 22 && y < fy - 26) {
+    const n = titleNoise(wx / 32 + Z.ph[0], y / 24 + Z.ph[1]) * 0.84 + titleNoise(wx / 8 + Z.ph[2], y / 8 + Z.ph[3]) * 0.16;   // (big lumps, a little ragged)
+    if (n > 1 - DEV.autoSpiderRock + fade) return true;
+  }
+  const k = Math.floor(wx / 34), i = Z.i * 7, sx = k * 34 + 8 + h2(k, i + 21) * 18, sw = 3 + h2(k, i + 22) * 5, d = Math.abs(wx - sx) / sw;
+  if (d < 1 && h2(k, i + 25) < 0.6) {
+    const len = (16 + h2(k, i + 23) * 44) * (1 - d * d) * (1 - fade * 3);
+    return h2(k, i + 24) < 0.55 ? y < cy + len : y > fy - len * 0.6;
+  }
+  return false;
+}
+// ('beams') a mine's old timbering left standing in it: crossbeams at random heights (two rows: lit over shaded), a post
+// under each end down to the floor, a brace inside each. Not solid (as a mine's frames): it burns; webs hang off it.
+// The material at (wx, y), or -1 (none). Pure
+/** @param {number} wx @param {number} y @param {TZone} Z @param {number} cy @param {number} fy */
+export function spiderBeam(wx, y, Z, cy, fy) {
+  if (Math.min(wx - Z.x0, Z.x1 - wx) < 30 || y < cy || y >= fy) return -1;
+  for (let j = 0; j < 2; j++) {
+    const k = Math.floor(wx / 64), q = k * 2 + j, i = Z.i * 5;
+    if (h2(q, i + 31) > 0.7) continue;
+    const x0 = k * 64 + h2(q, i + 32) * 24, w = 24 + h2(q, i + 33) * 34, by = cy + 18 + h2(q, i + 34) * Math.max(0, fy - cy - 50), u = wx - x0;
+    if (u < 0 || u >= w || y < by) continue;
+    const under = y - by;
+    if (under < 2) return TM.BEAM;
+    if (under < 4) return TM.BEAMD;
+    if (u < 3 || u >= w - 3) return u < 1.5 || (u >= w - 3 && u < w - 1.5) ? TM.BEAM : TM.BEAMD;
+    if ((u >= 3 && u <= 11 && Math.abs(under - 4 - (11 - u)) < 1) || (u >= w - 11 && u < w - 3 && Math.abs(under - 4 - (u - (w - 11))) < 1)) return TM.BEAMD;
+  }
+  return -1;
+}
+
 // the cave's roof and floor as made (world x; B the band: top, bot in world units, under the title, over the menu).
 // The timber works come down to TIMBER_H over the floor, the height of their frames
 /** @param {number} wx @param {{ top: number, bot: number, zp?: TitlePlan }} B */
@@ -506,7 +560,7 @@ function genCol(S, c) {
   // a small brick ledge out in the air of a natural cave (the level's built ledges)
   const lk = Math.floor(wx / 90), lx0 = lk * 90 + 15 + h2(lk, 8) * 35, lw = 14 + h2(lk, 9) * 14;
   const lmid = lx0 + lw / 2, lc = titleCeil(lmid, S), lf = titleFloor(lmid, S), ly = lc + 14 + h2(lk, 10) * Math.max(0, lf - lc - 52);
-  const ledge = !Zn.flat && (z === 'moss' || z === 'grove' || z === 'webs') && built(lmid, S) === 0 && h2(lk, 11) < 0.5 && wx >= lx0 && wx < lx0 + lw && lf - lc > 60;
+  const ledge = !Zn.flat && (z === 'moss' || z === 'grove' || z === 'webs' || z === 'spider') && built(lmid, S) === 0 && h2(lk, 11) < 0.5 && wx >= lx0 && wx < lx0 + lw && lf - lc > 60;
   // a blocked zone (CaveRunner Auto, auto/blocked.js): its blockage over the open band (a mine's: its tunnels' stack)
   const bk0 = Zn.blk, bk = bk0 && S.lvl && S.lvl.blockCell ? S.lvl.blockCell : null;
   const by0 = M && bands.length ? bands[Math.min(M.n, bands.length) - 1].c - 14 : cy, by1 = M && bands.length ? bands[0].f + 3 : fy;
@@ -531,7 +585,9 @@ function genCol(S, c) {
       m = TM.ROCK;
       if (zc === 'paved' && b > 0.3 && y < fy + 6) m = TM.BRICK;
       else if (y < fy + mossDeep * TCELL) m = TM.MOSS;
-    } else if (ledge && y >= ly && y < ly + 4) m = TM.BRICK;
+    } else if (z === 'spider' && spiderRock(wx, y, Zn, cy, fy)) m = spiderRock(wx, y - 2 * TCELL, Zn, cy, fy) ? TM.ROCK : TM.MOSS;   // (moss on their tops)
+    else if (z === 'spider' && Zn.sv === 'beams' && spiderBeam(wx, y, Zn, cy, fy) >= 0) m = spiderBeam(wx, y, Zn, cy, fy);
+    else if (ledge && y >= ly && y < ly + 4) m = TM.BRICK;
     else if (ledge && y >= ly - 2 && y < ly && tuft) m = TM.GRASS;
     if (m === TM.AIR && y >= fy - rub && y < fy) m = y < fy - rub + 2 && h2(c, r) < 0.7 ? TM.RUBM : TM.RUB;
     if (m === TM.AIR && y >= fy - tuft * TCELL && y < fy && zc !== 'paved') m = TM.GRASS;
@@ -556,7 +612,26 @@ function genCol(S, c) {
   // zones, and hang from the roof as carved (titleRoof); outside that zone's own x span it counts as its middle
   const rcy = titleRoof(wx, S), Zr = S.lvl ? titleZoneLook(wx, rcy + 1, S) : Zn, Zf = S.lvl ? titleZoneLook(wx, fy - 1, S) : Zn, zr = Zr.z;
   // the spiders' zone: web lines everywhere, roof to floor (slanting either way) and roof to roof (sagging)
-  if (zr === 'webs' && b === 0 && !(c % 4) && R() < 0.42 * Zr.dens && S.webs.length < TITLE_WEBS) {
+  // (owner, after v1.0.74) and now and then an orb web (world/orbweb.js): a hub in the open between roof and floor, spokes to
+  // the rock round it, the spiral across them; each thread a web line (L.orb: its web, L.sp: a spiral thread)
+  const spz = zr === 'spider' || !!Zn.spid;   // (the spider zone, a spider mine: more orb webs, hubs anywhere up the height)
+  if ((zr === 'webs' || spz) && (b === 0 || Zn.spid) && !(c % 4) && R() < DEV.autoOrbChance * (spz ? 3 : 1) * Zr.dens && new Set(S.webs.filter(L => L.orb).map(L => L.orb)).size < DEV.autoOrbMax) {
+    // (the stretch behind this column is made: the hub at most a spoke's reach back from it, near the floor or the roof)
+    const hx = wx - DEV.autoOrbR - 8 - R() * 30, hr = titleRoof(hx, S), hf = titleFloor(hx, S), pick = R();
+    const hy = spz && pick < 0.6 ? hr + (hf - hr) * (0.1 + R() * 0.8) : pick < 0.8 ? hf - 12 - R() * 25 : hr + 12 + R() * 25;
+    const W = orbPlace((x, y) => x >= wx || !!HOLDS[titleCell(S, Math.floor(x / TCELL), Math.floor(y / TCELL))], hx, hy, R,   // (timber holds a web too)
+      { spokes: DEV.autoOrbSpokes, maxR: DEV.autoOrbR, gap: DEV.autoOrbGap, tries: 6, spread: 25 });
+    if (W) {
+      const id = (S.orbN = (S.orbN || 0) + 1);
+      for (const t of W) {
+        /** @type {WebLine} */
+        const L = { ax: t.ax, ay: t.ay, bx: t.bx, by: t.by, a0x: t.ax, a0y: t.ay, b0x: t.bx, b0y: t.by, ain: t.ain, bin: t.bin || { x: t.bx, y: t.by }, owner: null, orb: id, sp: t.spiral };
+        L.sag = DEV.webSag * Math.hypot(t.bx - t.ax, t.by - t.ay) * (t.spiral ? 0.6 : 0.3);
+        S.webs.push(L);
+      }
+    }
+  }
+  if ((zr === 'webs' || zr === 'spider') && b === 0 && !(c % 4) && R() < 0.42 * Zr.dens && S.webs.filter(L => !L.orb).length < TITLE_WEBS) {
     const down = R() < 0.55, bx = down ? wx + (R() - 0.35) * 70 : wx + 18 + R() * 44;
     const by = down ? titleFloor(bx, S) - 0.5 : titleRoof(bx, S) + 0.5;
     /** @type {WebLine} */
@@ -604,6 +679,19 @@ function genCol(S, c) {
         ac: c, ar: Math.floor((rcy - 1) / TCELL) });
       return;
     }
+  }
+  // ('vines', owner after v1.0.74) the spider zone's big patches of vines: hung thick from the roof and the boulders' undersides
+  if (zr === 'spider' && Zr.sv === 'vines' && !(c % 2) && titleNoise(wx / 70 + Zr.ph[4], 3.3) > 0.5) {
+    const r0 = Math.floor(rcy / TCELL);
+    for (let r = r0; r < S.rows - 1; r++) {
+      const top = r === r0, y = top ? rcy : (r + 1) * TCELL;
+      if (y >= fy - 8) break;
+      if (!(top || (SOLID[S.cells[base + r]] && !SOLID[S.cells[base + r + 1]])) || R() > (top ? 0.75 : 0.5) * Zr.dens) continue;
+      const room = titleSurf(S, wx - S.scroll, y + 2, 1) - y;
+      if (room < 10) continue;
+      S.props.push({ k: 'climb', st: R() < 0.85 ? 'vine' : 'root', ox: wx, x: 0, y, len: room * (0.25 + R() * 0.5), seed: R(), side: 1, burn: 0, ac: c, ar: Math.floor((y - 1) / TCELL) });
+    }
+    return;
   }
   if (c % 3) return;
   const p = R();
@@ -742,7 +830,7 @@ const wsolid = S => { const C = csolid(S); return (x, y) => !!C(Math.floor(x / C
 /** @param {TitleScene} S @param {number} [x] @param {number} [cap] (a swarm stops at it too) */
 function addFoe(S, x, cap = TITLE_FOES) {
   const R = S.rnd, wx = (x === undefined ? TITLE_VW + 16 : x) + S.scroll;
-  const home = TITLE_HOME[titleZone(wx, S)];
+  const home = zoneHome(titleZoneSpan(wx, S));
   let roll = R() * home.reduce((a, h) => a + h[1], 0), id = home[0][0];
   for (const [q, w] of home) { if (roll < w) { id = q; break; } roll -= w; }
   S.kinds[id] = (S.kinds[id] || 0) + 1;
@@ -975,6 +1063,7 @@ function cutArch(S, p, u, burn, hold0 = true, hold1 = true) {
 function cutWeb(S, L, u, burn) {
   L.out = true; L.fu = null; S.cut++;
   S.webs = S.webs.filter(o => o !== L);
+  if (L.sp) return;   // (an orb web's spiral thread: just gone, no pieces hanging)
   const pts = [];
   for (let i = 0; i <= 8; i++) pts.push(titleWebAt(L, u * i / 8));
   const qts = [];
@@ -1485,7 +1574,13 @@ function jetOver(S, r, wait = true) {
     run += TCELL;
     if (run >= PH + 4) {
       // (owner, exo Jetpack) not enough in the tank for the climb: he waits at the wall (the level holds its scroll) and refills
-      if (fuelOn(S) && (r.empty || fuelOf(r) < fuelForClimb(r.y - y, tankOf(S, r).fuel))) { if (!wait) return false; S.fuelWait = S.t; r.x = Math.max(8, r.x - 1); return true; }
+      if (fuelOn(S) && (r.empty || fuelOf(r) < fuelForClimb(r.y - y, tankOf(S, r).fuel))) {
+        if (!wait) return false;
+        S.fuelWait = S.t; r.x = Math.max(8, r.x - 1);
+        // (after v1.0.74: in the air the tank never fills) he comes down to land and wait there, sliding down off the rock
+        if (!r.ground && r.mode === 'fly') { r.modeT = Math.min(r.modeT, 0); r.vy = Math.max(r.vy, 40); r.x = Math.max(8, r.x - 1); if (!boxRock(S, r.x, r.y + 2)) r.y += 2; }
+        return true;
+      }
       setMode(S, r, 'fly', 1.5); r.tx = r.x + 12; r.ty = y - 2; r.retarget = 1.2; r.vy = Math.min(r.vy, -60); r.ground = false;
       r.burst = false; r.x = Math.max(8, r.x - 1);
       return true;
@@ -1604,7 +1699,7 @@ function ctlStep(S, r, st, dt) {
   // on; web lines he touches slow him (tied)
   r.ctlIdle = m > 0 ? 0 : (r.ctlIdle || 0) + dt;   // the stick's rest (ctlOn)
   r.hangGo = (r.hangGo || 0) - dt;
-  const hold = hangFind(S.props, S.webs, r.x + PW / 2 + S.scroll, r.y, r.hangGo > 0), tied = hold.webMul;
+  const hold = hangFind(S.props, S.webs.filter(L => !L.sp), r.x + PW / 2 + S.scroll, r.y, r.hangGo > 0), tied = hold.webMul;   // (an orb web's spiral threads: not to hang on, nor each a slow)
   r.hang = hold.climb && !jet ? hold.climb : null;
   if (r.hang) hangSteer(r, hold, st.nx, st.ny, m, r.x + PW / 2 + S.scroll, r.y, DEV.autoMoveK * mv, dt);
   else if (jet) {
@@ -1673,7 +1768,8 @@ function runStep(S, r, dt) {
   r.x += vx * dt;
   r.gait += (sv(S) + vx) * dt * 0.38;
   if ((r.stepT = (r.stepT || 0) - dt * Math.abs(sv(S) + vx) / 20) <= 0) { r.stepT = 1; snd(S, 'step', cx, r.y + PH); }
-  if (r.modeT <= 0 && !(fuelOn(S) && fuelOf(r) < FUEL_TAKEOFF)) { setMode(S, r, 'fly', flyTime(R) * tallK(S, DEV.autoRoamFly));   // (a tall level: longer flights, owner v1.0.74) (low on fuel: he runs on till it's refilled)
+  // (owner, after v1.0.74) after the boss (S.huddle in a level) nobody takes off: they run along the floor to the exit
+  if (r.modeT <= 0 && !(S.huddle && S.lvl) && !(fuelOn(S) && fuelOf(r) < FUEL_TAKEOFF)) { setMode(S, r, 'fly', flyTime(R) * tallK(S, DEV.autoRoamFly));   // (a tall level: longer flights, owner v1.0.74) (low on fuel: he runs on till it's refilled)
     pickTarget(S, r); r.vy = -40; r.ground = false; r.burst = R() < r.bursty; r.jet = r.burst; r.jetT = 0.3; r.jetCd = 0; }
 }
 /** @param {TitleScene} S @param {TRunner} r @param {number} dt */
@@ -1681,7 +1777,7 @@ function flyStep(S, r, dt) {
   const R = S.rnd, cx = r.x + PW / 2;
   S.flyT += dt;
   r.ground = false;
-  const landing = r.modeT <= 0;
+  const landing = r.modeT <= 0 || (!!S.huddle && !!S.lvl);   // (after the boss in a level: everyone comes down to run to the exit)
   if (landing && r.modeT < -4) r.modeT = flyTime(R);     // nowhere to land: fly on
   if (!landing && (r.retarget <= 0 || Math.hypot(r.tx - r.x, r.ty - r.y) < 6)) pickTarget(S, r);
   if (landing) { r.tx = r.x; r.ty = Math.min(S.bot + 6, titleSurf(S, cx, r.y + PH - 9, 1) - PH + 2); }

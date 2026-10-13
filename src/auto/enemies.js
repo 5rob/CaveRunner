@@ -12,7 +12,7 @@ import { DEV } from '../dev/knobs.js';
 import { eliteOf, enemyFor } from '../data/creatures.js';
 import { deathFall } from './death.js';
 import { shieldSoak } from './perks.js';
-import { TCELL, TITLE_HOME, TITLE_KINDS, TITLE_VW, titleFoeAt, titleZone } from '../art/titlescene.js';
+import { TCELL, TITLE_KINDS, TITLE_VW, titleFoeAt, titleZoneSpan, zoneHome } from '../art/titlescene.js';
 
 export const FALL_FLICKER = 0.6;      // (retired, feedback round 2: a fallen player is a ragdoll now, auto/death.js)
 const BOSS_IN = 90;                   // the boss comes in this far right of the team (world units)
@@ -35,7 +35,7 @@ export function elitePlan(plan, rnd, n = DEV.autoFoeElites) {
 // a creature kind for world x by the zone's home rules (weighted)
 /** @param {import('../art/titlescene.js').TitleScene} S @param {number} x */
 function homeKind(S, x) {
-  const home = TITLE_HOME[titleZone(x, S)] || TITLE_HOME.moss;
+  const home = zoneHome(titleZoneSpan(x, S));
   let roll = S.rnd() * home.reduce((a, h) => a + h[1], 0);
   for (const [q, w] of home) { if (roll < w) return q; roll -= w; }
   return home[0][0];

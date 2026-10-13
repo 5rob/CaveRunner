@@ -36,6 +36,7 @@ export * from './world/decorate.js';
 export * from './world/level.js';
 export * from './world/ragdoll.js';
 export * from './world/sway.js';
+export * from './world/orbweb.js';
 export * from './world/shoplights.js';
 export * from './world/guide.js';
 export * from './world/byDistance.js';

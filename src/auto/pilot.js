@@ -12,14 +12,21 @@ export const PILOT_CRAWL = 0.08;      // … but never below this × normal pace
 
 // PilotIn: x the team's place (world x); stopX where it must stop (null: nowhere ahead); elites and chests: world x
 // (an elite dead, a chest opened: no slow); hold: the stick's sideways push, -1 (all the way left) to 1 (all the way right);
-// blocked: the way is blocked and no gun in play can clear it (stage 5b): the one case the team stops (0)
-/** @typedef {{ x: number, stopX?: number | null, elites?: { x: number, alive?: boolean }[], chests?: { x: number, open?: boolean }[], hold?: number, blocked?: boolean }} PilotIn */
+// blocked: the way is blocked and no gun in play can clear it (stage 5b): the one case the team stops (0); base: normal pace (default DEV.autoLvlPace; a level: lvlPace(its tier))
+/** @typedef {{ base?: number, x: number, stopX?: number | null, elites?: { x: number, alive?: boolean }[], chests?: { x: number, open?: boolean }[], hold?: number, blocked?: boolean }} PilotIn */
 
 // the pace the team wants now (0: stopped)
+/** (owner, after v1.0.74) normal pace at a level (the run's tier): DEV.autoLvlPace at level 1 rising evenly to DEV.autoLvlPaceTop at
+ * level DEV.autoLvlPaceLv, held there after @param {number} tier */
+export function lvlPace(tier) {
+  const t = Math.max(0, Math.min(1, (tier - 1) / Math.max(1, DEV.autoLvlPaceLv - 1)));
+  return DEV.autoLvlPace + (DEV.autoLvlPaceTop - DEV.autoLvlPace) * t;
+}
+
 /** @param {PilotIn} P @returns {number} */
 export function pilotPace(P) {
   if (P.blocked) return 0;
-  const base = DEV.autoLvlPace;
+  const base = P.base ?? DEV.autoLvlPace;
   let k = base;
   if (P.elites && P.elites.some(e => e.alive !== false && Math.abs(e.x - P.x) < DEV.autoLvlEliteR)) k *= DEV.autoLvlElite;
   if (P.chests && P.chests.some(c => !c.open && Math.abs(c.x - P.x) < DEV.autoLvlChestR)) k *= DEV.autoLvlChest;
@@ -42,8 +49,8 @@ export function pilotPush(h) {
 
 // the pace eased toward the one it wants: at most DEV.autoLvlEase × normal pace a second either way; straight to 0
 // when it wants to stop dead at a stop point (the level clamps it there too)
-/** @param {number} cur @param {number} want @param {number} dt */
-export function pilotEase(cur, want, dt) {
-  const v = DEV.autoLvlEase * DEV.autoLvlPace * dt;
+/** @param {number} cur @param {number} want @param {number} dt @param {number} [base] normal pace (default DEV.autoLvlPace) */
+export function pilotEase(cur, want, dt, base = DEV.autoLvlPace) {
+  const v = DEV.autoLvlEase * base * dt;
   return cur < want ? Math.min(want, cur + v) : Math.max(want, cur - v);
 }

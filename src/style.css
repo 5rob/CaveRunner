@@ -1047,6 +1047,19 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 /* (owner, v1.0.46) grown up over the play area: above the nav and the play area's buttons */
 .abag.big{z-index:8;background:#0e091a}
 .abag.big+.abtns{z-index:9}   /* the stick's dome still over it */
+/* (owner, after v1.0.74) a bag gun's view over the play area (AutoScreen.js BagGunView) */
+.abgun{--text:#f1ecff;--muted:rgba(241,236,255,0.62);--pad:#1d1531;--ring:#2a2140;--good:#5ee05a;--bad:#ff6a5a;position:absolute;inset:0;z-index:6;
+  display:flex;flex-direction:column;gap:6px;padding:8px;box-sizing:border-box;background:#0e091a;color:var(--text);overflow:hidden}
+.abghead{display:flex;align-items:center;gap:8px;font:700 14px system-ui,sans-serif;padding-right:96px}   /* (clear of the Dev and pause buttons over it) */
+.abghead>span{color:var(--muted);font-size:11px;font-weight:500}
+.abgicon{width:34px;height:34px;display:flex;align-items:center;justify-content:center}
+.abgclose{margin-left:auto;width:34px;height:34px;border-radius:50%;border:2px solid #3d2f5c;background:#1d1531;color:#f1ecff;font:700 18px system-ui,sans-serif;padding:0}
+.abgbody{flex:1 1 0;min-height:0;display:flex;gap:8px}
+.abgbody .gstats{flex:0 0 44%;border:1px solid var(--ring);padding:4px 7px 2px;overflow-y:auto}
+.abgbody .gsrow{font:700 9.5px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.04em;text-transform:uppercase}
+.abgbody .gsrow b{font:800 10.5px ui-monospace,SFMono-Regular,Menlo,monospace}
+.abgmods{flex:1 1 0;min-width:0;overflow-y:auto;display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:min-content;gap:6px;align-content:start;touch-action:pan-y}
+.abgnote{margin:0;font:500 11px system-ui,sans-serif;color:var(--muted);text-align:center}
 .aslot{position:relative;aspect-ratio:1;border-radius:10px;background:#1d1531;border:2px solid rgba(255,255,255,0.1);
   box-sizing:border-box;display:flex;align-items:center;justify-content:center;overflow:hidden}
 .aslot.full{border-color:var(--ic,rgba(255,179,90,0.45));background:#2c1f45}
@@ -1147,7 +1160,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 /* (owner v1.0.74) the Dev panel's mod grid (ui/modgrid.js) */
 .modgrid{padding:6px 10px 10px;border-bottom:1px solid #3d2f5c}
 .mgtiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(44px,1fr));gap:5px}
-.mgtile{aspect-ratio:1;display:flex;align-items:center;justify-content:center;padding:0;background:#2c1f45;border:2px solid #555;border-radius:8px;touch-action:none;user-select:none;-webkit-user-select:none;transition:transform .12s}
+.mgtile{position:relative;aspect-ratio:1;display:flex;align-items:center;justify-content:center;padding:0;background:#2c1f45;border:2px solid #555;border-radius:8px;touch-action:pan-y;user-select:none;-webkit-user-select:none;transition:transform .12s}
 .mgtile .apixg{width:70%;height:70%}
 .mgtile.off{opacity:.4}
 .mgtile.on{box-shadow:0 0 0 2px #fff}
