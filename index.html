@@ -547,6 +547,22 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .firesimbtns{display:flex;gap:8px;margin-top:8px}
 .firesimbtns .dbg{flex:1}
 .firesimbtns .firego{background:#c8501a;color:#fff}
+/* Dev → Zones (ui/zonesim.js): the zone window (drag pans both ways), then a card per zone: Show, can-have boxes, notes */
+.zonesimcvs{display:block;width:100%;height:300px;border-radius:10px;border:1px solid #3a3530;background:#000;touch-action:none}
+.zsname{margin:0 2px 6px;font-size:13px;font-weight:600;color:#e8dcc8}
+.zonesimtop .devcopytext{margin-top:6px}
+.zcards{padding:8px 10px 2px}
+.zcard{border:1px solid var(--ring);border-radius:10px;padding:8px;margin:0 0 10px}
+.zchead{font-weight:700;font-size:15px;margin:0 0 6px}
+.zrow{padding:6px;border-radius:8px;margin-top:4px}
+.zrow.on{background:rgba(255,190,90,.12)}
+.zrowtop{display:flex;align-items:center;gap:8px}
+.zrowtop .zshow{flex:0 0 auto;min-width:76px;padding:6px 8px}
+.zshow.on{background:#c8501a;color:#fff}
+.zlabel{flex:1;font-size:13px}
+.zmay{display:flex;align-items:center;gap:4px;font-size:12px;opacity:.85;white-space:nowrap}
+.zcheck{width:20px;height:20px}
+.znote{display:block;box-sizing:border-box;width:100%;margin-top:6px;font:inherit;font-size:13px;padding:6px;border-radius:6px;border:1px solid var(--ring);background:rgba(0,0,0,.25);color:inherit;resize:vertical}
 .devtab{position:relative;flex:1 0 auto;height:42px;padding:0 10px;border:0;border-bottom:3px solid transparent;
   background:none;color:var(--muted);font:700 13px system-ui,sans-serif;white-space:nowrap}
 .devtab.on{color:var(--text);border-bottom-color:var(--acc)}
@@ -2138,8 +2154,26 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   Object.assign(DEV_DEFAULTS, { autoSpiderRock: 0.28, autoSpiderMine: 0.35 });
   DEV_META.push(
     { k: "autoSpiderRock", g: "autoorb", label: "Spider zone: boulders in its open air (share; more: more rock)", min: 0, max: 0.6, step: 0.01 },
-    { k: "autoSpiderMine", g: "autoorb", label: "A mine works taken over by spiders (chance; webs between its frames)", min: 0, max: 1, step: 0.05 }
+    { k: "autoSpiderMine", g: "autozones", label: "Spider web filled: chance a zone that may have it does (Zones page; was mines only)", min: 0, max: 1, step: 0.05 }
   );
+  Object.assign(DEV_DEFAULTS, {
+    autoVegChance: 0.35,
+    zv_veg_moss: 0,
+    zv_veg_webs: 0,
+    zv_veg_timber: 0,
+    zv_veg_paved: 0,
+    zv_veg_grove: 0,
+    zv_veg_winding: 0,
+    zv_veg_spider: 1,
+    zv_spid_moss: 0,
+    zv_spid_webs: 0,
+    zv_spid_timber: 1,
+    zv_spid_paved: 0,
+    zv_spid_grove: 0,
+    zv_spid_winding: 0
+  });
+  DEV_META.push({ k: "autoVegChance", g: "autozones", label: "Heavy vegetation: chance a zone that may have it does (the spider zone: its vines look, 30%)", min: 0, max: 1, step: 0.05 });
+  DEV_GROUPS.push(["autozones", "Auto: zone variants"]);
   Object.assign(DEV_DEFAULTS, { autoGunDelay: 0.25, autoGunRech: 0.8, autoGunMana: 120, autoGunRegen: 40, autoGunSpread: 4 });
   DEV_META.push(
     { k: "autoGunDelay", g: "autoguns", label: "Starter gun: cast delay (s)", min: 0.02, max: 2, step: 0.01 },
@@ -2482,7 +2516,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   DEV_TABS.splice(DEV_TABS.length - 1, 0, ["firesim", "Fire sim", ["firelab", "firefx", "autofire", "firesilk", "fire"]]);
   DEV_TABS.splice(DEV_TABS.length - 2, 0, ["traj", "Trajectory", ["trajorbit", "trajspiral", "trajboomer", "trajpong", "trajhoming", "trajseeker", "trajnear", "trajaim", "trajgrav", "trajfloat", "trajflat"]]);
-  DEV_TABS.splice(DEV_TABS.length - 2, 0, ["auto", "Auto", ["auto", "autohub", "automaps", "autolevel", "autoblocks", "autoorb", "autoguns", "autoperks", "autofoes", "autodeath", "autoloot", "autochests", "autobag", "autothrow"]]);
+  DEV_TABS.splice(DEV_TABS.length - 2, 0, ["zones", "Zones", ["autozones", "autoorb"]]);
+  DEV_TABS.splice(DEV_TABS.length - 2, 0, ["auto", "Auto", ["auto", "autohub", "automaps", "autolevel", "autoblocks", "autoguns", "autoperks", "autofoes", "autodeath", "autoloot", "autochests", "autobag", "autothrow"]]);
   var DEV_KEY = "caverunner-dev";
   var DEV = Object.assign({}, DEV_DEFAULTS);
   var dueMs = (floor) => floor === 1 ? DEV.due1 * 6e4 : DEADLINE_MS;
@@ -13856,8 +13891,24 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       mine: z === "timber" ? mkMine(R, x0, x0 + len) : void 0
     };
     const v = titleRng(Math.floor(x0) * 53 + 11 >>> 0)();
-    if (z === "spider") Zn.sv = v < 0.4 ? "rocks" : v < 0.7 ? "vines" : "beams";
-    if (z === "timber" && v < DEV.autoSpiderMine) Zn.spid = true;
+    if (z === "spider") Zn.sv = v < 0.4 ? "rocks" : v < 0.7 ? zoneMay(z, "veg") ? "vines" : "rocks" : "beams";
+    if (z === "spider") Zn.veg = Zn.sv === "vines";
+    else if (zoneMay(z, "veg") && titleRng(Math.floor(x0) * 71 + 5 >>> 0)() < DEV.autoVegChance) Zn.veg = true;
+    if (z !== "spider" && zoneMay(z, "spid") && v < DEV.autoSpiderMine) Zn.spid = true;
+    return Zn;
+  }
+  var ZONE_VARIANTS = [["veg", "Heavy vegetation"], ["spid", "Spider web filled"]];
+  var zoneMay = (z, v) => v === "spid" && z === "spider" || !!DEV["zv_" + v + "_" + z];
+  function titleZoneForce(P2, x0, z, vars) {
+    const Zn = mkZone(P2.R, x0, [], [z]);
+    Zn.i = P2.z.length;
+    if (z === "spider") {
+      if (vars.veg) Zn.sv = "vines";
+      else if (Zn.sv === "vines") Zn.sv = "rocks";
+    }
+    Zn.veg = !!vars.veg;
+    Zn.spid = z !== "spider" && !!vars.spid;
+    P2.z.push(Zn);
     return Zn;
   }
   function mkMine(R, x0, x1) {
@@ -14252,7 +14303,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         return;
       }
     }
-    if (zr === "spider" && Zr.sv === "vines" && !(c % 2) && titleNoise(wx / 70 + Zr.ph[4], 3.3) > 0.5) {
+    if (Zr.veg && !(c % 2) && titleNoise(wx / 70 + Zr.ph[4], 3.3) > 0.5) {
       const r0 = Math.floor(rcy / TCELL);
       for (let r = r0; r < S2.rows - 1; r++) {
         const top = r === r0, y = top ? rcy : (r + 1) * TCELL;
@@ -14372,7 +14423,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     };
   }
   function titleScene(vh, seed = 7, top = vh * 0.3, bot = vh * 0.62, opts = {}) {
-    const rnd2 = titleRng(seed), rows = Math.ceil(vh / TCELL) + 1, hub = opts.hub, ncol = hub ? hub.w : Math.ceil((TITLE_VW + 50 + AHEAD + (opts.level ? TITLE_BACK : 0)) / TCELL);
+    const rnd2 = titleRng(seed), rows = Math.ceil(vh / TCELL) + 1, hub = opts.hub, ncol = hub ? hub.w : opts.ncol || Math.ceil((TITLE_VW + 50 + AHEAD + (opts.level ? TITLE_BACK : 0)) / TCELL);
     const S2 = {
       t: 0,
       vh,
@@ -17818,7 +17869,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         worm(cx, cy, cx + Math.cos(a) * d, cy + Math.sin(a) * d * 0.8, 5 + R() * 2.5, 400, true);
       }
       const rough = Math.max(0, DEV.l2dRough), fx0 = cx - Math.round(crx * 0.8), fx1 = cx + Math.round(crx * 0.8), fl = cy + cry;
-      const flat = (x, y) => x >= fx0 && x <= fx1 && y >= fl - 13 && y <= fl;
+      const flat2 = (x, y) => x >= fx0 && x <= fx1 && y >= fl - 13 && y <= fl;
       const changed = [];
       for (let y = fl; y <= fl + 3; y++) for (let x = fx0 - 1; x <= fx1 + 1; x++) if (mask[y * CW + x] === id) mat[y * CW + x] = ROCK;
       const digF = (ex, ey, r) => {
@@ -17880,7 +17931,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         const src2 = mat.slice();
         for (let y = y0 + 1; y < y1; y++) for (let x = x0 + 1; x < x1; x++) {
           const i = y * CW + x;
-          if (mask[i] !== id || flat(x, y) || under(x, y) || src2[i] === BED) continue;
+          if (mask[i] !== id || flat2(x, y) || under(x, y) || src2[i] === BED) continue;
           const o = !src2[i];
           let d = A1 + 1;
           for (let dy = -A1; dy <= A1; dy++) for (let dx = -A1; dx <= A1; dx++) {
@@ -17925,7 +17976,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             const a = Math.atan2(ny, nx) + bend * t / L, px = x + 0.5 + Math.cos(a) * t, py = y + 0.5 + Math.sin(a) * t, r = w0 * (1 - t / (L + 1));
             for (let yy = Math.floor(py - r); yy <= Math.ceil(py + r); yy++) for (let xx = Math.floor(px - r); xx <= Math.ceil(px + r); xx++) {
               const j = yy * CW + xx;
-              if (mask[j] !== id || mat[j] || keepC[j] || flat(xx, yy) || (xx + 0.5 - px) ** 2 + (yy + 0.5 - py) ** 2 > r * r + 0.3) continue;
+              if (mask[j] !== id || mat[j] || keepC[j] || flat2(xx, yy) || (xx + 0.5 - px) ** 2 + (yy + 0.5 - py) ** 2 > r * r + 0.3) continue;
               changed.push(j, mat[j]);
               mat[j] = ROCK;
             }
@@ -17934,7 +17985,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         const boulders = Math.round(wall.length / 90 * rough);
         for (let k = 0, tries = 0; k < boulders && tries < boulders * 20; tries++) {
           const x = Math.floor(x0 + R() * (x1 - x0)), y = Math.floor(y0 + R() * (y1 - y0)), i = y * CW + x, r = 1.2 + R() * 2.3;
-          if (mask[i] !== id || mat[i] || flat(x, y) || flat(x, y + 13)) continue;
+          if (mask[i] !== id || mat[i] || flat2(x, y) || flat2(x, y + 13)) continue;
           let clear = true;
           for (let dy = -7; dy <= 7 && clear; dy++) for (let dx = -7; dx <= 7; dx++) if (mat[i + dy * CW + dx]) {
             clear = false;
@@ -17944,7 +17995,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           k++;
           for (let yy = Math.floor(y - r); yy <= y + r; yy++) for (let xx = Math.floor(x - r); xx <= x + r; xx++) {
             const j = yy * CW + xx;
-            if (mask[j] === id && !mat[j] && !keepC[j] && !flat(xx, yy) && (xx - x) ** 2 + (yy - y) ** 2 <= r * r * (0.7 + 0.6 * cellNoise(xx, yy, seed))) {
+            if (mask[j] === id && !mat[j] && !keepC[j] && !flat2(xx, yy) && (xx - x) ** 2 + (yy - y) ** 2 <= r * r * (0.7 + 0.6 * cellNoise(xx, yy, seed))) {
               changed.push(j, mat[j]);
               mat[j] = ROCK;
             }
@@ -17955,7 +18006,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         const src2 = mat.slice(), sh = 1 - pass;
         for (let y = y0 + 1; y < y1; y++) for (let x = x0 + 1; x < x1; x++) {
           const i = y * CW + x;
-          if (mask[i] !== id || flat(x, y) || under(x, y)) continue;
+          if (mask[i] !== id || flat2(x, y) || under(x, y)) continue;
           let nb = 0;
           for (const j of [i - 1, i + 1, i - CW, i + CW, i - CW - 1, i - CW + 1, i + CW - 1, i + CW + 1]) if (src2[j]) nb++;
           const v = cellNoise(x >> sh, y >> sh, seed + id * 7 + pass);
@@ -28684,6 +28735,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     "autoTpBlink",
     "autoTpBoomR",
     "autoTpBoomWait",
+    "autoVegChance",
     "autoVineAsh",
     "autoVineCatch",
     "autoVineFire",
@@ -31903,6 +31955,284 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     );
   }
 
+  // src/version.js
+  var VERSION2 = "v1.0.77";
+
+  // src/art/zonelab.js
+  var ZLAB_LEAD = 60;
+  var ZLAB_TAIL = 60;
+  function flat(P2, x0, x1) {
+    P2.z.push({ z: "moss", x0, x1, i: P2.z.length, ph: [0, 0, 0, 0, 0], ca: 0, fa: 0, cf: 1, ff: 1, co: 0, fo: 2, dens: 0.4, flat: true });
+  }
+  function zoneLabScene(vh, seed, z, vars) {
+    const P2 = titlePlan(seed, TITLE_ZONES);
+    flat(P2, -300, ZLAB_LEAD);
+    const Z = titleZoneForce(P2, ZLAB_LEAD, z, vars);
+    flat(P2, Z.x1, 1e9);
+    const w = Z.x1 + ZLAB_TAIL;
+    const S2 = titleScene(
+      vh,
+      seed,
+      Math.min(vh * 0.24, 50),
+      vh - Math.min(vh * 0.08, 20),
+      { runners: 1, level: { zp: P2 }, ncol: Math.ceil((w + TITLE_VW + 200) / TCELL) }
+    );
+    S2.runners = [];
+    S2.runner = null;
+    S2.foes = [];
+    S2.still = true;
+    S2.pace = 0;
+    S2.spawn = Infinity;
+    S2.lab = true;
+    const s0 = S2.scroll;
+    S2.scroll = w;
+    titleStep(S2, 0);
+    S2.scroll = s0;
+    return { S: S2, Z, w };
+  }
+  var zoneLabClamp = (L, x) => Math.max(0, Math.min(L.w - TITLE_VW, x));
+
+  // src/ui/zonesim.js
+  var ZONE_NAMES = { moss: "Mossy caves", webs: "Webs", timber: "Mine works", paved: "Brick works", grove: "Grove", winding: "Winding caves", spider: "Spider zone" };
+  var NOTES_KEY = "caverunner-zonenotes";
+  var ZS_PIC_MS = 300;
+  var ZS_Q = 2;
+  var levelVh = () => Math.round(innerHeight * 0.75 * TITLE_VW / Math.max(1, innerWidth));
+  function zonePicture(L, pic) {
+    const S2 = L.S, s0 = S2.scroll, W = Math.ceil(L.w * ZS_Q), H = Math.ceil(S2.vh * ZS_Q);
+    const cvs = pic || document.createElement("canvas");
+    if (cvs.width !== W || cvs.height !== H) {
+      cvs.width = W;
+      cvs.height = H;
+    }
+    const tile = document.createElement("canvas");
+    tile.width = Math.ceil(TITLE_VW * ZS_Q);
+    tile.height = H;
+    const cx = cvs.getContext("2d"), tx = tile.getContext("2d");
+    if (!cx || !tx) return cvs;
+    for (let x = 0; x < L.w; x += TITLE_VW) {
+      S2.scroll = x;
+      tx.setTransform(1, 0, 0, 1, 0, 0);
+      titleDraw(tx, S2, tile.width, H);
+      cx.drawImage(tile, Math.round(x * ZS_Q), 0);
+    }
+    S2.scroll = s0;
+    return cvs;
+  }
+  function loadNotes() {
+    try {
+      return JSON.parse(localStorage.getItem(NOTES_KEY) || "{}") || {};
+    } catch (_) {
+      return {};
+    }
+  }
+  function saveNotes(n) {
+    try {
+      localStorage.setItem(NOTES_KEY, JSON.stringify(n));
+    } catch (_) {
+    }
+  }
+  var vk = (z, v) => "zv_" + v + "_" + z;
+  var rowName = (z, v) => ZONE_NAMES[z] + (v ? " · " + (ZONE_VARIANTS.find((x) => x[0] === v) || ["", v])[1].toLowerCase() : " (plain)");
+  var ZONE_GROUPS = ["autozones", "autoorb"];
+  function zoneNotesText(notes) {
+    const lines = ["CaveRunner " + VERSION2 + " zone review (Dev → Zones) — please make these changes:", ""];
+    const boxes = [];
+    for (const z of TITLE_ZONES) for (const [v, name] of ZONE_VARIANTS) {
+      const k = vk(z, v);
+      if (k in DEV_DEFAULTS && DEV[k] !== DEV_DEFAULTS[k]) boxes.push("- " + ZONE_NAMES[z] + ": " + name.toLowerCase() + " " + (DEV[k] ? "now allowed (was not)" : "no longer allowed (was)") + "   [DEV." + k + " = " + DEV[k] + "]");
+    }
+    lines.push("Variants a zone may have (changed):", ...boxes.length ? boxes : ["(none changed)"], "");
+    const knobs = DEV_META.filter((m) => ZONE_GROUPS.includes(m.g) && DEV[m.k] !== DEV_DEFAULTS[m.k]);
+    lines.push("Zone knobs (changed):", ...knobs.length ? knobs.map((m) => "- " + m.label + " (DEV." + m.k + "): " + DEV[m.k] + "   [default " + DEV_DEFAULTS[m.k] + "]") : ["(none changed)"], "");
+    const said = [];
+    for (const z of TITLE_ZONES) for (const v of ["", ...ZONE_VARIANTS.map((x) => x[0])]) {
+      const t = (notes[z + "/" + v] || "").trim();
+      if (t) said.push("- " + rowName(z, v) + ": " + t.replace(/\s*\n\s*/g, " / "));
+    }
+    lines.push("Notes:", ...said.length ? said : ["(no notes)"]);
+    return lines.join("\n");
+  }
+  function ZoneSim() {
+    const cv = useRef(null);
+    const st = useRef({ L: null, C: null, again: false, seed: 1 + Math.floor(Math.random() * 1e6), x: 0, y: -1, pick: { z: "moss", v: "" }, whole: true, pic: null, picT: 0, ox: 0 });
+    const [whole, setWhole] = useState(true);
+    const [pick, setPick] = useState(st.current.pick);
+    const [notes, setNotes] = useState(loadNotes);
+    const [, bump] = useState(0);
+    const none = null;
+    const [copied, setCopied] = useState(none);
+    useEffect(() => {
+      const c = cv.current;
+      if (!c) return;
+      const k = () => c.clientWidth / TITLE_VW;
+      const stop = runScene(c, {
+        size: () => ({ w: c.clientWidth, hh: c.clientHeight }),
+        make: (w, hh2) => {
+          const view = hh2 * TITLE_VW / w, p = st.current.pick;
+          const L = zoneLabScene(levelVh(), st.current.seed, p.z, p.v === "veg" ? { veg: true } : p.v === "spid" ? { spid: true } : {});
+          const vh = L.S.vh;
+          L.S.scroll = zoneLabClamp(L, st.current.x);
+          st.current.L = L;
+          st.current.pic = null;
+          const C = titleCam(view / 2, vh);
+          C.view = view;
+          C.y = st.current.y < 0 ? vh / 2 : st.current.y;
+          st.current.C = C;
+          if (window.__TEST) window.__zonesim = st.current;
+          return { S: L.S, C, warm: 0 };
+        },
+        next: () => {
+          if (!st.current.again) return false;
+          st.current.again = false;
+          return true;
+        },
+        // the whole zone: over the live view, the stitched picture fitted to the window's height
+        over: (ctx, S2, w, hh2) => {
+          const Z = st.current;
+          if (!Z.whole || !Z.L) return;
+          const now = performance.now();
+          if (!Z.pic || now - Z.picT > ZS_PIC_MS) {
+            Z.pic = zonePicture(Z.L, Z.pic);
+            Z.picT = now;
+          }
+          const s = hh2 / S2.vh, pw = Z.L.w * s;
+          Z.ox = pw <= w ? (w - pw) / 2 : Math.max(w - pw, Math.min(0, Z.ox));
+          ctx.fillStyle = "#000";
+          ctx.fillRect(0, 0, w, hh2);
+          ctx.imageSmoothingEnabled = true;
+          ctx.drawImage(Z.pic, Z.ox, 0, pw, hh2);
+        },
+        still: true,
+        quiet: true
+      });
+      let p0 = null;
+      const down = (e) => {
+        p0 = { x: e.clientX, y: e.clientY };
+        c.setPointerCapture(e.pointerId);
+      };
+      const move = (e) => {
+        const Z = st.current, L = Z.L, C = Z.C;
+        if (!p0 || !L || !C) return;
+        if (Z.whole) Z.ox += e.clientX - p0.x;
+        else {
+          const S2 = L.S, was = S2.scroll;
+          S2.scroll = zoneLabClamp(L, S2.scroll - (e.clientX - p0.x) / k());
+          for (const q of S2.parts) q.x -= S2.scroll - was;
+          C.y -= (e.clientY - p0.y) / k();
+          Z.x = S2.scroll;
+          Z.y = C.y;
+        }
+        p0 = { x: e.clientX, y: e.clientY };
+      };
+      const up = () => {
+        p0 = null;
+      };
+      c.addEventListener("pointerdown", down);
+      c.addEventListener("pointermove", move);
+      c.addEventListener("pointerup", up);
+      c.addEventListener("pointercancel", up);
+      return () => {
+        stop();
+        c.removeEventListener("pointerdown", down);
+        c.removeEventListener("pointermove", move);
+        c.removeEventListener("pointerup", up);
+        c.removeEventListener("pointercancel", up);
+      };
+    }, []);
+    const show = (p) => {
+      st.current.pick = p;
+      st.current.x = 0;
+      st.current.again = true;
+      setPick(p);
+    };
+    const respawn = () => {
+      st.current.seed = 1 + Math.floor(Math.random() * 1e6);
+      st.current.again = true;
+    };
+    const note = (z, v, t) => {
+      const n = Object.assign({}, notes, { [z + "/" + v]: t });
+      if (!t) delete n[z + "/" + v];
+      setNotes(n);
+      saveNotes(n);
+    };
+    const copy = () => {
+      const text = zoneNotesText(notes);
+      const fallback = () => setCopied({ text, ok: false });
+      try {
+        navigator.clipboard.writeText(text).then(() => setCopied({ text, ok: true }), fallback);
+      } catch (_) {
+        fallback();
+      }
+    };
+    const btn = (cls, label, fn) => h("button", { className: "dbg " + cls, onPointerDown: (e) => {
+      e.preventDefault();
+      fn();
+    } }, label);
+    const top = h(
+      "div",
+      { className: "firesimtop zonesimtop" },
+      h(
+        "div",
+        { className: "zonesim" },
+        h("p", { className: "zsname" }, "Showing: " + rowName(pick.z, pick.v)),
+        h("canvas", { ref: cv, className: "zonesimcvs" }),
+        h("div", { className: "firesimbtns" }, btn("zonezoom", whole ? "Close up" : "Whole zone", () => {
+          st.current.whole = !whole;
+          setWhole(!whole);
+        }), btn("zonerespawn", "Respawn", respawn), btn("zonecopy", "Copy zone notes", copy)),
+        copied ? h("p", { className: "devnote devcopied" + (copied.ok ? " ok" : "") }, copied.ok ? "Copied — paste it to Claude." : "Could not reach the clipboard — press and hold the text below to copy it.") : null,
+        copied && !copied.ok ? h("textarea", { className: "devcopytext", readOnly: true, value: copied.text }) : null
+      )
+    );
+    const cards = h(
+      "div",
+      { className: "zcards" },
+      h("p", { className: "devnote" }, "Drag the window to look round the zone. Show puts a zone in it with that look forced; the box says whether that zone can have it in a level. Notes save on their own."),
+      TITLE_ZONES.map((z) => h(
+        "div",
+        { key: z, className: "zcard", "data-zone": z },
+        h("div", { className: "zchead" }, ZONE_NAMES[z]),
+        ["", ...ZONE_VARIANTS.map((x) => x[0])].map((v) => {
+          const on = pick.z === z && pick.v === v, key = vk(z, v), always = v === "spid" && z === "spider";
+          return h(
+            "div",
+            { key: v || "plain", className: "zrow" + (on ? " on" : ""), "data-v": v || "plain" },
+            h(
+              "div",
+              { className: "zrowtop" },
+              h("button", { className: "dbg zshow" + (on ? " on" : ""), onClick: () => show({ z, v }) }, on ? "Showing" : "Show"),
+              h("span", { className: "zlabel" }, v ? (ZONE_VARIANTS.find((x) => x[0] === v) || ["", v])[1] : "Plain"),
+              v ? h(
+                "label",
+                { className: "zmay" },
+                h("input", {
+                  type: "checkbox",
+                  className: "zcheck",
+                  checked: always || !!DEV[key],
+                  disabled: always,
+                  onChange: (e) => {
+                    devSet(key, e.target.checked ? 1 : 0);
+                    bump((n) => n + 1);
+                  }
+                }),
+                always ? "always" : "can have"
+              ) : null
+            ),
+            h("textarea", {
+              className: "znote",
+              rows: 2,
+              placeholder: "Notes on " + rowName(z, v) + "…",
+              value: notes[z + "/" + v] || "",
+              onChange: (e) => note(z, v, e.target.value)
+            })
+          );
+        })
+      ))
+    );
+    return h(React.Fragment, null, top, cards);
+  }
+
   // src/art/discrimicon.js
   var DISCRIM_TARGETS = [
     { t: { kind: "creature", id: "rotta" }, label: "Rats" },
@@ -32994,7 +33324,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       // (v1.0.62) the Fire sim tab: the whole panel scrolls, the header going up out of the way, the sim window sticking at the top
       h(
         "div",
-        { className: "devpanel scroll" + (!needle && tab === "firesim" ? " fsmode" : "") },
+        { className: "devpanel scroll" + (!needle && (tab === "firesim" || tab === "zones") ? " fsmode" : "") },
         h(
           "div",
           { className: "devtop" },
@@ -33065,6 +33395,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         ),
         // (v1.0.62) the fire sim's window and buttons stay put over the knobs, which scroll under them
         !needle && tab === "firesim" ? h("div", { className: "firesimtop" }, h(FireSim, null)) : null,
+        // (Dev → Zones) the zone preview, sticky like the fire sim's, and its zone cards
+        !needle && tab === "zones" ? h(ZoneSim, null) : null,
         grid && onMod ? h(ModGrid, { onMod }) : null,
         h(
           "div",

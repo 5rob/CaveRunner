@@ -5,6 +5,12 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## After v1.0.77 (unreleased, waiting on the owner's OK of the screenshots) — CaveRunner Auto: Dev → Zones (branch `autobattler`)
+Owner: a Dev page for reviewing the level's zones, like the fire sim's.
+- Dev → **Zones** tab (`ui/zonesim.js`, `art/zonelab.js`): a window on one zone made as a level makes it (lit, no creatures), the whole zone fitted to the window (stitched a screen width at a time, `zonePicture`) or Close up (live, drag pans both ways); Respawn; a card per zone kind: Show it plain / heavy vegetation / spider web filled, a "can have" box per variant, a notes box per zone and variant (localStorage `caverunner-zonenotes`); **Copy zone notes** (boxes changed, the page's knobs changed, every note).
+- The variants are now per-zone flags (`DEV.zv_veg_<zone>`, `DEV.zv_spid_<zone>`, art/titlescene.js `zoneMay`): heavy vegetation (`Z.veg`, the spider zone's vines look, any zone; `autoVegChance`) and spider web filled (`Z.spid`, was mines only; `autoSpiderMine`). Defaults keep levels as they were (veg: spider zone; spid: mines).
+- Groups `autozones` and `autoorb` on the Zones tab. Suite `auto-zonelab`; shots `tools/zonesimshots.js`.
+
 ## After v1.0.77 (tooling, no game change) — the test suite: essentials and an archive
 Owner: the whole suite had got slow enough to hold development up. `node tests/run.js` now runs only `tests/essentials.js`
 (17 logic + 4 browser suites, quick and never flaky); the rest are archived in place: `related` adds those that name a

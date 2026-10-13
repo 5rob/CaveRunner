@@ -22,6 +22,7 @@ import { loadPresets, presetGun, removePreset, savePresets } from '../save/prese
 import { gunColor } from '../spells/guns.js';
 import { AUTO_KNOBS } from '../dev/autouse.js';
 import { FireSim } from './firesim.js';
+import { ZoneSim } from './zonesim.js';
 import { ModGrid } from './modgrid.js';
 import { h, useEffect, useRef, useState } from './h.js';
 
@@ -614,7 +615,7 @@ export function DevPanel({ input, refresh, close, onRestart, onSpawnGun, onSpawn
   return h('div', { className: 'devwrap' },
     h('div', { className: 'devback', onPointerDown: e => { e.preventDefault(); close(); } }),
     // (v1.0.62) the Fire sim tab: the whole panel scrolls, the header going up out of the way, the sim window sticking at the top
-    h('div', { className: 'devpanel scroll' + (!needle && tab === 'firesim' ? ' fsmode' : '') },
+    h('div', { className: 'devpanel scroll' + (!needle && (tab === 'firesim' || tab === 'zones') ? ' fsmode' : '') },
       h('div', { className: 'devtop' },
         h('div', { className: 'devhead' },
           h('h2', null, 'Dev'),
@@ -649,6 +650,8 @@ export function DevPanel({ input, refresh, close, onRestart, onSpawnGun, onSpawn
           }))),
       // (v1.0.62) the fire sim's window and buttons stay put over the knobs, which scroll under them
       !needle && tab === 'firesim' ? h('div', { className: 'firesimtop' }, h(FireSim, null)) : null,
+      // (Dev → Zones) the zone preview, sticky like the fire sim's, and its zone cards
+      !needle && tab === 'zones' ? h(ZoneSim, null) : null,
       grid && onMod ? h(ModGrid, { onMod }) : null,
       h('div', { className: 'devbody' },
         h('p', { className: 'devkey' }, h('i', { className: 'devauto' }), 'works in Auto ', h('i', { className: 'devsome' }), 'some ', h('i', { className: 'devold' }), 'old game only'),

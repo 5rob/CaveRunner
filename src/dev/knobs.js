@@ -676,7 +676,13 @@ DEV_GROUPS.push(['autoorb', 'Auto: orb webs']);
 Object.assign(DEV_DEFAULTS, { autoSpiderRock: 0.28, autoSpiderMine: 0.35 });
 DEV_META.push(
   { k: 'autoSpiderRock', g: 'autoorb', label: 'Spider zone: boulders in its open air (share; more: more rock)', min: 0, max: 0.6, step: 0.01 },
-  { k: 'autoSpiderMine', g: 'autoorb', label: 'A mine works taken over by spiders (chance; webs between its frames)', min: 0, max: 1, step: 0.05 });
+  { k: 'autoSpiderMine', g: 'autozones', label: 'Spider web filled: chance a zone that may have it does (Zones page; was mines only)', min: 0, max: 1, step: 0.05 });
+// (Dev → Zones, ui/zonesim.js) the zone variants: which zone kinds may have each (art/titlescene.js zoneMay; DEV.zv_<variant>_<zone>, 1 / 0,
+// the page's check boxes, not rows), and how often heavy vegetation comes up where it may
+Object.assign(DEV_DEFAULTS, { autoVegChance: 0.35, zv_veg_moss: 0, zv_veg_webs: 0, zv_veg_timber: 0, zv_veg_paved: 0, zv_veg_grove: 0, zv_veg_winding: 0, zv_veg_spider: 1,
+  zv_spid_moss: 0, zv_spid_webs: 0, zv_spid_timber: 1, zv_spid_paved: 0, zv_spid_grove: 0, zv_spid_winding: 0 });
+DEV_META.push({ k: 'autoVegChance', g: 'autozones', label: 'Heavy vegetation: chance a zone that may have it does (the spider zone: its vines look, 30%)', min: 0, max: 1, step: 0.05 });
+DEV_GROUPS.push(['autozones', 'Auto: zone variants']);
 // CaveRunner Auto's starter gun (auto/run.js starterKit, stage 5a): its numbers, for each new player
 Object.assign(DEV_DEFAULTS, { autoGunDelay: 0.25, autoGunRech: 0.8, autoGunMana: 120, autoGunRegen: 40, autoGunSpread: 4 });
 DEV_META.push(
@@ -993,7 +999,9 @@ export function devReportOf(g, name) {
 // (owner v1.0.56) every fire knob on its own page, under the fire sim's window (ui/firesim.js)
 DEV_TABS.splice(DEV_TABS.length - 1, 0, ['firesim', 'Fire sim', ['firelab', 'firefx', 'autofire', 'firesilk', 'fire']]);
 DEV_TABS.splice(DEV_TABS.length - 2, 0, ['traj', 'Trajectory', ['trajorbit', 'trajspiral', 'trajboomer', 'trajpong', 'trajhoming', 'trajseeker', 'trajnear', 'trajaim', 'trajgrav', 'trajfloat', 'trajflat']]);
-DEV_TABS.splice(DEV_TABS.length - 2, 0, ['auto', 'Auto', ['auto', 'autohub', 'automaps', 'autolevel', 'autoblocks', 'autoorb', 'autoguns', 'autoperks', 'autofoes', 'autodeath', 'autoloot', 'autochests', 'autobag', 'autothrow']]);
+// (Dev → Zones) the level zones' preview (ui/zonesim.js) over their knobs
+DEV_TABS.splice(DEV_TABS.length - 2, 0, ['zones', 'Zones', ['autozones', 'autoorb']]);
+DEV_TABS.splice(DEV_TABS.length - 2, 0, ['auto', 'Auto', ['auto', 'autohub', 'automaps', 'autolevel', 'autoblocks', 'autoguns', 'autoperks', 'autofoes', 'autodeath', 'autoloot', 'autochests', 'autobag', 'autothrow']]);
 export const DEV_KEY = 'caverunner-dev';
 /** @type {DevKnobs} */
 export const DEV = Object.assign({}, DEV_DEFAULTS);

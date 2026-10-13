@@ -171,6 +171,7 @@ export const AUTO_KNOBS = new Set([
   'autoTpBlink',
   'autoTpBoomR',
   'autoTpBoomWait',
+  'autoVegChance',
   'autoVineAsh',
   'autoVineCatch',
   'autoVineFire',

@@ -179,8 +179,9 @@ export const zoneHome = Z => TITLE_HOME[Z.spid ? 'spider' : Z.z] || TITLE_HOME.m
 /** @typedef {{ k: string, x: number, y: number, a?: any }} TSnd */
 // a zone of the plan (titlePlan): its kind, x0..x1, i its place in the plan; its roof's and floor's offset (co, fo), hills' height (ca, fa),
 // stretch (cf, ff) and phases (ph); dens its plants and webs
-/** @typedef {{ z: string, x0: number, x1: number, i: number, ph: number[], ca: number, fa: number, cf: number, ff: number, co: number, fo: number, dens: number, mine?: TMine, flat?: boolean, blk?: import('../auto/blocked.js').ZoneBlock, sv?: string, spid?: boolean }} TZone */
-// (sv: the spider zone's variant, 'rocks' / 'vines' / 'beams'; spid: a mine works the spiders have taken over)
+/** @typedef {{ z: string, x0: number, x1: number, i: number, ph: number[], ca: number, fa: number, cf: number, ff: number, co: number, fo: number, dens: number, mine?: TMine, flat?: boolean, blk?: import('../auto/blocked.js').ZoneBlock, sv?: string, spid?: boolean, veg?: boolean }} TZone */
+// (sv: the spider zone's variant, 'rocks' / 'vines' / 'beams'; spid: a zone the spiders have taken over, orb webs ×3 and spiders its creatures; veg: heavy vegetation,
+// big patches of vines off the roof and every rock underside; which zone kinds may have them: zoneMay)
 // (flat: a level's pad or arena, auto/level.js: no rubble, no ledges)
 // a mine works' own layout (v0.0.170, mkMine): n tunnels stacked (0 the lowest), `ein` the one the cave comes in at, `eout`
 // the one it leaves by; `lf` how high the stack sits (0 low .. 1 high, where there's room); `sh` the rock shelf over each;
@@ -236,8 +237,27 @@ function mkZone(R, x0, Z, kinds) {
   // (owner, after v1.0.74) the spider zone's variant, and the spiders' mines: their own numbers (seeded by x0), so the plan's
   // draws stay as they were
   const v = titleRng((Math.floor(x0) * 53 + 11) >>> 0)();
-  if (z === 'spider') Zn.sv = v < 0.4 ? 'rocks' : v < 0.7 ? 'vines' : 'beams';
-  if (z === 'timber' && v < DEV.autoSpiderMine) Zn.spid = true;
+  // (Dev → Zones) each zone kind may have each variant or not (zoneMay): the spider zone's vines look is its heavy vegetation
+  if (z === 'spider') Zn.sv = v < 0.4 ? 'rocks' : v < 0.7 ? (zoneMay(z, 'veg') ? 'vines' : 'rocks') : 'beams';
+  if (z === 'spider') Zn.veg = Zn.sv === 'vines';
+  else if (zoneMay(z, 'veg') && titleRng((Math.floor(x0) * 71 + 5) >>> 0)() < DEV.autoVegChance) Zn.veg = true;
+  if (z !== 'spider' && zoneMay(z, 'spid') && v < DEV.autoSpiderMine) Zn.spid = true;
+  return Zn;
+}
+// The zone variants (Dev → Zones, ui/zonesim.js): heavy vegetation, spider web filled. Which zone kinds may roll each is a Dev
+// flag (DEV.zv_<variant>_<zone>, 1 / 0, set on that page); the spider zone is always web filled
+/** @type {[string, string][]} */
+export const ZONE_VARIANTS = [['veg', 'Heavy vegetation'], ['spid', 'Spider web filled']];
+/** @param {string} z zone kind @param {string} v variant */
+export const zoneMay = (z, v) => (v === 'spid' && z === 'spider') || !!DEV['zv_' + v + '_' + z];
+// a zone of kind z with the variants vars, forced (Dev → Zones' preview, art/zonelab.js): the plan's next zone from x0
+/** @param {TitlePlan} P @param {number} x0 @param {string} z @param {{ veg?: boolean, spid?: boolean }} vars @returns {TZone} */
+export function titleZoneForce(P, x0, z, vars) {
+  const Zn = mkZone(P.R, x0, [], [z]);
+  Zn.i = P.z.length;
+  if (z === 'spider') { if (vars.veg) Zn.sv = 'vines'; else if (Zn.sv === 'vines') Zn.sv = 'rocks'; }
+  Zn.veg = !!vars.veg; Zn.spid = z !== 'spider' && !!vars.spid;
+  P.z.push(Zn);
   return Zn;
 }
 // A mine works' layout (owner, v0.0.170: it was always one low tunnel with a closed one over it): 1–3 tunnels,
@@ -691,8 +711,9 @@ function genCol(S, c) {
       return;
     }
   }
-  // ('vines', owner after v1.0.74) the spider zone's big patches of vines: hung thick from the roof and the boulders' undersides
-  if (zr === 'spider' && Zr.sv === 'vines' && !(c % 2) && titleNoise(wx / 70 + Zr.ph[4], 3.3) > 0.5) {
+  // ('vines', owner after v1.0.74) the spider zone's big patches of vines: hung thick from the roof and the boulders' undersides;
+  // (Dev → Zones) any zone with heavy vegetation (Z.veg)
+  if (Zr.veg && !(c % 2) && titleNoise(wx / 70 + Zr.ph[4], 3.3) > 0.5) {
     const r0 = Math.floor(rcy / TCELL);
     for (let r = r0; r < S.rows - 1; r++) {
       const top = r === r0, y = top ? rcy : (r + 1) * TCELL;
@@ -771,10 +792,11 @@ function kitOf(shot, mods, art) {
 // opts.runners: how many players (1-4; default TITLE_RUNNERS): CaveRunner Auto shows the run's players
 // opts.hub: a fixed strip instead of the scrolling ring (TitleHub; auto/hub.js hubScene): no creatures, no scroll
 // opts.level: a finite plan in the scrolling ring (TitleLevel; auto/level.js levelScene)
+// opts.ncol: the ring's width in columns (Dev → Zones: wide enough to keep its whole strip as it pans back)
 // opts.team: the run's players (RunPlayer, CaveRunner Auto): each runner fires its player's active gun (art/scenegun.js) in place of the menu's kits
-/** @param {number} vh the view's height in world units @param {number} [seed] @param {number} [top] the action's band (world units) @param {number} [bot] @param {{ runners?: number, hub?: TitleHub, level?: TitleLevel, team?: RunPlayer[], tier?: number }} [opts] @returns {TitleScene} */
+/** @param {number} vh the view's height in world units @param {number} [seed] @param {number} [top] the action's band (world units) @param {number} [bot] @param {{ runners?: number, hub?: TitleHub, level?: TitleLevel, team?: RunPlayer[], tier?: number, ncol?: number }} [opts] @returns {TitleScene} */
 export function titleScene(vh, seed = 7, top = vh * 0.3, bot = vh * 0.62, opts = {}) {
-  const rnd = titleRng(seed), rows = Math.ceil(vh / TCELL) + 1, hub = opts.hub, ncol = hub ? hub.w : Math.ceil((TITLE_VW + 50 + AHEAD + (opts.level ? TITLE_BACK : 0)) / TCELL);
+  const rnd = titleRng(seed), rows = Math.ceil(vh / TCELL) + 1, hub = opts.hub, ncol = hub ? hub.w : opts.ncol || Math.ceil((TITLE_VW + 50 + AHEAD + (opts.level ? TITLE_BACK : 0)) / TCELL);
   /** @type {TitleScene} */
   const S = { t: 0, vh, top, bot, seed, rnd, zp: titlePlan(seed), scroll: 0, shake: 0, spawn: 0, kills: 0, gold: 0, got: 0, runner: null, runners: [], foes: [], shots: [],
     parts: [], coins: [], booms: [], zaps: [], flash: 0, rows, ncol, cells: new Uint8Array(rows * ncol), gen: -25, props: [],
