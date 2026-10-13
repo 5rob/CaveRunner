@@ -961,6 +961,9 @@ function PreviewWindow({ sim, sig, onLit, pl, gi, flip }) {
   const ref = useRef(null);
   const litFn = useRef(onLit);
   litFn.current = onLit;
+  // the DPS graph outlives the scene (rebuilt on every gun change): carried into the next one, the change marked on it
+  /** @type {{ current: { graph: number[], gmark: number[], sig: string } }} */
+  const hist = useRef({ graph: [], gmark: [], sig: sig });
   useEffect(() => {
     const c = ref.current;
     if (!c) return undefined;
@@ -977,6 +980,8 @@ function PreviewWindow({ sim, sig, onLit, pl, gi, flip }) {
       size: () => ({ w: c.clientWidth, hh: c.clientHeight }),
       make: (w, hh, seed) => {
         const k = kpx(), vw = w / k, vh = hh / k, S = previewScene(vw, vh, pl, gi, seed);
+        const pv0 = previewState(S), H0 = hist.current;
+        if (pv0) { pv0.graph = H0.graph; pv0.gmark = H0.gmark; pv0.mark = H0.sig !== sig && H0.graph.length > 0; H0.sig = sig; }
         // the camera: the whole room, at k px a unit (titleDraw draws w / TITLE_VW × C.z px a unit)
         const z = TITLE_VW / vw, C = titleCam(vh * z / 2, vh);
         C.z = C.zmin = z; C.w = vw; C.x = vw / 2; C.y = vh / 2; C.lock = -1;
@@ -1021,7 +1026,11 @@ function PreviewWindow({ sim, sig, onLit, pl, gi, flip }) {
           const top = 4, bot = H / 3, step = gw / (PV_GRAPH_N - 1), x0 = gw - (vals.length - 1) * step;
           ctx.strokeStyle = '#ff4a4a'; ctx.lineWidth = 1.2; ctx.globalAlpha = 0.7; ctx.beginPath();
           vals.forEach((v, i) => { const x = x0 + i * step, y = bot - (v / peak) * (bot - top); if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); });
-          ctx.stroke(); ctx.globalAlpha = 1;
+          ctx.stroke();
+          // a dotted line where the gun changed
+          ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.globalAlpha = 0.45; ctx.setLineDash([2, 2]); ctx.beginPath();
+          pv.gmark.forEach((m, i) => { if (m) { const x = Math.round(x0 + i * step) + 0.5; ctx.moveTo(x, top); ctx.lineTo(x, bot); } });
+          ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
         }
         c.dataset.hit = pv.hitT > 0 ? '1' : '0'; c.dataset.big = String(Math.round(cam.w || 0));
         c.dataset.pulls = String(pv.pulls); c.dataset.dps = pv.dps.toFixed(1); c.dataset.shots = String(S.shots.length);

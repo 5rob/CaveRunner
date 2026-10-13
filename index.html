@@ -35581,7 +35581,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var PV_HP = 1e9;
   var PV_DPS_S = 2;
   var PV_GRAPH_DT = 0.1;
-  var PV_GRAPH_N = 50;
+  var PV_GRAPH_N = 100;
   var PV_HOLO_X = 30;
   var PV_HIT_T = 0.3;
   function previewPlayer(pl, gi) {
@@ -35601,6 +35601,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       log: [],
       dealt: 0,
       graph: [],
+      gmark: [],
+      mark: false,
       graphT: 0,
       dps: 0,
       pulls: 0,
@@ -35668,7 +35670,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if ((pv.graphT += dt) >= PV_GRAPH_DT) {
       pv.graphT = 0;
       pv.graph.push(pv.dps);
-      if (pv.graph.length > PV_GRAPH_N) pv.graph.shift();
+      pv.gmark.push(pv.mark ? 1 : 0);
+      pv.mark = false;
+      if (pv.graph.length > PV_GRAPH_N) {
+        pv.graph.shift();
+        pv.gmark.shift();
+      }
     }
     pv.regrow += DEV.autoPvRegrow * dt;
     const n = Math.floor(pv.regrow);
@@ -36967,6 +36974,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const ref = useRef(null);
     const litFn = useRef(onLit);
     litFn.current = onLit;
+    const hist = useRef({ graph: [], gmark: [], sig });
     useEffect(() => {
       const c = ref.current;
       if (!c) return void 0;
@@ -36982,6 +36990,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         size: () => ({ w: c.clientWidth, hh: c.clientHeight }),
         make: (w, hh2, seed) => {
           const k = kpx(), vw = w / k, vh = hh2 / k, S2 = previewScene(vw, vh, pl, gi, seed);
+          const pv0 = previewState(S2), H0 = hist.current;
+          if (pv0) {
+            pv0.graph = H0.graph;
+            pv0.gmark = H0.gmark;
+            pv0.mark = H0.sig !== sig && H0.graph.length > 0;
+            H0.sig = sig;
+          }
           const z = TITLE_VW / vw, C = titleCam(vh * z / 2, vh);
           C.z = C.zmin = z;
           C.w = vw;
@@ -37046,6 +37061,20 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               else ctx.moveTo(x, y);
             });
             ctx.stroke();
+            ctx.strokeStyle = "#fff";
+            ctx.lineWidth = 1;
+            ctx.globalAlpha = 0.45;
+            ctx.setLineDash([2, 2]);
+            ctx.beginPath();
+            pv.gmark.forEach((m, i) => {
+              if (m) {
+                const x = Math.round(x0 + i * step) + 0.5;
+                ctx.moveTo(x, top);
+                ctx.lineTo(x, bot);
+              }
+            });
+            ctx.stroke();
+            ctx.setLineDash([]);
             ctx.globalAlpha = 1;
           }
           c.dataset.hit = pv.hitT > 0 ? "1" : "0";

@@ -20,12 +20,12 @@ import { TCELL, TM, stepRunnerGun, titleFoeAt, titleScene } from '../art/titlesc
 export const PV_HP = 1e9;        // the target's health (it never goes down: topped up each step)
 export const PV_DPS_S = 2;       // the damage per second over the last this many seconds
 export const PV_GRAPH_DT = 0.1;  // the graph's bucket (s; the old window's GF_GRAPH_DT)
-export const PV_GRAPH_N = 50;    // and how many it keeps (5 s, the old GF_GRAPH_S)
+export const PV_GRAPH_N = 100;   // and how many it keeps (10 s; it carries on over gun changes to compare)
 export const PV_HOLO_X = 30;     // the hologram's middle this far in from the right wall (room for orbit shots round it)
 export const PV_HIT_T = 0.3;     // a hit lights the hologram this long (s)
 
 /** @typedef {{ dx: number, dy: number, foe?: Enemy, cells: Uint8Array, hitT: number, regrow: number, log: number[][], dealt: number,
- *   graph: number[], graphT: number, dps: number, pulls: number, lit: { slots: number[], pull: number, t: number } | null, fy: number }} PreviewState */
+ *   graph: number[], gmark: number[], mark: boolean, graphT: number, dps: number, pulls: number, lit: { slots: number[], pull: number, t: number } | null, fy: number }} PreviewState */
 
 // a copy of the player for the window: his perks, all his guns copied fresh (the window never spends the real gun's mana or
 // moves its place in the list), the one shown active
@@ -45,7 +45,7 @@ export function previewScene(vw, vh, pl, gi, seed = 7) {
   const cell = (c, r) => (r >= fr || r < 1 || c < 1 || c >= wallC ? TM.ROCK : TM.AIR);
   /** @type {PreviewState} */
   const pv = { dx: 0, dy: 0, cells: new Uint8Array(0), hitT: 0, regrow: 0, log: [], dealt: 0,
-    graph: [], graphT: 0, dps: 0, pulls: 0, lit: null, fy };
+    graph: [], gmark: [], mark: false, graphT: 0, dps: 0, pulls: 0, lit: null, fy };
   const S = titleScene(vh, seed, TCELL, fy, { runners: 1, hub: { w: nc, cell, step: previewStep, pv }, team: [previewPlayer(pl, gi)] });
   const r = S.runners[0];
   r.x = TCELL + 4; r.y = fy - PH; r.vx = r.vy = 0; r.ground = true; r.stand = true; r.face = 1; r.ang = 0; r.flame = 0;
@@ -102,7 +102,8 @@ export function previewStep(S, dt) {
   if (d > 0) pv.log.push([S.t, d]);
   pv.log = pv.log.filter(e => e[0] > S.t - PV_DPS_S);
   pv.dps = pv.log.reduce((a, e) => a + e[1], 0) / PV_DPS_S;
-  if ((pv.graphT += dt) >= PV_GRAPH_DT) { pv.graphT = 0; pv.graph.push(pv.dps); if (pv.graph.length > PV_GRAPH_N) pv.graph.shift(); }
+  if ((pv.graphT += dt) >= PV_GRAPH_DT) { pv.graphT = 0; pv.graph.push(pv.dps); pv.gmark.push(pv.mark ? 1 : 0); pv.mark = false;
+    if (pv.graph.length > PV_GRAPH_N) { pv.graph.shift(); pv.gmark.shift(); } }
   // the floor and walls grow back where blasts ate them
   pv.regrow += DEV.autoPvRegrow * dt;
   const n = Math.floor(pv.regrow);
