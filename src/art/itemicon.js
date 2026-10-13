@@ -110,6 +110,24 @@ export function tintShade(tint, own) {
 // a text glyph (a mod's, a perk's) on the screen's GLYPH_PX grid, the screen's rule (ui/auto/icons.js GlyphIcon): drawn
 // big, its real ink found, that box scaled to fill the grid, centred, each pixel solid or clear. Cached per glyph and colour
 export const ICON_PX = 18;
+// a glyph drawn big for measuring: its text, or (owner v1.0.72, the Switches) '[n]' as the digit in a rounded box, so it
+// doesn't look like Double Cast's circled digits
+/** @param {CanvasRenderingContext2D} big @param {string} glyph @param {string} col @param {number} B */
+export function inkGlyph(big, glyph, col, B) {
+  big.fillStyle = col; big.strokeStyle = col;
+  big.textAlign = 'center'; big.textBaseline = 'middle';
+  const box = /^\[(\d)\]$/.exec(glyph);
+  if (box) {
+    const s = B * 0.72, x = (B - s) / 2, r = s * 0.24;
+    big.lineWidth = B * 0.075;
+    big.beginPath(); big.roundRect(x, x, s, s, r); big.stroke();
+    big.font = '900 ' + Math.round(B * 0.58) + 'px system-ui, sans-serif';
+    big.fillText(box[1], B / 2, B / 2 + B * 0.02);
+    return;
+  }
+  big.font = '900 ' + Math.round(B * 0.6) + 'px system-ui, sans-serif';
+  big.fillText(glyph, B / 2, B / 2);
+}
 /** @type {Map<string, HTMLCanvasElement | null>} */
 const GLYPHS = new Map();
 /** @type {CanvasRenderingContext2D | null} */
@@ -125,9 +143,7 @@ export function glyphCanvas(glyph, col) {
   const ctx = c.getContext('2d', { willReadFrequently: true }), big = BIG;
   if (!ctx || !big) return null;
   big.clearRect(0, 0, B, B);
-  big.font = '900 ' + Math.round(B * 0.6) + 'px system-ui, sans-serif';
-  big.textAlign = 'center'; big.textBaseline = 'middle'; big.fillStyle = col;
-  big.fillText(glyph, B / 2, B / 2);
+  inkGlyph(big, glyph, col, B);
   const px = big.getImageData(0, 0, B, B).data;
   let x0 = B, y0 = B, x1 = -1, y1 = -1;
   for (let y = 0; y < B; y++) for (let x = 0; x < B; x++) {

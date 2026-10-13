@@ -3005,7 +3005,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     switch2: {
       name: "Double Switch",
       kind: "mod",
-      glyph: "⓶",
+      glyph: "[2]",
       col: "#ffe066",
       mana: 0,
       info: "Takes turns between the next 2 spells (each with its own modifiers): one a pull",
@@ -3014,7 +3014,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     switch3: {
       name: "Triple Switch",
       kind: "mod",
-      glyph: "⓷",
+      glyph: "[3]",
       col: "#ffe066",
       mana: 1,
       info: "Takes turns between the next 3 spells (each with its own modifiers): one a pull",
@@ -3023,7 +3023,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     switch4: {
       name: "Quad Switch",
       kind: "mod",
-      glyph: "⓸",
+      glyph: "[4]",
       col: "#ffe066",
       mana: 2,
       info: "Takes turns between the next 4 spells (each with its own modifiers): one a pull",
@@ -29167,6 +29167,25 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return "rgb(" + v.join(",") + ")";
   }
   var ICON_PX = 18;
+  function inkGlyph(big, glyph, col, B) {
+    big.fillStyle = col;
+    big.strokeStyle = col;
+    big.textAlign = "center";
+    big.textBaseline = "middle";
+    const box = /^\[(\d)\]$/.exec(glyph);
+    if (box) {
+      const s = B * 0.72, x = (B - s) / 2, r = s * 0.24;
+      big.lineWidth = B * 0.075;
+      big.beginPath();
+      big.roundRect(x, x, s, s, r);
+      big.stroke();
+      big.font = "900 " + Math.round(B * 0.58) + "px system-ui, sans-serif";
+      big.fillText(box[1], B / 2, B / 2 + B * 0.02);
+      return;
+    }
+    big.font = "900 " + Math.round(B * 0.6) + "px system-ui, sans-serif";
+    big.fillText(glyph, B / 2, B / 2);
+  }
   var GLYPHS4 = /* @__PURE__ */ new Map();
   var BIG2 = null;
   function glyphCanvas(glyph, col) {
@@ -29185,11 +29204,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const ctx = c.getContext("2d", { willReadFrequently: true }), big = BIG2;
     if (!ctx || !big) return null;
     big.clearRect(0, 0, B, B);
-    big.font = "900 " + Math.round(B * 0.6) + "px system-ui, sans-serif";
-    big.textAlign = "center";
-    big.textBaseline = "middle";
-    big.fillStyle = col;
-    big.fillText(glyph, B / 2, B / 2);
+    inkGlyph(big, glyph, col, B);
     const px = big.getImageData(0, 0, B, B).data;
     let x0 = B, y0 = B, x1 = -1, y1 = -1;
     for (let y = 0; y < B; y++) for (let x = 0; x < B; x++) {
@@ -34649,11 +34664,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const B = GLYPH_BIG, big = glyphBig();
       if (!big) return;
       big.clearRect(0, 0, B, B);
-      big.font = "900 " + Math.round(B * 0.6) + "px system-ui, sans-serif";
-      big.textAlign = "center";
-      big.textBaseline = "middle";
-      big.fillStyle = col;
-      big.fillText(glyph, B / 2, B / 2);
+      inkGlyph(big, glyph, col, B);
       const px = big.getImageData(0, 0, B, B).data;
       let x0 = B, y0 = B, x1 = -1, y1 = -1;
       for (let y = 0; y < B; y++) for (let x = 0; x < B; x++) {

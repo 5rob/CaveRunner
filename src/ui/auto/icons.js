@@ -5,7 +5,7 @@
 import { helmetIcon } from '../../art/sprites.js';
 import { h, useEffect, useRef } from '../h.js';
 
-import { NAV_ICONS, tintShade } from '../../art/itemicon.js';
+import { NAV_ICONS, inkGlyph, tintShade } from '../../art/itemicon.js';
 import { drawTarget } from '../../art/discrimicon.js';
 export { NAV_ICONS, tintShade };
 
@@ -70,9 +70,7 @@ export function GlyphIcon({ glyph, col }) {
     const B = GLYPH_BIG, big = glyphBig();
     if (!big) return;
     big.clearRect(0, 0, B, B);
-    big.font = '900 ' + Math.round(B * 0.6) + 'px system-ui, sans-serif';
-    big.textAlign = 'center'; big.textBaseline = 'middle'; big.fillStyle = col;
-    big.fillText(glyph, B / 2, B / 2);
+    inkGlyph(big, glyph, col, B);
     const px = big.getImageData(0, 0, B, B).data;
     let x0 = B, y0 = B, x1 = -1, y1 = -1;
     for (let y = 0; y < B; y++) for (let x = 0; x < B; x++) {
