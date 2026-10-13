@@ -82,7 +82,7 @@ export function shotsOf(sh, ang, x, y, R, by) {
     const v = (sh.speed || 0) * SP * (sh.flat ? DEV.trFlatSpeed : 1);
     out.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, size: Math.max(1, Math.min(SG_SIZE_MAX, sh.size || 2)),
       col: sh.col || MODS.bolt.col || '#fff', look: sh.look || '', life, foe: false, spin: R() * 6, grav: trajGrav(sh, SP),
-      drag: sh.drag || 0, explode: Math.min(SG_EXPLODE_MAX, sh.explode || 0), pit: Math.min(SG_PIT_MAX, Math.max(sh.pit || 0, sh.bore || 0)),
+      drag: sh.drag || 0, explode: Math.min(SG_EXPLODE_MAX, sh.explode || 0), pit: Math.min(SG_PIT_MAX, Math.max(sh.pit || 0, sh.bore || 0)), bore: Math.min(SG_PIT_MAX, sh.bore || 0),
       fire: sh.fire || 0, bounce: sh.bounce || 0, bounceE: sh.bounceE || 0.92, pierce: sh.pierce || 0, dmg: (sh.dmg || 0) * (sh.flat ? DEV.trFlatDmg : 1),
       homing: sh.sid === 'missile' ? Math.max(1, sh.homing || 0) : sh.homing || 0, homeR: sh.sid === 'missile' ? 400 : 0, accel: sh.accel || 0, vmax: (sh.vmax || 0) * SP, chain: sh.chain || 0,
       real: true, by: by == null ? -1 : by, trig: sh.trig || null, timer: sh.timer || 0, pay: sh.payload && sh.payload.length ? sh.payload : null, age: 0,

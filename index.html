@@ -12589,6 +12589,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         drag: sh.drag || 0,
         explode: Math.min(SG_EXPLODE_MAX, sh.explode || 0),
         pit: Math.min(SG_PIT_MAX, Math.max(sh.pit || 0, sh.bore || 0)),
+        bore: Math.min(SG_PIT_MAX, sh.bore || 0),
         fire: sh.fire || 0,
         bounce: sh.bounce || 0,
         bounceE: sh.bounceE || 0.92,
@@ -16123,7 +16124,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
       if (s.life <= 0) continue;
       if (titleSolid(S2, s.x, s.y) && !(s.orbit && DEV.trOrbRock && s.oa != null) && !(s.boomer && DEV.trBoRock && s.back)) {
-        if (s.bounce > 0) {
+        if (s.bore && !s.only) {
+          titleCarve(S2, s.x, s.y, s.bore * 0.7, false);
+          if ((s.grindT = (s.grindT || 0) - dt) <= 0) {
+            s.grindT = 0.12;
+            snd(S2, "debris", s.x, s.y);
+            if (S2.parts.length < TITLE_PARTS) burst(S2, s.x, s.y, 2, "#8a7a66", 40, "spark", 0.25);
+          }
+        } else if (s.bounce > 0) {
           s.bounce--;
           snd(S2, "bounce", s.x, s.y);
           s.x -= s.vx * dt;

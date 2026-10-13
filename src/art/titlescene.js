@@ -133,7 +133,7 @@ export const TITLE_HOME = {
  *   fits?: (S: TitleScene, it: BagItem) => boolean, take?: (S: TitleScene, it: BagItem) => boolean, pv?: any }} TitleHub */
 /** @typedef {{ x: number, y: number, vx: number, vy: number, size: number, col: string, look: string, life: number, foe: boolean, spin: number,
  *   grav: number, drag: number, explode: number, pit: number, fire: number, bounce: number, bounceE: number, pierce: number, dmg: number,
- *   homing?: number, accel?: number, vmax?: number, chain?: number, hitFoe?: boolean,
+ *   homing?: number, accel?: number, vmax?: number, chain?: number, hitFoe?: boolean, bore?: number, grindT?: number,
  *   real?: boolean, by?: number, trig?: string | null, timer?: number, pay?: Shot[] | null, age?: number,
  *   sid?: string, tr?: number[], homeR?: number, light?: string, lightR?: number,
  *   beam?: number, ang?: number, bx?: number, by2?: number, pull?: number, vac?: number, heal?: number, tick?: number, follow?: number, sp0?: number, orbit?: number, spiral?: number, boomer?: number, pong?: number, born?: number, back?: number, caught?: number, oa?: number, or0?: number, odir?: number, pdir?: number, ptr?: number[], homN?: number, seekN?: number, nearN?: number, autoaim?: number, aimed?: number, gravN?: number, floatN?: number, flat?: number, tgt?: Enemy | null, sp1?: number, max?: number, hopT?: number, hx?: number, hy?: number, only?: DiscrimTarget | null }} TShot */
@@ -2303,7 +2303,11 @@ function stepShots(S, dt) {
     }
     if (s.life <= 0) continue;
     if (titleSolid(S, s.x, s.y) && !(s.orbit && DEV.trOrbRock && s.oa != null) && !(s.boomer && DEV.trBoRock && s.back)) {
-      if (s.bounce > 0) {
+      // (owner v1.0.74) a Borer shot drills on through the rock (the old game's bullets.js rule): bounces don't stop it
+      if (s.bore && !s.only) {
+        titleCarve(S, s.x, s.y, s.bore * 0.7, false);
+        if ((s.grindT = (s.grindT || 0) - dt) <= 0) { s.grindT = 0.12; snd(S, 'debris', s.x, s.y); if (S.parts.length < TITLE_PARTS) burst(S, s.x, s.y, 2, '#8a7a66', 40, 'spark', 0.25); }
+      } else if (s.bounce > 0) {
         s.bounce--;
         snd(S, 'bounce', s.x, s.y);
         // back out and flip whichever way it came in
