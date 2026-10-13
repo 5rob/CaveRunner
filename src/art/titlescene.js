@@ -23,7 +23,7 @@ import { navField, navWay } from '../world/nav.js';
 import { collideNuggets, spillGold, stepNugget } from '../world/nuggets.js';
 import { losClear } from '../world/vision.js';
 import { archCurve, archNear } from '../world/decorate.js';
-import { orbPlace } from '../world/orbweb.js';
+import { orbHeld, orbPlace } from '../world/orbweb.js';
 import { bendPush, swingStep, swings, tailStep, vinePt, webAt, webNearU } from '../world/sway.js';
 import { MODS, VAC_PULL } from '../spells/mods.js';
 import { gunPassives } from '../spells/cast.js';
@@ -157,7 +157,7 @@ export const zoneHome = Z => TITLE_HOME[Z.spid ? 'spider' : Z.z] || TITLE_HOME.m
  *   kills: number, gold: number, got: number, runner: TRunner, runners: TRunner[], foes: Enemy[], shots: TShot[], parts: TPart[], coins: Coin[],
  *   booms: TBoom[], zaps: TZap[], flash: number, rows: number, ncol: number, cells: Uint8Array, gen: number, props: TProp[],
  *   fire: TFire[], dirty: number[][], dirtyAll: boolean, carved: number, burnt: number, swaps: number, groundT: number, flyT: number, kinds: Record<string, number>,
- *   webs: WebLine[], orbN?: number, orbHub?: { x: number, y: number, r: number }[], cut: number, lineT: number, silk: { x: number, y: number, ax: number, ay: number, vx: number, vy: number, life: number }[],
+ *   webs: WebLine[], orbN?: number, orbHub?: { x: number, y: number, r: number }[], orbT?: number, cut: number, lineT: number, silk: { x: number, y: number, ax: number, ay: number, vx: number, vy: number, life: number }[],
  *   nav: { F: any, fx: number, fy: number, t: number }, fireAcc: number, fireN: number, burning: Set<number>, gotN: number, pops: number, lampsPopped: number, kitNames: Set<string>,
  *   digT: number, digs: number, digWhy: Record<string, number>, still?: boolean, zp: TitlePlan, snd: TSnd[], hub?: TitleHub, lvl?: TitleLevel, lab?: boolean, back?: (ctx: CanvasRenderingContext2D, S: TitleScene) => void, pace?: number, team?: RunPlayer[], blocked?: number, blockedKind?: string, huddle?: boolean, gunsOff?: boolean, hgoal?: number, hgoalT?: number, fuelWait?: number, tier?: number, loot?: TLoot[],
  *   onTake?: (it: BagItem, x: number, y: number) => void }} TitleScene */
@@ -622,17 +622,20 @@ function genCol(S, c) {
     const rr = DEV.autoOrbRMin + R() * Math.max(0, DEV.autoOrbR - DEV.autoOrbRMin), sz = Math.sqrt(rr / 50);
     const hx = wx - rr - 8 - R() * 30, hr = titleRoof(hx, S), hf = titleFloor(hx, S), pick = R();
     const hy = spz && pick < 0.6 ? hr + (hf - hr) * (0.1 + R() * 0.8) : pick < 0.8 ? hf - 12 - R() * 25 : hr + 12 + R() * 25;
-    const W = orbPlace((x, y) => x >= wx || !!HOLDS[titleCell(S, Math.floor(x / TCELL), Math.floor(y / TCELL))], hx, hy, R,   // (timber holds a web too)
+    /** @param {Pt | null} p */
+    const holds = p => !!p && p.x < wx && !!HOLDS[titleCell(S, Math.floor(p.x / TCELL), Math.floor(p.y / TCELL))];   // (timber holds a web too)
+    // (after v1.0.76: past the columns made is open, not rock: a spoke ended there hung on air once it was made)
+    const W = orbPlace((x, y) => holds({ x, y }), hx, hy, R,
       { spokes: Math.round(DEV.autoOrbSpokes * Math.max(1, sz)), maxR: rr, gap: DEV.autoOrbGap * Math.max(1, sz), hole: 4 * Math.max(1, sz), tries: 6, spread: 25 * Math.max(1, sz) });
     // (kept apart: none over another's hub)
     const hub = W && W.find(t => !t.spiral && !t.bin) || null, apart = !!hub && !(S.orbHub || []).some(h => Math.hypot(h.x - hub.bx, h.y - hub.by) < (h.r + rr) * 0.6);
-    if (W && apart) {
+    if (W && apart && W.every(t => t.spiral || ((!t.ain || holds(t.ain)) && (!t.bin || holds(t.bin))))) {
       S.orbHub = (S.orbHub || []).filter(h => h.x > wx - TITLE_VW * 3);
       S.orbHub.push({ x: hub.bx, y: hub.by, r: rr });
       const id = (S.orbN = (S.orbN || 0) + 1);
       for (const t of W) {
         /** @type {WebLine} */
-        const L = { ax: t.ax, ay: t.ay, bx: t.bx, by: t.by, a0x: t.ax, a0y: t.ay, b0x: t.bx, b0y: t.by, ain: t.ain, bin: t.bin || { x: t.bx, y: t.by }, owner: null, orb: id, sp: t.spiral };
+        const L = { ax: t.ax, ay: t.ay, bx: t.bx, by: t.by, a0x: t.ax, a0y: t.ay, b0x: t.bx, b0y: t.by, ain: t.ain, bin: t.bin || { x: t.bx, y: t.by }, owner: null, orb: id, sp: t.spiral, fr: !t.spiral && !!t.bin };
         L.sag = DEV.webSag * Math.hypot(t.bx - t.ax, t.by - t.ay) * (t.spiral ? 0.6 : 0.3);
         S.webs.push(L);
       }
@@ -1092,6 +1095,29 @@ function cutWeb(S, L, u, burn) {
   };
   piece(L.a0x, L.a0y, pts);
   piece(L.b0x, L.b0y, qts);
+  if (L.orb) orbSettle(S, L.orb);
+}
+// (owner, after v1.0.76: whole webs left on nothing) an orb web after a thread goes, or the rock it's strung on: what
+// no longer holds (world/orbweb.js orbHeld) comes down, a spoke still on its rock hanging from there
+/** @param {TitleScene} S @param {number} id */
+function orbSettle(S, id) {
+  const T = S.webs.filter(L => L.orb === id);
+  if (!T.length) return;
+  /** @param {Pt | null} p */
+  const at = p => !!p && !!HOLDS[titleCell(S, Math.floor(p.x / TCELL), Math.floor(p.y / TCELL))];
+  const fate = orbHeld(T.map(L => ({ ax: L.a0x, ay: L.a0y, bx: L.b0x, by: L.b0y, sp: L.sp, fr: L.fr })), i => (T[i].fr ? at(T[i].ain) && at(T[i].bin) : at(T[i].ain)));
+  const gone = new Set();
+  T.forEach((L, i) => {
+    if (fate[i] === 'keep') return;
+    L.out = true; gone.add(L);
+    const hang = fate[i] === 'hang';
+    if (hang && titleSolid(S, L.a0x - S.scroll, L.a0y + 2)) return;   // (on the floor: nothing to hang down from)
+    const pts = [];
+    for (let k = 0; k <= 8; k++) pts.push(titleWebAt(L, k / 8));
+    const p = hangPiece(S, 'silk', L.a0x, L.a0y, pts, !!L.fu, hang);
+    if (p && hang && L.ain) { p.ac = Math.floor(L.ain.x / TCELL); p.ar = Math.floor(L.ain.y / TCELL); }
+  });
+  if (gone.size) S.webs = S.webs.filter(L => !gone.has(L));
 }
 // can a title prop swing (a hanging vine, chain, root or strand; a cut piece)?
 /** @param {TProp} p */
@@ -1376,6 +1402,8 @@ export function titleStep(S, dt) {
   }
   S.props = S.props.filter(p => !p.gone && p.ox + (p.span || 0) - S.scroll > behind(S, -60));
   S.webs = S.webs.filter(L => Math.max(L.a0x, L.b0x) - S.scroll > behind(S, -40));
+  // (after v1.0.76) orb webs on screen whose rock was dug or blasted away: what no longer holds comes down
+  if (S.t - (S.orbT || 0) > 0.2) { S.orbT = S.t; for (const id of new Set(S.webs.filter(L => L.orb && L.a0x - S.scroll > -60 && L.a0x - S.scroll < TITLE_VW + 20).map(L => L.orb))) orbSettle(S, id || 0); }
   if (S.hub && S.hub.step) S.hub.step(S, dt);
   if (S.lvl && S.lvl.step) S.lvl.step(S, dt);
 }

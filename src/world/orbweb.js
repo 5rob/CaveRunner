@@ -112,3 +112,33 @@ export function orbPlace(solid, cx, cy, R, o = {}) {
   }
   return best ? best.W : null;
 }
+
+// which of an orb web's threads still hold (owner, after v1.0.76: "full webs suspended on nothing when players break
+// the main lines"). A frame holds while the rock at both its ends does; a spoke while its rock does, or the held frame
+// it ends on; the hub while ORB_HUB spokes hold; a spiral thread while both its ends sit on held spokes. The hub gone:
+// each spoke still on its rock hangs from there ('hang'); the rest comes down ('fall')
+export const ORB_HUB = 3;
+
+/** @typedef {{ ax: number, ay: number, bx: number, by: number, sp?: boolean, fr?: boolean }} OrbLeft */
+/**
+ * @param {OrbLeft[]} T the web's threads left (a spoke: a on the rock or a frame, b the hub; a frame: anchor to anchor;
+ *   a spiral thread: spoke to spoke)
+ * @param {(i: number) => boolean} rock thread i's rock still there (a spoke's end; both a frame's ends)
+ * @returns {('keep' | 'hang' | 'fall')[]}
+ */
+export function orbHeld(T, rock) {
+  /** @param {number} x @param {number} y @param {OrbLeft} L */
+  const onSeg = (x, y, L) => {
+    const vx = L.bx - L.ax, vy = L.by - L.ay, ll = vx * vx + vy * vy || 1, u = Math.max(0, Math.min(1, ((x - L.ax) * vx + (y - L.ay) * vy) / ll));
+    return Math.hypot(L.ax + vx * u - x, L.ay + vy * u - y) < 1;
+  };
+  const idx = T.map((_, i) => i);
+  const frames = idx.filter(i => T[i].fr && rock(i)), spokes = idx.filter(i => !T[i].sp && !T[i].fr);
+  const ok = spokes.filter(i => rock(i) || frames.some(f => onSeg(T[i].ax, T[i].ay, T[f])));
+  const hub = ok.length >= ORB_HUB, held = hub ? ok.map(i => T[i]) : [];
+  return T.map((L, i) => {
+    if (L.fr) return frames.includes(i) ? 'keep' : 'fall';
+    if (!L.sp) return hub && ok.includes(i) ? 'keep' : rock(i) ? 'hang' : 'fall';
+    return held.some(s => onSeg(L.ax, L.ay, s)) && held.some(s => onSeg(L.bx, L.by, s)) ? 'keep' : 'fall';
+  });
+}

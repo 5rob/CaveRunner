@@ -195,7 +195,7 @@ interface WebLine {
   // the title scene only (art/titlescene.js): the burnt span [u0, u1] while it burns, out once all burnt
   fu?: number[] | null; out?: boolean;
   // an orb web's thread (world/orbweb.js): its web's number, and a spiral thread (sp) rather than a spoke
-  orb?: number; sp?: boolean;
+  orb?: number; sp?: boolean; fr?: boolean;   // fr: a frame thread (anchor to anchor across an open side)
 }
 /** a line being shot (e.sp.shot) */
 interface SpiderShot {

@@ -5,6 +5,12 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.77 — CaveRunner Auto: orb webs break apart (branch `autobattler`)
+Owner: "full webs suspended on nothing when players break the main lines". Owner OK'd the screenshots (tools/cutshots.js).
+- world/orbweb.js `orbHeld` (pure): a frame holds while its rock does; a spoke while its rock or held frame does; the hub while `ORB_HUB` (3) spokes hold; a spiral thread while both ends sit on held spokes. art/titlescene.js `orbSettle` after every orb thread cut or burnt, and every 0.2 s for webs on screen (their rock dug or blasted): what doesn't hold falls as loose silk, spokes still on rock hang from it.
+- Fixed: webs were placed with the unmade columns ahead counted as rock, so some spokes hung on air once made; now only real rock (or timber) holds, and a web with any anchor off it isn't strung.
+- Suite `orbweb`: orbHeld cases and a hub cleared in the scene.
+
 ## v1.0.76 — CaveRunner Auto: just orb webs, and large ones (branch `autobattler`)
 Owner: "too many really tall single strands, not enough webs; just webs (spiders still spin their own lines); large ones too". Owner OK'd the screenshots.
 - A level's webs and spider zones lose the scenery's straight web lines (the title menu keeps them).

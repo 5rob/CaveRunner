@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v1.0.76</title>
-<!-- VERSION = 'v1000076' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v1.0.77</title>
+<!-- VERSION = 'v1000077' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -1183,7 +1183,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v1.0.76';</script>
+<script>const VERSION = 'v1.0.77';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -9776,6 +9776,22 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     return best ? best.W : null;
   }
+  var ORB_HUB = 3;
+  function orbHeld(T2, rock) {
+    const onSeg = (x, y, L) => {
+      const vx = L.bx - L.ax, vy = L.by - L.ay, ll = vx * vx + vy * vy || 1, u = Math.max(0, Math.min(1, ((x - L.ax) * vx + (y - L.ay) * vy) / ll));
+      return Math.hypot(L.ax + vx * u - x, L.ay + vy * u - y) < 1;
+    };
+    const idx = T2.map((_, i) => i);
+    const frames = idx.filter((i) => T2[i].fr && rock(i)), spokes = idx.filter((i) => !T2[i].sp && !T2[i].fr);
+    const ok = spokes.filter((i) => rock(i) || frames.some((f) => onSeg(T2[i].ax, T2[i].ay, T2[f])));
+    const hub = ok.length >= ORB_HUB, held = hub ? ok.map((i) => T2[i]) : [];
+    return T2.map((L, i) => {
+      if (L.fr) return frames.includes(i) ? "keep" : "fall";
+      if (!L.sp) return hub && ok.includes(i) ? "keep" : rock(i) ? "hang" : "fall";
+      return held.some((s) => onSeg(L.ax, L.ay, s)) && held.some((s) => onSeg(L.bx, L.by, s)) ? "keep" : "fall";
+    });
+  }
 
   // src/spells/cast.js
   var MIN_CAST = 0.016;
@@ -14146,21 +14162,21 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const rr2 = DEV.autoOrbRMin + R() * Math.max(0, DEV.autoOrbR - DEV.autoOrbRMin), sz = Math.sqrt(rr2 / 50);
       const hx = wx - rr2 - 8 - R() * 30, hr = titleRoof(hx, S2), hf = titleFloor(hx, S2), pick = R();
       const hy = spz && pick < 0.6 ? hr + (hf - hr) * (0.1 + R() * 0.8) : pick < 0.8 ? hf - 12 - R() * 25 : hr + 12 + R() * 25;
+      const holds = (p2) => !!p2 && p2.x < wx && !!HOLDS[titleCell(S2, Math.floor(p2.x / TCELL), Math.floor(p2.y / TCELL))];
       const W = orbPlace(
-        (x, y) => x >= wx || !!HOLDS[titleCell(S2, Math.floor(x / TCELL), Math.floor(y / TCELL))],
+        (x, y) => holds({ x, y }),
         hx,
         hy,
         R,
-        // (timber holds a web too)
         { spokes: Math.round(DEV.autoOrbSpokes * Math.max(1, sz)), maxR: rr2, gap: DEV.autoOrbGap * Math.max(1, sz), hole: 4 * Math.max(1, sz), tries: 6, spread: 25 * Math.max(1, sz) }
       );
       const hub = W && W.find((t) => !t.spiral && !t.bin) || null, apart = !!hub && !(S2.orbHub || []).some((h3) => Math.hypot(h3.x - hub.bx, h3.y - hub.by) < (h3.r + rr2) * 0.6);
-      if (W && apart) {
+      if (W && apart && W.every((t) => t.spiral || (!t.ain || holds(t.ain)) && (!t.bin || holds(t.bin)))) {
         S2.orbHub = (S2.orbHub || []).filter((h3) => h3.x > wx - TITLE_VW * 3);
         S2.orbHub.push({ x: hub.bx, y: hub.by, r: rr2 });
         const id = S2.orbN = (S2.orbN || 0) + 1;
         for (const t of W) {
-          const L = { ax: t.ax, ay: t.ay, bx: t.bx, by: t.by, a0x: t.ax, a0y: t.ay, b0x: t.bx, b0y: t.by, ain: t.ain, bin: t.bin || { x: t.bx, y: t.by }, owner: null, orb: id, sp: t.spiral };
+          const L = { ax: t.ax, ay: t.ay, bx: t.bx, by: t.by, a0x: t.ax, a0y: t.ay, b0x: t.bx, b0y: t.by, ain: t.ain, bin: t.bin || { x: t.bx, y: t.by }, owner: null, orb: id, sp: t.spiral, fr: !t.spiral && !!t.bin };
           L.sag = DEV.webSag * Math.hypot(t.bx - t.ax, t.by - t.ay) * (t.spiral ? 0.6 : 0.3);
           S2.webs.push(L);
         }
@@ -14793,6 +14809,29 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     };
     piece(L.a0x, L.a0y, pts);
     piece(L.b0x, L.b0y, qts);
+    if (L.orb) orbSettle(S2, L.orb);
+  }
+  function orbSettle(S2, id) {
+    const T2 = S2.webs.filter((L) => L.orb === id);
+    if (!T2.length) return;
+    const at = (p) => !!p && !!HOLDS[titleCell(S2, Math.floor(p.x / TCELL), Math.floor(p.y / TCELL))];
+    const fate = orbHeld(T2.map((L) => ({ ax: L.a0x, ay: L.a0y, bx: L.b0x, by: L.b0y, sp: L.sp, fr: L.fr })), (i) => T2[i].fr ? at(T2[i].ain) && at(T2[i].bin) : at(T2[i].ain));
+    const gone = /* @__PURE__ */ new Set();
+    T2.forEach((L, i) => {
+      if (fate[i] === "keep") return;
+      L.out = true;
+      gone.add(L);
+      const hang = fate[i] === "hang";
+      if (hang && titleSolid(S2, L.a0x - S2.scroll, L.a0y + 2)) return;
+      const pts = [];
+      for (let k = 0; k <= 8; k++) pts.push(titleWebAt(L, k / 8));
+      const p = hangPiece(S2, "silk", L.a0x, L.a0y, pts, !!L.fu, hang);
+      if (p && hang && L.ain) {
+        p.ac = Math.floor(L.ain.x / TCELL);
+        p.ar = Math.floor(L.ain.y / TCELL);
+      }
+    });
+    if (gone.size) S2.webs = S2.webs.filter((L) => !gone.has(L));
   }
   var canSwing = (p) => p.k === "climb" && !p.arc && !!p.len;
   function stepSway(S2, dt) {
@@ -15131,6 +15170,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     S2.props = S2.props.filter((p) => !p.gone && p.ox + (p.span || 0) - S2.scroll > behind(S2, -60));
     S2.webs = S2.webs.filter((L) => Math.max(L.a0x, L.b0x) - S2.scroll > behind(S2, -40));
+    if (S2.t - (S2.orbT || 0) > 0.2) {
+      S2.orbT = S2.t;
+      for (const id of new Set(S2.webs.filter((L) => L.orb && L.a0x - S2.scroll > -60 && L.a0x - S2.scroll < TITLE_VW + 20).map((L) => L.orb))) orbSettle(S2, id || 0);
+    }
     if (S2.hub && S2.hub.step) S2.hub.step(S2, dt);
     if (S2.lvl && S2.lvl.step) S2.lvl.step(S2, dt);
   }
