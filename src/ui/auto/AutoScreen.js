@@ -42,7 +42,7 @@ import { CARD_ICON, GunCard, ModCard, PerkCard } from '../cards.js';
 import { GunIcon, GunStats, PULL_COL } from '../editor.js';
 import { fireSimNew, pullSteps } from '../../spells/bagsim.js';
 import { PV_GRAPH_N, PV_HIT_T, previewScene, previewState, pvSim } from '../../auto/preview.js';
-import { GlyphIcon, HelmetIcon, PixIcon, TargetPic } from './icons.js';
+import { GlyphIcon, HelmetIcon, NuggetIcon, PixIcon, TargetPic } from './icons.js';
 import { discrimId, targetOf } from '../../spells/discrim.js';
 import { DISCRIM_TARGETS, isAutoTarget } from '../../art/discrimicon.js';
 import { PauseMenu } from '../pause.js';
@@ -641,7 +641,7 @@ export function AutoScreen() {
       h('canvas', { ref: cvs, className: 'aplaycvs' }),
       blocked ? h('div', { className: 'ablocked' }, 'Path blocked') : null,
       h('div', { className: 'atop' + (devOn ? ' dev' : '') },
-        h('div', { className: 'alvlinfo' }, h('b', null, mapInfo(run).name), h('span', null, 'Level ' + mapInfo(run).level)),
+        h('div', { className: 'alvlinfo' }, h('b', null, mapInfo(run).name), h('span', null, 'Level ' + mapInfo(run).level), h('span', { className: 'atoplvl' }, 'Top ' + mapInfo(run).top)),
         inLvl ? h('div', { className: 'ajourney' + (jHid ? ' off' : ''), onPointerDown: jTap }, h('canvas', { ref: jcvs })) : null,
         boss ? h('div', { className: 'abossbar' }, h('b', null, boss.name),
           h('div', { className: 'abosstrack' }, h('i', { style: { width: (100 * boss.hp / Math.max(1, boss.max)).toFixed(1) + '%' } }))) : null),
@@ -663,7 +663,8 @@ export function AutoScreen() {
     card ? h(CardPop, { it: card, close: () => setCard(null) }) : null,
     dpop ? h(DiscrimPop, { at: dpop, cur: (() => { const it = srcItem(dpop.src); return it ? targetOf(it.id) : null; })(), pick: tg => setTarget(dpop, tg), close: () => { SFX.fx('close'); setDpop(null); } }) : null,
     devOpen ? h(DevPanel, { input, refresh: () => setV(v => v + 1), close: () => { SFX.fx('close'); setDevOpen(false); },
-      onGem: kind => { bagAdd(run, { kind, n: 1 }); saveAutoRun(run); SFX.fx('coin'); setV(v => v + 1); } }) : null,
+      onGem: kind => { bagAdd(run, { kind, n: 1 }); saveAutoRun(run); SFX.fx('coin'); setV(v => v + 1); },
+      onMod: id => { if (!bagAdd(run, { kind: 'mod', id, n: 1 })) { saveAutoRun(run); SFX.ui('tap'); setV(v => v + 1); } } }) : null,
     paused ? h(PauseMenu, { input, label: mapLabel(run), onNew: freshRun, close:() => { SFX.fx('close'); setPaused(false); } }) : null);
 }
 
@@ -968,9 +969,7 @@ function ItemIcon({ it }) {
     return h('span', { className: 'aglyph' }, h(PixIcon, { id: it.cat || 'hp', size: '64%', tint: HUB_MACHINES.exo.hue }), it.tier ? h('i', { className: 'atier' }, ROMAN[it.tier - 1]) : null);
   }
   else if (it.kind === 'perk') { const pk = PERKS[it.id || '']; g = pk ? { glyph: pk.glyph, col: HUB_MACHINES.perk.hue } : { glyph: '?', col: '#888' }; }   // the perk machine's (owner)
-  else if (it.kind === 'gold') g = { glyph: '●', col: '#ffc93c' };
-  else if (it.kind === 'red') g = { glyph: '◆', col: '#ff4f5e' };
-  else if (it.kind === 'green') g = { glyph: '◆', col: '#5ee05a' };
+  else if (it.kind === 'gold' || it.kind === 'red' || it.kind === 'green') return h('span', { className: 'aglyph' }, h(NuggetIcon, { kind: it.kind }));   // (owner v1.0.74) the world's sprite
   if (!g) return null;
   const tg = it.kind === 'mod' ? targetOf(it.id) : null;   // a set Discriminate: its target's picture in the corner (v1.0.71)
   return h('span', { className: 'aglyph' }, h(GlyphIcon, { glyph: g.glyph, col: g.col }),
@@ -1203,10 +1202,11 @@ function CoinBurst({ burst }) {
 }
 
 // the active map and its level, top left of the play area (owner)
-/** @param {AutoRun} run @returns {{ name: string, level: number }} */
+// (owner v1.0.74) and the top level reached on it (the highest cleared + 1, or the one it's on)
+/** @param {AutoRun} run @returns {{ name: string, level: number, top: number }} */
 function mapInfo(run) {
-  const i = run.map || 0;
-  return { name: MAP_NAMES[i], level: mapsOf(run)[i].level };
+  const i = run.map || 0, m = mapsOf(run)[i];
+  return { name: MAP_NAMES[i], level: m.level, top: Math.max(m.level, (m.best || 0) + 1) };
 }
 // (owner) the journey box: the whole level at its own width-to-height shape, across the play area; each player's helmet
 // (the scene's sprite, pixelated) where he is in it; the fallen and the hidden left out

@@ -22,6 +22,7 @@ import { loadPresets, presetGun, removePreset, savePresets } from '../save/prese
 import { gunColor } from '../spells/guns.js';
 import { AUTO_KNOBS } from '../dev/autouse.js';
 import { FireSim } from './firesim.js';
+import { ModGrid } from './modgrid.js';
 import { h, useEffect, useRef, useState } from './h.js';
 
 // A live jellyfish for Dev → Jellyfish colours: the real jellyStep and drawJelly in a
@@ -555,8 +556,9 @@ const blurBox = () => {
 // so the look-of-it knobs (zoom, torch, fog) preview live as you type. On top: the actions
 // ("All mods" is the old DEBUG shelf) and Copy report; then a search box and the tabs
 // (DEV_TABS), each a page of collapsible groups of the saved, persisted variables.
-/** @param {{ input: { current: GameInput }, refresh: () => void, close: () => void, onRestart: () => void, onSpawnGun?: () => void, onSpawnLevel?: () => void, onGem?: (kind: 'red' | 'green') => void }} props */
-export function DevPanel({ input, refresh, close, onRestart, onSpawnGun, onSpawnLevel, onGem }) {
+/** @param {{ input: { current: GameInput }, refresh: () => void, close: () => void, onRestart: () => void, onSpawnGun?: () => void, onSpawnLevel?: () => void, onGem?: (kind: 'red' | 'green') => void, onMod?: (id: string) => void }} props */
+export function DevPanel({ input, refresh, close, onRestart, onSpawnGun, onSpawnLevel, onGem, onMod }) {
+  const [grid, setGrid] = useState(false);   // (Auto, owner v1.0.74) the mod grid shown
   const LO = input.current.loadout;
   const [, bump] = useState(0);
   const [copied, setCopied] = useState(null);     // null, or the text + whether it copied
@@ -627,6 +629,7 @@ export function DevPanel({ input, refresh, close, onRestart, onSpawnGun, onSpawn
             act('restart', 'Restart run', onRestart)] : []),
           // (Auto) a red / green crystal straight into the bag, one a tap
           ...(onGem ? [act('gemred', '+1 red crystal', () => onGem('red')), act('gemgreen', '+1 green crystal', () => onGem('green'))] : []),
+          ...(onMod ? [act('toggle modgridbtn' + (grid ? ' on' : ''), 'Mod grid', () => setGrid(g => !g))] : []),
           act('devcopy', 'Copy Dev settings', () => copyText(devReport)),
           act('devaudit', 'Copy mod & perk audit', () => copyText(() => auditText(loadAudit()), 'audit'))),
         copied ? h('p', { className: 'devnote devcopied' + (copied.ok ? ' ok' : '') }, copied.empty
@@ -646,6 +649,7 @@ export function DevPanel({ input, refresh, close, onRestart, onSpawnGun, onSpawn
           }))),
       // (v1.0.62) the fire sim's window and buttons stay put over the knobs, which scroll under them
       !needle && tab === 'firesim' ? h('div', { className: 'firesimtop' }, h(FireSim, null)) : null,
+      grid && onMod ? h(ModGrid, { onMod }) : null,
       h('div', { className: 'devbody' },
         h('p', { className: 'devkey' }, h('i', { className: 'devauto' }), 'works in Auto ', h('i', { className: 'devsome' }), 'some ', h('i', { className: 'devold' }), 'old game only'),
         shown.length ? null : h('p', { className: 'devnote' }, 'No knob matches “' + q.trim() + '”.'),

@@ -2,7 +2,7 @@
 // CaveRunner Auto's nav icons (owner, stage 8a: themed pixel art, not emoji; centred in their circle): small pixel
 // maps drawn as SVG squares, and the player's helmet (art/sprites.js helmetIcon) on a canvas.
 
-import { helmetIcon } from '../../art/sprites.js';
+import { CRYSTAL_PAL, GREEN_PAL, drawNugget, helmetIcon } from '../../art/sprites.js';
 import { h, useEffect, useRef } from '../h.js';
 
 import { NAV_ICONS, inkGlyph, tintShade } from '../../art/itemicon.js';
@@ -102,4 +102,22 @@ export function TargetPic({ t, size = 40, className }) {
     drawTarget(ctx, t, size);
   }, [t.kind, t.id, size]);
   return h('canvas', { ref, className: className || 'atgt', style: { width: size + 'px', height: size + 'px' } });
+}
+
+// (owner v1.0.74) gold, a red or a green crystal in the bag: the sprite the world draws (art/sprites.js drawNugget), on a
+// small pixel grid (NUG_PX across) shown pixelated, as the glyphs are
+const NUG_PX = 20;
+/** @param {{ kind: string }} props */
+export function NuggetIcon({ kind }) {
+  /** @type {{ current: HTMLCanvasElement | null }} */
+  const ref = useRef(null);
+  useEffect(() => {
+    const c = ref.current, ctx = c && c.getContext('2d');
+    if (!c || !ctx) return;
+    c.width = c.height = NUG_PX;
+    ctx.clearRect(0, 0, NUG_PX, NUG_PX);
+    if (kind === 'gold') drawNugget(ctx, NUG_PX / 2, NUG_PX / 2 + 1, NUG_PX * 0.42, 2.3, 0);
+    else drawNugget(ctx, NUG_PX / 2, NUG_PX / 2, NUG_PX * 0.46, 3.7, 0, kind === 'green' ? GREEN_PAL : CRYSTAL_PAL);
+  }, [kind]);
+  return h('canvas', { ref, className: 'apixg anug' });
 }

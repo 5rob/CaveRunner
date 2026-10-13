@@ -26,7 +26,7 @@ export const MODS = {
              wig: 16, look: 'crackle', light: '255,230,120', lightR: 18 },
   // Noita's Magic Bolt (HEAVY_BULLET): a green-gold ball on a gentle arc spitting green and
   // yellow sparks, hitting hard enough to shove and to blow a small hole in rock
-  slug:    { name: 'Slug', kind: 'shot', glyph: '⬤', col: '#b4ff5a', mana: 20,
+  slug:    { name: 'Slug', kind: 'shot', glyph: '⬣', col: '#b4ff5a', mana: 20,
              info: 'Slow and very heavy. A green-gold ball on a gentle arc that shoves what it hits and blows a small hole in rock',
              dmg: 4, speed: 320, spread: 1, delay: 0.26, size: 4, life: 1.6, recoil: 45,
              grav: 120, drag: 0.3, pit: 5, knock: 160, look: 'heavy', light: '150,240,90', lightR: 30 },
@@ -43,7 +43,7 @@ export const MODS = {
              accel: 0.5, vmax: 1100, look: 'lance', light: '155,235,255', lightR: 22 },
   // Noita's Bouncing Burst: a gold rubber ball under real gravity that keeps nine-tenths of
   // its speed every bounce, trailing fading green
-  orb:     { name: 'Bounce Orb', kind: 'shot', glyph: '◍', col: '#ffd246', mana: 8,
+  orb:     { name: 'Bounce Orb', kind: 'shot', glyph: '◐', col: '#ffd246', mana: 8,
              info: 'A rubber ball that falls, and ricochets off rock ten times hardly slowing',
              dmg: 2, speed: 420, spread: 0.6, delay: 0.14, size: 3, life: 4, bounce: 10, bounceE: 0.9,
              grav: 250, drag: 0.2, look: 'rubber', light: '255,210,70', lightR: 20, recoil: 8 },
@@ -194,12 +194,12 @@ export const MODS = {
              grav: 200, drag: 2.2, bounce: 10, bounceE: 0.5, look: 'glob', light: '245,120,220', lightR: 18 },
   // Noita's Energy Orb (SLOW_BULLET): a slow pale-blue orb that shoves hard and blasts a
   // round hole where it lands
-  eorb:    { name: 'Energy Orb', kind: 'shot', glyph: '◉', col: '#64beff', mana: 22,
+  eorb:    { name: 'Energy Orb', kind: 'shot', glyph: '⚛', col: '#64beff', mana: 22,
              info: 'A slow, fat blue orb. Hits hard, shoves hard, and blasts a round hole in rock',
              dmg: 3.5, speed: 220, spread: 1, delay: 0.32, size: 5, life: 2.4, recoil: 30,
              pit: 9, knock: 220, drag: 0.15, look: 'orb', light: '100,190,255', lightR: 40 },
   // Noita's Energy Sphere (BOUNCY_ORB): a deep-blue ball that arcs and bounces five times
-  esph:    { name: 'Energy Sphere', kind: 'shot', glyph: '◌', col: '#3c8cff', mana: 12,
+  esph:    { name: 'Energy Sphere', kind: 'shot', glyph: '❂', col: '#3c8cff', mana: 12,
              info: 'A fast blue ball that arcs, and bounces off rock five times',
              dmg: 1.4, speed: 480, spread: 2, delay: 0.1, size: 2.2, life: 1.8, grav: 250, drag: 0.4,
              bounce: 5, bounceE: 0.75, knock: 120, look: 'orb', light: '60,120,255', lightR: 26, recoil: 8 },
@@ -441,7 +441,7 @@ export const FAMILIES = {
   path:    { name: 'Flight path', col: '#b57cff' },
   pattern: { name: 'Shot pattern', col: '#ff7ac8' },
   upkeep:  { name: 'Gun upkeep', col: '#3fcf8e' },
-  field:   { name: 'Static field', col: '#2fd4c4' },
+  field:   { name: 'Static field', col: '#ff8f1f' },   // (owner v1.0.74) orange: the teal was too near the exo mods'
   cast:    { name: 'Casting & copies', col: '#e8e4f0' },
 };
 /** @type {Record<string, string>} */

@@ -45,6 +45,7 @@ export function Title({ onStart }) {
   const tap = fn => e => { e.preventDefault(); fn(e); };
   return h('div', { className: 'title' },
     h('canvas', { ref: cvs, className: 'titlecvs' }),
+    h('div', { className: 'tver' }, VERSION),   // (owner v1.0.74) the build, bottom right
     h('div', { className: 'titlemenu' + (setup ? ' setup' : ''), ref: menu },
       setup ? h(Settings, { close: () => gear(false) }) :
         h('div', { key: 'b', className: 'tbtns' },

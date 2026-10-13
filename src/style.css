@@ -948,6 +948,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .atop.dev .alvlinfo{margin-right:94px}
 .alvlinfo b{font:900 14px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.08em;color:#f1ecff;text-shadow:0 1px 0 #000,0 0 6px rgba(0,0,0,0.8)}
 .alvlinfo span{font:800 11px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.1em;color:#c9b8ff;text-shadow:0 1px 0 #000,0 0 6px rgba(0,0,0,0.8)}
+.alvlinfo span.atoplvl{color:#ffb35a;font-size:10px}
 .ajourney{position:relative;height:20px;border-radius:6px;background:rgba(0,0,0,0.2);border:2px solid #3d2f5c;box-sizing:border-box;
   pointer-events:auto;touch-action:none;transition:opacity .2s}
 .ajourney.off{opacity:0}
@@ -1064,7 +1065,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .abtn.aa{background:linear-gradient(#4ef08a,#0fb556);box-shadow:0 4px 0 #0a5a2a,0 0 14px rgba(40,220,110,0.45)}
 /* the stick (bug round 1): a circle (radius 74) centred on the buttons' top, touching the bar's left edge there (the bar's top-left corner under it, its bottom-left rounded), cut off at the bar's bottom; its ring
    sits under the bar's fill and its own fill over the bar's top border: one outline round both. The knob rests at its centre */
-.astick{position:absolute;left:-2px;top:-68px;bottom:0;width:148px;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
+.astick{position:absolute;left:-2px;top:-68px;bottom:0;width:148px;z-index:4;clip-path:inset(-200px -200px 0 -200px);touch-action:none;user-select:none;-webkit-user-select:none}
 .adomering,.adomefill{position:absolute;border-radius:50%;background:#0e091a;box-sizing:border-box;pointer-events:none}
 .adomering{left:0;top:2px;width:148px;height:148px;border:2px solid #3d2f5c;z-index:0}
 .adomefill{left:2px;top:4px;width:144px;height:144px;z-index:2}
@@ -1129,3 +1130,16 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .adgrid.p4{grid-template-columns:repeat(4,1fr);margin-top:4px}
 .adbtn.pl{height:46px}
 .atgt.aon{position:absolute;right:-4px;bottom:-4px;pointer-events:none;background:#16121fcc;border-radius:6px}
+/* (owner v1.0.74) the title's version, bottom right */
+.tver{position:absolute;right:10px;bottom:calc(8px + env(safe-area-inset-bottom));font:700 11px ui-monospace,SFMono-Regular,Menlo,monospace;color:rgba(241,236,255,0.55);letter-spacing:.06em;pointer-events:none;z-index:3}
+/* (owner v1.0.74) the Dev panel's mod grid (ui/modgrid.js) */
+.modgrid{padding:6px 10px 10px;border-bottom:1px solid #3d2f5c}
+.mgtiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(44px,1fr));gap:5px}
+.mgtile{aspect-ratio:1;display:flex;align-items:center;justify-content:center;padding:0;background:#2c1f45;border:2px solid #555;border-radius:8px;touch-action:none;user-select:none;-webkit-user-select:none;transition:transform .12s}
+.mgtile .apixg{width:70%;height:70%}
+.mgtile.off{opacity:.4}
+.mgtile.on{box-shadow:0 0 0 2px #fff}
+.mgtile.got{transform:scale(1.18);background:#4a3a78}
+.mginfo{margin-top:8px;font-size:13px;color:#d8cff0}
+.mginfo b{font-weight:800}
+.mginfo p{margin:4px 0 0;color:#b9add8}
