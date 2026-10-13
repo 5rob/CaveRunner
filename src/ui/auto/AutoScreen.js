@@ -33,7 +33,7 @@ import { levelBoss } from '../../auto/enemies.js';
 import { MODS, famCol } from '../../spells/mods.js';
 import { HUB_MACHINES } from '../../auto/hub.js';
 import { PERKS, STAT_PERKS } from '../../data/perks.js';
-import { bagFit, EXO_STATS, MAX_PLAYERS, addPlayer, bagAdd, bagSlotOf, fitExo, fitGun, fitMod, fitPerk, healRun, levelCleared, levelFailed, levelSeed, kitMissing, newRun, bagMove, rowMove, rowToBag, gunToBag, gunMove, unfitGun,
+import { bagFit, EXO_STATS, MAX_PLAYERS, addPlayer, bagAdd, bagSlotOf, fitExo, fitGun, fitMod, fitPerk, healRun, levelCleared, levelFailed, levelSeed, kitMissing, newRun, bagMove, rowMove, rowToBag, insertMod, modMoveTo, bagGroupMove, fitMods, gunToBag, gunMove, unfitGun,
   bagCount, scrapAt, setActive, spend, unfitExo, unfitMod, unfitPerk } from '../../auto/run.js';
 import { loadAutoRun, saveAutoRun } from '../../auto/save.js';
 import { EXO_NAMES, arcPick, gunArc, navBack, navOpen, navPath, navPick, navRow, navStart, hpFrac } from '../../auto/nav.js';
@@ -113,6 +113,15 @@ export function AutoScreen() {
   // up by bigBag px (a negative margin: the flex column gives it the room), 0 when it's its own size
   const [bigBag, setBigBag] = useState(0);
   const emptyTap = useRef(0);
+  // (owner, bag-drag round) the gun's mod row grown into rows (a double tap on an empty mod slot; again, or B, back)
+  const [bigRow, setBigRow] = useState(false);
+  const rowTap = useRef(0);
+  // (owner, bag-drag round) bag slots picked for a group move (hold a tile's icon still, then slide over others)
+  /** @type {number[]} */
+  const noSel = [];
+  const [sel, setSel] = useState(noSel);
+  const selRef = useRef(sel);
+  selRef.current = sel;
   // (owner, v1.0.47) the play area grown down over the nav and the bag to the bag's bottom edge (a double tap on it; again,
   // or B, back): bigPlay px added to its height, taken back by a negative bottom margin, so the rest stays where it is under it
   const [bigPlay, setBigPlay] = useState(0);
@@ -348,6 +357,8 @@ export function AutoScreen() {
   // player row: nobody marked); at the player row: hide the nav (a tap on the play area brings it back)
   const pressB = () => {
     nothing();
+    if (sel.length) { SFX.fx('close'); setSel([]); return; }
+    if (bigRow) { SFX.fx('close'); setBigRow(false); return; }
     if (bigBag) { SFX.fx('close'); setBigBag(0); return; }
     if (bigPlay) { SFX.fx('close'); setBigPlay(0); return; }
     const S = scene.current, C = cam.current, n = navRef.current;
@@ -360,6 +371,7 @@ export function AutoScreen() {
   // a tap on an empty bag slot: the second within BIG_TAP ms grows the bag up to the play area's top, or puts it back
   /** @param {any} e */
   const emptyDown = e => {
+    if (selRef.current.length) setSel([]);
     const now = performance.now();
     if (now - emptyTap.current > BIG_TAP) { emptyTap.current = now; return; }
     emptyTap.current = 0;
@@ -369,6 +381,15 @@ export function AutoScreen() {
     SFX.fx('open');
     setBigBag(Math.max(0, bag.getBoundingClientRect().top - play.getBoundingClientRect().top));
   };
+  // (owner, bag-drag round) the same on an empty mod slot of a gun's row: the row grows into rows of 7 (upward), or back
+  const rowEmptyDown = () => {
+    const now = performance.now();
+    if (now - rowTap.current > BIG_TAP) { rowTap.current = now; return; }
+    rowTap.current = 0;
+    SFX.fx(bigRow ? 'close' : 'open');
+    setBigRow(!bigRow);
+  };
+  useEffect(() => { setBigRow(false); }, [nav.level, nav.p, nav.g]);
   /** a tap on the play area: the nav back if hidden @param {any} e */
   const playTap = e => {
     if (e.target && e.target.closest && e.target.closest('.pausebtn, .adevbtn')) return;
@@ -400,44 +421,80 @@ export function AutoScreen() {
     const grab = !!force || !!(e.target && e.target.closest && e.target.closest('.agrab'));
     if (grab) e.preventDefault();
     /** @type {Press} */
-    const p = { id: e.pointerId, x0: e.clientX, y0: e.clientY, src, grab, drag: false };
+    const p = { id: e.pointerId, x0: e.clientX, y0: e.clientY, src, grab, drag: false, lx: e.clientX, ly: e.clientY, raf: 0 };
+    // (owner, bag-drag round) a picked tile dragged: the whole group goes
+    if (src.from === 'bag' && selRef.current.includes(src.i)) p.group = selRef.current.slice();
     press.current = p;
     // (owner, v1.0.71) a Discriminate tile held DEV.autoHoldMs (not moved): its target popup, no drag, no card
     const it0 = srcItem(src), el = e.currentTarget;
     /** @param {any} ev */
     const noMenu = ev => ev.preventDefault();
-    const holdT = it0 && it0.kind === 'mod' && isDiscrim(it0.id) ? setTimeout(() => {
+    const disc = !!it0 && it0.kind === 'mod' && isDiscrim(it0.id);
+    const holdT = disc ? setTimeout(() => {
       if (p.drag || press.current !== p) return;
       p.held = true; SFX.fx('open');
       const r = el && el.getBoundingClientRect ? el.getBoundingClientRect() : { left: p.x0, top: p.y0, width: 0, height: 0 };
       const n = navRef.current;
       setDpop({ src, pl: n.p, g: n.g == null ? -1 : n.g, x: r.left + r.width / 2, top: r.top, bottom: r.top + r.height });
-    }, DEV.autoHoldMs) : 0;
+    }, DEV.autoHoldMs)
+      // (owner, bag-drag round) any other bag tile held still on its icon: picking starts (it lit); sliding on picks the
+      // tiles passed over (a sweep); a picked tile dragged later moves them all
+      : src.from === 'bag' && grab ? setTimeout(() => {
+        if (p.drag || press.current !== p) return;
+        p.sweep = true; SFX.ui('tap');
+        try { if (navigator.vibrate) navigator.vibrate(30); } catch (_) { /* no vibration */ }
+        setSel(s => s.includes(src.i) ? s : [...s, src.i]);
+      }, DEV.autoHoldMs) : 0;
     if (holdT) addEventListener('contextmenu', noMenu);
     const finish = () => {
       press.current = null;
+      if (p.raf) cancelAnimationFrame(p.raf);
       if (holdT) { clearTimeout(holdT); setTimeout(() => removeEventListener('contextmenu', noMenu), 400); }
       removeEventListener('pointermove', move); removeEventListener('pointerup', up); removeEventListener('pointercancel', cancel);
+    };
+    /** the ghost and the target under the finger */
+    const show = () => setDrag({ src, x: p.lx, y: p.ly, over: dropAt(src, p.lx, p.ly, p.group), back: false, group: p.group });
+    // (owner, bag-drag round) held near a scrolling box's edge, it scrolls that way (faster nearer the edge); the target follows
+    const loop = () => {
+      if (press.current !== p || !p.drag) return;
+      if (edgeScroll(p.lx, p.ly)) show();
+      p.raf = requestAnimationFrame(loop);
     };
     /** @param {any} ev */
     const move = ev => {
       if (ev.pointerId !== p.id) return;
+      p.lx = ev.clientX; p.ly = ev.clientY;
       if (p.held) { ev.preventDefault(); return; }
+      if (p.sweep) {
+        ev.preventDefault();
+        const t = document.elementFromPoint(ev.clientX, ev.clientY);
+        /** @type {HTMLElement | null} */
+        const tile = t && t.closest('.abag [data-slot]');
+        const j = tile ? Number(tile.dataset.slot) : -1;
+        if (j >= 0 && run.bag[j] && !selRef.current.includes(j)) { SFX.ui('tap'); setSel(s => s.includes(j) ? s : [...s, j]); }
+        return;
+      }
       if (!p.drag && Math.hypot(ev.clientX - p.x0, ev.clientY - p.y0) > MOVE) {
         if (holdT) clearTimeout(holdT);
         if (!p.grab) { if (ev.pointerType === 'mouse') finish(); return; }
         p.drag = true;
+        if (!p.group && selRef.current.length) setSel([]);
         SFX.unlock(); SFX.ui('tap');
+        p.raf = requestAnimationFrame(loop);
       }
-      if (p.drag) { ev.preventDefault(); setDrag({ src, x: ev.clientX, y: ev.clientY, over: dropAt(src, ev.clientX, ev.clientY), back: false }); }
+      if (p.drag) { ev.preventDefault(); show(); }
     };
     /** @param {any} ev */
     const up = ev => {
       if (ev.pointerId !== p.id) return;
       finish();
-      if (p.held) return;
+      if (p.held || p.sweep) return;
       if (p.drag) drop(src, ev.clientX, ev.clientY, p);
-      else if (Math.hypot(ev.clientX - p.x0, ev.clientY - p.y0) <= MOVE) { const it = srcItem(src); if (it && hasCard(it)) { SFX.ui('tap'); setCard(it); } }
+      else if (Math.hypot(ev.clientX - p.x0, ev.clientY - p.y0) <= MOVE) {
+        // picking: a tap puts a bag tile in or out of the group instead of its card
+        if (src.from === 'bag' && selRef.current.length) { SFX.ui('tap'); setSel(s => s.includes(src.i) ? s.filter(k => k !== src.i) : [...s, src.i]); return; }
+        const it = srcItem(src); if (it && hasCard(it)) { SFX.ui('tap'); setCard(it); }
+      }
     };
     /** @param {any} ev */
     const cancel = ev => { if (ev.pointerId === p.id) { finish(); setDrag(null); } };
@@ -458,13 +515,38 @@ export function AutoScreen() {
     }
     saveAutoRun(run); SFX.ui('tap'); setDpop(null); setV(v => v + 1);
   };
-  /** the drop target under a point, and whether this item fits there @param {DragSrc} src @param {number} x @param {number} y @returns {DropAt | null} */
-  const dropAt = (src, x, y) => {
+  /** the drop target under a point, and whether this item fits there @param {DragSrc} src @param {number} x @param {number} y @param {number[]} [group] a group move's bag slots @returns {DropAt | null} */
+  const dropAt = (src, x, y, group) => {
     const el = document.elementFromPoint(x, y);
     /** @type {HTMLElement | null} */
-    const t = el && el.closest('[data-nslot],[data-gslot],[data-pslot],.abag,.aplay');
+    let t = el && el.closest('[data-nslot],[data-gslot],[data-pslot],.abag,.aplay');
     const it = srcItem(src), n = navRef.current;
-    if (!t || !it) return null;
+    if (!it) return null;
+    // (owner, bag-drag round) over a gun's mod row: the tile (or the boundary between two mods) by position, so the
+    // tiles sliding aside for the insert bar don't move the target
+    /** @type {HTMLElement | null} */
+    const mrow = el && el.closest('.anav.slots');
+    const pl = run.players[n.p], gun = n.level === 'gun' && pl ? pl.guns[n.g] : null;
+    if (mrow && gun) {
+      const pk = slotPick(mrow, x, y, gun.slots);
+      if (pk && pk.ins) {
+        const ok = !group && ((src.from === 'bag' && it.kind === 'mod' && gun.slots.indexOf(null, pk.s) >= 0) || (src.from === 'nav' && src.i !== pk.s && src.i !== pk.s - 1));
+        if (ok) return { key: 'i' + pk.s, to: 'ins', s: pk.s, ok };
+      }
+      if (pk) t = mrow.querySelector('[data-nslot="' + pk.s + '"]');
+    }
+    if (!t) return null;
+    if (group) {
+      // a group: into bag slots (from the one under the finger on), or a gun's empty mod slots (from this one on)
+      /** @type {HTMLElement | null} */
+      const gs = el && el.closest('.abag [data-slot]');
+      if (gs) return { key: 's' + gs.dataset.slot, to: 'bag', s: Number(gs.dataset.slot), ok: true };
+      if (t.dataset.nslot !== undefined && gun) {
+        const s = Number(t.dataset.nslot);
+        return { key: 'n' + s, to: 'nav', s, ok: gun.slots.indexOf(null, s) >= 0 && group.some(i => !!run.bag[i] && run.bag[i].kind === 'mod') };
+      }
+      return { key: 'x', to: 'bag', s: -1, ok: false };
+    }
     // stage 9: a bag item onto the gold stack scraps it
     /** @type {HTMLElement | null} */
     const gt = el && el.closest('.abag [data-slot]');
@@ -495,12 +577,17 @@ export function AutoScreen() {
   };
   /** let go: the move on the run (saved), or the ghost springs back @param {DragSrc} src @param {number} x @param {number} y @param {Press} p */
   const drop = (src, x, y, p) => {
-    const at = dropAt(src, x, y), n = navRef.current, it0 = srcItem(src);
+    const at = dropAt(src, x, y, p.group), n = navRef.current, it0 = srcItem(src);
     /** @type {import('../../auto/run.js').SlotRow | null} */
     const row = n.level === 'gun' ? { gun: n.g } : n.level === 'cat' ? { cat: n.cat } : n.level === 'perks' ? { perks: true } : null;
     let done = false;
-    if (at && at.ok) {
-      if (src.from === 'bag' && at.to === 'nav') {
+    if (at && at.ok && p.group) {
+      if (at.to === 'bag') done = bagGroupMove(run, p.group, at.s);
+      else if (at.to === 'nav' && n.level === 'gun') done = fitMods(run, p.group, n.p, n.g, at.s) > 0;
+      if (done) setSel([]);
+    } else if (at && at.ok) {
+      if (at.to === 'ins') done = src.from === 'bag' ? insertMod(run, src.i, n.p, n.g, at.s) : src.from === 'nav' && modMoveTo(run, n.p, n.g, src.i, at.s);
+      else if (src.from === 'bag' && at.to === 'nav') {
         if (n.level === 'gun') done = fitMod(run, src.i, n.p, n.g, at.s);
         else if (n.level === 'cat') done = fitExo(run, src.i, n.p, n.cat, at.s);
         else if (n.level === 'perks') done = fitPerk(run, src.i, n.p, at.s);
@@ -647,10 +734,10 @@ export function AutoScreen() {
           h('div', { className: 'abosstrack' }, h('i', { style: { width: (100 * boss.hp / Math.max(1, boss.max)).toFixed(1) + '%' } }))) : null),
       devOn ? h('button', { className: 'adevbtn', title: 'Dev', onPointerDown: tap(() => { SFX.fx('open'); setDevOpen(true); }) }, '⚙️') : null,
       h('button', { className: 'pausebtn', title: 'Pause (hold 5 s: dev mode)', onPointerDown: pauseDown }, '⏸')),
-    h(NavStack, { nav, run, openAt, down, drag, holdHelm, holdGun, meters, pins, metersOf, pinNav, hidden: navHidden, manual }),
+    h(NavStack, { nav, run, openAt, down, drag, holdHelm, holdGun, meters, pins, metersOf, pinNav, hidden: navHidden, manual, bigRow, rowEmpty: rowEmptyDown }),
     h('div', { className: 'abag' + (bigBag ? ' big' : '') + (drag && drag.over && drag.over.key === 'bag' && drag.over.ok ? ' drop' : ''), style: { marginTop: -bigBag + 'px' } },
-      ...Array.from({ length: (bagFit(run), run.bag.length) }, (_, i) => h(BagSlot, { key: i, i, it: flies.some(f => f.fresh && f.slot === i) ? null : run.bag[i], down, empty: emptyDown,
-        lift: !!drag && drag.src.from === 'bag' && drag.src.i === i,
+      ...Array.from({ length: (bagFit(run), run.bag.length) }, (_, i) => h(BagSlot, { key: i, i, it: flies.some(f => f.fresh && f.slot === i) ? null : run.bag[i], down, empty: emptyDown, sel: sel.includes(i),
+        lift: !!drag && ((drag.src.from === 'bag' && drag.src.i === i) || (!!drag.group && drag.group.includes(i))),
         drop: !!drag && !!drag.over && drag.over.ok && drag.over.key === 's' + i }))),
     h('div', { className: 'abtns' },
       h(PillStick, { onMove: steer }),
@@ -733,9 +820,9 @@ const ROW_H = 66, STACK_GAP = 6, PANEL_H = 168, LEAVE_MS = 260;
  * @param {{ nav: NavState, run: AutoRun, openAt: (s: NavState, w: string | number) => void, down: (e: any, src: DragSrc) => void,
  *   drag: Drag | null, holdHelm: (e: any, i: number) => void, holdGun: (e: any, s: NavState, i: number) => void,
  *   meters: () => PlayerMeters | null, pins: Pin[], metersOf: (p: number) => PlayerMeters | null, pinNav: (kind: 'dmg' | 'hp', span: number) => void,
- *   hidden?: boolean, manual?: number }} props
+ *   hidden?: boolean, manual?: number, bigRow?: boolean, rowEmpty?: (e: any) => void }} props
  */
-function NavStack({ nav, run, openAt, down, drag, holdHelm, holdGun, meters, pins, metersOf, pinNav, hidden, manual }) {
+function NavStack({ nav, run, openAt, down, drag, holdHelm, holdGun, meters, pins, metersOf, pinNav, hidden, manual, bigRow, rowEmpty }) {
   const path = navPath(nav);
   const pl = run.players[nav.p];
   const gun = nav.level === 'gun' && pl ? pl.guns[nav.g] : null;
@@ -782,7 +869,7 @@ function NavStack({ nav, run, openAt, down, drag, holdHelm, holdGun, meters, pin
     /** @param {any} e @param {number} i */
     const hg = (e, i) => holdGun(e, s, i);
     return h(NavRow, { row: navRow(s, run, MAX_PLAYERS), level: s.level, cls, pick: cur ? undefined : navPick(nav, s.level),
-      open, down, drag: cls === 'anav' ? drag : null, holdHelm, holdGun: hg, meters, pinNav, manual, slide: ready.current, cold: cls === 'anav' ? cold : null, lit: cls === 'anav' && nav.level === 'gun' ? lit : null });
+      open, down, drag: cls === 'anav' ? drag : null, big: cls === 'anav' && !!bigRow, rowEmpty: cls === 'anav' ? rowEmpty : undefined, holdHelm, holdGun: hg, meters, pinNav, manual, slide: ready.current, cold: cls === 'anav' ? cold : null, lit: cls === 'anav' && nav.level === 'gun' ? lit : null });
   };
   return h('div', { className: 'anavwrap' + (hidden ? ' hid' : '') },
     h(PinStack, { pins, run, metersOf, lift: off[0] || 0 }),
@@ -904,10 +991,15 @@ function PreviewWindow({ sim, sig, onLit, pl, gi, flip }) {
 /** @param {{ row: import('../../auto/nav.js').NavRow, level: string, cls: string, pick?: string | number, open: (w: string | number) => void,
  *   down: (e: any, src: DragSrc) => void, drag: Drag | null, holdHelm: (e: any, i: number) => void, holdGun: (e: any, i: number) => void,
  *   meters: () => PlayerMeters | null, lit: { slots: number[], pull: number } | null, slide?: boolean, cold?: Set<number> | null,
- *   pinNav: (kind: 'dmg' | 'hp', span: number) => void, manual?: number }} props */
-function NavRow({ row, level, cls, pick, open, down, drag, holdHelm, holdGun, meters, lit, slide, cold, pinNav, manual }) {
+ *   pinNav: (kind: 'dmg' | 'hp', span: number) => void, manual?: number, big?: boolean, rowEmpty?: (e: any) => void }} props */
+function NavRow({ row, level, cls, pick, open, down, drag, holdHelm, holdGun, meters, lit, slide, cold, pinNav, manual, big, rowEmpty }) {
   const [slideIn] = useState(!!slide);
   const over = drag && drag.over && drag.over.ok ? drag.over.key : '';
+  // (owner, bag-drag round) the insert bar before slot ib: it and the filled ones after it (to the first empty) slide aside
+  const ib = over[0] === 'i' ? Number(over.slice(1)) : -1;
+  let ie = -1;
+  if (ib >= 0) { ie = row.cells.findIndex((c, k) => k >= ib && !c.item); if (ie < 0) ie = row.cells.length; }
+  const lifted = drag && drag.src.from === 'nav' ? drag.src.i : -1;
   const on = new Set(lit ? lit.slots : []), pc = lit ? PULL_COL[lit.pull % PULL_COL.length] : '';
   /** @param {import('../../auto/nav.js').NavCell} c @param {number} i */
   const cell = (c, i) => {
@@ -920,11 +1012,12 @@ function NavRow({ row, level, cls, pick, open, down, drag, holdHelm, holdGun, me
     const gunHold = e => holdGun(e, i);
     if (row.shape === 'slots') {
       const it = c.item || null;
-      const lift = !!drag && drag.src.from === 'nav' && drag.src.i === i;
+      const lift = lifted === i;
       /** @param {any} e */
       const grab = e => down(e, { from: 'nav', i });
-      return h('div', { key: c.key, className: 'aslot anavs' + (it ? ' full k-' + it.kind : '') + (over === 'n' + i ? ' drop' : '') + (lift ? ' lift' : '') + (cold && cold.has(i) ? ' cold' : ''),
-        style: itemEdge(it), 'data-nslot': i, onPointerDown: it ? grab : undefined },
+      return h('div', { key: c.key, className: 'aslot anavs' + (it ? ' full k-' + it.kind : '') + (over === 'n' + i ? ' drop' : '') + (lift ? ' lift' : '') + (cold && cold.has(i) ? ' cold' : '') +
+        (i === ib ? ' insat' : '') + (i >= ib && i < ie && ib >= 0 ? ' shove' : ''),
+        style: itemEdge(it), 'data-nslot': i, onPointerDown: it ? grab : level === 'gun' ? rowEmpty : undefined },
         it ? h(ItemIcon, { it }) : null, it ? h(Grab) : null,
         on.has(i) ? h('i', { className: 'pulse on', style: { background: pc, borderColor: pc, color: pc } }) : null);
     }
@@ -942,17 +1035,17 @@ function NavRow({ row, level, cls, pick, open, down, drag, holdHelm, holdGun, me
     return h('div', { key: c.key, className: cls2, 'data-player': level === 'players' ? i : undefined, 'data-open': c.open, 'data-gslot': level === 'guns' ? i : undefined, 'data-pslot': level === 'players' && !c.helm ? i : undefined,
       title: c.glyph ? c.label : undefined, style, onPointerDown: press }, ...(Array.isArray(inner) ? inner : [inner]));
   };
-  return h('div', { className: 'anavrow ' + cls + ' l-' + level + (row.shape === 'slots' ? ' slots' : '') + (pick !== undefined ? ' picked' : '') + (slideIn ? ' slide' : ''), 'data-level': level,
+  return h('div', { className: 'anavrow ' + cls + ' l-' + level + (row.shape === 'slots' ? ' slots' : '') + (big && row.shape === 'slots' ? ' big' : '') + (pick !== undefined ? ' picked' : '') + (slideIn ? ' slide' : ''), 'data-level': level,
     style: row.col ? { borderColor: row.col, boxShadow: '0 0 12px ' + row.col + '55' } : undefined },
     row.shape === 'stats' ? h(StatsRow, { meters, pin: pinNav }) : row.cells.map(cell));
 }
 
 // one bag slot: empty, or the item's icon and its count
-/** @param {{ i: number, it: BagItem | null, down: (e: any, src: DragSrc) => void, lift: boolean, drop: boolean, empty: (e: any) => void }} props */
-function BagSlot({ i, it, down, lift, drop, empty }) {
+/** @param {{ i: number, it: BagItem | null, down: (e: any, src: DragSrc) => void, lift: boolean, drop: boolean, empty: (e: any) => void, sel?: boolean }} props */
+function BagSlot({ i, it, down, lift, drop, empty, sel }) {
   /** @param {any} e */
   const grab = e => down(e, { from: 'bag', i });
-  return h('div', { className: 'aslot' + (it ? ' full k-' + it.kind : '') + (lift ? ' lift' : '') + (drop ? ' drop' : ''), 'data-slot': i, style: itemEdge(it),
+  return h('div', { className: 'aslot' + (it ? ' full k-' + it.kind : '') + (lift ? ' lift' : '') + (drop ? ' drop' : '') + (sel && it ? ' sel' : ''), 'data-slot': i, style: itemEdge(it),
     onPointerDown: it ? grab : empty },
     it ? h(ItemIcon, { it }) : null, it ? h(Grab) : null,
     it && (it.n > 1 || it.kind === 'gold' || it.kind === 'red' || it.kind === 'green') ? h('b', { className: 'acount' }, it.n) : null);
@@ -980,9 +1073,9 @@ function ItemIcon({ it }) {
 
 // ---- stage 8b: drag and drop, the cards ----
 /** @typedef {{ from: 'bag' | 'nav' | 'guns', i: number }} DragSrc */
-/** @typedef {{ key: string, to: 'nav' | 'gun' | 'bag' | 'scrap' | 'play' | 'player', s: number, ok: boolean }} DropAt */
-/** @typedef {{ src: DragSrc, x: number, y: number, over: DropAt | null, back: boolean }} Drag */
-/** @typedef {{ id: number, x0: number, y0: number, src: DragSrc, grab: boolean, drag: boolean, held?: boolean }} Press */
+/** @typedef {{ key: string, to: 'nav' | 'gun' | 'bag' | 'scrap' | 'play' | 'player' | 'ins', s: number, ok: boolean }} DropAt */
+/** @typedef {{ src: DragSrc, x: number, y: number, over: DropAt | null, back: boolean, group?: number[] }} Drag */
+/** @typedef {{ id: number, x0: number, y0: number, src: DragSrc, grab: boolean, drag: boolean, held?: boolean, sweep?: boolean, group?: number[], lx: number, ly: number, raf: number }} Press */
 /** @typedef {{ src: DragSrc, pl: number, g: number, x: number, top: number, bottom: number }} DiscrimPopAt */
 /** a Discriminate copy, set or not @param {string | null | undefined} id */
 const isDiscrim = id => id === 'discrim' || (!!id && id.startsWith('discrim:'));
@@ -1010,6 +1103,43 @@ function DiscrimPop({ at, cur, pick, close }) {
 // a press moving this far (px) is a drag (on the handle) or not a tap
 const MOVE = 6;
 const BIG_TAP = 350;   // (owner) two taps on empty bag slots within this (ms): the bag grows over the play area, or back
+// (owner, bag-drag round) the insert bar between two mods: the tiles from there slide SHOVE px aside (.shove)
+const SHOVE = 10;
+// a gun's mod row (.anav.slots) under (x, y): the tile there, or, in a tile's outer quarter (or the gap) between two
+// filled slots, the insert before slot s (ins). Tiles' rects are taken back by their .shove, so the bar doesn't move them
+/** @param {Element} row @param {number} x @param {number} y @param {(string | null)[]} slots @returns {{ s: number, ins: boolean } | null} */
+function slotPick(row, x, y, slots) {
+  for (const tile of Array.from(row.querySelectorAll('[data-nslot]'))) {
+    const r = tile.getBoundingClientRect(), dx = tile.classList.contains('shove') ? SHOVE : 0, L = r.left - dx, R = r.right - dx;
+    if (y < r.top - 4 || y > r.bottom + 4 || x < L - 4 || x > R + 4) continue;
+    const s = Number(tile.getAttribute('data-nslot')), f = (x - L) / Math.max(1, R - L);
+    if (f < 0.25 && s > 0 && slots[s - 1] && slots[s]) return { s, ins: true };
+    if (f > 0.75 && s + 1 < slots.length && slots[s] && slots[s + 1]) return { s: s + 1, ins: true };
+    return { s, ins: false };
+  }
+  return null;
+}
+// (owner, bag-drag round) a drag held within EDGE px of a scrolling box's edge (the bag, a gun's mod row) scrolls it that
+// way, up to EDGE_V px a frame at the very edge; true if it moved
+const EDGE = 44, EDGE_V = 14;
+/** @param {number} x @param {number} y */
+function edgeScroll(x, y) {
+  const el = document.elementFromPoint(x, y);
+  /** @type {HTMLElement | null} */
+  const box = el && el.closest('.abag, .anav.slots');
+  if (!box) return false;
+  const r = box.getBoundingClientRect(), vert = box.classList.contains('abag') || box.classList.contains('big');
+  /** @param {number} d */
+  const sp = d => (d < EDGE ? Math.ceil(EDGE_V * (1 - Math.max(0, d) / EDGE)) : 0);
+  if (vert) {
+    const v = sp(r.bottom - y) - sp(y - r.top), t0 = box.scrollTop;
+    if (v) box.scrollTop += v;
+    return box.scrollTop !== t0;
+  }
+  const v = sp(r.right - x) - sp(x - r.left), l0 = box.scrollLeft;
+  if (v) box.scrollLeft += v;
+  return box.scrollLeft !== l0;
+}
 
 // the grab handle: a circle round the tile's centre, DEV.autoGrab of the tile's width in radius (touch-action none:
 // only it starts a drag; the rest of the tile scrolls the bag)
@@ -1046,7 +1176,7 @@ function FlyTile({ f, done }) {
 function Ghost({ drag, it }) {
   if (!it) return null;
   return h('div', { className: 'aslot full aghost k-' + it.kind + (drag.back ? ' back' : ''), style: { left: drag.x + 'px', top: drag.y + 'px', ...itemEdge(it) } },
-    h(ItemIcon, { it }));
+    h(ItemIcon, { it }), drag.group && drag.group.length > 1 ? h('b', { className: 'agroupn' }, '×' + drag.group.length) : null);
 }
 
 /** gold and gems have no card @param {BagItem} it */
