@@ -1290,16 +1290,16 @@ function GunArc({ arc, run }) {
   }));
 }
 
-// the FPS graph, bottom right of the play area (auto/fps.js): a small dark box, a green line scaled to 60 fps (more on a
+// the FPS graph, bottom right of the play area (auto/fps.js), no box (owner): a green line scaled to 60 fps (more on a
 // faster screen), the frames per second now over it
 /** @param {CanvasRenderingContext2D} ctx @param {number[]} vals @param {number} w @param {number} hh */
 function fpsDraw(ctx, vals, w, hh) {
   const bw = 96, bh = 34, x = w - bw - 6, y = hh - bh - 6, top = y + 13, bot = y + bh - 3;
   ctx.save();
-  ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(x, y, bw, bh);
   const now = vals.length ? vals[vals.length - 1] : 0, peak = Math.max(60, ...vals);
   ctx.font = '700 10px ui-monospace,SFMono-Regular,Menlo,monospace'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
   ctx.fillStyle = now >= 50 ? '#5ee05a' : now >= 30 ? '#ffc94a' : '#ff4a4a';
+  ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,0.8)'; ctx.strokeText(Math.round(now) + ' fps', x + 4, y + 2);
   ctx.fillText(Math.round(now) + ' fps', x + 4, y + 2);
   if (vals.length > 1) {
     const step = (bw - 4) / (FPS_N - 1), x0 = x + bw - 2 - (vals.length - 1) * step;
