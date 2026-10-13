@@ -71,11 +71,11 @@ export function deathHelmet(S, r) {
 }
 
 // the big blast at his body: booms, fire, sparks, smoke, chunks, the shake and flash, the sound; the bodies thrown
-/** @param {DScene} S @param {DRunner | undefined} r */
-function deathBlast(S, r) {
+/** @param {DScene} S @param {DRunner | undefined} r @param {number} [R] its size (default DEV.autoTpBoomR) */
+function deathBlast(S, r, R = DEV.autoTpBoomR) {
   const h = deathHelmet(S, r);
   if (!h) return;
-  const R = DEV.autoTpBoomR, rnd = S.rnd, x = h.x, y = h.y + PH * 0.3;
+  const rnd = S.rnd, x = h.x, y = h.y + PH * 0.3;
   S.booms.push({ x, y, r: R, t: 0, max: 0.6 }, { x: x - R * 0.3, y: y - R * 0.2, r: R * 0.6, t: 0, max: 0.45 }, { x: x + R * 0.3, y: y + R * 0.1, r: R * 0.6, t: 0, max: 0.5 });
   /** @param {number} n @param {string} col @param {number} spd @param {string} kind @param {number} life */
   const burst = (n, col, spd, kind, life) => {
@@ -91,6 +91,16 @@ function deathBlast(S, r) {
   S.shake = Math.max(S.shake, 9); S.flash = Math.max(S.flash, 0.8);
   if (S.snd.length < 80) S.snd.push({ k: 'boom', x, y, a: R * 2 });
   for (const q of S.runners) if (q.rag) ragPush(q.rag, x + S.scroll, y, R * 1.2, 900);
+}
+
+// (owner v1.0.74) at the level's exit pad (level.js exitStep): his head blows as in a death, but he isn't hurt: his body
+// thrown as a ragdoll (r.out only for the scene; the run's player stays alive) till the hub
+/** @param {DScene} S @param {DRunner} r */
+export function exitPop(S, r) {
+  r.out = true; r.outT = S.t; r.dig = 0; r.clr = null;
+  if (r.keep) { r.kit = r.keep; r.keep = null; }
+  deathFall(S, r);
+  deathBlast(S, r, DEV.autoExitPopR);
 }
 
 // the prompt "Tap A to Teleport back to Hub" shows: everyone down, the scroll stopped, A not pressed yet

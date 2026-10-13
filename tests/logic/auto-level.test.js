@@ -67,7 +67,10 @@ check('stopped in the arena till the boss was dead', seenArena > 0 && arenaStill
 check('moving every 3 s window on the way (never stuck; the first is the setting off)', windows.length > 3 && windows.slice(1).every(w => w > 5), windows);
 check('no one sawing for more than 8 s on end', longDig === 0, longDig);
 const ex = P.exitX - S.scroll;
-check('everyone on the exit pad, on the floor', S.runners.every(r => Math.abs(r.x + G.PW / 2 - ex) < 15 && r.ground), S.runners.map(r => [r.x + G.PW / 2 - ex, r.ground]));
+// (owner v1.0.74) on the pad each head blew (a ragdoll thrown), a random gap apart; nobody hurt
+check('every head blew on the exit pad: ragdolls thrown, still round it', S.runners.every(r => r.out && r.rag && Math.abs(r.rag.joints[2].x - S.scroll - ex) < 200), S.runners.map(r => (r.rag ? r.rag.joints[2].x - S.scroll - ex : null)));
+check('the pops a random gap apart', !!L.popT && new Set(L.popT.map(t => t.toFixed(3))).size === L.popT.length, L.popT);
+check('nobody hurt by it', !S.team || S.team.every(p => p.alive !== false));
 check('the team stopped at the exit pad', Math.abs(G.levelTeamX(S) - P.exitX) < 1 && S.pace === 0);
 // the stick: full left slows the team but never stops it
 const S2 = G.levelScene(190, 12, 1, G.levelPlan(12, undefined, 0));

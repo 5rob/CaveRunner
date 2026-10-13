@@ -16,7 +16,7 @@ import { meterAdd, meterNew, meterSet, meterStep } from './meters.js';
 import { pilotEase, pilotPace } from './pilot.js';
 import { clearPower, teamClearer } from './clear.js';
 import { blockCell, blockCol, blockKind, planBlocks, rollBlock, webSlow } from './blocked.js';
-import { deathPrompt, deathStep, deathTeleport } from './death.js';
+import { deathPrompt, deathRags, deathStep, deathTeleport, exitPop } from './death.js';
 import { autoFoe, elitePlan, levelFoes, levelHurt } from './enemies.js';
 import { bagFits, killLoot, lootCol } from './loot.js';
 import { bagAdd, playerStats } from './run.js';
@@ -125,7 +125,7 @@ export function levelFree(S, L, r) {
 // run (stage 6 part 2: the drops go into its bag; none: they're just taken), bagV (+1 each time something goes in: the screen redraws the bag)
 /** @typedef {{ plan: LevelPlan, phase: string, arrived: boolean[], zap: number, goT: number, arenaT: number, bossDead: boolean, hold: number,
  *   elites: import('./enemies.js').LevelFoe[], chests: import('./chests.js').LevelChest[], doneT: number, meters: PlayerMeters[], blocked: boolean,
- *   boss: Enemy | null, failed: boolean, run?: AutoRun | null, bagV: number, blockKind?: string, webK?: number, webT?: number, lootT?: number, clearT?: number,
+ *   boss: Enemy | null, failed: boolean, run?: AutoRun | null, bagV: number, blockKind?: string, webK?: number, webT?: number, lootT?: number, clearT?: number, popT?: number[],
  *   deadT?: number, pace0?: number, lastI?: number, tpT?: number, boomed?: boolean, far?: number }} LevelState */
 // (far: the furthest the scroll got, world units: manual mode roams back at most DEV.autoRoamBack screens behind it)
 // (blockKind: what the block is, rock / web / timber (stage 6b); webK: the team's pace through webs (1 free, auto/blocked.js webSlow); webT: the next cut)
@@ -232,7 +232,9 @@ export function levelStep(S, dt) {
   if (!L) return;
   levelMeters(S, L, dt);
   levelFoes(S, L, levelTeamX(S));
-  if (deathStep(S, L, dt)) return;   // everyone down (auto/death.js): the slow stop, Tap A, the blast, home
+  clearedWords(S, L, dt);
+  if (L.phase === 'exit') { deathRags(S, dt); exitStep(S, L, dt); return; }   // (owner v1.0.74) the pops at the exit: not a death
+  if (deathStep(S, L, dt)) return;  // everyone down (auto/death.js): the slow stop, Tap A, the blast, home
   chestsStep(S);
   const P = L.plan;
   if (L.phase === 'arrive') {
@@ -264,9 +266,9 @@ export function levelStep(S, dt) {
   if (L.phase === 'run' && levelTeamX(S) >= stop - 0.5) { L.phase = 'arena'; L.arenaT = S.t; }
   if (L.phase === 'arena' && (L.bossDead || S.t - L.arenaT >= DEV.autoLvlBossT)) { L.bossDead = true; L.phase = 'cleared'; L.lootT = S.t; L.clearT = -1; }   // (the timeout: a fallback, a boss out of reach)
   S.huddle = L.phase === 'cleared' || L.phase === 'out' || L.phase === 'exit';   // the team keeps together after the boss (titlescene.js's pack pick)
-  if (L.phase === 'cleared') { S.pace = 0; cleared(S, L, dt); return; }
-  if (L.phase === 'out' && levelTeamX(S) >= stop - 0.5) { L.phase = 'exit'; S.still = true; }
-  if (L.phase === 'exit') { S.pace = 0; gather(S, L, dt); return; }
+  S.gunsOff = L.bossDead;   // (owner v1.0.74) the boss dead: guns down
+  if (L.phase === 'cleared') { S.pace = 0; cleared(S, L); return; }
+  if (L.phase === 'out' && levelTeamX(S) >= stop - 0.5) { L.phase = 'exit'; S.still = true; return; }
   if (L.phase === 'arena') { S.pace = 0; return; }
   // blocked (the scene's startDig found no gun in play to clear the rock): stays till one can (a gun fitted)
   if (S.blocked != null) { L.blocked = true; L.blockKind = S.blockedKind || 'rock'; S.blocked = undefined; }
@@ -330,42 +332,63 @@ export function roamFollow(S, lead) {
 
 // LEVEL CLEARED (stage 7): the boss's loot vacuumed (S.loot and S.coins empty; at most DEV.autoClearWait s, as a full bag
 // leaves loot lying), then the words (art/cleared.js) for DEV.autoClearT s, a thud at each letter's landing; then on to the exit
+// (owner v1.0.74: "once the loot is collected, head straight to the exit") the words show as the team sets off
+/** @param {import('../art/titlescene.js').TitleScene} S @param {LevelState} L */
+function cleared(S, L) {
+  const left = (S.loot ? S.loot.filter(g => !g.left).length : 0) + S.coins.length;
+  if (left === 0 || S.t - (L.lootT ?? S.t) >= DEV.autoClearWait) { L.clearT = S.t; L.phase = 'out'; S.runners.forEach(r => { r.retarget = 0; }); }
+}
+// the words' thuds, a frame
 /** @param {import('../art/titlescene.js').TitleScene} S @param {LevelState} L @param {number} dt */
-function cleared(S, L, dt) {
-  if ((L.clearT ?? -1) < 0) {
-    const left = (S.loot ? S.loot.filter(g => !g.left).length : 0) + S.coins.length;
-    if (left === 0 || S.t - (L.lootT ?? S.t) >= DEV.autoClearWait) L.clearT = S.t;
-    return;
-  }
+function clearedWords(S, L, dt) {
+  if ((L.clearT ?? -1) < 0) return;
   const a = S.t - (L.clearT ?? S.t), a0 = a - dt, cx = levelTeamX(S), cy = S.top + 30;
+  if (a0 >= DEV.autoClearT) return;
   for (let i = 0; i < CLEARED_N; i++) { const lt = clearedLand(i); if (a0 < lt && a >= lt) S.snd.push({ k: 'land', x: cx, y: cy, a: 160 }); }
-  if (a >= DEV.autoClearT) L.phase = 'out';
 }
 // LEVEL CLEARED's age (s) while it shows, else -1 (the painter: ui/auto/AutoScreen.js)
 /** @param {import('../art/titlescene.js').TitleScene} S */
 export function levelClearedAge(S) {
   const L = levelState(S);
-  return L && L.phase === 'cleared' && (L.clearT ?? -1) >= 0 ? S.t - (L.clearT ?? 0) : -1;
+  if (!L || (L.clearT ?? -1) < 0) return -1;
+  const a = S.t - (L.clearT ?? 0);
+  return a < DEV.autoClearT ? a : -1;
+}
+
+// (owner v1.0.74) at the exit, instead of a teleport: everyone gathered on the pad, each one's head blows (auto/death.js's
+// blast; he isn't hurt), a random DEV.autoExitPopGap apart, his body thrown as a ragdoll; DEV.autoExitRagT s after the last, home
+/** @param {import('../art/titlescene.js').TitleScene} S @param {LevelState} L @param {number} dt */
+function exitStep(S, L, dt) {
+  S.pace = 0;
+  gather(S, L, dt);
+  if (!L.popT) {
+    if (S.runners.every(r => r.out || (r.stand && r.ground))) {
+      let t = S.t + 0.25;
+      L.popT = S.runners.map(r => (r.out ? -1 : (t += S.rnd() * DEV.autoExitPopGap)));
+    }
+    return;
+  }
+  const P = L.popT;
+  S.runners.forEach((r, i) => { if (!r.out && S.t >= P[i]) exitPop(S, r); });
+  if (L.doneT < 0 && S.runners.every(r => r.out) && S.t >= Math.max(...P) + DEV.autoExitRagT) L.doneT = S.t;
 }
 
 // At the exit: the saws put away, everyone down on the floor and walking onto the pad, side by side
 /** @param {import('../art/titlescene.js').TitleScene} S @param {LevelState} L @param {number} dt */
 function gather(S, L, dt) {
   const n = S.runners.length, px = L.plan.exitX - S.scroll;
-  let all = true;
   S.runners.forEach((r, i) => {
+    if (r.out) return;
     if (r.dig) { r.dig = 0; if (r.keep) r.kit = r.keep; r.keep = null; }
     r.mode = 'run'; r.flame = 0;
     const tx = px - PW / 2 + (i - (n - 1) / 2) * 7, d = tx - r.x, mv = Math.sign(d) * Math.min(Math.abs(d), LVL_WALK * dt);
     r.x += mv;
     if (Math.abs(mv) > 1e-3) { r.face = Math.sign(mv); r.gait += Math.abs(mv) * 0.3; }
-    r.stand = Math.abs(mv) <= 1e-3;
     const g = titleSurf(S, r.x + PW / 2, r.y + PH - 6, 1);
     if (r.y + PH < g - 0.5) { r.vy += GRAV * dt; r.y = Math.min(g - PH, r.y + r.vy * dt); r.ground = false; }
     else { r.y = g - PH; r.vy = 0; r.ground = true; }
-    if (Math.abs(d) > 0.5 || !r.ground) all = false;
+    r.stand = Math.abs(mv) <= 1e-3 && Math.abs(d) <= 0.5;
   });
-  if (all && L.doneT < 0) L.doneT = S.t;
 }
 
 // the start pad's and the exit pad's floor (world y) and middles on screen, for the painter

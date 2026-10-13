@@ -2120,7 +2120,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "autoBossDmg", g: "autofoes", label: "Boss damage (× a normal one)", min: 0.5, max: 10, step: 0.25 }
   );
   DEV_GROUPS.push(["autofoes", "Auto: enemies"]);
-  Object.assign(DEV_DEFAULTS, { autoMoveK: 0.75, autoJetTilt: 1, autoJetSmoke: 1, autoDeathStop: 1.5, autoTpBlink: 1, autoTpBoomWait: 0.6, autoTpBoomR: 60, autoFuelDrain: 1, autoFuelRegen: 1, autoCtlWait: 3, autoVineFire: 1, autoVineSpread: 4, autoVineJitter: 0.8, autoVineAsh: 8, autoFireJump: 2, autoFireJumpP: 0.5, autoNavCut: 0.8, autoNavGive: 1.2 });
+  Object.assign(DEV_DEFAULTS, { autoMoveK: 0.75, autoJetTilt: 1, autoJetSmoke: 1, autoDeathStop: 1.5, autoTpBlink: 1, autoTpBoomWait: 0.6, autoTpBoomR: 60, autoExitPopGap: 0.5, autoExitRagT: 1.6, autoExitPopR: 40, autoFuelDrain: 1, autoFuelRegen: 1, autoCtlWait: 3, autoVineFire: 1, autoVineSpread: 4, autoVineJitter: 0.8, autoVineAsh: 8, autoFireJump: 2, autoFireJumpP: 0.5, autoNavCut: 0.8, autoNavGive: 1.2 });
   DEV_META.push(
     { k: "autoVineFire", g: "autofire", label: "Vines burn up at this × the old game speed (the title menu: 0.1)", min: 0.1, max: 5, step: 0.1 },
     { k: "autoVineSpread", g: "autofire", label: "Auto levels: the flames climb a vine this × faster than it burns away (1: only the tip burns)", min: 1, max: 40, step: 0.5 },
@@ -2138,6 +2138,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "autoTpBlink", g: "autodeath", label: "Tap A: the helmet light blinks for (s)", min: 0.1, max: 4, step: 0.05 },
     { k: "autoTpBoomWait", g: "autodeath", label: "… then the blast, home after (s)", min: 0.1, max: 4, step: 0.05 },
     { k: "autoTpBoomR", g: "autodeath", label: "The blast’s size", min: 10, max: 200, step: 1 },
+    { k: "autoExitPopGap", g: "autodeath", label: "Level exit: each head blows up to this long (s, random) after the one before", min: 0, max: 2, step: 0.05 },
+    { k: "autoExitPopR", g: "autodeath", label: "… its blast’s size", min: 10, max: 200, step: 1 },
+    { k: "autoExitRagT", g: "autodeath", label: "… the ragdolls fly this long (s) after the last, then the hub", min: 0.2, max: 5, step: 0.1 },
     { k: "autoFuelDrain", g: "autodeath", label: "Jet fuel: drain (× the old game’s; a level only, auto/fuel.js)", min: 0, max: 3, step: 0.05 },
     { k: "autoFuelRegen", g: "autodeath", label: "Jet fuel: refill on the ground (× the old game’s)", min: 0.1, max: 3, step: 0.05 }
   );
@@ -15489,6 +15492,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
       return;
     }
+    if (S2.gunsOff) {
+      r.ang += (0 - r.ang) * Math.min(1, dt * 4);
+      r.face = Math.cos(r.ang) >= 0 ? 1 : -1;
+      return;
+    }
     const best = titleAimPick(S2, r);
     const gx0 = cx(), gy0 = r.y + PH * 0.45;
     if (best) {
@@ -24838,10 +24846,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const h3 = r.rag.joints[0];
     return { x: h3.x - S2.scroll, y: h3.y };
   }
-  function deathBlast(S2, r) {
+  function deathBlast(S2, r, R = DEV.autoTpBoomR) {
     const h3 = deathHelmet(S2, r);
     if (!h3) return;
-    const R = DEV.autoTpBoomR, rnd2 = S2.rnd, x = h3.x, y = h3.y + PH * 0.3;
+    const rnd2 = S2.rnd, x = h3.x, y = h3.y + PH * 0.3;
     S2.booms.push({ x, y, r: R, t: 0, max: 0.6 }, { x: x - R * 0.3, y: y - R * 0.2, r: R * 0.6, t: 0, max: 0.45 }, { x: x + R * 0.3, y: y + R * 0.1, r: R * 0.6, t: 0, max: 0.5 });
     const burst3 = (n, col, spd, kind, life) => {
       for (let i = 0; i < n && S2.parts.length < 400; i++) {
@@ -24857,6 +24865,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     S2.flash = Math.max(S2.flash, 0.8);
     if (S2.snd.length < 80) S2.snd.push({ k: "boom", x, y, a: R * 2 });
     for (const q of S2.runners) if (q.rag) ragPush(q.rag, x + S2.scroll, y, R * 1.2, 900);
+  }
+  function exitPop(S2, r) {
+    r.out = true;
+    r.outT = S2.t;
+    r.dig = 0;
+    r.clr = null;
+    if (r.keep) {
+      r.kit = r.keep;
+      r.keep = null;
+    }
+    deathFall(S2, r);
+    deathBlast(S2, r, DEV.autoExitPopR);
   }
   var deathPrompt = (S2, L) => L.deadT != null && L.tpT == null && S2.t - L.deadT >= DEV.autoDeathStop;
   function deathTeleport(S2, L) {
@@ -25229,6 +25249,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (!L) return;
     levelMeters(S2, L, dt);
     levelFoes(S2, L, levelTeamX(S2));
+    clearedWords(S2, L, dt);
+    if (L.phase === "exit") {
+      deathRags(S2, dt);
+      exitStep(S2, L, dt);
+      return;
+    }
     if (deathStep(S2, L, dt)) return;
     chestsStep(S2);
     const P2 = L.plan;
@@ -25286,18 +25312,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       L.clearT = -1;
     }
     S2.huddle = L.phase === "cleared" || L.phase === "out" || L.phase === "exit";
+    S2.gunsOff = L.bossDead;
     if (L.phase === "cleared") {
       S2.pace = 0;
-      cleared(S2, L, dt);
+      cleared(S2, L);
       return;
     }
     if (L.phase === "out" && levelTeamX(S2) >= stop - 0.5) {
       L.phase = "exit";
       S2.still = true;
-    }
-    if (L.phase === "exit") {
-      S2.pace = 0;
-      gather(S2, L, dt);
       return;
     }
     if (L.phase === "arena") {
@@ -25352,27 +25375,51 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       r.retarget = Math.max(r.retarget, 0.3);
     }
   }
-  function cleared(S2, L, dt) {
-    if ((L.clearT ?? -1) < 0) {
-      const left = (S2.loot ? S2.loot.filter((g) => !g.left).length : 0) + S2.coins.length;
-      if (left === 0 || S2.t - (L.lootT ?? S2.t) >= DEV.autoClearWait) L.clearT = S2.t;
-      return;
+  function cleared(S2, L) {
+    const left = (S2.loot ? S2.loot.filter((g) => !g.left).length : 0) + S2.coins.length;
+    if (left === 0 || S2.t - (L.lootT ?? S2.t) >= DEV.autoClearWait) {
+      L.clearT = S2.t;
+      L.phase = "out";
+      S2.runners.forEach((r) => {
+        r.retarget = 0;
+      });
     }
+  }
+  function clearedWords(S2, L, dt) {
+    if ((L.clearT ?? -1) < 0) return;
     const a = S2.t - (L.clearT ?? S2.t), a0 = a - dt, cx = levelTeamX(S2), cy = S2.top + 30;
+    if (a0 >= DEV.autoClearT) return;
     for (let i = 0; i < CLEARED_N; i++) {
       const lt = clearedLand(i);
       if (a0 < lt && a >= lt) S2.snd.push({ k: "land", x: cx, y: cy, a: 160 });
     }
-    if (a >= DEV.autoClearT) L.phase = "out";
   }
   function levelClearedAge(S2) {
     const L = levelState(S2);
-    return L && L.phase === "cleared" && (L.clearT ?? -1) >= 0 ? S2.t - (L.clearT ?? 0) : -1;
+    if (!L || (L.clearT ?? -1) < 0) return -1;
+    const a = S2.t - (L.clearT ?? 0);
+    return a < DEV.autoClearT ? a : -1;
+  }
+  function exitStep(S2, L, dt) {
+    S2.pace = 0;
+    gather(S2, L, dt);
+    if (!L.popT) {
+      if (S2.runners.every((r) => r.out || r.stand && r.ground)) {
+        let t = S2.t + 0.25;
+        L.popT = S2.runners.map((r) => r.out ? -1 : t += S2.rnd() * DEV.autoExitPopGap);
+      }
+      return;
+    }
+    const P2 = L.popT;
+    S2.runners.forEach((r, i) => {
+      if (!r.out && S2.t >= P2[i]) exitPop(S2, r);
+    });
+    if (L.doneT < 0 && S2.runners.every((r) => r.out) && S2.t >= Math.max(...P2) + DEV.autoExitRagT) L.doneT = S2.t;
   }
   function gather(S2, L, dt) {
     const n = S2.runners.length, px = L.plan.exitX - S2.scroll;
-    let all = true;
     S2.runners.forEach((r, i) => {
+      if (r.out) return;
       if (r.dig) {
         r.dig = 0;
         if (r.keep) r.kit = r.keep;
@@ -25386,7 +25433,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         r.face = Math.sign(mv);
         r.gait += Math.abs(mv) * 0.3;
       }
-      r.stand = Math.abs(mv) <= 1e-3;
       const g = titleSurf(S2, r.x + PW / 2, r.y + PH - 6, 1);
       if (r.y + PH < g - 0.5) {
         r.vy += GRAV2 * dt;
@@ -25397,9 +25443,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         r.vy = 0;
         r.ground = true;
       }
-      if (Math.abs(d) > 0.5 || !r.ground) all = false;
+      r.stand = Math.abs(mv) <= 1e-3 && Math.abs(d) <= 0.5;
     });
-    if (all && L.doneT < 0) L.doneT = S2.t;
   }
   function levelPads(S2) {
     const L = levelState(S2);
@@ -28074,6 +28119,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     "autoCtlWait",
     "autoDeathStop",
     "autoDiscPull",
+    "autoExitPopGap",
+    "autoExitPopR",
+    "autoExitRagT",
     "autoExoPrice",
     "autoFireJump",
     "autoFireJumpP",

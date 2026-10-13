@@ -1,5 +1,5 @@
 // CaveRunner Auto's LEVEL CLEARED (AUTOBATTLER.md stage 7, src/auto/level.js phase 'cleared', src/art/cleared.js):
-// after the boss is dead the team waits for its loot to be vacuumed, then holds for the words' time, then walks on;
+// after the boss is dead the team waits for its loot to be vacuumed, then (owner v1.0.74) sets off at once, the words showing;
 // loot that can't be taken (a full bag) holds it only for the wait knob; a thud at each letter's landing.
 const G = require('../load');
 let fails = 0;
@@ -16,21 +16,19 @@ const arena = () => {
 };
 const stepUntil = (S, test, cap) => { let f = 0; for (; f < cap && !test(); f++) G.titleStep(S, dt); return f; };
 
-// ---- loot gone: straight to the words, held for the knob's time, then 'out' ----
+// ---- loot gone: (owner v1.0.74) out to the exit at once, the words shown for the knob's time on the way ----
 {
   const { S, L } = arena();
   L.bossDead = true;
   G.titleStep(S, dt);
-  check('the boss dead: phase cleared', L.phase === 'cleared', L.phase);
-  G.titleStep(S, dt);
-  check('no loot: the words start at once', L.clearT >= 0 && G.levelClearedAge(S) >= 0, L.clearT);
-  const x0 = G.levelTeamX(S), t0 = L.clearT;
+  check('the boss dead, no loot: straight out to the exit', L.phase === 'out', L.phase);
+  check('guns down', S.gunsOff === true);
+  check('the words start at once', L.clearT >= 0 && G.levelClearedAge(S) >= 0, L.clearT);
+  const t0 = L.clearT;
   let lands = 0;
-  const f = stepUntil(S, () => { lands += S.snd.filter(s => s.k === 'land' && s.a === 160).length; S.snd.length = 0; return L.phase !== 'cleared'; }, 30 * 20);
-  const held = S.t - t0;
-  check('held for the knob\'s time (± a frame)', Math.abs(held - D.autoClearT) < dt * 1.5, [held, D.autoClearT]);
-  check('the team stays put meanwhile', Math.abs(G.levelTeamX(S) - x0) < 0.5, [x0, G.levelTeamX(S)]);
-  check('then out to the exit pad', L.phase === 'out' && f < 30 * 20, L.phase);
+  stepUntil(S, () => { lands += S.snd.filter(s => s.k === 'land' && s.a === 160).length; S.snd.length = 0; return G.levelClearedAge(S) < 0; }, 30 * 20);
+  const shown = S.t - t0;
+  check('shown for the knob\'s time (± a frame)', Math.abs(shown - D.autoClearT) < dt * 1.5, [shown, D.autoClearT]);
   check('a thud for each letter', lands === G.CLEARED_N, [lands, G.CLEARED_N]);
   check('the words gone once it\'s over', G.levelClearedAge(S) === -1);
 }
