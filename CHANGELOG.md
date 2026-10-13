@@ -5,7 +5,8 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
-## After v1.0.77 (unreleased, waiting on the owner's OK of the screenshots) — CaveRunner Auto: Dev → Zones (branch `autobattler`)
+## v1.0.78 — CaveRunner Auto: Dev → Zones (branch `autobattler`)
+Released 2026-10-14 on the branch; owner OK'd the screenshots.
 Owner: a Dev page for reviewing the level's zones, like the fire sim's.
 - Dev → **Zones** tab (`ui/zonesim.js`, `art/zonelab.js`): a window on one zone made as a level makes it (lit, no creatures), the whole zone fitted to the window (stitched a screen width at a time, `zonePicture`) or Close up (live, drag pans both ways); Respawn; a card per zone kind: Show it plain / heavy vegetation / spider web filled, a "can have" box per variant, a notes box per zone and variant (localStorage `caverunner-zonenotes`); **Copy zone notes** (boxes changed, the page's knobs changed, every note).
 - The variants are now per-zone flags (`DEV.zv_veg_<zone>`, `DEV.zv_spid_<zone>`, art/titlescene.js `zoneMay`): heavy vegetation (`Z.veg`, the spider zone's vines look, any zone; `autoVegChance`) and spider web filled (`Z.spid`, was mines only; `autoSpiderMine`). Defaults keep levels as they were (veg: spider zone; spid: mines).
