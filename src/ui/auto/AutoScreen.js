@@ -852,10 +852,19 @@ function NavStack({ nav, run, openAt, down, drag, holdHelm, holdGun, meters, pin
     setGone(g => [...g.filter(o => !keys.has(o.it.key)), ...out.map(it => ({ it, k }))]);
     setTimeout(() => setGone(g => g.filter(o => o.k !== k)), LEAVE_MS);
   }, [sig]);
+  // (owner v1.0.74) the mod row opened into rows (bigRow): its measured height pushes everything above it up
+  /** @type {{ current: HTMLElement | null }} */
+  const wrap = useRef(null);
+  const [bigH, setBigH] = useState(0);
+  useEffect(() => {
+    const el = bigRow && wrap.current ? wrap.current.querySelector('.anavrow.anav.slots.big') : null;
+    const hh = el instanceof HTMLElement ? el.offsetHeight : 0;
+    if (hh !== bigH) setBigH(hh);
+  });
   // each item's lift above the nav's place, from the bottom up
   /** @type {number[]} */
   const off = [];
-  for (let i = items.length - 1, y = 0; i >= 0; i--) { off[i] = y; y += (items[i].panel ? PANEL_H : ROW_H) + STACK_GAP; }
+  for (let i = items.length - 1, y = 0; i >= 0; i--) { off[i] = y; y += (items[i].panel ? PANEL_H : i === items.length - 1 && bigRow && bigH ? Math.max(ROW_H, bigH) : ROW_H) + STACK_GAP; }
   const last = items.length - 1;
   /** @param {StackItem} it @param {string} cls @param {boolean} cur */
   const body = (it, cls, cur) => {
@@ -872,7 +881,7 @@ function NavStack({ nav, run, openAt, down, drag, holdHelm, holdGun, meters, pin
     return h(NavRow, { row: navRow(s, run, MAX_PLAYERS), level: s.level, cls, pick: cur ? undefined : navPick(nav, s.level),
       open, down, drag: cls === 'anav' ? drag : null, big: cls === 'anav' && !!bigRow, rowEmpty: cls === 'anav' ? rowEmpty : undefined, holdHelm, holdGun: hg, meters, pinNav, manual, slide: ready.current, cold: cls === 'anav' ? cold : null, lit: cls === 'anav' && nav.level === 'gun' ? lit : null });
   };
-  return h('div', { className: 'anavwrap' + (hidden ? ' hid' : '') },
+  return h('div', { className: 'anavwrap' + (hidden ? ' hid' : ''), ref: wrap },
     h(PinStack, { pins, run, metersOf, lift: off[0] || 0 }),
     ...items.map((it, i) => h('div', { key: it.key, className: 'anavslot' + (it.panel ? ' panel' : ''), style: { transform: 'translateY(' + (-off[i]) + 'px)' } },
       body(it, i === last ? 'anav' : it.panel ? 'up' : 'anavup', i === last))),

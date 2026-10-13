@@ -5,6 +5,18 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.74 — CaveRunner Auto: the owner's 23-note play round (branch `autobattler`)
+Released 2026-10-13 on the branch. PM (gameplay, looks) + one agent (bag drag, worktree `../cr-bagdrag`, ~12 min).
+- After the boss: guns down (`S.gunsOff`); loot in → straight out to the exit, LEVEL CLEARED shown on the way (`clearedWords`).
+- Level exit pad: no teleport; each head pops (death.js `exitPop`, the death blast, nobody hurt) `autoExitPopGap` apart, ragdolls fly `autoExitRagT`, then the hub.
+- Pads one at a time (hub.js `padBusy`/`padNext`): the start pad (hub and level; a team steps off in a level, `stepOff`) and the hub's exit pad (`exitQueue`: each walks on, goes in his own flash).
+- Borer drills on through rock, Bounce or not (the old game's rule; shots carry `bore`). Vigour keeps to its Discriminate player, never creatures.
+- Jellyfish turn faster deeper (`autoJeTurnTier`, cap `autoJeTurnMax`). Tall levels: team height goals (`roamGoal`, `autoRoamT/Hi/Mid/Fly/Run`): 7–18% → 28–55% of the time in the upper two thirds.
+- Camera onto the last one down. Teleport beam's flash and lightning fade at the top. Fire keeps `FIRE_PARTS` 200 particles of its own (chunks filled the cap). Spiders' legs cycle by distance (`autoSpStride`).
+- HUD "Top N"; version on the title; the stick's knob no longer clipped (clip-path, z-index 4); gold/crystals as their sprites (`NuggetIcon`); Slug ⬣, Bounce Orb ◐, Energy Orb ⚛, Energy Sphere ❂; Static field family orange.
+- Dev → Mod grid (`ui/modgrid.js`): every mod, tap for info, hold to put one in the bag.
+- Bag drag (agent): double tap an empty mod slot → rows of 7 (pushes the stack up, owner); edge auto-scroll while dragging; hold + slide to pick a group, drag it as one; insert bar between two mods (`insertMod`, `modMoveTo`, `bagGroupMove`, `fitMods`).
+
 ## v1.0.73 — CaveRunner Auto: Recoil and Recoil Damper in the red Damage group (branch `autobattler`)
 Released 2026-10-13 on the branch. PM alone (owner's audit note: Damper the wrong colour group; owner chose red for both).
 - `FAMILY_OF` kick, damper: 'dmg' (were 'upkeep', green); Damper's own col red.

@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v1.0.73</title>
-<!-- VERSION = 'v1000073' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v1.0.74</title>
+<!-- VERSION = 'v1000074' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -1170,7 +1170,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v1.0.73';</script>
+<script>const VERSION = 'v1.0.74';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -36127,10 +36127,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       setGone((g) => [...g.filter((o) => !keys.has(o.it.key)), ...out.map((it) => ({ it, k }))]);
       setTimeout(() => setGone((g) => g.filter((o) => o.k !== k)), LEAVE_MS);
     }, [sig]);
+    const wrap = useRef(null);
+    const [bigH, setBigH] = useState(0);
+    useEffect(() => {
+      const el = bigRow && wrap.current ? wrap.current.querySelector(".anavrow.anav.slots.big") : null;
+      const hh2 = el instanceof HTMLElement ? el.offsetHeight : 0;
+      if (hh2 !== bigH) setBigH(hh2);
+    });
     const off = [];
     for (let i = items.length - 1, y = 0; i >= 0; i--) {
       off[i] = y;
-      y += (items[i].panel ? PANEL_H : ROW_H) + STACK_GAP;
+      y += (items[i].panel ? PANEL_H : i === items.length - 1 && bigRow && bigH ? Math.max(ROW_H, bigH) : ROW_H) + STACK_GAP;
     }
     const last = items.length - 1;
     const body = (it, cls, cur) => {
@@ -36171,7 +36178,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     };
     return h(
       "div",
-      { className: "anavwrap" + (hidden ? " hid" : "") },
+      { className: "anavwrap" + (hidden ? " hid" : ""), ref: wrap },
       h(PinStack, { pins, run, metersOf, lift: off[0] || 0 }),
       ...items.map((it, i) => h(
         "div",
