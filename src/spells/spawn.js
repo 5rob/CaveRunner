@@ -85,7 +85,7 @@ export const NOITA_OF = {
   scatter: 'SCATTER_3', big: 'DAMAGE', range: 'LIFETIME', brief: 'LIFETIME_DOWN',
   tip: 'EXPLOSIVE_PROJECTILE', borer: 'CLIPPING_SHOT', fast: 'RECHARGE', over: 'HEAVY_SHOT',
   double: 'BURST_2', triple: 'BURST_3', quad: 'BURST_4', switch2: 'BURST_2', switch3: 'BURST_3', switch4: 'BURST_4', cheap: 'MANA_REDUCE', trigger: 'RECHARGE',
-  over_heat: 'DAMAGE_RANDOM', cold: 'OURS_COLD', buff15: 'OURS_BUFF', buff2: 'OURS_BUFF', buff5: 'OURS_BIGBUFF', nerf75: 'OURS_BUFF', nerf50: 'OURS_BUFF', nerf20: 'OURS_BUFF', recharge: 'RECHARGE', battery: 'OURS_BATTERY', auto: 'OURS_AUTO',
+  over_heat: 'DAMAGE_RANDOM', cold: 'OURS_COLD', buff15: 'OURS_BUFF', buff2: 'OURS_BUFF', buff5: 'OURS_BIGBUFF', nerf75: 'OURS_BUFF', nerf50: 'OURS_BUFF', nerf20: 'OURS_BUFF', recharge: 'RECHARGE', battery: 'OURS_BATTERY', auto: 'OURS_AUTO', rechbat: 'OURS_BATTERY', manaburst: 'OURS_BATTERY', manaspring: 'REGENERATION_FIELD',
   arrow: 'BULLET', missile: 'ROCKET', fball: 'FIREBALL', fbolt: 'GRENADE', flamer: 'FIREBALL', bubble: 'BUBBLESHOT',
   spit: 'SPITTER', eorb: 'SLOW_BULLET', esph: 'BOUNCY_ORB', zap: 'LIGHTNING', chain: 'CHAIN_BOLT',
   void: 'BLACK_HOLE', digbolt: 'DIGGER', glance: 'LANCE', plasma: 'LASER_EMITTER',

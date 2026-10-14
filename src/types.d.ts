@@ -55,6 +55,7 @@ interface Mod {
   // what it does to the gun from anywhere on it (gunPassives)
   rech?: number; rechMul?: number; manaMax?: number; manaRegen?: number;
   auto?: number;              // passive: the gun fires on its own (Questions Later)
+  rechFill?: number;          // passive: mana to full each reload (Recharge Battery)
   // a trigger variant (TRIG_VARIANTS): its base spell, kind, how many casts it carries
   trig?: TrigKind; draw?: number; base?: string; mark?: string; timer?: number;
 }
@@ -98,6 +99,7 @@ interface Shot {
   bore: number; recoil: number; col: string; knock: number; crit: number; boomer: number;
   spiral: number; pong: number; orbit: number; follow: number; followAim: number; autoaim: number; assist: number; only: DiscrimTarget | null; homeR: number; flat: number;
   eat: number; pull: number; split: number; cluster: number;
+  manaB?: number;             // Mana Burst: mana given to each player near where it ends
   bounceFx: any;              // a modifier's (unused today: always null)
   friendly: number; chain: number; fuse: number; beam: number;
   payload: Shot[] | null;     // a carrier's payload (planCast fills it)

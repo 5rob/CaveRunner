@@ -89,7 +89,7 @@ export function drawGlowShot(c, s, W) {
   if (s.sid === 'slug' || s.sid === 'disc' || s.sid === 'missile' || s.sid === 'void') return true;   // drawn solid
   /** @type {any} */
   const G2 = { ctx: c };
-  if (s.sid === 'vigour') {             // Circle of Vigour: the game's own field look (rising sparkles and plus signs, a faint dashed ring, the cross)
+  if (s.sid === 'vigour' || s.sid === 'manaspring') {   // Circle of Vigour: the game's own field look (rising sparkles and plus signs, a faint dashed ring, the cross); Mana Spring in blue
     /** @type {any} */
     const f = { x: s.x, y: s.y, r: s.heal || 36, life: s.life, max: s.max || 5, col: s.col, field: 'heal' };
     /** @type {any} */
@@ -236,6 +236,15 @@ export function drawGlowShot(c, s, W) {
 // boomLook) a white flash, a fireball rolling out, and a shockwave ring racing past it (a nuke's mushroom: drawMushroom)
 /** @param {CanvasRenderingContext2D} ctx @param {TBoom} b */
 export function drawBoom(ctx, b) {
+  if (b.sid === 'manaburst') {          // (owner, after v1.0.83) Mana Burst: a blue flash and a ring out to its reach
+    const q = b.t / b.max, gr = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r * 0.5);
+    gr.addColorStop(0, 'rgba(230,245,255,' + (1 - q) + ')'); gr.addColorStop(1, 'rgba(74,156,255,0)');
+    ctx.globalAlpha = 1; ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(b.x, b.y, b.r * 0.5, 0, 6.283); ctx.fill();
+    ctx.globalAlpha = 0.9 * (1 - q); ctx.strokeStyle = '#7cc0ff'; ctx.lineWidth = 2 * (1 - q) + 0.5;
+    ctx.beginPath(); ctx.arc(b.x, b.y, b.r * (0.15 + 0.85 * Math.sqrt(q)), 0, 6.283); ctx.stroke();
+    ctx.globalAlpha = 1;
+    return;
+  }
   const q = b.t / b.max, big = b.sid === 'nuke' || b.sid === 'meteor';
   const rad = b.r * (big ? 0.3 + 0.7 * Math.sqrt(q) : 0.4 + q);
   const gr = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, rad);

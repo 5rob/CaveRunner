@@ -143,7 +143,7 @@ export const zoneHome = Z => TITLE_HOME[Z.spid ? 'spider' : Z.z] || TITLE_HOME.m
  *   homing?: number, accel?: number, vmax?: number, chain?: number, hitFoe?: boolean, bore?: number, grindT?: number,
  *   real?: boolean, by?: number, trig?: string | null, timer?: number, pay?: Shot[] | null, age?: number,
  *   sid?: string, tr?: number[], homeR?: number, light?: string, lightR?: number,
- *   beam?: number, ang?: number, bx?: number, by2?: number, pull?: number, vac?: number, heal?: number, tick?: number, follow?: number, sp0?: number, orbit?: number, spiral?: number, boomer?: number, pong?: number, born?: number, back?: number, caught?: number, oa?: number, or0?: number, odir?: number, pdir?: number, ptr?: number[], homN?: number, seekN?: number, nearN?: number, autoaim?: number, aimed?: number, gravN?: number, floatN?: number, flat?: number, tgt?: Enemy | null, sp1?: number, max?: number, hopT?: number, hx?: number, hy?: number, only?: DiscrimTarget | null }} TShot */
+ *   beam?: number, ang?: number, bx?: number, by2?: number, pull?: number, vac?: number, heal?: number, tick?: number, follow?: number, sp0?: number, orbit?: number, spiral?: number, boomer?: number, pong?: number, born?: number, back?: number, caught?: number, oa?: number, or0?: number, odir?: number, pdir?: number, ptr?: number[], homN?: number, seekN?: number, nearN?: number, autoaim?: number, aimed?: number, gravN?: number, floatN?: number, flat?: number, tgt?: Enemy | null, sp1?: number, max?: number, hopT?: number, hx?: number, hy?: number, only?: DiscrimTarget | null, manaB?: number, mana?: number }} TShot */
 /** @typedef {{ x: number, y: number, vx: number, vy: number, life: number, max: number, r: number, col: string, kind: string, to?: { x: number, y: number, life: number }, fx?: boolean, u?: number, a?: number, g?: number }} TPart */
 /** @typedef {{ x: number, y: number, r: number, t: number, max: number, sid?: string }} TBoom */
 /** a nuke's mushroom cloud (game/render/autolooks.js drawMushroom): wx its world x, y the blast's, r its size
@@ -1356,6 +1356,7 @@ function shotEnd(S, s) {
   // fire reaches past a blast's charred rim, into the moss, timber and plants round it
   if (s.fire || s.explode) titleIgnite(S, s.x, s.y, (s.fire ? 7 : 0) + (s.explode ? s.explode * 0.42 + 5 : 0));
   burst(S, s.x, s.y, 3, s.col, 50, 'spark', 0.25);
+  if (s.manaB) manaBurst(S, s);
   // a fireball throws a spread of burning drops where it lands (auto/shotfx.js fireSpray)
   if (S.shots.length < 400) for (const d of fireSpray(s, S.rnd)) S.shots.push(d);
   release(S, s);
@@ -2157,12 +2158,42 @@ function vigourStep(S, s, dt) {
     const pl = S.team[r.id], cx = r.x + PW / 2, cy = r.y + PH / 2;
     if (!pl || pl.alive === false || r.out || Math.hypot(cx - s.x, cy - s.y) > (s.heal || 0)) continue;
     if (!matchesTarget(s.only, { kind: 'player', id: String(r.id + 1) })) continue;   // (owner v1.0.74) Discriminate: only its player (never a creature)
+    // (owner, after v1.0.83) Mana Spring: his gun's mana, not his health
+    if (s.mana) { if (giveMana(S, r, s.mana)) { healed = true; burst(S, cx, r.y + 2, 3, '#9fd0ff', 30, 'spark', 0.35); } continue; }
     const st = playerStats(pl);
     if (pl.hp >= st.maxHp) continue;
     pl.hp = Math.min(st.maxHp, pl.hp + VIG_HP * (st.heal || 1)); healed = true;
     burst(S, cx, r.y + 2, 3, '#9dff9a', 30, 'spark', 0.35);
   }
   if (healed) { s.tick = VIG_TICK; snd(S, 'healtick', s.x, s.y); }
+}
+
+// Mana Burst (owner, after v1.0.83; spells/mods.js manaburst): where the shot ends, each living player within MANA_BURST_R gets
+// s.manaB mana in his gun (to its max), a blue ring and sparkle
+export const MANA_BURST_R = 60;
+/** @param {TitleScene} S @param {TShot} s */
+function manaBurst(S, s) {
+  const n = s.manaB || 0;
+  s.manaB = 0;
+  S.booms.push({ x: s.x, y: s.y, r: MANA_BURST_R, t: 0, max: 0.45, sid: 'manaburst' });
+  burst(S, s.x, s.y, 12, '#7cc0ff', 80, 'spark', 0.4);
+  if (!S.team) return;
+  for (const r of S.runners) {
+    const cx = r.x + PW / 2, cy = r.y + PH / 2;
+    if (r.out || Math.hypot(cx - s.x, cy - s.y) > MANA_BURST_R) continue;
+    if (giveMana(S, r, n)) burst(S, cx, r.y + 2, 4, '#9fd0ff', 30, 'spark', 0.35);
+  }
+  snd(S, 'healtick', s.x, s.y);
+}
+// mana into runner r's gun in hand, to its max: true when it took some
+/** @param {TitleScene} S @param {TRunner} r @param {number} n */
+function giveMana(S, r, n) {
+  const pl = S.team && S.team[r.id], g = pl && pl.alive !== false ? pl.guns[pl.active] : null;
+  if (!g) return false;
+  const max = g.manaMax + gunPassives(g).manaMax, was = g.mana == null ? max : g.mana;
+  if (was >= max) return false;
+  g.mana = Math.min(max, was + n);
+  return true;
 }
 
 // a lightning arc from one point to another (drawn with the game's drawBolt)
@@ -2496,7 +2527,7 @@ function stepShots(S, dt) {
       popLamp(S, p);
       if (!s.pierce) { s.life = 0; burst(S, s.x, s.y, 3, s.col, 50, 'spark', 0.2); }
     }
-    if (s.life <= 0) continue;
+    if (s.life <= 0) { if (s.manaB) manaBurst(S, s); continue; }   // (a Mana Burst goes off however it ended)
     // Discriminate:Pn (owner, v1.0.71; the old game's bullets.js): once clear of the muzzle it hits player n (runner n - 1) through
     // the level's hurt (shields apply); in the hub and the gun preview there's no hurt: it passes through
     if (s.only && s.age > 0.12 && S.lvl && S.lvl.hurt) {
@@ -2529,7 +2560,7 @@ function stepShots(S, dt) {
         s.pierce--;
       }
     }
-    if (s.life <= 0) continue;
+    if (s.life <= 0) { if (s.manaB) manaBurst(S, s); continue; }
     if (titleSolid(S, s.x, s.y) && !(s.orbit && DEV.trOrbRock && s.oa != null) && !(s.boomer && DEV.trBoRock && s.back)) {
       // (owner v1.0.74) a Borer shot drills on through the rock (the old game's bullets.js rule): bounces don't stop it
       if (s.bore && !s.only) {

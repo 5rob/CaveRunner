@@ -40,7 +40,7 @@ export function gunTick(g, dt) {
   const pas = gunPassives(g);
   if (!g.order) shuffleOrder(g);
   g.delayT = (g.delayT || 0) - dt; g.rechT = (g.rechT || 0) - dt;
-  const max = g.manaMax + pas.manaMax;
+  const max = Math.max(0, g.manaMax + pas.manaMax);
   g.mana = Math.min(max, (g.mana == null ? max : g.mana) + (g.manaRegen + pas.manaRegen) * dt);
 }
 // is it ready to pull?
@@ -55,7 +55,12 @@ export function gunPull(g, others) {
   if (!g.order) shuffleOrder(g);
   if (g.idx == null) g.idx = 0;
   // Wand Refresh (owner, v1.0.35: it did nothing here): the next time the list runs out, no recharge (the game's skipRech)
-  const wrap = () => { g.idx = 0; g.rechT = g.rechLen = g.skipRech ? 0 : effRecharge(g); g.skipRech = false; shuffleOrder(g); };
+  // (owner, after v1.0.83) Recharge Battery: mana to full at each reload
+  const wrap = () => {
+    g.idx = 0; g.rechT = g.rechLen = g.skipRech ? 0 : effRecharge(g); g.skipRech = false; shuffleOrder(g);
+    const pas = gunPassives(g);
+    if (pas.rechFill) g.mana = Math.max(0, g.manaMax + pas.manaMax);
+  };
   const plan = planCast(g, others);
   if (!plan.shots.length) { wrap(); return null; }
   if ((g.mana || 0) < plan.cost) { g.idx = plan.start; g.swc = plan.swc0; g.delayT = 0.12; return null; }
@@ -89,7 +94,7 @@ export function shotsOf(sh, ang, x, y, R, by) {
       sid: sh.sid || '', light: sh.light || '', lightR: sh.lightR || 0,
       beam: Math.min(SG_BEAM_MAX, sh.beam || 0), ang: a, pull: sh.pull || 0, follow: sh.follow || 0,
       orbit: sh.orbit || 0, spiral: sh.spiral || 0, boomer: sh.boomer || 0, pong: sh.pong || 0,
-      homN: sh.homN || 0, seekN: sh.seekN || 0, nearN: sh.nearN || 0, autoaim: sh.autoaim || 0, gravN: sh.gravN || 0, floatN: sh.floatN || 0, flat: sh.flat || 0, only: sh.only || null });
+      homN: sh.homN || 0, seekN: sh.seekN || 0, nearN: sh.nearN || 0, autoaim: sh.autoaim || 0, gravN: sh.gravN || 0, floatN: sh.floatN || 0, flat: sh.flat || 0, only: sh.only || null, manaB: sh.manaB || 0 });
   }
   return out;
 }
@@ -103,7 +108,7 @@ export function planShots(plan, ang, x, y, R, by) {
   const out = [];
   for (const sh of plan.shots) {
     if (sh.sid === 'vacfield') { out.push(whiteHole(sh, ang, x, y, by)); continue; }
-    if (sh.sid === 'vigour') { out.push(vigourCircle(sh, x, y, by)); continue; }
+    if (sh.sid === 'vigour' || sh.sid === 'manaspring') { out.push(vigourCircle(sh, x, y, by)); continue; }
     if (!sh.still) for (const s of shotsOf(sh, ang, x, y, R, by)) out.push(s);
   }
   return out;
@@ -122,12 +127,13 @@ export function whiteHole(sh, ang, x, y, by) {
 }
 // Circle of Vigour (owner, v1.0.66): cast at the gun, it stays put on the ground for its life (titlescene.js stepShots moves it
 // back with the scroll; with Follow Me it comes to its caster and stays with him, v1.0.66; vigourStep: a living player inside heals VIG_HP every VIG_TICK s, × his heal perks, as the old game); harmless
-export const VIG_HP = 4, VIG_TICK = 0.4;
+// (owner, after v1.0.83) Mana Spring is the same circle, giving MANA_TICK mana a tick to the gun in hand (`mana`)
+export const VIG_HP = 4, VIG_TICK = 0.4, MANA_TICK = 8;
 /** @param {Shot} sh @param {number} x @param {number} y @param {number} [by] @returns {SceneShot} */
 export function vigourCircle(sh, x, y, by) {
-  const life = Math.max(0.3, sh.life || 5);
-  return { x, y, vx: 0, vy: 0, size: 2, col: sh.col || '#46c48c', look: '', life, max: life,
+  const life = Math.max(0.3, sh.life || 5), mana = sh.sid === 'manaspring';
+  return { x, y, vx: 0, vy: 0, size: 2, col: sh.col || (mana ? '#4a9cff' : '#46c48c'), look: '', life, max: life, mana: mana ? MANA_TICK : 0,
     foe: false, spin: 0, grav: 0, drag: 0, explode: 0, pit: 0, fire: 0, bounce: 0, bounceE: 0, pierce: 0, dmg: 0, homing: 0, accel: 0, vmax: 0, chain: 0,
-    real: true, by: by == null ? -1 : by, trig: null, timer: 0, pay: null, age: 0, sid: 'vigour', light: '70,196,140', lightR: 30,
+    real: true, by: by == null ? -1 : by, trig: null, timer: 0, pay: null, age: 0, sid: mana ? 'manaspring' : 'vigour', light: mana ? '74,156,255' : '70,196,140', lightR: 30,
     beam: 0, ang: 0, pull: 0, heal: sh.r || 36, tick: 0, follow: sh.follow || 0, only: sh.only || null };
 }

@@ -33,7 +33,7 @@ export const SPELL_VOICE = {
   tele: 'energy', teleshort: 'energy',
   // statics: the explosions make their bang when they go off, so casting one is silent
   boom: 'none', brim: 'none', crystal: 'crystal', dormant: 'crystal', glitter: 'crystal',
-  stillc: 'aura', shieldc: 'aura', vigour: 'aura', storm: 'thunder', vacfield: 'void',
+  stillc: 'aura', shieldc: 'aura', vigour: 'aura', manaspring: 'aura', storm: 'thunder', vacfield: 'void',
 };
 export const SPELL_VOICES = ['magic', 'pierce', 'heavy', 'energy', 'scatter', 'bubble', 'saw', 'lob',
   'fire', 'thunder', 'void', 'dig', 'beam', 'spore', 'crystal', 'aura', 'none'];

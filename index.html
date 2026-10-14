@@ -3231,6 +3231,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       manaMax: 60,
       manaRegen: 30
     },
+    // (owner, after v1.0.83) refills the gun's mana each time it reloads (scenegun.js gunPull), but it holds less
+    rechbat: {
+      name: "Recharge Battery",
+      kind: "passive",
+      glyph: "⌁",
+      col: "#46c48c",
+      mana: 0,
+      info: "Mana refills to full every reload, but -40 max mana",
+      manaMax: -40,
+      rechFill: 1
+    },
     // ours: the gun fires on its own, as if you never let go of the trigger (gunPassives().auto, aimAndCast)
     auto: {
       name: "Questions Later",
@@ -3829,6 +3840,19 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       life: 5,
       delay: 0.35
     },
+    // (owner, after v1.0.83) Circle of Vigour's mana twin (art/scenegun.js vigourCircle, titlescene.js vigourStep)
+    manaspring: {
+      name: "Mana Spring",
+      kind: "static",
+      glyph: "❂",
+      col: "#4a9cff",
+      mana: 20,
+      info: "Stand in it and your gun's mana fills",
+      field: "mana",
+      r: 36,
+      life: 5,
+      delay: 0.35
+    },
     storm: {
       name: "Thundercloud",
       kind: "static",
@@ -4200,6 +4224,19 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         s.friendly = 1;
       }
     },
+    // (owner, after v1.0.83) the next spell bursts where it ends, filling the mana of players near (titlescene.js manaBurst)
+    manaburst: {
+      name: "Mana Burst",
+      kind: "mod",
+      glyph: "✷",
+      col: "#4a9cff",
+      mana: 15,
+      d: 0.05,
+      info: "The next spell bursts where it ends, giving mana to every player near it",
+      f: (s) => {
+        s.manaB = (s.manaB || 0) + 30;
+      }
+    },
     manapow: {
       name: "Mana To Damage",
       kind: "mod",
@@ -4494,6 +4531,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     cheap: "upkeep",
     battery: "upkeep",
     auto: "upkeep",
+    rechbat: "upkeep",
+    manaburst: "upkeep",
+    manaspring: "field",
     arrow: "shots",
     missile: "shots",
     fball: "shots",
@@ -4641,6 +4681,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     recharge: 50,
     battery: 50,
     auto: 70,
+    rechbat: 55,
+    manaburst: 50,
+    manaspring: 60,
     arrow: 25,
     missile: 60,
     fball: 55,
@@ -4808,6 +4851,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     recharge: 3,
     battery: 3,
     auto: 2,
+    rechbat: 3,
+    manaburst: 3,
+    manaspring: 3,
     saw: 3,
     missile: 3,
     fball: 3,
@@ -4948,6 +4994,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     stillc: "aura",
     shieldc: "aura",
     vigour: "aura",
+    manaspring: "aura",
     storm: "thunder",
     vacfield: "void"
   };
@@ -10210,7 +10257,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     };
   }
   function gunPassives(g) {
-    let rech = 0, rechMul = 1, manaMax = 0, manaRegen = 0, auto = false;
+    let rech = 0, rechMul = 1, manaMax = 0, manaRegen = 0, auto = false, rechFill = false;
     for (const id of g.slots) {
       if (!id) continue;
       const m = MODS[id];
@@ -10219,8 +10266,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (m.manaMax) manaMax += m.manaMax;
       if (m.manaRegen) manaRegen += m.manaRegen;
       if (m.auto) auto = true;
+      if (m.rechFill) rechFill = true;
     }
-    return { rech, rechMul, manaMax, manaRegen, auto };
+    return { rech, rechMul, manaMax, manaRegen, auto, rechFill };
   }
 
   // src/spells/discrim.js
@@ -10699,6 +10747,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     recharge: "RECHARGE",
     battery: "OURS_BATTERY",
     auto: "OURS_AUTO",
+    rechbat: "OURS_BATTERY",
+    manaburst: "OURS_BATTERY",
+    manaspring: "REGENERATION_FIELD",
     arrow: "BULLET",
     missile: "ROCKET",
     fball: "FIREBALL",
@@ -12776,7 +12827,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (!g.order) shuffleOrder(g);
     g.delayT = (g.delayT || 0) - dt;
     g.rechT = (g.rechT || 0) - dt;
-    const max = g.manaMax + pas.manaMax;
+    const max = Math.max(0, g.manaMax + pas.manaMax);
     g.mana = Math.min(max, (g.mana == null ? max : g.mana) + (g.manaRegen + pas.manaRegen) * dt);
   }
   var gunReady = (g) => (g.delayT || 0) <= 0 && (g.rechT || 0) <= 0;
@@ -12789,6 +12840,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       g.rechT = g.rechLen = g.skipRech ? 0 : effRecharge(g);
       g.skipRech = false;
       shuffleOrder(g);
+      const pas = gunPassives(g);
+      if (pas.rechFill) g.mana = Math.max(0, g.manaMax + pas.manaMax);
     };
     const plan = planCast(g, others);
     if (!plan.shots.length) {
@@ -12866,7 +12919,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         gravN: sh.gravN || 0,
         floatN: sh.floatN || 0,
         flat: sh.flat || 0,
-        only: sh.only || null
+        only: sh.only || null,
+        manaB: sh.manaB || 0
       });
     }
     return out;
@@ -12879,7 +12933,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         out.push(whiteHole(sh, ang, x, y, by));
         continue;
       }
-      if (sh.sid === "vigour") {
+      if (sh.sid === "vigour" || sh.sid === "manaspring") {
         out.push(vigourCircle(sh, x, y, by));
         continue;
       }
@@ -12931,19 +12985,20 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       only: sh.only || null
     };
   }
-  var VIG_HP = 4, VIG_TICK = 0.4;
+  var VIG_HP = 4, VIG_TICK = 0.4, MANA_TICK = 8;
   function vigourCircle(sh, x, y, by) {
-    const life = Math.max(0.3, sh.life || 5);
+    const life = Math.max(0.3, sh.life || 5), mana = sh.sid === "manaspring";
     return {
       x,
       y,
       vx: 0,
       vy: 0,
       size: 2,
-      col: sh.col || "#46c48c",
+      col: sh.col || (mana ? "#4a9cff" : "#46c48c"),
       look: "",
       life,
       max: life,
+      mana: mana ? MANA_TICK : 0,
       foe: false,
       spin: 0,
       grav: 0,
@@ -12965,8 +13020,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       timer: 0,
       pay: null,
       age: 0,
-      sid: "vigour",
-      light: "70,196,140",
+      sid: mana ? "manaspring" : "vigour",
+      light: mana ? "74,156,255" : "70,196,140",
       lightR: 30,
       beam: 0,
       ang: 0,
@@ -15153,6 +15208,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     } else if (!s.hitFoe) snd(S2, "rock", s.x, s.y);
     if (s.fire || s.explode) titleIgnite(S2, s.x, s.y, (s.fire ? 7 : 0) + (s.explode ? s.explode * 0.42 + 5 : 0));
     burst(S2, s.x, s.y, 3, s.col, 50, "spark", 0.25);
+    if (s.manaB) manaBurst(S2, s);
     if (S2.shots.length < 400) for (const d of fireSpray(s, S2.rnd)) S2.shots.push(d);
     release(S2, s);
   }
@@ -16183,6 +16239,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const pl = S2.team[r.id], cx = r.x + PW / 2, cy = r.y + PH / 2;
       if (!pl || pl.alive === false || r.out || Math.hypot(cx - s.x, cy - s.y) > (s.heal || 0)) continue;
       if (!matchesTarget(s.only, { kind: "player", id: String(r.id + 1) })) continue;
+      if (s.mana) {
+        if (giveMana(S2, r, s.mana)) {
+          healed = true;
+          burst(S2, cx, r.y + 2, 3, "#9fd0ff", 30, "spark", 0.35);
+        }
+        continue;
+      }
       const st = playerStats(pl);
       if (pl.hp >= st.maxHp) continue;
       pl.hp = Math.min(st.maxHp, pl.hp + VIG_HP * (st.heal || 1));
@@ -16193,6 +16256,28 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       s.tick = VIG_TICK;
       snd(S2, "healtick", s.x, s.y);
     }
+  }
+  var MANA_BURST_R = 60;
+  function manaBurst(S2, s) {
+    const n = s.manaB || 0;
+    s.manaB = 0;
+    S2.booms.push({ x: s.x, y: s.y, r: MANA_BURST_R, t: 0, max: 0.45, sid: "manaburst" });
+    burst(S2, s.x, s.y, 12, "#7cc0ff", 80, "spark", 0.4);
+    if (!S2.team) return;
+    for (const r of S2.runners) {
+      const cx = r.x + PW / 2, cy = r.y + PH / 2;
+      if (r.out || Math.hypot(cx - s.x, cy - s.y) > MANA_BURST_R) continue;
+      if (giveMana(S2, r, n)) burst(S2, cx, r.y + 2, 4, "#9fd0ff", 30, "spark", 0.35);
+    }
+    snd(S2, "healtick", s.x, s.y);
+  }
+  function giveMana(S2, r, n) {
+    const pl = S2.team && S2.team[r.id], g = pl && pl.alive !== false ? pl.guns[pl.active] : null;
+    if (!g) return false;
+    const max = g.manaMax + gunPassives(g).manaMax, was = g.mana == null ? max : g.mana;
+    if (was >= max) return false;
+    g.mana = Math.min(max, was + n);
+    return true;
   }
   function zapArc(S2, x0, y0, x1, y1, col, fade) {
     const R = S2.rnd, pts = [{ x: x0, y: y0 }];
@@ -16601,7 +16686,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           burst(S2, s.x, s.y, 3, s.col, 50, "spark", 0.2);
         }
       }
-      if (s.life <= 0) continue;
+      if (s.life <= 0) {
+        if (s.manaB) manaBurst(S2, s);
+        continue;
+      }
       if (s.only && s.age > 0.12 && S2.lvl && S2.lvl.hurt) {
         const ru = S2.runners.find((u) => !u.out && matchesTarget(s.only, { kind: "player", id: String(u.id + 1) }) && Math.abs(u.x + PW / 2 - s.x) < 7 + s.size && Math.abs(u.y + PH / 2 - s.y) < 11 + s.size);
         if (ru && S2.lvl.hurt) {
@@ -16657,7 +16745,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           s.pierce--;
         }
       }
-      if (s.life <= 0) continue;
+      if (s.life <= 0) {
+        if (s.manaB) manaBurst(S2, s);
+        continue;
+      }
       if (titleSolid(S2, s.x, s.y) && !(s.orbit && DEV.trOrbRock && s.oa != null) && !(s.boomer && DEV.trBoRock && s.back)) {
         if (s.bore && !s.only) {
           titleCarve(S2, s.x, s.y, s.bore * 0.7, false);
@@ -30229,7 +30320,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const sp = Math.hypot(s.vx, s.vy) || 1, ux = s.vx / sp, uy = s.vy / sp;
     if (s.sid === "slug" || s.sid === "disc" || s.sid === "missile" || s.sid === "void") return true;
     const G2 = { ctx: c };
-    if (s.sid === "vigour") {
+    if (s.sid === "vigour" || s.sid === "manaspring") {
       const f = { x: s.x, y: s.y, r: s.heal || 36, life: s.life, max: s.max || 5, col: s.col, field: "heal" };
       const Wt = W;
       drawField(Wt, G2, f);
@@ -30491,6 +30582,24 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return true;
   }
   function drawBoom(ctx, b) {
+    if (b.sid === "manaburst") {
+      const q2 = b.t / b.max, gr2 = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r * 0.5);
+      gr2.addColorStop(0, "rgba(230,245,255," + (1 - q2) + ")");
+      gr2.addColorStop(1, "rgba(74,156,255,0)");
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = gr2;
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, b.r * 0.5, 0, 6.283);
+      ctx.fill();
+      ctx.globalAlpha = 0.9 * (1 - q2);
+      ctx.strokeStyle = "#7cc0ff";
+      ctx.lineWidth = 2 * (1 - q2) + 0.5;
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, b.r * (0.15 + 0.85 * Math.sqrt(q2)), 0, 6.283);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      return;
+    }
     const q = b.t / b.max, big = b.sid === "nuke" || b.sid === "meteor";
     const rad = b.r * (big ? 0.3 + 0.7 * Math.sqrt(q) : 0.4 + q);
     const gr = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, rad);
