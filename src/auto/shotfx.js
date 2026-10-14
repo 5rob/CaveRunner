@@ -92,7 +92,8 @@ export function autoTrail(s, dt, R) {
     case 'vacfield': { // White Hole: pale-blue motes drawn in from its reach to the core, a white twinkle at the middle
       const rv = s.vac || 64;
       // owner (v1.0.40): spawned over its whole reach, they fly onto it and are sucked in (titlescene.js steps a part with `to`)
-      for (let k = 0; k < 3; k++) if (ch(40)) {
+      // (owner, v1.0.86) a bigger reach (a buff, Enlarge) gets more of them, as many more as it's wider (up to 4×)
+      for (let k = 0, n = Math.round(3 * Math.max(1, Math.min(4, rv / 64))); k < n; k++) if (ch(40)) {
         const a = R() * 6.28, d = rv * rr(0.45, 1), v = rr(10, 30);
         const p = P(R() < 0.3 ? '#ffffff' : R() < 0.6 ? '#c8ecff' : '#7cc4ff', s.x + Math.cos(a) * d, s.y + Math.sin(a) * d, -Math.sin(a) * v, Math.cos(a) * v, 2.5, rr(0.8, 1.4), 'glow');
         p.to = s; out.push(p);

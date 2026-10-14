@@ -8,6 +8,9 @@
 import { glowAt } from '../../art/sprites.js';
 import { drawBolt, drawField, drawLook, drawWhiteHole } from './looks.js';
 import { jagPts } from '../../auto/shotfx.js';
+import { MODS } from '../../spells/mods.js';
+// a plain White Hole's reach: its core is drawn at this size whatever grew the reach
+const WH_REACH = MODS.vacfield.r || 64;
 
 /** @typedef {import('../../art/titlescene.js').TShot} TShot */
 /** @typedef {import('../../art/titlescene.js').TBoom} TBoom */
@@ -99,7 +102,9 @@ export function drawGlowShot(c, s, W) {
   }
   if (s.sid === 'vacfield') {           // White Hole: the game's look (white core, wheeling blue stars), bigger, and a faint rim at its reach
     /** @type {any} */
-    const f = { x: s.x, y: s.y, r: (s.vac || 64) * 0.8, life: s.life, max: s.max || 1.2 };   // owner (v1.0.40): half the first try's size
+    // owner (v1.0.40): half the first try's size. (owner, v1.0.86) the core always at a plain White Hole's size: a buff or Enlarge
+    // grows its reach (the rim, the sparkles), not the bright spot
+    const f = { x: s.x, y: s.y, r: WH_REACH * 0.8, life: s.life, max: s.max || 1.2 };
     /** @type {any} */
     const Wt = W;
     drawWhiteHole(Wt, G2, f);

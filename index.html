@@ -12496,7 +12496,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         break;
       case "vacfield": {
         const rv = s.vac || 64;
-        for (let k = 0; k < 3; k++) if (ch(40)) {
+        for (let k = 0, n = Math.round(3 * Math.max(1, Math.min(4, rv / 64))); k < n; k++) if (ch(40)) {
           const a = R() * 6.28, d = rv * rr2(0.45, 1), v = rr2(10, 30);
           const p = P(R() < 0.3 ? "#ffffff" : R() < 0.6 ? "#c8ecff" : "#7cc4ff", s.x + Math.cos(a) * d, s.y + Math.sin(a) * d, -Math.sin(a) * v, Math.cos(a) * v, 2.5, rr2(0.8, 1.4), "glow");
           p.to = s;
@@ -30346,6 +30346,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
 
   // src/game/render/autolooks.js
+  var WH_REACH = MODS.vacfield.r || 64;
   var dot = (c, x, y, r, col, a) => {
     c.globalAlpha = a;
     c.fillStyle = col;
@@ -30464,7 +30465,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       return true;
     }
     if (s.sid === "vacfield") {
-      const f = { x: s.x, y: s.y, r: (s.vac || 64) * 0.8, life: s.life, max: s.max || 1.2 };
+      const f = { x: s.x, y: s.y, r: WH_REACH * 0.8, life: s.life, max: s.max || 1.2 };
       const Wt = W;
       drawWhiteHole(Wt, G2, f);
       const fade = Math.min(1, (f.max - s.life) * 8, s.life * 5);
