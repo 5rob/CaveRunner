@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v1.0.80</title>
-<!-- VERSION = 'v1000080' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v1.0.81</title>
+<!-- VERSION = 'v1000081' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -1190,7 +1190,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 /* (owner v1.0.74) the title's version, bottom right */
 .tver{position:absolute;right:10px;bottom:calc(8px + env(safe-area-inset-bottom));font:700 11px ui-monospace,SFMono-Regular,Menlo,monospace;color:rgba(241,236,255,0.55);letter-spacing:.06em;pointer-events:none;z-index:3}
 /* (owner v1.0.74) the Dev panel's mod grid (ui/modgrid.js) */
-.modgrid{padding:6px 10px 10px;border-bottom:1px solid #3d2f5c}
+.modgrid{padding:0 0 10px;margin-bottom:8px;border-bottom:1px solid #3d2f5c}
 .mgtiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(44px,1fr));gap:5px}
 .mgtile{position:relative;aspect-ratio:1;display:flex;align-items:center;justify-content:center;padding:0;background:#2c1f45;border:2px solid #555;border-radius:8px;touch-action:pan-y;user-select:none;-webkit-user-select:none;transition:transform .12s}
 .mgtile .apixg{width:70%;height:70%}
@@ -1206,7 +1206,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v1.0.80';</script>
+<script>const VERSION = 'v1.0.81';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -32179,7 +32179,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
 
   // src/version.js
-  var VERSION2 = "v1.0.80";
+  var VERSION2 = "v1.0.81";
 
   // src/art/zonelab.js
   var ZLAB_LEAD = 60;
@@ -33641,10 +33641,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         !needle && tab === "firesim" ? h("div", { className: "firesimtop" }, h(FireSim, null)) : null,
         // (Dev → Zones) the zone preview, sticky like the fire sim's, and its zone cards
         !needle && tab === "zones" ? h(ZoneSim, { Row: DevRow }) : null,
-        grid && onMod ? h(ModGrid, { onMod }) : null,
         h(
           "div",
           { className: "devbody" },
+          // (the mod grid scrolls with the knobs: outside the body it had no scroll and ran off the panel)
+          grid && onMod ? h(ModGrid, { onMod }) : null,
           h("p", { className: "devkey" }, h("i", { className: "devauto" }), "works in Auto ", h("i", { className: "devsome" }), "some ", h("i", { className: "devold" }), "old game only"),
           shown.length ? null : h("p", { className: "devnote" }, "No knob matches “" + q.trim() + "”."),
           shown.map(({ g, name, rows, hits, nameHit }) => {

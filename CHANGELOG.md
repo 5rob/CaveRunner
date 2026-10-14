@@ -5,6 +5,10 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.81 — CaveRunner Auto: the Dev mod grid scrolls (branch `autobattler`)
+Released 2026-10-14 on the branch (a fix).
+- Owner: the Dev panel's mod grid wouldn't scroll. It sat outside the panel's scrolling body (squeezing the knob list to nothing); it's now the body's first child, scrolling with the knobs (ui/devpanel.js). Suite: auto-modgrid (browser, a real touch swipe).
+
 ## v1.0.80 — CaveRunner Auto: the nuke's mushroom cloud, the level-end nuke, webs, joining players, the Switch's flashing (branch `autobattler`)
 Released 2026-10-14 on the branch; owner OK'd the screenshots (tools/nukeshots.js, joinshots.js, switchlitshots.js).
 - Owner: a good-looking mushroom cloud. `drawMushroom` (game/render/autolooks.js; `S.mush`, `titleMushroom`): a stem of billowing puffs, a cap rolling as a ring of puffs, a dust skirt; white hot → orange → brown → grey smoke, fading over `DEV.autoMushT` (3.2 s). Drawn normally inside the bright pass (that pass adds colours: smoke added up to white). The Nuke shot's cloud is its blast × `autoMushK`; the old ellipse stem and cap are gone.

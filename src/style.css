@@ -1181,7 +1181,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 /* (owner v1.0.74) the title's version, bottom right */
 .tver{position:absolute;right:10px;bottom:calc(8px + env(safe-area-inset-bottom));font:700 11px ui-monospace,SFMono-Regular,Menlo,monospace;color:rgba(241,236,255,0.55);letter-spacing:.06em;pointer-events:none;z-index:3}
 /* (owner v1.0.74) the Dev panel's mod grid (ui/modgrid.js) */
-.modgrid{padding:6px 10px 10px;border-bottom:1px solid #3d2f5c}
+.modgrid{padding:0 0 10px;margin-bottom:8px;border-bottom:1px solid #3d2f5c}
 .mgtiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(44px,1fr));gap:5px}
 .mgtile{position:relative;aspect-ratio:1;display:flex;align-items:center;justify-content:center;padding:0;background:#2c1f45;border:2px solid #555;border-radius:8px;touch-action:pan-y;user-select:none;-webkit-user-select:none;transition:transform .12s}
 .mgtile .apixg{width:70%;height:70%}

@@ -653,8 +653,9 @@ export function DevPanel({ input, refresh, close, onRestart, onSpawnGun, onSpawn
       !needle && tab === 'firesim' ? h('div', { className: 'firesimtop' }, h(FireSim, null)) : null,
       // (Dev → Zones) the zone preview, sticky like the fire sim's, and its zone cards
       !needle && tab === 'zones' ? h(ZoneSim, { Row: DevRow }) : null,
-      grid && onMod ? h(ModGrid, { onMod }) : null,
       h('div', { className: 'devbody' },
+        // (the mod grid scrolls with the knobs: outside the body it had no scroll and ran off the panel)
+        grid && onMod ? h(ModGrid, { onMod }) : null,
         h('p', { className: 'devkey' }, h('i', { className: 'devauto' }), 'works in Auto ', h('i', { className: 'devsome' }), 'some ', h('i', { className: 'devold' }), 'old game only'),
         shown.length ? null : h('p', { className: 'devnote' }, 'No knob matches “' + q.trim() + '”.'),
         shown.map(({ g, name, rows, hits, nameHit }) => {
