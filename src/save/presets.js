@@ -56,3 +56,20 @@ export const removePreset = (list, i) => list.filter((_, k) => k !== i);
 /** A fresh gun from a preset, ready to drop (its own copy: the preset stays as saved).
  * @param {GunPreset} p @returns {Gun | null} */
 export const presetGun = p => storeGun(p.gun);
+
+// (Dev → Presets, CaveRunner Auto) entry i replaced by this gun as `name` (its save changes); unchanged if the gun is junk
+/** @param {GunPreset[]} list @param {number} i @param {string} name @param {Gun} gun @returns {GunPreset[]} */
+export function setPreset(list, i, name, gun) {
+  const g = gun && storeGun(gun);
+  if (!g || i < 0 || i >= list.length) return list.slice();
+  return list.map((p, k) => (k === i ? { name: cleanName(name, g.name), gun: g } : p));
+}
+// entry i moved d places (Grem Mode unlocks them in this order); kept inside the list
+/** @param {GunPreset[]} list @param {number} i @param {number} d @returns {GunPreset[]} */
+export function movePreset(list, i, d) {
+  const j = Math.max(0, Math.min(list.length - 1, i + d)), out = list.slice();
+  if (i < 0 || i >= list.length || j === i) return out;
+  const [p] = out.splice(i, 1);
+  out.splice(j, 0, p);
+  return out;
+}

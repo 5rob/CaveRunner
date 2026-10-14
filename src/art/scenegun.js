@@ -115,7 +115,8 @@ export function planShots(plan, ang, x, y, R, by) {
 }
 
 // White Hole (owner, v1.0.40): the one static Auto casts. It hangs still WH_AHEAD units along the aim for its life,
-// pulling (auto/shotfx.js vacPull), harmless; nothing stops it (titlescene.js stepShots skips its hits).
+// pulling (auto/shotfx.js vacPull), harmless; nothing stops it (titlescene.js stepShots skips its hits). (owner, v1.0.85) With
+// Follow Me it comes to its caster and stays with him, as the Circle of Vigour (titlescene.js fieldFollow): the Follow Me used to be dropped here.
 export const WH_AHEAD = 50;
 /** @param {Shot} sh @param {number} ang @param {number} x @param {number} y @param {number} [by] @returns {SceneShot} */
 export function whiteHole(sh, ang, x, y, by) {
@@ -123,7 +124,7 @@ export function whiteHole(sh, ang, x, y, by) {
   return { x: x + Math.cos(ang) * WH_AHEAD, y: y + Math.sin(ang) * WH_AHEAD, vx: 0, vy: 0, size: 2, col: sh.col || '#9fd8ff', look: '', life, max: life,
     foe: false, spin: 0, grav: 0, drag: 0, explode: 0, pit: 0, fire: 0, bounce: 0, bounceE: 0, pierce: 0, dmg: 0, homing: 0, accel: 0, vmax: 0, chain: 0,
     real: true, by: by == null ? -1 : by, trig: null, timer: 0, pay: null, age: 0, sid: 'vacfield', light: '159,216,255', lightR: 30,
-    beam: 0, ang, pull: 0, vac: sh.r || 64, only: sh.only || null };
+    beam: 0, ang, pull: 0, vac: sh.r || 64, follow: sh.follow || 0, only: sh.only || null };
 }
 // Circle of Vigour (owner, v1.0.66): cast at the gun, it stays put on the ground for its life (titlescene.js stepShots moves it
 // back with the scroll; with Follow Me it comes to its caster and stays with him, v1.0.66; vigourStep: a living player inside heals VIG_HP every VIG_TICK s, × his heal perks, as the old game); harmless

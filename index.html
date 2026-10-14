@@ -1205,6 +1205,63 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .mginfo{margin:2px 0 8px;font-size:13px;color:#d8cff0}
 .mginfo b{font-weight:800}
 .mginfo p{margin:4px 0 0;color:#b9add8}
+
+/* Grem Mode (owner, ui/auto/GremScreen.js): the title's middle button, then the toddler's screen */
+.tgrem{flex:1;height:64px;margin:0 12px;padding:0;border-radius:14px;border:none;color:#10261a;font:900 17px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.12em;
+  background:linear-gradient(#b8ffb0,#5ee05a 60%,#2fa83a);box-shadow:0 4px 0 #1d5a22,0 0 22px rgba(94,224,90,0.6)}
+.tgrem:active{transform:translateY(2px);box-shadow:0 2px 0 #1d5a22,0 0 18px rgba(94,224,90,0.6)}
+.grem .aplay{flex:1 1 0;min-height:0}
+.glvl{position:absolute;left:10px;top:8px;font:900 14px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.08em;color:#fff;text-shadow:0 0 4px #000,0 0 8px #000;pointer-events:none}
+.ggold{flex:none;display:flex;align-items:center;justify-content:center;gap:10px;height:46px}
+.ggicon{width:42px;height:42px;display:flex}
+.ggicon canvas{width:100%;height:100%;image-rendering:pixelated}
+.ggold b{font:900 38px ui-monospace,SFMono-Regular,Menlo,monospace;color:#ffc93c;text-shadow:0 0 12px rgba(255,180,40,0.6),0 2px 0 #6a3a00}
+.gguns{flex:none;max-height:152px;overflow-y:auto;touch-action:pan-y;display:grid;grid-template-columns:repeat(5,1fr);gap:7px;padding:8px;
+  border-radius:14px;background:#0e091a;border:2px solid #3d2f5c}
+.gguns.none{display:block;color:#8f84ad;font:600 13px system-ui,sans-serif;text-align:center}
+.gguns.none p{margin:6px 0}
+/* a gun: its outline a ring that fills clockwise from the top as it's paid off (--f degrees), bright gold when it's open */
+.ggun{position:relative;aspect-ratio:1;padding:4px;border:none;border-radius:12px;background:conic-gradient(#ffc93c var(--f,0deg),#2c2340 0)}
+.ggun.open{background:#ffc93c;box-shadow:0 0 10px rgba(255,201,60,0.5)}
+.ggun.sel{background:#fff;box-shadow:0 0 14px rgba(255,255,255,0.8)}
+.ggun.next{box-shadow:0 0 10px rgba(255,201,60,0.35)}
+.gginner{width:100%;height:100%;border-radius:9px;background:#1d1531;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.gginner .gicon{width:84%;height:auto}
+.ggun.locked .gginner,.ggun.next .gginner{filter:grayscale(1) brightness(.55)}
+.grem .gguns{max-height:230px;margin-bottom:66px}   /* (no bag, owner: the guns' panel clear of the stick's dome) */
+/* Dev → Presets (ui/auto/presetlib.js) */
+.apltiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:7px;margin-bottom:10px}
+.apltile{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 4px 4px;border-radius:10px;background:#2c1f45;border:2px solid #ffc93c88;color:#f1ecff;touch-action:pan-y}
+.aplicon{width:44px;height:44px;display:flex;align-items:center;justify-content:center}
+.aplicon .gicon{width:100%;height:auto}
+.aplname{font:700 10px system-ui,sans-serif;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.aplnum{position:absolute;left:4px;top:2px;font:800 10px ui-monospace,monospace;color:#ffc93c;font-style:normal}
+.aplprice{font:700 9px ui-monospace,monospace;color:#b9add8;font-style:normal}
+.apled{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+.apledhead{display:flex;align-items:center;gap:6px}
+.apledhead b{flex:1;font:800 12px ui-monospace,monospace;color:#ffc93c}
+.apleddel.sure{background:#d0282e;color:#fff}
+.apled .agunpanel{animation:none}
+.apledslots{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.apledslots .aslot{padding:0}
+.apledslots .aslot.sel{box-shadow:0 0 0 3px #fff}
+.apledbtns{display:flex;align-items:center;gap:8px}
+.apledsave.on{background:#5ee05a;color:#10261a;font-weight:800}
+.apledflash{font:700 12px system-ui,sans-serif;color:#5ee05a;animation:agpsaved 1.6s ease-out both}
+/* 💾 on the gun panel (dev mode): save the gun as a preset */
+.agunpanel{position:relative}
+.agpsave{position:absolute;left:8px;bottom:8px;width:30px;height:30px;padding:0;border-radius:8px;border:1px solid #ffc93c88;background:#1d1531cc;font-size:15px;z-index:2}
+.agpsaved{color:#5ee05a;font:900 16px system-ui,sans-serif;animation:agpsaved 1.6s ease-out both}
+@keyframes agpsaved{from{opacity:1}to{opacity:.4}}
+/* Dev → Grem (ui/auto/gremkit.js) */
+.agkit{display:flex;flex-direction:column;gap:7px;margin-bottom:12px}
+.agkrow{display:flex;align-items:center;gap:5px}
+.agklab{flex:0 0 92px;display:flex;align-items:center;gap:5px;font:700 12px system-ui,sans-serif;color:#d8cff0}
+.agkslot{flex:1;height:36px;padding:0;border-radius:8px;background:#1d1531;border:2px solid #3d2f5c;color:#8f84ad;font:800 13px ui-monospace,monospace}
+.agkslot.on{border-color:#c084fc;background:#2c1f45;color:#fff}
+.agkperks{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.agkperk{height:34px;border-radius:8px;background:#1d1531;border:2px solid #3d2f5c;color:#d8cff0;font:600 12px system-ui,sans-serif}
+.agkperk.on{border-color:#ffc93c;color:#fff}
 </style>
 </head>
 <body>
@@ -2084,6 +2141,16 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "autoHubDemoNear", g: "autohub", label: "A crystal machine plays its demo with you this near (world units; the old shop’s 100)", min: 20, max: 240, step: 5 }
   );
   DEV_GROUPS.push(["autohub", "Auto: hub"]);
+  Object.assign(DEV_DEFAULTS, { gremPrice: 100, gremGrow: 1.5, gremP2: 5, gremP3: 10, gremP4: 15, gremPickR: 40 });
+  DEV_META.push(
+    { k: "gremPrice", g: "grem", label: "The first preset costs (gold)", min: 5, max: 1e4, step: 5 },
+    { k: "gremGrow", g: "grem", label: "Each preset after it costs × this more", min: 1, max: 4, step: 0.05 },
+    { k: "gremP2", g: "grem", label: "Player 2 joins at level", min: 1, max: 100, step: 1 },
+    { k: "gremP3", g: "grem", label: "Player 3 joins at level", min: 1, max: 100, step: 1 },
+    { k: "gremP4", g: "grem", label: "Player 4 joins at level", min: 1, max: 100, step: 1 },
+    { k: "gremPickR", g: "grem", label: "A tap picks the creature nearest it within (world units; the screen is 220 across)", min: 5, max: 220, step: 5 }
+  );
+  DEV_GROUPS.push(["grem", "Grem Mode"]);
   Object.assign(DEV_DEFAULTS, { autoMapPrice: 1e6, autoMapGrow: 1, autoMapStep: 5 });
   DEV_META.push(
     { k: "autoMapPrice", g: "automaps", label: "Map machine: the second map’s price (gold)", min: 1e3, max: 1e7, step: 1e3 },
@@ -2554,6 +2621,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   DEV_TABS.splice(DEV_TABS.length - 1, 0, ["firesim", "Fire sim", ["firelab", "firefx", "autofire", "firesilk", "fire"]]);
   DEV_TABS.splice(DEV_TABS.length - 2, 0, ["traj", "Trajectory", ["trajorbit", "trajspiral", "trajboomer", "trajpong", "trajhoming", "trajseeker", "trajnear", "trajaim", "trajgrav", "trajfloat", "trajflat"]]);
   DEV_TABS.splice(DEV_TABS.length - 2, 0, ["zones", "Zones", ["autozones", "autoorb", "moss", "webs", "timber", "paved", "grove", "winding", "spider"].map((g) => g.startsWith("auto") ? g : "zone_" + g)]);
+  DEV_TABS.splice(DEV_TABS.length - 2, 0, ["presets", "Presets", []], ["grem", "Grem", ["grem"]]);
   DEV_TABS.splice(DEV_TABS.length - 2, 0, ["auto", "Auto", ["auto", "autohub", "automaps", "autolevel", "autoblocks", "autoguns", "autoperks", "autofoes", "autodeath", "autoloot", "autochests", "autobag", "autothrow"]]);
   var DEV_KEY = "caverunner-dev";
   var DEV = Object.assign({}, DEV_DEFAULTS);
@@ -5411,7 +5479,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var FXVOL_KEY = "caverunner-vol-fx";
   var MUSVOL_KEY = "caverunner-vol-music";
   var SFX = (() => {
-    let ac = null, master = null, sfxBus = null, ambBus = null, musicBus = null, noiseBuf = null, crackBuf = null, comp = null, tap = null;
+    let ac = null, master = null, sfxBus = null, ambBus = null, musicBus = null, noiseBuf = null, crackBuf = null, comp = null, tap3 = null;
     let voices = 0, hooked = false;
     const stored = (key) => {
       try {
@@ -6609,12 +6677,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       stream: () => {
         try {
           if (!ac || !ac.createMediaStreamDestination) return null;
-          if (!tap) {
-            tap = ac.createMediaStreamDestination();
-            comp.connect(tap);
+          if (!tap3) {
+            tap3 = ac.createMediaStreamDestination();
+            comp.connect(tap3);
           }
           if (ac.state === "suspended") ac.resume();
-          return tap.stream;
+          return tap3.stream;
         } catch (_) {
           return null;
         }
@@ -12982,6 +13050,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       ang,
       pull: 0,
       vac: sh.r || 64,
+      follow: sh.follow || 0,
       only: sh.only || null
     };
   }
@@ -16048,6 +16117,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   function titleAimPick(S2, r) {
     const lvl = !!S2.lvl, E = DEV.autoAimEdge, pv = !!(S2.hub && S2.hub.pv);
+    if (S2.pick) {
+      if (S2.pick.hp > 0 && S2.foes.includes(S2.pick)) return S2.pick;
+      S2.pick = null;
+    }
     let best = null, bd = lvl ? DEV.autoAimR : pv ? Infinity : TITLE_AIM;
     for (const f of S2.foes) {
       const fx = f.x - S2.scroll, boss = f.k && f.k.boss, d = Math.hypot(fx - r.x, f.ty - r.y) - (boss ? f.r : 0);
@@ -16629,7 +16702,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         s.vx *= k;
         s.vy *= k;
       }
-      if (s.follow && !s.beam && !s.heal) shotFollow(S2, s, dt);
+      if (s.follow && !s.beam && !s.heal && !s.vac) shotFollow(S2, s, dt);
       let ex = 0, ey = 0;
       const path = hasTraj(s) && !s.beam && !s.heal;
       if (path) {
@@ -16650,6 +16723,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
       if (s.pull && !s.foe) for (const a of holePull(s, S2.foes, S2.scroll, S2.shots, dt, DEV.bhPull * s.pull / 70)) burst(S2, a.x, a.y, 3, "#c58cff", 40, "spark", 0.25);
       if (s.vac) {
+        if (s.follow) fieldFollow(S2, s, dt);
         vacPull(s, S2.foes, S2.scroll, S2.shots, dt, VAC_PULL, S2.coins, S2.loot, S2.runners);
         continue;
       }
@@ -25151,7 +25225,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     return out;
   }
-  function chestRoll(rnd2, tier) {
+  function chestRoll(rnd2, tier, goldOnly = false) {
     const w = [["gold", DEV.autoChestGold], ["mod", DEV.autoChestMod], ["exo", DEV.autoChestExo], ["red", DEV.autoChestRed], ["perk", DEV.autoChestPerk], ["green", DEV.autoChestGreen]];
     const tot = w.reduce((a, [, v]) => a + Math.max(0, +v), 0);
     let r = rnd2() * tot, kind = "gold";
@@ -25162,6 +25236,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         break;
       }
     }
+    if (goldOnly) kind = "gold";
     const t = Math.max(1, tier);
     if (kind === "mod") return [{ kind: "mod", id: rollMod(rnd2, t), n: 1 }];
     if (kind === "exo") return [exoMod(EXO_CATS[Math.floor(rnd2() * EXO_CATS.length) % EXO_CATS.length], t)];
@@ -25208,7 +25283,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (!c) return false;
     c.open = true;
     c.openT = S2.t;
-    c.items = chestRoll(S2.rnd, S2.tier || 1);
+    c.items = chestRoll(S2.rnd, S2.tier || 1, !!(S2.lvl && S2.lvl.data && S2.lvl.data.grem));
     const y = (c.y == null ? titleFloor(c.x, S2) : c.y) - 8;
     titleSpill(S2, c.x, y, c.items, 1.3);
     S2.snd.push({ k: "coin", x: c.x - S2.scroll, y });
@@ -25798,7 +25873,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     P2.z.push(z);
     return z;
   }
-  function levelPlan(seed, minutes = DEV.autoLvlMin, blocks = DEV.autoBlockN, pace = DEV.autoLvlPace) {
+  function levelPlan(seed, minutes = DEV.autoLvlMin, blocks = DEV.autoBlockN, pace = DEV.autoLvlPace, endless = false) {
     const P2 = titlePlan(seed, TITLE_ZONES);
     flatZone(P2, -300, LVL_PAD, 0);
     const want = Math.max(TITLE_ZLEN[0], minutes * 60 * LVL_SCROLL * pace);
@@ -25810,8 +25885,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       x = z.x1;
     }
     planBlocks(P2, zs, seed, blocks);
-    const wallX = plantWall(P2, zs, seed, pace);
+    const wallX = endless ? Infinity : plantWall(P2, zs, seed, pace);
     const a = flatZone(P2, x, x + LVL_ARENA, -14);
+    if (endless) return { zp: P2, seed, padX: LVL_PADX, z0: LVL_PAD, z1: x, len: x - LVL_PAD, arena: { x0: a.x0, x1: a.x1, mid: (a.x0 + a.x1) / 2 }, exitX: a.x1 + LVL_EXITW / 2, wallX };
     const e = flatZone(P2, a.x1, a.x1 + LVL_EXITW, 0);
     flatZone(P2, e.x1, 1e9, 400);
     return {
@@ -25859,9 +25935,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   var levelState = (S2) => S2.lvl && S2.lvl.data || null;
   var levelTeamX = (S2) => S2.scroll + LVL_TEAM;
-  function levelScene(vh, seed, n, plan, team, tier = 1, run = null) {
+  function levelScene(vh, seed, n, plan, team, tier = 1, run = null, grem = false) {
     const base = lvlPace(tier);
-    if (!plan) plan = levelPlan(seed, void 0, void 0, base);
+    if (!plan) plan = levelPlan(seed, void 0, grem ? 0 : void 0, base, grem);
     const L = {
       plan,
       base,
@@ -25880,14 +25956,16 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       boss: null,
       failed: false,
       run,
-      bagV: 0
+      bagV: 0,
+      grem,
+      ups: 0
     };
     const S2 = titleScene(vh, seed, Math.min(vh * 0.24, 50), vh - Math.min(vh * 0.08, 20), { runners: n, level: {
       zp: plan.zp,
       step: levelStep,
       data: L,
       hurt: levelHurt,
-      loot: (S3, f) => killLoot(f.k.boss ? "boss" : f.k.elite ? "elite" : "foe", S3.tier || 1, S3.rnd, f.k.gold),
+      loot: (S3, f) => killLoot(f.k.boss ? "boss" : f.k.elite ? "elite" : "foe", S3.tier || 1, S3.rnd, f.k.gold).filter((it) => !L.grem || it.kind === "gold"),
       fits: (_S, it) => !L.run || bagFits(L.run, it),
       take: (_S, it) => {
         if (L.run && bagAdd(L.run, it)) return false;
@@ -26116,6 +26194,30 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       S2.runners.forEach((r) => {
         r.retarget = 0;
       });
+      if (L.grem) levelOnward(S2, L);
+    }
+  }
+  function levelOnward(S2, L) {
+    const P2 = L.plan, zp = P2.zp, tier = (S2.tier || 1) + 1;
+    S2.tier = tier;
+    if (L.run) L.run.tier = tier;
+    L.ups = (L.ups || 0) + 1;
+    L.base = lvlPace(tier);
+    const z0 = P2.arena.x1, want = Math.max(TITLE_ZLEN[0], DEV.autoLvlMin * 60 * LVL_SCROLL * L.base);
+    let x = Math.max(z0, zp.z[zp.z.length - 1].x1);
+    while (x - z0 < want) x = titleZoneAdd(zp, x).x1;
+    const a = flatZone(zp, x, x + LVL_ARENA, -14);
+    Object.assign(P2, { z0, z1: x, len: x - z0, arena: { x0: a.x0, x1: a.x1, mid: (a.x0 + a.x1) / 2 }, exitX: a.x1 + LVL_EXITW / 2, seed: P2.seed + 1 });
+    L.elites = elitePlan(P2, S2.rnd);
+    L.chests = chestPlan(P2);
+    L.phase = "run";
+    L.bossDead = false;
+    L.boss = null;
+    L.arenaT = -1;
+    S2.gunsOff = false;
+    S2.huddle = false;
+    if (S2.team) {
+      for (const pl of S2.team) if (pl.alive !== false) pl.hp = playerStats(pl).maxHp;
     }
   }
   function clearedWords(S2, L, dt) {
@@ -26196,7 +26298,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function levelPads(S2) {
     const L = levelState(S2);
     if (!L) return [];
-    return [{ id: "enter", x: L.plan.padX - S2.scroll, fy: titleFloor(L.plan.padX, S2) }, { id: "exit", x: L.plan.exitX - S2.scroll, fy: titleFloor(L.plan.exitX, S2) }].filter((p) => p.x > -60 && p.x < TITLE_VW + 60 && !(p.id === "exit" && L.padGone));
+    return [{ id: "enter", x: L.plan.padX - S2.scroll, fy: titleFloor(L.plan.padX, S2) }, { id: "exit", x: L.plan.exitX - S2.scroll, fy: titleFloor(L.plan.exitX, S2) }].filter((p) => p.x > -60 && p.x < TITLE_VW + 60 && !(p.id === "exit" && (L.padGone || L.grem)));
   }
 
   // src/game/systems/lightning.js
@@ -28810,6 +28912,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   var removePreset = (list, i) => list.filter((_, k) => k !== i);
   var presetGun = (p) => storeGun(p.gun);
+  function setPreset(list, i, name, gun) {
+    const g = gun && storeGun(gun);
+    if (!g || i < 0 || i >= list.length) return list.slice();
+    return list.map((p, k) => k === i ? { name: cleanName(name, g.name), gun: g } : p);
+  }
+  function movePreset(list, i, d) {
+    const j = Math.max(0, Math.min(list.length - 1, i + d)), out = list.slice();
+    if (i < 0 || i >= list.length || j === i) return out;
+    const [p] = out.splice(i, 1);
+    out.splice(j, 0, p);
+    return out;
+  }
 
   // src/dev/autouse.js
   var AUTO_KNOBS = /* @__PURE__ */ new Set([
@@ -29069,6 +29183,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     "fxSmSideLo",
     "fxSmSizeHi",
     "fxSmSizeLo",
+    "gremGrow",
+    "gremP2",
+    "gremP3",
+    "gremP4",
+    "gremPickR",
+    "gremPrice",
     "jeAimTolHi",
     "jeAimTolLo",
     "jeBounceHi",
@@ -32719,7 +32839,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const fams = Object.keys(FAMILIES);
     return Object.keys(MODS).filter((id) => !id.includes(":") && !MODS[id].trig).sort((a, b) => fams.indexOf(FAMILY_OF[a] || "shots") - fams.indexOf(FAMILY_OF[b] || "shots") || MODS[a].name.localeCompare(MODS[b].name));
   };
-  function ModGrid({ onMod }) {
+  function ModGrid({ onMod, onTap, note }) {
     const [pick, setPick] = useState(null);
     const [got, setGot] = useState("");
     const hold = useRef(null);
@@ -32742,7 +32862,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       hold.current = null;
       if (!H) return;
       window.clearTimeout(H.t);
-      if (!H.done) setPick(H.id);
+      if (!H.done) {
+        setPick(H.id);
+        if (onTap) onTap(H.id);
+      }
     };
     const cancel = () => {
       if (hold.current) window.clearTimeout(hold.current.t);
@@ -32752,7 +32875,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return h(
       "div",
       { className: "modgrid" },
-      h("p", { className: "devnote" }, "Tap a mod for what it does; hold it to put one in the bag."),
+      h("p", { className: "devnote" }, note || "Tap a mod for what it does; hold it to put one in the bag."),
       m ? h(
         "div",
         { className: "mginfo" },
@@ -33591,7 +33714,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var blurBox = () => {
     if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
   };
-  function DevPanel({ input, refresh, close, onRestart, onSpawnGun, onSpawnLevel, onGem, onMod }) {
+  function DevPanel({ input, refresh, close, onRestart, onSpawnGun, onSpawnLevel, onGem, onMod, pages }) {
     const [grid, setGrid] = useState(false);
     const LO = input.current.loadout;
     const [, bump] = useState(0);
@@ -33747,8 +33870,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           { className: "devbody" },
           // (the mod grid scrolls with the knobs: outside the body it had no scroll and ran off the panel)
           grid && onMod ? h(ModGrid, { onMod }) : null,
+          !needle && pages && pages[tab] ? pages[tab]() : null,
           h("p", { className: "devkey" }, h("i", { className: "devauto" }), "works in Auto ", h("i", { className: "devsome" }), "some ", h("i", { className: "devold" }), "old game only"),
-          shown.length ? null : h("p", { className: "devnote" }, "No knob matches “" + q.trim() + "”."),
+          shown.length || !needle && pages && pages[tab] ? null : h("p", { className: "devnote" }, "No knob matches “" + q.trim() + "”."),
           shown.map(({ g, name, rows, hits, nameHit }) => {
             const shut = needle ? false : !isOpen(g);
             const changed = rows.filter((m) => DEV[m.k] !== DEV_DEFAULTS[m.k]).length;
@@ -33872,7 +33996,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function PresetList({ input, close }) {
     const [list, setList] = useState(loadPresets);
     const [asking, setAsking] = useState(-1);
-    const tap = (f) => (e) => {
+    const tap3 = (f) => (e) => {
       e.preventDefault();
       e.stopPropagation();
       f();
@@ -33893,12 +34017,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         h("button", {
           className: "pregun",
           style: { color: gunColor(p.gun) },
-          onPointerDown: tap(() => {
+          onPointerDown: tap3(() => {
             input.current.spawnPreset = presetGun(p);
             close();
           })
         }, p.name),
-        asking === i ? h("button", { className: "predel", onPointerDown: tap(() => del(i)) }, "Delete") : h("button", { className: "predelask", "aria-label": "Delete preset", onPointerDown: tap(() => setAsking(i)) }, "🗑️")
+        asking === i ? h("button", { className: "predel", onPointerDown: tap3(() => del(i)) }, "Delete") : h("button", { className: "predelask", "aria-label": "Delete preset", onPointerDown: tap3(() => setAsking(i)) }, "🗑️")
       ))) : h("p", { className: "prenone" }, "No presets yet — 💾 in the Bag saves one")
     );
   }
@@ -34979,9 +35103,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         if (Math.hypot(ev.clientX - sx, ev.clientY - sy) > 14) done();
       };
       const up = () => {
-        const tap = !fired;
+        const tap3 = !fired;
         done();
-        if (tap && onTap) onTap();
+        if (tap3 && onTap) onTap();
       };
       window.addEventListener("pointermove", move);
       window.addEventListener("pointerup", up);
@@ -35520,7 +35644,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const [flash, setFlash] = useState("");
     const timer = useRef(0);
     useEffect(() => () => clearTimeout(timer.current), []);
-    const tap = (f) => (e) => {
+    const tap3 = (f) => (e) => {
       e.preventDefault();
       e.stopPropagation();
       f();
@@ -35566,18 +35690,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           else if (e.key === "Escape") setEd(null);
         }
       }),
-      h("button", { className: "hedok", "aria-label": "Save", onPointerDown: tap(ok) }, "✓"),
-      h("button", { className: "hedno", "aria-label": "Cancel", onPointerDown: tap(() => setEd(null)) }, "✕")
+      h("button", { className: "hedok", "aria-label": "Save", onPointerDown: tap3(ok) }, "✓"),
+      h("button", { className: "hedno", "aria-label": "Cancel", onPointerDown: tap3(() => setEd(null)) }, "✕")
     );
     return h(
       "div",
       { className: "shead" },
       h("h2", { className: "bagname" + (gun ? "" : " none"), style: gun ? { color: gunColor(gun) } : null }, gun ? gun.name : "Empty slot"),
-      gun ? h("button", { className: "renamebtn", "aria-label": "Rename gun", onPointerDown: tap(() => open("name")) }, "✏️") : null,
+      gun ? h("button", { className: "renamebtn", "aria-label": "Rename gun", onPointerDown: tap3(() => open("name")) }, "✏️") : null,
       flash ? h("span", { className: "hflash" }, flash) : null,
       h("span", { className: "hgap" }),
-      gun ? h("button", { className: "artbtn", "aria-label": "Gun look", onPointerDown: tap(onArt) }, "🖼️") : null,
-      gun && devShown() ? h("button", { className: "presetbtn", "aria-label": "Save as preset", onPointerDown: tap(() => open("preset")) }, "💾") : null,
+      gun ? h("button", { className: "artbtn", "aria-label": "Gun look", onPointerDown: tap3(onArt) }, "🖼️") : null,
+      gun && devShown() ? h("button", { className: "presetbtn", "aria-label": "Save as preset", onPointerDown: tap3(() => open("preset")) }, "💾") : null,
       doneBtn
     );
   }
@@ -36093,7 +36217,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (sure) onNew();
       else setSure(true);
     };
-    const tap = (fn) => (e) => {
+    const tap3 = (fn) => (e) => {
       e.preventDefault();
       fn();
     };
@@ -36108,17 +36232,299 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return h(
       "div",
       { className: "pausewrap" },
-      h("div", { className: "shade", onPointerDown: tap(close) }),
+      h("div", { className: "shade", onPointerDown: tap3(close) }),
       h(
         "div",
         { className: "pausecard" },
         h("div", { className: "phead" }, "PAUSED", h("span", null, label || "Slot " + getSlot())),
-        h("button", { className: "pbtn resume", onPointerDown: tap(close) }, "▶ Resume"),
-        h("button", { className: "pbtn save", onPointerDown: tap(save) }, saved ? h("span", { key: saved, className: "saved" }, "✓ Saved") : "💾 Save"),
+        h("button", { className: "pbtn resume", onPointerDown: tap3(close) }, "▶ Resume"),
+        h("button", { className: "pbtn save", onPointerDown: tap3(save) }, saved ? h("span", { key: saved, className: "saved" }, "✓ Saved") : "💾 Save"),
         h(Volumes),
-        onNew ? h("button", { className: "pbtn newrun" + (sure ? " sure" : ""), onPointerDown: tap(fresh2) }, sure ? "Tap again: new run" : "↺ New run") : null,
-        h("button", { className: "pbtn exit", onPointerDown: tap(exit) }, "⏏ Exit to main menu")
+        onNew ? h("button", { className: "pbtn newrun" + (sure ? " sure" : ""), onPointerDown: tap3(fresh2) }, sure ? "Tap again: new run" : "↺ New run") : null,
+        h("button", { className: "pbtn exit", onPointerDown: tap3(exit) }, "⏏ Exit to main menu")
       )
+    );
+  }
+
+  // src/auto/grem.js
+  var five3 = (v) => Math.max(5, Math.round(v / 5) * 5);
+  var gremPrice = (i) => five3(DEV.gremPrice * Math.pow(DEV.gremGrow, Math.max(0, i)));
+  function gremPaidAt(i) {
+    let s = 0;
+    for (let k = 0; k <= i; k++) s += gremPrice(k);
+    return s;
+  }
+  function gremUnlocked(gold, n) {
+    let k = 0;
+    while (k < n && gold >= gremPaidAt(k)) k++;
+    return k;
+  }
+  function gremFill(gold, i) {
+    const end = gremPaidAt(i), start = end - gremPrice(i);
+    return Math.max(0, Math.min(1, (gold - start) / Math.max(1, end - start)));
+  }
+  var gremTeam = (tier) => Math.min(4, 1 + [DEV.gremP2, DEV.gremP3, DEV.gremP4].filter((lv) => tier >= lv).length);
+  var gremTeamGun = (u, j) => u > 0 ? ((u - j) % u + u) % u : -1;
+  var GREM_KIT_KEY = "caverunner-grem-kit";
+  var gremKitNew = () => ({ exo: Object.fromEntries(EXO_CATS.map((c) => [c, Array(EXO_SLOTS).fill(0)])), perks: Array(PERK_SLOTS).fill(null) });
+  function gremKitClean(k) {
+    const out = gremKitNew();
+    if (!k || typeof k !== "object") return out;
+    for (const c of EXO_CATS) {
+      const a = k.exo && Array.isArray(k.exo[c]) ? k.exo[c] : [];
+      out.exo[c] = out.exo[c].map((_, i) => {
+        const t = Math.round(Number(a[i]) || 0);
+        return t >= 1 && t <= 5 ? t : 0;
+      });
+    }
+    const p = Array.isArray(k.perks) ? k.perks : [];
+    out.perks = out.perks.map((_, i) => typeof p[i] === "string" && PERKS[p[i]] && !PERKS[p[i]].stat ? p[i] : null);
+    return out;
+  }
+  var gremKitLoad = () => {
+    try {
+      return gremKitClean(JSON.parse(localStorage.getItem(GREM_KIT_KEY) || "null"));
+    } catch (_) {
+      return gremKitNew();
+    }
+  };
+  var gremKitSave = (k) => {
+    try {
+      localStorage.setItem(GREM_KIT_KEY, JSON.stringify(k));
+    } catch (_) {
+    }
+  };
+  function gremKitFit(pl, kit) {
+    for (const c of EXO_CATS) pl.exo[c] = kit.exo[c].map((t) => t ? exoMod(c, t) : null);
+    pl.perks = kit.perks.map((id) => id ? { kind: "perk", id, n: 1 } : null);
+  }
+  function gremRun(kit, rnd2 = Math.random) {
+    const pl = newPlayer(0);
+    pl.guns[0] = starterKit(rnd2).gun;
+    gremKitFit(pl, kit);
+    const run = { tier: 1, players: [pl], bag: Array(14).fill(null), seed: 1 + Math.floor(rnd2() * 1e6) };
+    mapsOf(run);
+    return run;
+  }
+
+  // src/ui/auto/presetlib.js
+  var tap = (fn) => (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    fn();
+  };
+  function PresetLib() {
+    const [list, setList] = useState(loadPresets);
+    const [open, setOpen] = useState(-1);
+    if (open >= 0 && list[open]) {
+      return h(PresetEdit, { key: open + "|" + list[open].name, list, i: open, setList, setOpen });
+    }
+    return h(
+      "div",
+      { className: "aplib" },
+      h("p", { className: "devnote" }, "Your saved guns, in the order Grem Mode unlocks them. Tap one to see it fire and change it. 💾 on a gun’s panel (dev mode) saves a new one."),
+      list.length ? h("div", { className: "apltiles" }, list.map((p, i) => h(
+        "button",
+        {
+          key: i,
+          className: "apltile",
+          "data-preset": i,
+          onPointerDown: tap(() => {
+            SFX.fx("open");
+            setList(loadPresets());
+            setOpen(i);
+          })
+        },
+        h("i", { className: "aplnum" }, i + 1),
+        h("span", { className: "aplicon" }, h(GunIcon, { gun: p.gun })),
+        h("b", { className: "aplname" }, p.name),
+        h("i", { className: "aplprice" }, gremPrice(i) + "g")
+      ))) : h("p", { className: "prenone" }, "No presets yet — open a gun in the nav and tap 💾 on its panel.")
+    );
+  }
+  function PresetEdit({ list, i, setList, setOpen }) {
+    const [draft] = useState(() => presetGun(list[i]));
+    const [name, setName] = useState(list[i].name);
+    const [v, setV] = useState(0);
+    const [dirty2, setDirty] = useState(false);
+    const [pick, setPick] = useState(-1);
+    const [asking, setAsking] = useState(false);
+    const [flash, setFlash] = useState("");
+    const pl = useRef(newPlayer(0));
+    if (!draft) return h("p", { className: "prenone" }, "This preset can’t be read.");
+    pl.current.guns[0] = draft;
+    pl.current.active = 0;
+    const changed = () => {
+      setDirty(true);
+      setV((n) => n + 1);
+    };
+    const slotTap = (s) => {
+      SFX.ui("tap");
+      if (pick < 0) {
+        setPick(s);
+        return;
+      }
+      if (pick === s) {
+        setPick(-1);
+        return;
+      }
+      const a = draft.slots[pick];
+      draft.slots[pick] = draft.slots[s];
+      draft.slots[s] = a;
+      setPick(-1);
+      changed();
+    };
+    const put = (id) => {
+      const s = pick >= 0 ? pick : draft.slots.indexOf(null);
+      if (s < 0) {
+        setFlash("No empty slot: pick one to replace");
+        return;
+      }
+      draft.slots[s] = id;
+      setPick(-1);
+      changed();
+      SFX.fx("open");
+    };
+    const empty = () => {
+      if (pick < 0) return;
+      draft.slots[pick] = null;
+      setPick(-1);
+      changed();
+      SFX.fx("close");
+    };
+    const save = () => {
+      const next = setPreset(loadPresets(), i, name, draft);
+      savePresets(next);
+      setList(next);
+      setDirty(false);
+      setFlash("Saved");
+      SFX.fx("open");
+    };
+    const move = (d) => {
+      const j = Math.max(0, Math.min(list.length - 1, i + d));
+      if (j === i) return;
+      const next = movePreset(loadPresets(), i, d);
+      savePresets(next);
+      setList(next);
+      setOpen(j);
+      SFX.ui("tap");
+    };
+    const del = () => {
+      if (!asking) {
+        setAsking(true);
+        return;
+      }
+      const next = removePreset(loadPresets(), i);
+      savePresets(next);
+      setList(next);
+      setOpen(-1);
+      SFX.fx("close");
+    };
+    const sig = "pre|" + i + "|" + v + "|" + draft.slots.join();
+    return h(
+      "div",
+      { className: "apled" },
+      h(
+        "div",
+        { className: "apledhead" },
+        h("button", { className: "dbg apledback", onPointerDown: tap(() => {
+          SFX.fx("close");
+          setOpen(-1);
+        }) }, "‹ Presets"),
+        h("b", null, "#" + (i + 1) + " of " + list.length),
+        h("button", { className: "dbg", disabled: i === 0, onPointerDown: tap(() => move(-1)) }, "◀"),
+        h("button", { className: "dbg", disabled: i === list.length - 1, onPointerDown: tap(() => move(1)) }, "▶"),
+        h("button", { className: "dbg apleddel" + (asking ? " sure" : ""), onPointerDown: tap(del) }, asking ? "Delete" : "🗑️")
+      ),
+      h("input", {
+        className: "devsearch aplname",
+        value: name,
+        maxLength: PRESET_NAME_MAX,
+        placeholder: draft.name,
+        onChange: (e) => {
+          setName(e.target.value);
+          setDirty(true);
+        }
+      }),
+      h(GunPanel, { gun: draft, sig, col: "#ffc93a", cls: "apledpanel", pl: pl.current, gi: 0, noSave: true }),
+      h("div", { className: "apledslots" }, draft.slots.map((id, s) => {
+        const it = id && MODS[id] ? { kind: "mod", id, n: 1 } : null;
+        return h("button", {
+          key: s,
+          className: "aslot" + (it ? " full k-mod" : "") + (s === pick ? " sel" : ""),
+          "data-pslot": s,
+          style: itemEdge(it),
+          onPointerDown: tap(() => slotTap(s))
+        }, it ? h(ItemIcon, { it }) : null);
+      })),
+      h(
+        "div",
+        { className: "apledbtns" },
+        h("button", { className: "dbg", disabled: pick < 0 || !draft.slots[pick], onPointerDown: tap(empty) }, "✕ Empty slot"),
+        h("button", { className: "dbg apledsave" + (dirty2 ? " on" : ""), disabled: !dirty2, onPointerDown: tap(save) }, "Save changes"),
+        flash ? h("span", { key: flash + v, className: "apledflash" }, flash) : null
+      ),
+      h(ModGrid, { onMod: put, onTap: put, note: "Tap a slot to pick it (tap another to swap them), then tap a mod to put it there; no slot picked: the first empty one." })
+    );
+  }
+
+  // src/ui/auto/gremkit.js
+  var ROMAN2 = ["", "I", "II", "III", "IV", "V"];
+  var PERK_IDS2 = Object.keys(PERKS).filter((id) => !PERKS[id].stat && !PERKS[id].off).sort((a, b) => PERKS[a].name.localeCompare(PERKS[b].name));
+  function GremKit() {
+    const [kit, setKit] = useState(gremKitLoad);
+    const change = (fn) => {
+      const k = JSON.parse(JSON.stringify(kit));
+      fn(k);
+      gremKitSave(k);
+      setKit(k);
+    };
+    return h(
+      "div",
+      { className: "agkit" },
+      h("p", { className: "devnote" }, "Grem Mode’s player 1 starts with these (the next Grem run). Tap an exo slot to step its tier."),
+      ...EXO_CATS.map((c) => h(
+        "div",
+        { key: c, className: "agkrow", "data-cat": c },
+        h("span", { className: "agklab" }, h(PixIcon, { id: c, size: 18, tint: HUB_MACHINES.exo.hue }), EXO_NAMES[c]),
+        ...kit.exo[c].map((t, i) => h("button", {
+          key: i,
+          className: "agkslot" + (t ? " on" : ""),
+          "data-slot": i,
+          onPointerDown: (e) => {
+            e.preventDefault();
+            SFX.ui("tap");
+            change((k) => {
+              k.exo[c][i] = (t + 1) % 6;
+            });
+          }
+        }, ROMAN2[t] || "·"))
+      )),
+      h("div", { className: "agkperks" }, kit.perks.map((id, i) => h(
+        "select",
+        {
+          key: i,
+          className: "agkperk" + (id ? " on" : ""),
+          value: id || "",
+          "data-slot": i,
+          onChange: (e) => {
+            const v = e.target.value;
+            change((k) => {
+              k.perks[i] = v || null;
+            });
+          }
+        },
+        h("option", { value: "" }, "Perk " + (i + 1) + ": none"),
+        ...PERK_IDS2.map((p) => h("option", { key: p, value: p }, PERKS[p].glyph + " " + PERKS[p].name))
+      ))),
+      h("button", { className: "dbg", onPointerDown: (e) => {
+        e.preventDefault();
+        SFX.fx("close");
+        change((k) => {
+          for (const c of EXO_CATS) k.exo[c] = k.exo[c].map(() => 0);
+          k.perks = k.perks.map(() => null);
+        });
+      } }, "Clear kit")
     );
   }
 
@@ -36222,7 +36628,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
 
   // src/ui/auto/AutoScreen.js
-  var ROMAN2 = ["I", "II", "III", "IV", "V"];
+  var ROMAN3 = ["I", "II", "III", "IV", "V"];
   function openRun() {
     const r = loadAutoRun();
     if (r) return kitMissing(r);
@@ -36230,6 +36636,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     saveAutoRun(n);
     return n;
   }
+  var DEV_PAGES = { presets: () => h(PresetLib), grem: () => h(GremKit) };
   function freshRun() {
     saveAutoRun(newRun());
     location.reload();
@@ -36456,7 +36863,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
       });
     }, []);
-    const tap = (fn) => (e) => {
+    const tap3 = (fn) => (e) => {
       e.preventDefault();
       fn();
     };
@@ -37094,7 +37501,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             h("div", { className: "abosstrack" }, h("i", { style: { width: (100 * boss.hp / Math.max(1, boss.max)).toFixed(1) + "%" } }))
           ) : null
         ),
-        devOn ? h("button", { className: "adevbtn", title: "Dev", onPointerDown: tap(() => {
+        devOn ? h("button", { className: "adevbtn", title: "Dev", onPointerDown: tap3(() => {
           SFX.fx("open");
           setDevOpen(true);
         }) }, "⚙️") : null,
@@ -37119,7 +37526,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         "div",
         { className: "abtns" },
         h(PillStick, { onMove: steer }),
-        h("button", { className: "abtn ab", onPointerDown: tap(pressB) }, "B"),
+        h("button", { className: "abtn ab", onPointerDown: tap3(pressB) }, "B"),
         h("button", { className: "abtn aa", onPointerDown: downA }, "A")
       ),
       arc ? h(GunArc, { arc, run }) : null,
@@ -37141,6 +37548,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           SFX.fx("close");
           setDevOpen(false);
         },
+        pages: DEV_PAGES,
         onGem: (kind) => {
           bagAdd(run, { kind, n: 1 });
           saveAutoRun(run);
@@ -37298,16 +37706,25 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     );
   }
   var MACHINE_EDGE = HUB_MACHINES.mod.hue;
-  function GunPanel({ gun, sig, col, onLit, cls, pl, gi }) {
+  function GunPanel({ gun, sig, col, onLit, cls, pl, gi, noSave }) {
     const sim = useRef(null);
     if (!sim.current || sim.current.sig !== sig) sim.current = Object.assign(fireSimNew(gun), { sig });
     const [big, setBig] = useState(false);
+    const [saved, setSaved] = useState(0);
     const flip = () => setBig((b) => !b);
+    const keep = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      savePresets(addPreset(loadPresets(), gun.name, gun));
+      SFX.fx("open");
+      setSaved((n) => n + 1);
+    };
     return h(
       "div",
       { className: "agunpanel " + cls + (big ? " big" : ""), style: { "--pc": col } },
       h(GunStats, { gun, sim, sig }),
-      h(PreviewWindow, { sim, sig, onLit, pl, gi, flip })
+      h(PreviewWindow, { sim, sig, onLit, pl, gi, flip }),
+      !noSave && devShown() ? h("button", { className: "agpsave", title: "Save as a preset", onPointerDown: keep }, saved ? h("span", { key: saved, className: "agpsaved" }, "✓") : "💾") : null
     );
   }
   function BagGunView({ gun, down, drag, close }) {
@@ -37351,7 +37768,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var HOLO_P = 3;
   function PreviewWindow({ sim, sig, onLit, pl, gi, flip }) {
     const tapT = useRef(0);
-    const tap = (e) => {
+    const tap3 = (e) => {
       e.preventDefault();
       const t = performance.now();
       if (t - tapT.current < BIG_TAP) {
@@ -37477,7 +37894,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         if (litFn.current) litFn.current(null);
       };
     }, [sig]);
-    return h("canvas", { ref, className: "gfire apv", onPointerDown: tap });
+    return h("canvas", { ref, className: "gfire apv", onPointerDown: tap3 });
   }
   function NavRow({ row, level, cls, pick, open, down, drag, holdHelm, holdGun, meters, lit, slide, cold, pinNav, manual, big, rowEmpty }) {
     const [slideIn] = useState(!!slide);
@@ -37571,7 +37988,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const m = MODS[it.id || ""];
       g = m ? { glyph: m.glyph, col: famCol(it.id || "") } : { glyph: "?", col: "#888" };
     } else if (it.kind === "exo") {
-      return h("span", { className: "aglyph" }, h(PixIcon, { id: it.cat || "hp", size: "64%", tint: HUB_MACHINES.exo.hue }), it.tier ? h("i", { className: "atier" }, ROMAN2[it.tier - 1]) : null);
+      return h("span", { className: "aglyph" }, h(PixIcon, { id: it.cat || "hp", size: "64%", tint: HUB_MACHINES.exo.hue }), it.tier ? h("i", { className: "atier" }, ROMAN3[it.tier - 1]) : null);
     } else if (it.kind === "perk") {
       const pk = PERKS[it.id || ""];
       g = pk ? { glyph: pk.glyph, col: HUB_MACHINES.perk.hue } : { glyph: "?", col: "#888" };
@@ -37582,7 +37999,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       "span",
       { className: "aglyph" },
       h(GlyphIcon, { glyph: g.glyph, col: g.col }),
-      g.tier ? h("i", { className: "atier" }, ROMAN2[g.tier - 1]) : null,
+      g.tier ? h("i", { className: "atier" }, ROMAN3[g.tier - 1]) : null,
       tg && isAutoTarget(tg) ? h(TargetPic, { t: tg, size: 22, className: "atgt aon" }) : null
     );
   }
@@ -37723,8 +38140,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         h(
           "div",
           { className: "ptitle" },
-          h("b", { style: { color: S0.tint } }, EXO_NAMES[cat] + " " + ROMAN2[tier - 1]),
-          h("span", null, "Exo mod · tier " + ROMAN2[tier - 1] + " of V · fits the suit’s " + EXO_NAMES[cat] + " slots")
+          h("b", { style: { color: S0.tint } }, EXO_NAMES[cat] + " " + ROMAN3[tier - 1]),
+          h("span", null, "Exo mod · tier " + ROMAN3[tier - 1] + " of V · fits the suit’s " + EXO_NAMES[cat] + " slots")
         ),
         h("button", { className: "pclose", onPointerDown: shut }, "×")
       ),
@@ -37967,9 +38384,242 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
   }
 
+  // src/ui/auto/GremScreen.js
+  var tap2 = (fn) => (e) => {
+    e.preventDefault();
+    fn();
+  };
+  function GremScreen() {
+    const [presets] = useState(loadPresets);
+    const run = useRef(gremRun(gremKitLoad()));
+    const [paused, setPaused] = useState(false);
+    const pausedRef = useRef(false);
+    pausedRef.current = paused;
+    const [gold, setGold] = useState(0);
+    const [lvl, setLvl] = useState(1);
+    const [sel, setSel] = useState(-1);
+    const [, setV] = useState(0);
+    const unlocked = useRef(0);
+    const cvs = useRef(null);
+    const scene = useRef(null);
+    const cam = useRef(null);
+    const input = useRef({});
+    const give = (p, i) => {
+      const pl = run.current.players[p], g = presets[i] ? presetGun(presets[i]) : null;
+      if (!pl || !g) return;
+      pl.guns[0] = g;
+      pl.active = 0;
+      if (p === 0) setSel(i);
+    };
+    const dealOut = () => {
+      for (let j = 1; j < run.current.players.length; j++) {
+        const k = gremTeamGun(unlocked.current, j);
+        if (k >= 0) give(j, k);
+      }
+    };
+    const noFlies = [];
+    const [flies, setFlies] = useState(noFlies);
+    const flyN = useRef(0);
+    const flyIn = (it, x, y) => {
+      const c = cvs.current, C = cam.current, tile = document.querySelector(".grem .ggicon");
+      if (!c || !C || !tile) return;
+      const cr = c.getBoundingClientRect(), tr = tile.getBoundingClientRect(), v = camTo(C, x, y), k = cr.width / TITLE_VW;
+      const f = { k: ++flyN.current, it: Object.assign({}, it), slot: -1, fresh: false, x0: cr.left + v.x * k, y0: cr.top + v.y * k, x1: tr.left + tr.width / 2, y1: tr.top + tr.height / 2, s: tr.width };
+      setFlies((fs) => [...fs, f]);
+    };
+    useEffect(() => {
+      const id = setInterval(() => {
+        const S2 = scene.current, R = run.current, C = cam.current;
+        if (!S2) return;
+        const g = bagCount(R, "gold");
+        setGold(g);
+        setLvl(R.tier);
+        const u = gremUnlocked(g, presets.length);
+        if (u > unlocked.current) {
+          unlocked.current = u;
+          give(0, u - 1);
+          dealOut();
+          SFX.fx("open");
+        }
+        const L = levelState(S2);
+        while (L && L.phase !== "arrive" && !L.failed && R.players.length < gremTeam(R.tier) && S2.runners.length < 4) {
+          const pl = newPlayer(R.players.length);
+          pl.guns[0] = starterKit().gun;
+          R.players.push(pl);
+          const k = gremTeamGun(unlocked.current, R.players.length - 1);
+          if (k >= 0) give(R.players.length - 1, k);
+          healRun({ ...R, players: [pl] });
+          if (!sceneAddRunner(S2)) {
+            R.players.pop();
+            break;
+          }
+        }
+        if (C && C.lock >= 0 && !levelLead(S2)) {
+          C.lock = -1;
+          levelControl(S2, -1, null);
+        }
+        setV((n) => n + 1);
+      }, 200);
+      return () => clearInterval(id);
+    }, []);
+    useEffect(() => {
+      const c = cvs.current;
+      if (!c) return void 0;
+      return runScene(c, {
+        size: () => ({ w: c.clientWidth, hh: c.clientHeight }),
+        make: (w, hh2, seed) => {
+          const k = w / TITLE_VW, vh = Math.max(1, hh2) / k, R = run.current;
+          healRun(R);
+          const S2 = levelScene(vh, window.__AUTO_LEVEL || seed, R.players.length, void 0, R.players, R.tier, R, true);
+          S2.onTake = (it, x, y) => flyIn(it, x, y);
+          scene.current = S2;
+          if (window.__TEST_TITLE) window.__gremScene = S2;
+          const C = titleCam(vh / 2, vh);
+          C.pack = true;
+          C.view = vh;
+          camPack(C, S2, 1);
+          cam.current = C;
+          return { S: S2, C, warm: 0 };
+        },
+        paused: () => pausedRef.current,
+        keep: true,
+        still: true,
+        over: (ctx, S2, w, hh2) => {
+          const a = levelClearedAge(S2);
+          if (a >= 0) clearedText(ctx, a, DEV.autoClearT, w, hh2 * 0.14);
+          const f = S2.pick, C = cam.current;
+          if (f && f.hp > 0 && C) {
+            const k = w / TITLE_VW, p = camTo(C, f.x - S2.scroll, f.ty), r = (f.r + 5 + Math.sin(S2.t * 6) * 1.2) * C.z * k;
+            ctx.save();
+            ctx.strokeStyle = "rgba(255,50,50,0.55)";
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(p.x * k, p.y * k, r, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+          }
+          if (levelDeathPrompt(S2)) {
+            const k = w / 150;
+            ctx.save();
+            ctx.scale(k, k);
+            drawHint(ctx, w / 2 / k, hh2 * 0.3 / k, "Tap A to play again", S2.t);
+            ctx.restore();
+          }
+        },
+        // everyone down and A pressed (the blast): a fresh Grem run, back to level 1, every preset locked again
+        next: (S2) => {
+          if (!levelLost(S2)) return false;
+          window.__AUTO_LEVEL = 0;
+          run.current = gremRun(gremKitLoad());
+          unlocked.current = 0;
+          setSel(-1);
+          setGold(0);
+          setLvl(1);
+          setFlies([]);
+          return true;
+        }
+      });
+    }, []);
+    const steer = (st) => {
+      const S2 = scene.current, C = cam.current, r = S2 && S2.runners[0];
+      if (!S2 || !S2.lvl || !r || r.out) return;
+      levelHold(S2, 0);
+      if (!(st.active && st.mag > DEAD) && !r.ctl) return;
+      if (C) C.lock = 0;
+      levelControl(S2, 0, st);
+    };
+    const pressA = () => {
+      SFX.unlock();
+      SFX.ui("tap");
+      const S2 = scene.current;
+      if (S2 && (levelTeleportHome(S2) || chestOpen(S2))) SFX.fx("open");
+    };
+    const pressB = () => {
+      SFX.ui("tap");
+      const S2 = scene.current, C = cam.current;
+      if (S2 && S2.runners.some((r) => r.ctl)) {
+        if (C) C.lock = -1;
+        levelControl(S2, -1, null);
+        SFX.fx("close");
+      }
+    };
+    const playTap = (e) => {
+      if (e.target && e.target.closest && e.target.closest(".pausebtn")) return;
+      const S2 = scene.current, C = cam.current, c = cvs.current;
+      if (!S2 || !C || !c) return;
+      const r = c.getBoundingClientRect(), k = r.width / TITLE_VW, q = camAt(C, (e.clientX - r.left) / k, (e.clientY - r.top) / k);
+      let best = null, bd = Infinity;
+      for (const f of S2.foes) {
+        const d = Math.hypot(f.x - S2.scroll - q.x, f.ty - q.y) - f.r;
+        if (f.hp > 0 && d < bd) {
+          bd = d;
+          best = f;
+        }
+      }
+      if (best && bd <= DEV.gremPickR) {
+        S2.pick = best;
+        SFX.ui("tap");
+      }
+    };
+    return h(
+      "div",
+      { className: "auto grem" },
+      h(
+        "div",
+        { className: "aplay", onPointerDown: playTap },
+        h("canvas", { ref: cvs, className: "aplaycvs" }),
+        h("div", { className: "glvl" }, "Level " + lvl),
+        h("button", { className: "pausebtn", title: "Pause", onPointerDown: (e) => {
+          e.preventDefault();
+          SFX.fx("open");
+          setPaused(true);
+        } }, "⏸")
+      ),
+      h("div", { className: "ggold", "data-gold": gold }, h("span", { className: "ggicon" }, h(NuggetIcon, { kind: "gold" })), h("b", null, gold.toLocaleString())),
+      h(GremGuns, { presets, gold, sel, pick: (i) => {
+        if (i < unlocked.current) {
+          give(0, i);
+          SFX.fx("open");
+        } else SFX.ui("tap");
+      } }),
+      h(
+        "div",
+        { className: "abtns" },
+        h(PillStick, { onMove: steer }),
+        h("button", { className: "abtn ab", onPointerDown: tap2(pressB) }, "B"),
+        h("button", { className: "abtn aa", onPointerDown: tap2(pressA) }, "A")
+      ),
+      flies.map((f) => h(FlyTile, { key: f.k, f, done: () => setFlies((fs) => fs.filter((q) => q.k !== f.k)) })),
+      paused ? h(PauseMenu, { input, label: "Grem Mode · Level " + lvl, onNew: () => location.reload(), close: () => {
+        SFX.fx("close");
+        setPaused(false);
+      } }) : null
+    );
+  }
+  function GremGuns({ presets, gold, sel, pick }) {
+    const u = gremUnlocked(gold, presets.length);
+    if (!presets.length) return h("div", { className: "gguns none" }, h("p", null, "No gun presets yet: Dev → Presets"));
+    return h("div", { className: "gguns" }, presets.map((p, i) => {
+      const f = i < u ? 1 : i === u ? gremFill(gold, i) : 0;
+      return h(
+        "button",
+        {
+          key: i,
+          className: "ggun" + (i < u ? " open" : i === u ? " next" : " locked") + (i === sel ? " sel" : ""),
+          "data-gun": i,
+          "data-fill": f.toFixed(3),
+          title: p.name + (i < u ? "" : " · " + gremPrice(i) + " gold"),
+          style: { "--f": (f * 360).toFixed(1) + "deg" },
+          onPointerDown: tap2(() => pick(i))
+        },
+        h("span", { className: "gginner" }, h(GunIcon, { gun: p.gun }))
+      );
+    }));
+  }
+
   // src/ui/title.js
   var TOP = (hh2) => Math.max(28, hh2 * 0.05);
-  function Title({ onStart }) {
+  function Title({ onStart, onGrem }) {
     const cvs = useRef(null);
     const menu = useRef(null);
     const [setup, setSetup] = useState(false);
@@ -37991,12 +38641,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       SFX.fx("portalIn");
       onStart();
     };
+    const grem = () => {
+      SFX.unlock();
+      SFX.fx("portalIn");
+      if (onGrem) onGrem();
+    };
     const gear = (on) => {
       SFX.unlock();
       SFX.fx(on ? "open" : "close");
       setSetup(on);
     };
-    const tap = (fn) => (e) => {
+    const tap3 = (fn) => (e) => {
       e.preventDefault();
       fn(e);
     };
@@ -38012,8 +38667,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         setup ? h(Settings, { close: () => gear(false) }) : h(
           "div",
           { key: "b", className: "tbtns" },
-          h("button", { className: "tbig tgear", title: "Settings", onPointerDown: tap(() => gear(true)) }, h(Cog)),
-          h("button", { className: "tbig tstart", title: "Play", onPointerDown: tap(start) }, h(PlayIcon))
+          h("button", { className: "tbig tgear", title: "Settings", onPointerDown: tap3(() => gear(true)) }, h(Cog)),
+          onGrem ? h("button", { className: "tgrem", title: "Grem Mode", onPointerDown: tap3(grem) }, "GREM MODE") : null,
+          h("button", { className: "tbig tstart", title: "Play", onPointerDown: tap3(start) }, h(PlayIcon))
         )
       )
     );
@@ -38049,8 +38705,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ];
   }
   function Root() {
-    const [play, setPlay] = useState(false);
-    return play ? h(AutoScreen) : h(Title, { onStart: () => setPlay(true) });
+    const [play, setPlay] = useState("");
+    return play === "auto" ? h(AutoScreen) : play === "grem" ? h(GremScreen) : h(Title, { onStart: () => setPlay("auto"), onGrem: () => setPlay("grem") });
   }
 
   // src/main.js

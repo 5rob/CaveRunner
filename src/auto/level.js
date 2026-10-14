@@ -48,8 +48,11 @@ function flatZone(P, x0, x1, co) {
 
 // The finite plan: same seed, same level. minutes (default the knob) at normal pace (DEV.autoLvlPace) of random zones;
 // blocks of them blocked (stage 6b, auto/blocked.js planBlocks; default DEV.autoBlockN; 0: none)
-/** @param {number} seed @param {number} [minutes] @param {number} [blocks] @param {number} [pace] normal pace (a level: lvlPace(tier)) @returns {LevelPlan} */
-export function levelPlan(seed, minutes = DEV.autoLvlMin, blocks = DEV.autoBlockN, pace = DEV.autoLvlPace) {
+// endless (Grem Mode, auto/grem.js): no sure wall (nothing blocks: the team digs as the title's runners do), and nothing
+// after the arena (no exit pad, no solid rock): the plan grows on with random zones (titlescene.js zoneIn), and levelOnward
+// adds the next stretch and arena when the boss is down
+/** @param {number} seed @param {number} [minutes] @param {number} [blocks] @param {number} [pace] normal pace (a level: lvlPace(tier)) @param {boolean} [endless] @returns {LevelPlan} */
+export function levelPlan(seed, minutes = DEV.autoLvlMin, blocks = DEV.autoBlockN, pace = DEV.autoLvlPace, endless = false) {
   const P = titlePlan(seed, TITLE_ZONES);   // (a level: every zone kind, the spider zone too)
   flatZone(P, -300, LVL_PAD, 0);
   const want = Math.max(TITLE_ZLEN[0], minutes * 60 * LVL_SCROLL * pace);
@@ -57,8 +60,9 @@ export function levelPlan(seed, minutes = DEV.autoLvlMin, blocks = DEV.autoBlock
   const zs = [];
   while (x - LVL_PAD < want) { const z = titleZoneAdd(P, x); zs.push(z.i); x = z.x1; }
   planBlocks(P, zs, seed, blocks);
-  const wallX = plantWall(P, zs, seed, pace);
+  const wallX = endless ? Infinity : plantWall(P, zs, seed, pace);
   const a = flatZone(P, x, x + LVL_ARENA, -14);
+  if (endless) return { zp: P, seed, padX: LVL_PADX, z0: LVL_PAD, z1: x, len: x - LVL_PAD, arena: { x0: a.x0, x1: a.x1, mid: (a.x0 + a.x1) / 2 }, exitX: a.x1 + LVL_EXITW / 2, wallX };
   const e = flatZone(P, a.x1, a.x1 + LVL_EXITW, 0);
   flatZone(P, e.x1, 1e9, 400);   // solid rock: the roof far below the floor (it closes over ZMIX)
   return { zp: P, seed, padX: LVL_PADX, z0: LVL_PAD, z1: x, len: x - LVL_PAD,
@@ -123,7 +127,8 @@ export function levelFree(S, L, r) {
 // blocked (stage 5b): rock in the way and no gun in play can clear it (the pilot stops the team; the screen's "Path blocked");
 // boss (stage 6: the arena's boss once it's in), failed (every player fallen: the screen takes the team home);
 // run (stage 6 part 2: the drops go into its bag; none: they're just taken), bagV (+1 each time something goes in: the screen redraws the bag)
-/** @typedef {{ plan: LevelPlan, phase: string, arrived: boolean[], zap: number, goT: number, arenaT: number, bossDead: boolean, hold: number,
+// (grem: Grem Mode, auto/grem.js: endless, gold the only drop; ups: how many bosses it's past)
+/** @typedef {{ plan: LevelPlan, phase: string, grem?: boolean, ups?: number, arrived: boolean[], zap: number, goT: number, arenaT: number, bossDead: boolean, hold: number,
  *   elites: import('./enemies.js').LevelFoe[], chests: import('./chests.js').LevelChest[], doneT: number, meters: PlayerMeters[], blocked: boolean,
  *   boss: Enemy | null, failed: boolean, run?: AutoRun | null, bagV: number, blockKind?: string, webK?: number, webT?: number, lootT?: number, clearT?: number, popT?: number[], nukeT?: number, gatherT?: number, padGone?: boolean,
  *   deadT?: number, pace0?: number, base?: number, lastI?: number, tpT?: number, boomed?: boolean, far?: number }} LevelState */
@@ -141,15 +146,16 @@ export const levelTeamX = S => S.scroll + LVL_TEAM;
 // and the creatures hurt the team (auto/enemies.js). run (stage 6 part 2): kills drop loot (auto/loot.js) that is vacuumed into its bag
 // (tall levels) the action band: the old 0.24..0.92 of vh at vh 190 or less; taller, it keeps the old rock over and
 // under it (at most 50 and 20) and the rest is the band, so the cave fills the screen's height
-/** @param {number} vh @param {number} seed @param {number} n @param {LevelPlan} [plan] (default levelPlan(seed)) @param {RunPlayer[]} [team] @param {number} [tier] @param {AutoRun | null} [run] @returns {import('../art/titlescene.js').TitleScene} */
-export function levelScene(vh, seed, n, plan, team, tier = 1, run = null) {
+// grem (Grem Mode, auto/grem.js): an endless plan (levelPlan's endless, no blocked zones) and gold the only drop (kills and chests)
+/** @param {number} vh @param {number} seed @param {number} n @param {LevelPlan} [plan] (default levelPlan(seed)) @param {RunPlayer[]} [team] @param {number} [tier] @param {AutoRun | null} [run] @param {boolean} [grem] @returns {import('../art/titlescene.js').TitleScene} */
+export function levelScene(vh, seed, n, plan, team, tier = 1, run = null, grem = false) {
   const base = lvlPace(tier);   // (owner, after v1.0.74) normal pace by level
-  if (!plan) plan = levelPlan(seed, undefined, undefined, base);
+  if (!plan) plan = levelPlan(seed, undefined, grem ? 0 : undefined, base, grem);
   /** @type {LevelState} */
   const L = { plan, base, phase: 'arrive', arrived: [], zap: -99, goT: -1, arenaT: -1, bossDead: false, hold: 0, elites: [], chests: [], doneT: -1, meters: [], blocked: false,
-    boss: null, failed: false, run, bagV: 0 };
+    boss: null, failed: false, run, bagV: 0, grem, ups: 0 };
   const S = titleScene(vh, seed, Math.min(vh * 0.24, 50), vh - Math.min(vh * 0.08, 20), { runners: n, level: { zp: plan.zp, step: levelStep, data: L, hurt: levelHurt,
-    loot: (S, f) => killLoot(f.k.boss ? 'boss' : f.k.elite ? 'elite' : 'foe', S.tier || 1, S.rnd, f.k.gold),
+    loot: (S, f) => killLoot(f.k.boss ? 'boss' : f.k.elite ? 'elite' : 'foe', S.tier || 1, S.rnd, f.k.gold).filter(it => !L.grem || it.kind === 'gold'),
     fits: (_S, it) => !L.run || bagFits(L.run, it),
     take: (_S, it) => { if (L.run && bagAdd(L.run, it)) return false; L.bagV++; return true; },
     kind: autoFoe, hardY: (S, wx) => levelHardY(S, plan, wx), lootCol, blockCell, blockCol, blockKind, free: (S, r) => levelFree(S, L, r), fuel: (_S, r) => (team && team[r.id] ? playerStats(team[r.id]) : null), spawn: S => levelSpawn(S, L) }, team, tier });
@@ -339,7 +345,29 @@ export function roamFollow(S, lead) {
 /** @param {import('../art/titlescene.js').TitleScene} S @param {LevelState} L */
 function cleared(S, L) {
   const left = (S.loot ? S.loot.filter(g => !g.left).length : 0) + S.coins.length;
-  if (left === 0 || S.t - (L.lootT ?? S.t) >= DEV.autoClearWait) { L.clearT = S.t; L.phase = 'out'; S.runners.forEach(r => { r.retarget = 0; }); }
+  if (left === 0 || S.t - (L.lootT ?? S.t) >= DEV.autoClearWait) { L.clearT = S.t; L.phase = 'out'; S.runners.forEach(r => { r.retarget = 0; }); if (L.grem) levelOnward(S, L); }
+}
+
+// (Grem Mode) on past the arena instead of to an exit: the level + 1 (S.tier, the run's), the next stretch of random zones
+// (DEV.autoLvlMin minutes at the new level's pace, from where the plan has grown to) and a new arena after it, its elites and
+// chests; the living healed; the team runs on (LEVEL CLEARED shows as it goes)
+/** @param {import('../art/titlescene.js').TitleScene} S @param {LevelState} L */
+export function levelOnward(S, L) {
+  const P = L.plan, zp = P.zp, tier = (S.tier || 1) + 1;
+  S.tier = tier;
+  if (L.run) L.run.tier = tier;
+  L.ups = (L.ups || 0) + 1;
+  L.base = lvlPace(tier);
+  const z0 = P.arena.x1, want = Math.max(TITLE_ZLEN[0], DEV.autoLvlMin * 60 * LVL_SCROLL * L.base);
+  let x = Math.max(z0, zp.z[zp.z.length - 1].x1);
+  while (x - z0 < want) x = titleZoneAdd(zp, x).x1;
+  const a = flatZone(zp, x, x + LVL_ARENA, -14);
+  Object.assign(P, { z0, z1: x, len: x - z0, arena: { x0: a.x0, x1: a.x1, mid: (a.x0 + a.x1) / 2 }, exitX: a.x1 + LVL_EXITW / 2, seed: P.seed + 1 });
+  L.elites = elitePlan(P, S.rnd);
+  L.chests = chestPlan(P);
+  L.phase = 'run'; L.bossDead = false; L.boss = null; L.arenaT = -1;
+  S.gunsOff = false; S.huddle = false;
+  if (S.team) for (const pl of S.team) if (pl.alive !== false) pl.hp = playerStats(pl).maxHp;
 }
 // the words' thuds, a frame
 /** @param {import('../art/titlescene.js').TitleScene} S @param {LevelState} L @param {number} dt */
@@ -416,5 +444,5 @@ export function levelPads(S) {
   const L = levelState(S);
   if (!L) return [];
   return [{ id: 'enter', x: L.plan.padX - S.scroll, fy: titleFloor(L.plan.padX, S) }, { id: 'exit', x: L.plan.exitX - S.scroll, fy: titleFloor(L.plan.exitX, S) }]
-    .filter(p => p.x > -60 && p.x < TITLE_VW + 60 && !(p.id === 'exit' && L.padGone));   // (the exit pad: gone in the end's nuke)
+    .filter(p => p.x > -60 && p.x < TITLE_VW + 60 && !(p.id === 'exit' && (L.padGone || L.grem)));   // (Grem Mode: no exit pad)   // (the exit pad: gone in the end's nuke)
 }

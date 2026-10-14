@@ -17,8 +17,9 @@ const gridIds = () => {
     .sort((a, b) => fams.indexOf(FAMILY_OF[a] || 'shots') - fams.indexOf(FAMILY_OF[b] || 'shots') || MODS[a].name.localeCompare(MODS[b].name));
 };
 
-/** @param {{ onMod: (id: string) => void }} props */
-export function ModGrid({ onMod }) {
+// onTap (Dev → Presets' gun editor, ui/auto/presetlib.js): a tap also hands the mod over (it goes into the gun), with its note
+/** @param {{ onMod: (id: string) => void, onTap?: (id: string) => void, note?: string }} props */
+export function ModGrid({ onMod, onTap, note }) {
   /** @type {[string | null, (v: string | null) => void]} */
   const [pick, setPick] = useState(null);
   /** @type {[string, (v: string | ((g: string) => string)) => void]} */
@@ -42,12 +43,12 @@ export function ModGrid({ onMod }) {
     hold.current = null;
     if (!H) return;
     window.clearTimeout(H.t);
-    if (!H.done) setPick(H.id);
+    if (!H.done) { setPick(H.id); if (onTap) onTap(H.id); }
   };
   const cancel = () => { if (hold.current) window.clearTimeout(hold.current.t); hold.current = null; };
   const m = pick ? MODS[pick] : null, grab = (200 * DEV.autoGrab).toFixed(1) + '%';
   return h('div', { className: 'modgrid' },
-    h('p', { className: 'devnote' }, 'Tap a mod for what it does; hold it to put one in the bag.'),
+    h('p', { className: 'devnote' }, note || 'Tap a mod for what it does; hold it to put one in the bag.'),
     m ? h('div', { className: 'mginfo' },
       h('b', { style: { color: famCol(pick || '') } }, m.name),
       h('span', null, ' · ' + ((FAMILIES[FAMILY_OF[pick || ''] || 'shots'] || FAMILIES.shots).name) + (m.off ? ' · off in Auto' : '') + ' · ' + (m.mana || 0) + ' mana'),

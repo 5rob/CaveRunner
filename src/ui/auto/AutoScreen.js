@@ -48,6 +48,9 @@ import { DISCRIM_TARGETS, isAutoTarget } from '../../art/discrimicon.js';
 import { PauseMenu } from '../pause.js';
 import { DevPanel } from '../devpanel.js';
 import { DEV_HOLD_MS, devShown, setDevShown } from '../devmode.js';
+import { addPreset, loadPresets, savePresets } from '../../save/presets.js';
+import { PresetLib } from './presetlib.js';
+import { GremKit } from './gremkit.js';
 import { runScene } from '../scenecanvas.js';
 import { FPS_N, PERF_ROWS, fpsNew, fpsTick } from '../../auto/fps.js';
 import { leaveItem } from '../../art/titlescene.js';
@@ -68,6 +71,9 @@ function openRun() {
   saveAutoRun(n);
   return n;
 }
+
+// (Grem Mode) the Dev panel's own pages: Presets (the gun presets library) and Grem (player 1's kit)
+const DEV_PAGES = { presets: () => h(PresetLib), grem: () => h(GremKit) };
 
 // ⏸ → New run (confirmed): a fresh run replaces the save, and the page reloads to the title (▶ opens it)
 function freshRun() {
@@ -785,7 +791,7 @@ export function AutoScreen() {
     flies.map(f => h(FlyTile, { key: f.k, f, done: () => setFlies(fs => fs.filter(q => q.k !== f.k)) })),
     card ? h(CardPop, { it: card, close: () => setCard(null) }) : null,
     dpop ? h(DiscrimPop, { at: dpop, cur: (() => { const it = srcItem(dpop.src); return it ? targetOf(it.id) : null; })(), pick: tg => setTarget(dpop, tg), close: () => { SFX.fx('close'); setDpop(null); } }) : null,
-    devOpen ? h(DevPanel, { input, refresh: () => setV(v => v + 1), close: () => { SFX.fx('close'); setDevOpen(false); },
+    devOpen ? h(DevPanel, { input, refresh: () => setV(v => v + 1), close: () => { SFX.fx('close'); setDevOpen(false); }, pages: DEV_PAGES,
       onGem: kind => { bagAdd(run, { kind, n: 1 }); saveAutoRun(run); SFX.fx('coin'); setV(v => v + 1); },
       onMod: id => { if (!bagAdd(run, { kind: 'mod', id, n: 1 })) { saveAutoRun(run); SFX.ui('tap'); setV(v => v + 1); } } }) : null,
     paused ? h(PauseMenu, { input, label: mapLabel(run), onNew: freshRun, close:() => { SFX.fx('close'); setPaused(false); } }) : null);
@@ -803,7 +809,7 @@ const PILL_REACH = 54;                 // the knob's reach (px): the old 150 px 
 // round it and the bar (style.css: the ring under the bar's fill, the circle's fill over it). The knob rests at its centre
 // (.apill, the maths' centre) in a shallow dark well, and follows the finger. Pointer capture, so the finger may wander off it; letting go puts the knob back and the push to rest
 /** @param {{ onMove: (st: PillState) => void }} props */
-function PillStick({ onMove }) {
+export function PillStick({ onMove }) {
   const ref = useRef(null);
   const pid = useRef(null);
   const [knob, setKnob] = useState({ x: 0, y: 0, jet: false });
@@ -933,16 +939,22 @@ const MACHINE_EDGE = HUB_MACHINES.mod.hue;
 // (pvSim), the damage per second over the target and its graph, and lights the mod slots below in each pull's colour (onLit).
 // (owner, round 2) A double tap on the window grows it left over the stats (.big: the stats hidden), again shrinks it back; the
 // room is made again at the new size, the player at its new left edge.
-/** @param {{ gun: Gun, sig: string, col: string, onLit?: (lit: any) => void, cls: string, pl: RunPlayer, gi: number }} props */
-function GunPanel({ gun, sig, col, onLit, cls, pl, gi }) {
+// (Grem Mode) in dev mode a 💾 in its corner saves the gun as a gun preset (save/presets.js; Dev → Presets lists them); noSave:
+// none (Dev → Presets' own editor)
+/** @param {{ gun: Gun, sig: string, col: string, onLit?: (lit: any) => void, cls: string, pl: RunPlayer, gi: number, noSave?: boolean }} props */
+export function GunPanel({ gun, sig, col, onLit, cls, pl, gi, noSave }) {
   /** @type {{ current: import('../../spells/bagsim.js').FireSim & { sig?: string } | null }} */
   const sim = useRef(null);
   if (!sim.current || sim.current.sig !== sig) sim.current = Object.assign(fireSimNew(gun), { sig });
   const [big, setBig] = useState(false);
+  const [saved, setSaved] = useState(0);
   const flip = () => setBig(b => !b);
+  /** @param {any} e */
+  const keep = e => { e.preventDefault(); e.stopPropagation(); savePresets(addPreset(loadPresets(), gun.name, gun)); SFX.fx('open'); setSaved(n => n + 1); };
   return h('div', { className: 'agunpanel ' + cls + (big ? ' big' : ''), style: { '--pc': col } },
     h(GunStats, { gun, sim, sig }),
-    h(PreviewWindow, { sim, sig, onLit, pl, gi, flip }));
+    h(PreviewWindow, { sim, sig, onLit, pl, gi, flip }),
+    !noSave && devShown() ? h('button', { className: 'agpsave', title: 'Save as a preset', onPointerDown: keep }, saved ? h('span', { key: saved, className: 'agpsaved' }, '✓') : '💾') : null);
 }
 
 // (owner, after v1.0.74) a gun in the bag, tapped: its view over the play area (not a card over everything): name, level,
@@ -1125,7 +1137,7 @@ function NavRow({ row, level, cls, pick, open, down, drag, holdHelm, holdGun, me
 
 // one bag slot: empty, or the item's icon and its count
 /** @param {{ i: number, it: BagItem | null, down: (e: any, src: DragSrc) => void, lift: boolean, drop: boolean, empty: (e: any) => void, sel?: boolean }} props */
-function BagSlot({ i, it, down, lift, drop, empty, sel }) {
+export function BagSlot({ i, it, down, lift, drop, empty, sel }) {
   /** @param {any} e */
   const grab = e => down(e, { from: 'bag', i });
   return h('div', { className: 'aslot' + (it ? ' full k-' + it.kind : '') + (lift ? ' lift' : '') + (drop ? ' drop' : '') + (sel && it ? ' sel' : ''), 'data-slot': i, style: itemEdge(it),
@@ -1135,7 +1147,7 @@ function BagSlot({ i, it, down, lift, drop, empty, sel }) {
 }
 
 /** @param {{ it: BagItem }} props */
-function ItemIcon({ it }) {
+export function ItemIcon({ it }) {
   if (it.kind === 'gun' && it.gun) return h(GunIcon, { gun: it.gun });
   /** @type {{ glyph: string, col: string, tier?: number } | null} */
   let g = null;
@@ -1224,7 +1236,7 @@ function edgeScroll(x, y) {
 
 // the grab handle: a circle round the tile's centre, DEV.autoGrab of the tile's width in radius (touch-action none:
 // only it starts a drag; the rest of the tile scrolls the bag)
-function Grab() {
+export function Grab() {
   const d = (200 * DEV.autoGrab).toFixed(1) + '%';
   return h('i', { className: 'agrab', style: { width: d, height: d } });
 }
@@ -1233,13 +1245,13 @@ function Grab() {
 /** @param {{ drag: Drag, it: BagItem | null }} props */
 // a tile's outline by the item's group (owner): auto/itemtile.js itemEdgeCol (the canvas's tiles share it)
 /** @param {BagItem | null} it @returns {any} */
-const itemEdge = it => it ? { '--ic': itemEdgeCol(it) } : undefined;
+export const itemEdge = it => it ? { '--ic': itemEdgeCol(it) } : undefined;
 
 // a pickup's tile flying into its bag slot (owner): FLY_MS, eased, from the player (a little small) to the slot (its size)
 /** @typedef {{ k: number, it: BagItem, slot: number, fresh: boolean, x0: number, y0: number, x1: number, y1: number, s: number }} Fly */
 export const FLY_MS = 500;
 /** @param {{ f: Fly, done: () => void }} props */
-function FlyTile({ f, done }) {
+export function FlyTile({ f, done }) {
   /** @type {{ current: HTMLDivElement | null }} */
   const ref = useRef(null);
   useEffect(() => {

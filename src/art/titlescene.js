@@ -162,7 +162,8 @@ export const zoneHome = Z => TITLE_HOME[Z.spid ? 'spider' : Z.z] || TITLE_HOME.m
  *   webs: WebLine[], orbN?: number, orbs?: Record<number, OrbRig>, mush?: MushCloud[], orbHub?: { x: number, y: number, r: number }[], orbT?: number, cut: number, lineT: number, silk: { x: number, y: number, ax: number, ay: number, vx: number, vy: number, life: number }[],
  *   nav: { F: any, fx: number, fy: number, t: number }, fireAcc: number, fireN: number, burning: Set<number>, gotN: number, pops: number, lampsPopped: number, kitNames: Set<string>,
  *   digT: number, digs: number, digWhy: Record<string, number>, still?: boolean, zp: TitlePlan, snd: TSnd[], hub?: TitleHub, lvl?: TitleLevel, lab?: boolean, back?: (ctx: CanvasRenderingContext2D, S: TitleScene) => void, pace?: number, team?: RunPlayer[], blocked?: number, blockedKind?: string, huddle?: boolean, gunsOff?: boolean, hgoal?: number, hgoalT?: number, fuelWait?: number, tier?: number, loot?: TLoot[],
- *   onTake?: (it: BagItem, x: number, y: number) => void }} TitleScene */
+ *   onTake?: (it: BagItem, x: number, y: number) => void, pick?: Enemy | null }} TitleScene */
+// (pick: Grem Mode's tapped target, ui/auto/GremScreen.js: every player aims at it while it lives, titleAimPick)
 // a finite level in the scrolling ring (CaveRunner Auto, auto/level.js levelScene): zp its plan (made whole up front); step runs
 // after titleStep's own; data is the level's own state. S.pace (0..) scales the scroll (auto/pilot.js)
 // hurt(S, i, dmg): a creature hit player i for dmg (its kind's damage; auto/enemies.js levelHurt)
@@ -2010,6 +2011,8 @@ export function titleAimPick(S, r) {
   // ones that have just left the screen, up to DEV.autoAimLeft past its edge
   // (the gun panel's window, auto/preview.js: its one target, anywhere in the room, so the grown window still fires)
   const lvl = !!S.lvl, E = DEV.autoAimEdge, pv = !!(S.hub && S.hub.pv);
+  // (Grem Mode) a creature tapped on the screen: everyone aims at it till it's dead or gone
+  if (S.pick) { if (S.pick.hp > 0 && S.foes.includes(S.pick)) return S.pick; S.pick = null; }
   let best = null, bd = lvl ? DEV.autoAimR : pv ? Infinity : TITLE_AIM;
   // (CaveRunner Auto's boss, feedback round 1: measured to its edge, and shot from behind too, so the team finishes it)
   for (const f of S.foes) {
@@ -2494,7 +2497,7 @@ function stepShots(S, dt) {
     if (s.accel) { const sp = Math.hypot(s.vx, s.vy) || 1, k = Math.min(1 + s.accel * dt, (s.vmax || 600) / sp); if (k > 1) { s.vx *= k; s.vy *= k; } }
     s.vy += s.grav * dt;
     if (s.drag) { const k = Math.exp(-s.drag * dt); s.vx *= k; s.vy *= k; }
-    if (s.follow && !s.beam && !s.heal) shotFollow(S, s, dt);   // Follow Me: pulled back to its caster (a field: fieldFollow)
+    if (s.follow && !s.beam && !s.heal && !s.vac) shotFollow(S, s, dt);   // Follow Me: pulled back to its caster (a field: fieldFollow)
     // the purple trajectory mods (auto/traj.js): round, across, back, and to and fro, by the caster
     let ex = 0, ey = 0;
     const path = hasTraj(s) && !s.beam && !s.heal;
@@ -2512,7 +2515,7 @@ function stepShots(S, dt) {
     // trails are looks only: their own random numbers (Math.random), so the run plays the same
     if (s.sid) { if (S.parts.length < TITLE_PARTS - FX_ROOM) for (const p of autoTrail(s, dt, Math.random)) S.parts.push(p); }
     if (s.pull && !s.foe) for (const a of holePull(s, S.foes, S.scroll, S.shots, dt, DEV.bhPull * s.pull / 70)) burst(S, a.x, a.y, 3, '#c58cff', 40, 'spark', 0.25);
-    if (s.vac) { vacPull(s, S.foes, S.scroll, S.shots, dt, VAC_PULL, S.coins, S.loot, S.runners); continue; }   // White Hole: hangs, pulls, hits nothing
+    if (s.vac) { if (s.follow) fieldFollow(S, s, dt); vacPull(s, S.foes, S.scroll, S.shots, dt, VAC_PULL, S.coins, S.loot, S.runners); continue; }   // White Hole: hangs (with Follow Me: comes to its caster), pulls, hits nothing
     if (s.heal) { if (!S.hub) s.x -= sv(S) * dt; if (s.follow) fieldFollow(S, s, dt); vigourStep(S, s, dt); continue; }   // Circle of Vigour: stays on the ground, heals, hits nothing
     if (s.sid === 'zap' && S.zaps.length < 24) { const fk = zapFork(s, S.foes, S.scroll, dt, Math.random); if (fk) S.zaps.push({ pts: fk, t: 0.12, col: s.col }); }
     if (s.hopT) s.hopT = Math.max(0, s.hopT - dt);

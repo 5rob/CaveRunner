@@ -1196,3 +1196,60 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .mginfo{margin:2px 0 8px;font-size:13px;color:#d8cff0}
 .mginfo b{font-weight:800}
 .mginfo p{margin:4px 0 0;color:#b9add8}
+
+/* Grem Mode (owner, ui/auto/GremScreen.js): the title's middle button, then the toddler's screen */
+.tgrem{flex:1;height:64px;margin:0 12px;padding:0;border-radius:14px;border:none;color:#10261a;font:900 17px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.12em;
+  background:linear-gradient(#b8ffb0,#5ee05a 60%,#2fa83a);box-shadow:0 4px 0 #1d5a22,0 0 22px rgba(94,224,90,0.6)}
+.tgrem:active{transform:translateY(2px);box-shadow:0 2px 0 #1d5a22,0 0 18px rgba(94,224,90,0.6)}
+.grem .aplay{flex:1 1 0;min-height:0}
+.glvl{position:absolute;left:10px;top:8px;font:900 14px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.08em;color:#fff;text-shadow:0 0 4px #000,0 0 8px #000;pointer-events:none}
+.ggold{flex:none;display:flex;align-items:center;justify-content:center;gap:10px;height:46px}
+.ggicon{width:42px;height:42px;display:flex}
+.ggicon canvas{width:100%;height:100%;image-rendering:pixelated}
+.ggold b{font:900 38px ui-monospace,SFMono-Regular,Menlo,monospace;color:#ffc93c;text-shadow:0 0 12px rgba(255,180,40,0.6),0 2px 0 #6a3a00}
+.gguns{flex:none;max-height:152px;overflow-y:auto;touch-action:pan-y;display:grid;grid-template-columns:repeat(5,1fr);gap:7px;padding:8px;
+  border-radius:14px;background:#0e091a;border:2px solid #3d2f5c}
+.gguns.none{display:block;color:#8f84ad;font:600 13px system-ui,sans-serif;text-align:center}
+.gguns.none p{margin:6px 0}
+/* a gun: its outline a ring that fills clockwise from the top as it's paid off (--f degrees), bright gold when it's open */
+.ggun{position:relative;aspect-ratio:1;padding:4px;border:none;border-radius:12px;background:conic-gradient(#ffc93c var(--f,0deg),#2c2340 0)}
+.ggun.open{background:#ffc93c;box-shadow:0 0 10px rgba(255,201,60,0.5)}
+.ggun.sel{background:#fff;box-shadow:0 0 14px rgba(255,255,255,0.8)}
+.ggun.next{box-shadow:0 0 10px rgba(255,201,60,0.35)}
+.gginner{width:100%;height:100%;border-radius:9px;background:#1d1531;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.gginner .gicon{width:84%;height:auto}
+.ggun.locked .gginner,.ggun.next .gginner{filter:grayscale(1) brightness(.55)}
+.grem .gguns{max-height:230px;margin-bottom:66px}   /* (no bag, owner: the guns' panel clear of the stick's dome) */
+/* Dev → Presets (ui/auto/presetlib.js) */
+.apltiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:7px;margin-bottom:10px}
+.apltile{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 4px 4px;border-radius:10px;background:#2c1f45;border:2px solid #ffc93c88;color:#f1ecff;touch-action:pan-y}
+.aplicon{width:44px;height:44px;display:flex;align-items:center;justify-content:center}
+.aplicon .gicon{width:100%;height:auto}
+.aplname{font:700 10px system-ui,sans-serif;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.aplnum{position:absolute;left:4px;top:2px;font:800 10px ui-monospace,monospace;color:#ffc93c;font-style:normal}
+.aplprice{font:700 9px ui-monospace,monospace;color:#b9add8;font-style:normal}
+.apled{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+.apledhead{display:flex;align-items:center;gap:6px}
+.apledhead b{flex:1;font:800 12px ui-monospace,monospace;color:#ffc93c}
+.apleddel.sure{background:#d0282e;color:#fff}
+.apled .agunpanel{animation:none}
+.apledslots{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.apledslots .aslot{padding:0}
+.apledslots .aslot.sel{box-shadow:0 0 0 3px #fff}
+.apledbtns{display:flex;align-items:center;gap:8px}
+.apledsave.on{background:#5ee05a;color:#10261a;font-weight:800}
+.apledflash{font:700 12px system-ui,sans-serif;color:#5ee05a;animation:agpsaved 1.6s ease-out both}
+/* 💾 on the gun panel (dev mode): save the gun as a preset */
+.agunpanel{position:relative}
+.agpsave{position:absolute;left:8px;bottom:8px;width:30px;height:30px;padding:0;border-radius:8px;border:1px solid #ffc93c88;background:#1d1531cc;font-size:15px;z-index:2}
+.agpsaved{color:#5ee05a;font:900 16px system-ui,sans-serif;animation:agpsaved 1.6s ease-out both}
+@keyframes agpsaved{from{opacity:1}to{opacity:.4}}
+/* Dev → Grem (ui/auto/gremkit.js) */
+.agkit{display:flex;flex-direction:column;gap:7px;margin-bottom:12px}
+.agkrow{display:flex;align-items:center;gap:5px}
+.agklab{flex:0 0 92px;display:flex;align-items:center;gap:5px;font:700 12px system-ui,sans-serif;color:#d8cff0}
+.agkslot{flex:1;height:36px;padding:0;border-radius:8px;background:#1d1531;border:2px solid #3d2f5c;color:#8f84ad;font:800 13px ui-monospace,monospace}
+.agkslot.on{border-color:#c084fc;background:#2c1f45;color:#fff}
+.agkperks{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.agkperk{height:34px;border-radius:8px;background:#1d1531;border:2px solid #3d2f5c;color:#d8cff0;font:600 12px system-ui,sans-serif}
+.agkperk.on{border-color:#ffc93c;color:#fff}

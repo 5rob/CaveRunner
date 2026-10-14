@@ -47,12 +47,14 @@ export function chestPlan(plan, n = DEV.autoChestN) {
 // What a chest holds, rolled on opening: one pick by the weights (DEV.autoChestGold … autoChestGreen): gold
 // (DEV.autoChestGoldN × the tier's gold scale), a gun mod (the tier's), an exo mod (a random category, the tier), a red
 // gem, a perk (a named one), a green gem
-/** @param {() => number} rnd @param {number} tier @returns {BagItem[]} */
-export function chestRoll(rnd, tier) {
+// goldOnly (Grem Mode): always the gold
+/** @param {() => number} rnd @param {number} tier @param {boolean} [goldOnly] @returns {BagItem[]} */
+export function chestRoll(rnd, tier, goldOnly = false) {
   const w = [['gold', DEV.autoChestGold], ['mod', DEV.autoChestMod], ['exo', DEV.autoChestExo], ['red', DEV.autoChestRed], ['perk', DEV.autoChestPerk], ['green', DEV.autoChestGreen]];
   const tot = w.reduce((a, [, v]) => a + Math.max(0, +v), 0);
   let r = rnd() * tot, kind = 'gold';
   for (const [k, v] of w) { r -= Math.max(0, +v); if (r < 0) { kind = String(k); break; } }
+  if (goldOnly) kind = 'gold';
   const t = Math.max(1, tier);
   if (kind === 'mod') return [{ kind: 'mod', id: rollMod(rnd, t), n: 1 }];
   if (kind === 'exo') return [exoMod(EXO_CATS[Math.floor(rnd() * EXO_CATS.length) % EXO_CATS.length], t)];
@@ -102,7 +104,7 @@ export function chestOpen(S) {
   const c = chestInRange(S);
   if (!c) return false;
   c.open = true; c.openT = S.t;
-  c.items = chestRoll(S.rnd, S.tier || 1);
+  c.items = chestRoll(S.rnd, S.tier || 1, !!(S.lvl && S.lvl.data && S.lvl.data.grem));
   const y = (c.y == null ? titleFloor(c.x, S) : c.y) - 8;
   titleSpill(S, c.x, y, c.items, 1.3);
   S.snd.push({ k: 'coin', x: c.x - S.scroll, y });

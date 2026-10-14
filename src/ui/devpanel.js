@@ -557,8 +557,9 @@ const blurBox = () => {
 // so the look-of-it knobs (zoom, torch, fog) preview live as you type. On top: the actions
 // ("All mods" is the old DEBUG shelf) and Copy report; then a search box and the tabs
 // (DEV_TABS), each a page of collapsible groups of the saved, persisted variables.
-/** @param {{ input: { current: GameInput }, refresh: () => void, close: () => void, onRestart: () => void, onSpawnGun?: () => void, onSpawnLevel?: () => void, onGem?: (kind: 'red' | 'green') => void, onMod?: (id: string) => void }} props */
-export function DevPanel({ input, refresh, close, onRestart, onSpawnGun, onSpawnLevel, onGem, onMod }) {
+// pages (CaveRunner Auto): a tab's own page over its knobs, by tab id (Presets: the gun presets library; Grem: player 1's kit)
+/** @param {{ input: { current: GameInput }, refresh: () => void, close: () => void, onRestart: () => void, onSpawnGun?: () => void, onSpawnLevel?: () => void, onGem?: (kind: 'red' | 'green') => void, onMod?: (id: string) => void, pages?: Record<string, () => any> }} props */
+export function DevPanel({ input, refresh, close, onRestart, onSpawnGun, onSpawnLevel, onGem, onMod, pages }) {
   const [grid, setGrid] = useState(false);   // (Auto, owner v1.0.74) the mod grid shown
   const LO = input.current.loadout;
   const [, bump] = useState(0);
@@ -656,8 +657,9 @@ export function DevPanel({ input, refresh, close, onRestart, onSpawnGun, onSpawn
       h('div', { className: 'devbody' },
         // (the mod grid scrolls with the knobs: outside the body it had no scroll and ran off the panel)
         grid && onMod ? h(ModGrid, { onMod }) : null,
+        !needle && pages && pages[tab] ? pages[tab]() : null,
         h('p', { className: 'devkey' }, h('i', { className: 'devauto' }), 'works in Auto ', h('i', { className: 'devsome' }), 'some ', h('i', { className: 'devold' }), 'old game only'),
-        shown.length ? null : h('p', { className: 'devnote' }, 'No knob matches “' + q.trim() + '”.'),
+        shown.length || (!needle && pages && pages[tab]) ? null : h('p', { className: 'devnote' }, 'No knob matches “' + q.trim() + '”.'),
         shown.map(({ g, name, rows, hits, nameHit }) => {
           const shut = needle ? false : !isOpen(g);
           const changed = rows.filter(m => DEV[m.k] !== DEV_DEFAULTS[m.k]).length;

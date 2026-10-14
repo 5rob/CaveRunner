@@ -11,6 +11,7 @@
 import { SFX } from '../audio/sfx.js';
 import { TITLE_VW, titleBottom, titleCam, titleScene, titleText } from '../art/titlescene.js';
 import { AutoScreen } from './auto/AutoScreen.js';
+import { GremScreen } from './auto/GremScreen.js';
 import { runScene } from './scenecanvas.js';
 import { Volumes } from './volume.js';
 import { h, useEffect, useRef, useState } from './h.js';
@@ -19,8 +20,9 @@ import { h, useEffect, useRef, useState } from './h.js';
 /** @param {number} hh the screen's height */
 const TOP = hh => Math.max(28, hh * 0.05);
 
-/** @param {{ onStart: () => void }} props */
-export function Title({ onStart }) {
+// (owner, Grem Mode) GREM MODE under the two buttons: the toddler's game (ui/auto/GremScreen.js)
+/** @param {{ onStart: () => void, onGrem?: () => void }} props */
+export function Title({ onStart, onGrem }) {
   const cvs = useRef(null);
   const menu = useRef(null);
   const [setup, setSetup] = useState(false);   // the window shows the settings
@@ -39,6 +41,7 @@ export function Title({ onStart }) {
     });
   }, []);
   const start = () => { SFX.unlock(); SFX.fx('portalIn'); onStart(); };
+  const grem = () => { SFX.unlock(); SFX.fx('portalIn'); if (onGrem) onGrem(); };
   /** @param {boolean} on */
   const gear = on => { SFX.unlock(); SFX.fx(on ? 'open' : 'close'); setSetup(on); };
   /** @param {(e: any) => void} fn */
@@ -50,6 +53,7 @@ export function Title({ onStart }) {
       setup ? h(Settings, { close: () => gear(false) }) :
         h('div', { key: 'b', className: 'tbtns' },
           h('button', { className: 'tbig tgear', title: 'Settings', onPointerDown: tap(() => gear(true)) }, h(Cog)),
+          onGrem ? h('button', { className: 'tgrem', title: 'Grem Mode', onPointerDown: tap(grem) }, 'GREM MODE') : null,
           h('button', { className: 'tbig tstart', title: 'Play', onPointerDown: tap(start) }, h(PlayIcon)))));
 }
 
@@ -74,6 +78,6 @@ function Settings({ close }) {
 // The page: the title first (every load), then CaveRunner Auto (AutoScreen; its ⏸ → Exit reloads to the
 // title). Stage 13: the old game (ui/app.js App: sticks, HUD, shops) is no longer in this branch's build.
 export function Root() {
-  const [play, setPlay] = useState(false);
-  return play ? h(AutoScreen) : h(Title, { onStart: () => setPlay(true) });
+  const [play, setPlay] = useState('');   // '' the title, 'auto' CaveRunner Auto, 'grem' Grem Mode
+  return play === 'auto' ? h(AutoScreen) : play === 'grem' ? h(GremScreen) : h(Title, { onStart: () => setPlay('auto'), onGrem: () => setPlay('grem') });
 }

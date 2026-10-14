@@ -605,6 +605,16 @@ DEV_META.push(
   { k: 'autoHubSpace', g: 'autohub', label: 'Players line up this far apart (world units)', min: 4, max: 40, step: 1 },
   { k: 'autoHubDemoNear', g: 'autohub', label: 'A crystal machine plays its demo with you this near (world units; the old shop’s 100)', min: 20, max: 240, step: 5 });
 DEV_GROUPS.push(['autohub', 'Auto: hub']);
+// Grem Mode (auto/grem.js): the presets' prices (each dearer than the last) and the levels the 3 extra players join at
+Object.assign(DEV_DEFAULTS, { gremPrice: 100, gremGrow: 1.5, gremP2: 5, gremP3: 10, gremP4: 15, gremPickR: 40 });
+DEV_META.push(
+  { k: 'gremPrice', g: 'grem', label: 'The first preset costs (gold)', min: 5, max: 10000, step: 5 },
+  { k: 'gremGrow',  g: 'grem', label: 'Each preset after it costs × this more', min: 1, max: 4, step: 0.05 },
+  { k: 'gremP2',    g: 'grem', label: 'Player 2 joins at level', min: 1, max: 100, step: 1 },
+  { k: 'gremP3',    g: 'grem', label: 'Player 3 joins at level', min: 1, max: 100, step: 1 },
+  { k: 'gremP4',    g: 'grem', label: 'Player 4 joins at level', min: 1, max: 100, step: 1 },
+  { k: 'gremPickR', g: 'grem', label: 'A tap picks the creature nearest it within (world units; the screen is 220 across)', min: 5, max: 220, step: 5 });
+DEV_GROUPS.push(['grem', 'Grem Mode']);
 // CaveRunner Auto's maps (auto/maps.js): the map machine's prices, and how much harder each map starts
 Object.assign(DEV_DEFAULTS, { autoMapPrice: 1000000, autoMapGrow: 1, autoMapStep: 5 });
 DEV_META.push(
@@ -1027,6 +1037,8 @@ DEV_TABS.splice(DEV_TABS.length - 1, 0, ['firesim', 'Fire sim', ['firelab', 'fir
 DEV_TABS.splice(DEV_TABS.length - 2, 0, ['traj', 'Trajectory', ['trajorbit', 'trajspiral', 'trajboomer', 'trajpong', 'trajhoming', 'trajseeker', 'trajnear', 'trajaim', 'trajgrav', 'trajfloat', 'trajflat']]);
 // (Dev → Zones) the level zones' preview (ui/zonesim.js) over their knobs
 DEV_TABS.splice(DEV_TABS.length - 2, 0, ['zones', 'Zones', ['autozones', 'autoorb', 'moss', 'webs', 'timber', 'paved', 'grove', 'winding', 'spider'].map(g => (g.startsWith('auto') ? g : 'zone_' + g))]);
+// (Grem Mode) the gun presets library and Grem's own page (ui/auto/presetlib.js, gremkit.js; DevPanel's pages)
+DEV_TABS.splice(DEV_TABS.length - 2, 0, ['presets', 'Presets', []], ['grem', 'Grem', ['grem']]);
 DEV_TABS.splice(DEV_TABS.length - 2, 0, ['auto', 'Auto', ['auto', 'autohub', 'automaps', 'autolevel', 'autoblocks', 'autoguns', 'autoperks', 'autofoes', 'autodeath', 'autoloot', 'autochests', 'autobag', 'autothrow']]);
 export const DEV_KEY = 'caverunner-dev';
 /** @type {DevKnobs} */
