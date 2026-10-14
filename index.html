@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v1.0.82</title>
-<!-- VERSION = 'v1000082' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v1.0.83</title>
+<!-- VERSION = 'v1000083' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -960,7 +960,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .auto{position:fixed;inset:0;display:flex;flex-direction:column;gap:6px;box-sizing:border-box;
   padding:max(6px,env(safe-area-inset-top)) 8px calc(8px + env(safe-area-inset-bottom));
   background:#08040f;color:#f1ecff;touch-action:none;user-select:none;-webkit-user-select:none;overflow:hidden}
-.aplay{position:relative;flex:0 0 55%;transition:flex-basis .28s cubic-bezier(.3,.8,.3,1),margin-bottom .28s cubic-bezier(.3,.8,.3,1);border-radius:18px;overflow:hidden;border:2px solid #ff8a1f;
+.aplay{position:relative;flex:0 0 55%;transition:flex-basis .28s cubic-bezier(.3,.8,.3,1),margin-bottom .28s cubic-bezier(.3,.8,.3,1),opacity .2s;border-radius:18px;overflow:hidden;border:2px solid #ff8a1f;
   box-shadow:0 0 18px rgba(255,120,30,0.35);background:#000}
 /* (owner, v1.0.47) grown down over the nav and the bag (a double tap); the stick and buttons stay on top */
 .aplay.big{z-index:8}
@@ -1049,6 +1049,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .anavrow.slots.big{position:absolute;left:0;right:0;bottom:0;height:auto;max-height:min(330px,60vh);display:grid;grid-template-columns:repeat(7,1fr);align-content:end;
   gap:6px;padding:8px;overflow-x:hidden;overflow-y:auto;touch-action:pan-y;z-index:3;background:#0e091a}
 .anavrow.slots.big .anavs{width:auto;height:auto;aspect-ratio:1}
+/* (owner, after v1.0.82) grown, it all goes up (AutoScreen rowLift): the gun panel at the top, the rows above it hidden, the bag
+   over the play area with the room */
+.auto.rowup .aplay{z-index:0;opacity:0;pointer-events:none}
+.anavslot.above{opacity:0;pointer-events:none;transition:transform .28s cubic-bezier(.3,.8,.3,1),opacity .2s}
+.auto.rowup .abag{background:#08040f}
 /* the insert bar between two mods (.insat: a green bar left of it) and the tiles after it sliding aside (.shove, SHOVE px) */
 .anavs{transition:transform .12s ease-out}
 .anavs.shove{transform:translateX(10px)}
@@ -1206,7 +1211,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v1.0.82';</script>
+<script>const VERSION = 'v1.0.83';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -3136,7 +3141,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       info: "fires the next 4 shots at once",
       multi: 3
     },
-    // owner (v1.0.72): Switches. Like a multicast, but of the next n groups (a spell and the modifiers on it) only one casts,
+    // owner (v1.0.72): Switches. (after v1.0.82: of the next n mods, not groups) only one is drawn,
     // taking turns each pull (spells/cast.js planCast `sw`)
     switch2: {
       name: "Double Switch",
@@ -3144,7 +3149,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       glyph: "[2]",
       col: "#ffe066",
       mana: 0,
-      info: "Takes turns between the next 2 spells (each with its own modifiers): one a pull",
+      info: "Takes turns between the next 2 mods: one a pull",
       swN: 2
     },
     switch3: {
@@ -3153,7 +3158,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       glyph: "[3]",
       col: "#ffe066",
       mana: 1,
-      info: "Takes turns between the next 3 spells (each with its own modifiers): one a pull",
+      info: "Takes turns between the next 3 mods: one a pull",
       swN: 3
     },
     switch4: {
@@ -3162,7 +3167,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       glyph: "[4]",
       col: "#ffe066",
       mana: 2,
-      info: "Takes turns between the next 4 spells (each with its own modifiers): one a pull",
+      info: "Takes turns between the next 4 mods: one a pull",
       swN: 4
     },
     cheap: {
@@ -10115,6 +10120,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
       if (!id) continue;
       if (MODS[id].kind === "passive") continue;
+      if (sw && !copied) {
+        const k = sw.i++, up = k === sw.pick;
+        if (sw.i >= sw.n) sw = null;
+        if (!up) continue;
+      }
       const m = boosted(MODS[id], boost);
       boost = m.boost ? m.boost : 1;
       if (m.kind === "mod" || m.kind === "util") {
@@ -10127,8 +10137,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         if (m.swN && !copied && !wrapped && !sw) {
           const slot = g.order[g.idx - 1], seen = g.swc && g.swc[slot] || 0;
           g.swc = Object.assign({}, g.swc, { [slot]: seen + 1 });
-          sw = { n: m.swN, pick: seen % m.swN, i: 0, carry: mods, cost: cost2, hp, delay, multi };
-          mods = [];
+          sw = { n: m.swN, pick: seen % m.swN, i: 0 };
           timing(m);
           continue;
         }
@@ -10159,36 +10168,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         timing(m);
         continue;
       }
-      if (sw && sw.i !== sw.pick) {
-        const kindS = m.trig || m.kind === "shot" && addTrig || null;
-        if (m.kind === "shot") addTrig = null;
-        if (kindS) payloadOf(m.draw || 1, 1);
-        mods = [];
-        cost2 = sw.cost;
-        hp = sw.hp;
-        delay = sw.delay;
-        multi = sw.multi;
-        if (++sw.i >= sw.n) sw = null;
-        continue;
-      }
-      if (sw) {
-        mods = sw.carry.concat(mods);
-        multi = Math.max(multi, defs.length + 1);
-      }
       defs.push(m);
       modsOf.push(mods);
       mods = [];
       cost2 += m.mana;
       timing(m);
-      if (sw) {
-        if (++sw.i >= sw.n) sw = null;
-        else {
-          sw.cost = cost2;
-          sw.hp = hp;
-          sw.delay = delay;
-          sw.multi = multi;
-        }
-      }
       const kind = m.trig || m.kind === "shot" && addTrig || null;
       if (m.kind === "shot") addTrig = null;
       if (kind) holds[defs.length - 1] = { kind, list: payloadOf(m.draw || 1, 1) };
@@ -10262,8 +10246,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       tgt,
       name: "Discriminate → " + targetName(tgt),
       info: "The next spell touches only " + targetName(tgt) + ", and passes through everything else (it still stops at rock, without digging or burning it)",
+      // (owner, after v1.0.82) several on one spell add up: it touches any of their targets
       f: (s) => {
-        s.only = tgt;
+        s.only = addTarget(s.only, tgt);
       }
     });
     FAMILY_OF[id] = FAMILY_OF.discrim;
@@ -10275,7 +10260,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var isUnsetDiscrim = (id) => id === "discrim";
   function matchesTarget(t, thing) {
     if (!t) return true;
-    return t.kind === thing.kind && t.id === thing.id;
+    return targetsOf(t).some((o) => o.kind === thing.kind && o.id === thing.id);
+  }
+  var targetsOf = (t) => t ? [t, ...t.or || []] : [];
+  function addTarget(t, add) {
+    if (!t) return add;
+    if (matchesTarget(t, add)) return t;
+    return { kind: t.kind, id: t.id, or: [...t.or || [], { kind: add.kind, id: add.id }] };
   }
   var BODY_ICON = {
     jelly: "🪼",
@@ -15151,8 +15142,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       S2.shake = Math.min(7, S2.shake + 2);
       titleCarve(S2, s.x, s.y, r);
       for (const g of S2.foes) if (Math.hypot(g.x - S2.scroll - s.x, g.ty - s.y) < r + g.r && foeOk(s, g)) hitFoe(S2, g, s.real ? s.dmg : 4, s.col, s.by);
-      if (s.only && s.only.kind === "player" && S2.lvl && S2.lvl.hurt) {
-        const ru = S2.runners[Number(s.only.id) - 1];
+      if (s.only && S2.lvl && S2.lvl.hurt) for (const o of targetsOf(s.only)) {
+        const ru = o.kind === "player" ? S2.runners[Number(o.id) - 1] : null;
         if (ru && !ru.out && Math.hypot(ru.x + PW / 2 - s.x, ru.y + PH / 2 - s.y) < r + 8) S2.lvl.hurt(S2, ru.id, s.real ? s.dmg : 4);
       }
       for (const p of S2.props) if (p.k === "lamp" && !p.gone && lampHit(p, s.x, s.y, r)) popLamp(S2, p);
@@ -16151,7 +16142,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     snd(S2, "cast", gx, gy, K);
   }
   function fieldFollow(S2, s, dt) {
-    const r = s.only && s.only.kind === "player" ? S2.runners.find((u) => String(u.id + 1) === s.only?.id) : S2.runners[s.by];
+    const pt = targetsOf(s.only).find((o) => o.kind === "player");
+    const r = pt ? S2.runners.find((u) => String(u.id + 1) === pt.id) : S2.runners[s.by];
     if (!r || r.out) {
       s.vx = s.vy = 0;
       return;
@@ -16610,9 +16602,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
       }
       if (s.life <= 0) continue;
-      if (s.only && s.only.kind === "player" && s.age > 0.12 && S2.lvl && S2.lvl.hurt) {
-        const ru = S2.runners[Number(s.only.id) - 1];
-        if (ru && !ru.out && Math.abs(ru.x + PW / 2 - s.x) < 7 + s.size && Math.abs(ru.y + PH / 2 - s.y) < 11 + s.size) {
+      if (s.only && s.age > 0.12 && S2.lvl && S2.lvl.hurt) {
+        const ru = S2.runners.find((u) => !u.out && matchesTarget(s.only, { kind: "player", id: String(u.id + 1) }) && Math.abs(u.x + PW / 2 - s.x) < 7 + s.size && Math.abs(u.y + PH / 2 - s.y) < 11 + s.size);
+        if (ru && S2.lvl.hurt) {
           burst(S2, s.x, s.y, 6, s.col, 60, "spark", 0.25);
           snd(S2, "hit", s.x, s.y);
           if (s.explode) shotEnd(S2, s);
@@ -32179,7 +32171,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
 
   // src/version.js
-  var VERSION2 = "v1.0.82";
+  var VERSION2 = "v1.0.83";
 
   // src/art/zonelab.js
   var ZLAB_LEAD = 60;
@@ -35834,15 +35826,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   function pvPull(g, order, start) {
     const all = pvLitAll(g, order, start), skip = [];
-    const casts = (id) => !!MODS[id] && (MODS[id].kind === "shot" || MODS[id].kind === "static");
     for (let i = 0; i < all.length; i++) {
       const m = MODS[g.slots[all[i]]];
       if (!m || !m.swN) continue;
       const seen = (g.swc && g.swc[all[i]] || 1) - 1, pick = seen % m.swN;
       let k = 0, j = i + 1;
       for (; j < all.length && k < m.swN; j++) {
+        if (MODS[g.slots[all[j]]].kind === "passive") continue;
         if (k !== pick) skip.push(all[j]);
-        if (casts(g.slots[all[j]])) k++;
+        k++;
       }
       i = j - 1;
     }
@@ -36163,6 +36155,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const emptyTap = useRef(0);
     const [bigRow, setBigRow] = useState(false);
     const rowTap = useRef(0);
+    const [rowLift, setRowLift] = useState(0);
+    useEffect(() => {
+      const root2 = cvs.current && cvs.current.closest(".auto"), play = root2 && root2.querySelector(".aplay");
+      const grid = bigRow && root2 ? root2.querySelector(".anavrow.anav.slots.big") : null;
+      const lift = play instanceof HTMLElement && grid instanceof HTMLElement ? Math.max(0, Math.round(play.offsetHeight + STACK_GAP + ROW_H - Math.max(ROW_H, grid.offsetHeight) - STACK_GAP - PANEL_H)) : 0;
+      if (lift !== rowLift) setRowLift(lift);
+    });
     const noSel = [];
     const [sel, setSel] = useState(noSel);
     const selRef = useRef(sel);
@@ -36951,13 +36950,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const pinNav = (kind, span) => togglePin(navRef.current.p, kind, span);
     return h(
       "div",
-      { className: "auto" },
+      { className: "auto" + (rowLift ? " rowup" : "") },
       h(
         "div",
         {
           className: "aplay" + (bigPlay ? " big" : "") + (drag && drag.over && drag.over.key === "play" && drag.over.ok ? " drop" : ""),
           onPointerDown: playTap,
-          style: { flexBasis: "calc(55% + " + bigPlay + "px)", marginBottom: -bigPlay + "px" }
+          style: { flexBasis: "calc(55% + " + bigPlay + "px)", marginBottom: -(bigPlay + rowLift) + "px" }
         },
         h("canvas", { ref: cvs, className: "aplaycvs" }),
         devOn ? h("div", {
@@ -37183,7 +37182,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       h(PinStack, { pins, run, metersOf, lift: off[0] || 0 }),
       ...items.map((it, i) => h(
         "div",
-        { key: it.key, className: "anavslot" + (it.panel ? " panel" : ""), style: { transform: "translateY(" + -off[i] + "px)" } },
+        { key: it.key, className: "anavslot" + (it.panel ? " panel" : "") + (bigRow && !it.panel && i !== last ? " above" : ""), style: { transform: "translateY(" + -off[i] + "px)" } },
         body(it, i === last ? "anav" : it.panel ? "up" : "anavup", i === last)
       )),
       ...gone.map((o) => h("div", { key: "gone-" + o.it.key + o.k, className: "anavslot" + (o.it.panel ? " panel" : "") }, body(o.it, "anavout", false)))

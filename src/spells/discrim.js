@@ -32,7 +32,8 @@ export function ensureMod(id) {
   MODS[id] = Object.assign({}, b, { id, base: 'discrim', off: 1, tgt,
     name: 'Discriminate → ' + targetName(tgt),
     info: 'The next spell touches only ' + targetName(tgt) + ', and passes through everything else (it still stops at rock, without digging or burning it)',
-    f: (/** @type {Shot} */ s) => { s.only = tgt; } });
+    // (owner, after v1.0.82) several on one spell add up: it touches any of their targets
+    f: (/** @type {Shot} */ s) => { s.only = addTarget(s.only, tgt); } });
   FAMILY_OF[id] = FAMILY_OF.discrim;
   MOD_PRICE[id] = MOD_PRICE.discrim;
   MOD_TIER[id] = MOD_TIER.discrim;
@@ -50,7 +51,17 @@ export const isUnsetDiscrim = id => id === 'discrim';
 /** @param {DiscrimTarget | null | undefined} t @param {{ kind: string, id: string }} thing */
 export function matchesTarget(t, thing) {
   if (!t) return true;
-  return t.kind === thing.kind && t.id === thing.id;
+  return targetsOf(t).some(o => o.kind === thing.kind && o.id === thing.id);
+}
+// every target of a spell's `only` (the first, then those added by more Discriminates)
+/** @param {DiscrimTarget | null | undefined} t @returns {DiscrimTarget[]} */
+export const targetsOf = t => (t ? [t, ...(t.or || [])] : []);
+// a spell's targets with one more (a new object: a copy's own target is never changed)
+/** @param {DiscrimTarget | null | undefined} t @param {DiscrimTarget} add @returns {DiscrimTarget} */
+export function addTarget(t, add) {
+  if (!t) return add;
+  if (matchesTarget(t, add)) return t;
+  return { kind: t.kind, id: t.id, or: [...(t.or || []), { kind: add.kind, id: add.id }] };
 }
 
 // The little icon of a target, drawn inside the mod tile: a creature by its body, you the astronaut,

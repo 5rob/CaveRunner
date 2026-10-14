@@ -24,7 +24,7 @@ interface VendLook { hue: string; top: string[]; bot: string[]; deal?: string }
 
 /** what a spell is: one entry of MODS (spells/mods.js). `kind` decides which fields matter */
 /** Discriminate's target (spells/discrim.js): a creature kind's id, you ('player'), or an object (a prop's k, a pickup's kind) */
-interface DiscrimTarget { kind: 'creature' | 'player' | 'object'; id: string }
+interface DiscrimTarget { kind: 'creature' | 'player' | 'object'; id: string; or?: DiscrimTarget[] }   // or: more targets (several Discriminates add up)
 interface Mod {
   tgt?: DiscrimTarget;        // a targeted Discriminate copy (spells/discrim.js)
   id?: string;                // its key in MODS: always there, but filled in after the table

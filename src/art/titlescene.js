@@ -27,7 +27,7 @@ import { orbHeld, orbHubRest, orbPlace, orbSpring } from '../world/orbweb.js';
 import { bendPush, swingStep, swings, tailStep, vinePt, webAt, webNearU } from '../world/sway.js';
 import { MODS, VAC_PULL } from '../spells/mods.js';
 import { gunPassives } from '../spells/cast.js';
-import { matchesTarget } from '../spells/discrim.js';
+import { matchesTarget, targetsOf } from '../spells/discrim.js';
 import { FIELD_SPEED, FOLLOW_PULL, SEEK_ACC } from '../spells/paths.js';
 import { rustleStep } from '../audio/recipes.js';
 import { pixText, pixWidth } from './pixfont.js';
@@ -1345,9 +1345,9 @@ function shotEnd(S, s) {
     S.shake = Math.min(7, S.shake + 2);
     titleCarve(S, s.x, s.y, r);
     for (const g of S.foes) if (Math.hypot(g.x - S.scroll - s.x, g.ty - s.y) < r + g.r && foeOk(s, g)) hitFoe(S, g, s.real ? s.dmg : 4, s.col, s.by);
-    // Discriminate:Pn: its blast hurts only that player
-    if (s.only && s.only.kind === 'player' && S.lvl && S.lvl.hurt) {
-      const ru = S.runners[Number(s.only.id) - 1];
+    // Discriminate:Pn: its blast hurts only that player (each player it names)
+    if (s.only && S.lvl && S.lvl.hurt) for (const o of targetsOf(s.only)) {
+      const ru = o.kind === 'player' ? S.runners[Number(o.id) - 1] : null;
       if (ru && !ru.out && Math.hypot(ru.x + PW / 2 - s.x, ru.y + PH / 2 - s.y) < r + 8) S.lvl.hurt(S, ru.id, s.real ? s.dmg : 4);
     }
     for (const p of S.props) if (p.k === 'lamp' && !p.gone && lampHit(p, s.x, s.y, r)) popLamp(S, p);
@@ -2119,7 +2119,8 @@ export function stepRunnerGun(S, r, dt) {
 // that player instead
 /** @param {TitleScene} S @param {TShot} s @param {number} dt */
 function fieldFollow(S, s, dt) {
-  const r = s.only && s.only.kind === 'player' ? S.runners.find(u => String(u.id + 1) === s.only?.id) : S.runners[s.by];
+  const pt = targetsOf(s.only).find(o => o.kind === 'player');   // (the first player it names)
+  const r = pt ? S.runners.find(u => String(u.id + 1) === pt.id) : S.runners[s.by];
   if (!r || r.out) { s.vx = s.vy = 0; return; }
   const dx = r.x + PW / 2 - s.x, dy = r.y + PH / 2 - s.y, d = Math.hypot(dx, dy) || 1;
   const want = Math.min(FIELD_SPEED * 2, d * 5), k = Math.min(1, SEEK_ACC * dt);
@@ -2498,9 +2499,10 @@ function stepShots(S, dt) {
     if (s.life <= 0) continue;
     // Discriminate:Pn (owner, v1.0.71; the old game's bullets.js): once clear of the muzzle it hits player n (runner n - 1) through
     // the level's hurt (shields apply); in the hub and the gun preview there's no hurt: it passes through
-    if (s.only && s.only.kind === 'player' && s.age > 0.12 && S.lvl && S.lvl.hurt) {
-      const ru = S.runners[Number(s.only.id) - 1];
-      if (ru && !ru.out && Math.abs(ru.x + PW / 2 - s.x) < 7 + s.size && Math.abs(ru.y + PH / 2 - s.y) < 11 + s.size) {
+    if (s.only && s.age > 0.12 && S.lvl && S.lvl.hurt) {
+      const ru = S.runners.find(u => !u.out && matchesTarget(s.only, { kind: 'player', id: String(u.id + 1) })
+        && Math.abs(u.x + PW / 2 - s.x) < 7 + s.size && Math.abs(u.y + PH / 2 - s.y) < 11 + s.size);
+      if (ru && S.lvl.hurt) {
         burst(S, s.x, s.y, 6, s.col, 60, 'spark', 0.25); snd(S, 'hit', s.x, s.y);
         if (s.explode) shotEnd(S, s); else { s.life = 0; S.lvl.hurt(S, ru.id, s.dmg); }
         continue;

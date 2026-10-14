@@ -73,21 +73,20 @@ export function pvLit(g, order, start) {
   return pvPull(g, order, start).slots;
 }
 // (owner, after v1.0.78: "the switch must show which mods it's paired with") a pull's slots as pvLit, less the groups a
-// Switch passed over this pull (skip): after a Switch in the pull, the next swN groups (a spell and the modifiers before it);
+// Switch passed over this pull (skip): after a Switch in the pull, the next swN mods (passives not counted; owner, after v1.0.82);
 // the one up (its count in g.swc, spells/cast.js planCast, one less than now, mod swN) stays lit, the others are skipped
 /** @param {Gun} g @param {number[]} order @param {number} start @returns {{ slots: number[], skip: number[] }} */
 export function pvPull(g, order, start) {
   const all = pvLitAll(g, order, start), skip = [];
-  /** @param {string} id */
-  const casts = id => !!MODS[id] && (MODS[id].kind === 'shot' || MODS[id].kind === 'static');
   for (let i = 0; i < all.length; i++) {
     const m = MODS[g.slots[all[i]]];
     if (!m || !m.swN) continue;
     const seen = ((g.swc && g.swc[all[i]]) || 1) - 1, pick = seen % m.swN;
     let k = 0, j = i + 1;
     for (; j < all.length && k < m.swN; j++) {
+      if (MODS[g.slots[all[j]]].kind === 'passive') continue;
       if (k !== pick) skip.push(all[j]);
-      if (casts(g.slots[all[j]])) k++;
+      k++;
     }
     i = j - 1;
   }

@@ -53,5 +53,15 @@ delete G.MODS['discrim:creature:kobold'];
 const lo = G.cleanLoadout({ guns: [null, null, null, null], sel: 0, bag: ['discrim', 'discrim:creature:kobold', 'bolt'], gold: 0 });
 ok('the bag keeps it (made on load)', lo.bag.includes('discrim:creature:kobold') && G.MODS['discrim:creature:kobold'], lo.bag);
 
+// (owner, after v1.0.82) two Discriminates on one spell add up: it touches either target, nothing else
+{
+  const a = G.discrimId({ kind: 'player', id: '1' }), b = G.discrimId({ kind: 'creature', id: 'spider' });
+  const g = G.resetGun({ name: 't', cap: 3, castDelay: 0.1, recharge: 0.3, manaMax: 999, manaRegen: 0, spread: 0, multi: 1, shuffle: false, speedMul: 1, mana: 999, slots: [a, b, 'bolt'] });
+  const sh = G.planCast(g).shots[0];
+  ok('two Discriminates: both targets', G.matchesTarget(sh.only, { kind: 'player', id: '1' }) && G.matchesTarget(sh.only, { kind: 'creature', id: 'spider' }), sh.only);
+  ok('… and nothing else', !G.matchesTarget(sh.only, { kind: 'player', id: '2' }) && !G.matchesTarget(sh.only, { kind: 'creature', id: 'rat' }));
+  ok('… the copies\' own targets unchanged', !G.MODS[a].tgt.or && !G.MODS[b].tgt.or);
+}
+
 console.log(`discrim: ${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

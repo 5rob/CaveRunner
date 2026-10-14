@@ -5,6 +5,12 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.83 — CaveRunner Auto: Switch takes single mods, Discriminates add up, the grown mod row puts the gun panel at the top (branch `autobattler`)
+Released 2026-10-15 on the branch; owner OK'd the screenshots (tools/rowupshots.js).
+- Owner: a Switch takes turns between the next n single mods (passives not counted), not groups: the one up is drawn as usual (a modifier lands on the next spell), the others passed over for free (spells/cast.js `planCast` `sw`; the pull flashing, auto/preview.js `pvPull`). Suites: switch, auto-preview.
+- Owner: several Discriminates on one spell add up (it touches any of their targets): `only.or` (spells/discrim.js `addTarget`, `targetsOf`; `matchesTarget` checks them all; titlescene.js hurts each named player). Suite: discrim.
+- Owner: a gun's mod row grown (double tap an empty slot) moves everything up: the gun panel at the top of the screen, the rows above it hidden, the play area faded, the bag taking the room (ui/auto/AutoScreen.js `rowLift`, `.auto.rowup`). Suite: auto-rowup (browser).
+
 ## v1.0.82 — CaveRunner Auto: Follow Me + Discriminate on a player follows that player (branch `autobattler`)
 Released 2026-10-14 on the branch (a fix).
 - Owner: a Vigour circle with Discriminate set on player 1 didn't go to player 1. Discriminate alone only picks who it heals (the circle stays where cast); with Follow Me the circle followed its caster. Now Follow Me follows the Discriminate's player (titlescene.js `fieldFollow`). Suite: auto-vigour.

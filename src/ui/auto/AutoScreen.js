@@ -121,6 +121,16 @@ export function AutoScreen() {
   // (owner, bag-drag round) the gun's mod row grown into rows (a double tap on an empty mod slot; again, or B, back)
   const [bigRow, setBigRow] = useState(false);
   const rowTap = useRef(0);
+  // (owner, after v1.0.82) with the row grown, everything goes up by rowLift px (the play area's negative margin): the gun panel
+  // at the top of the screen, the rows above it hidden, the bag taking the room
+  const [rowLift, setRowLift] = useState(0);
+  useEffect(() => {
+    const root = cvs.current && cvs.current.closest('.auto'), play = root && root.querySelector('.aplay');
+    const grid = bigRow && root ? root.querySelector('.anavrow.anav.slots.big') : null;
+    const lift = play instanceof HTMLElement && grid instanceof HTMLElement
+      ? Math.max(0, Math.round(play.offsetHeight + STACK_GAP + ROW_H - Math.max(ROW_H, grid.offsetHeight) - STACK_GAP - PANEL_H)) : 0;
+    if (lift !== rowLift) setRowLift(lift);
+  });
   // (owner, bag-drag round) bag slots picked for a group move (hold a tile's icon still, then slide over others)
   /** @type {number[]} */
   const noSel = [];
@@ -745,9 +755,9 @@ export function AutoScreen() {
   const metersOf = p => { const L = scene.current && levelState(scene.current); return (L && L.meters[p]) || null; };
   /** @param {'dmg' | 'hp'} kind @param {number} span */
   const pinNav = (kind, span) => togglePin(navRef.current.p, kind, span);
-  return h('div', { className: 'auto' },
+  return h('div', { className: 'auto' + (rowLift ? ' rowup' : '') },
     h('div', { className: 'aplay' + (bigPlay ? ' big' : '') + (drag && drag.over && drag.over.key === 'play' && drag.over.ok ? ' drop' : ''), onPointerDown: playTap,
-      style: { flexBasis: 'calc(55% + ' + bigPlay + 'px)', marginBottom: -bigPlay + 'px' } },
+      style: { flexBasis: 'calc(55% + ' + bigPlay + 'px)', marginBottom: -(bigPlay + rowLift) + 'px' } },
       h('canvas', { ref: cvs, className: 'aplaycvs' }),
       devOn ? h('div', { className: 'aperf', style: { width: PERF_W + 'px', height: PERF_ROWS.length * PERF_ROW_H + 'px', right: PERF_PAD + 'px', bottom: PERF_PAD + 'px' },
         onPointerDown: e => { e.preventDefault(); e.stopPropagation(); perfShow.current = !perfShow.current; } }) : null,
@@ -909,7 +919,7 @@ function NavStack({ nav, run, openAt, down, drag, holdHelm, holdGun, meters, pin
   };
   return h('div', { className: 'anavwrap' + (hidden ? ' hid' : ''), ref: wrap },
     h(PinStack, { pins, run, metersOf, lift: off[0] || 0 }),
-    ...items.map((it, i) => h('div', { key: it.key, className: 'anavslot' + (it.panel ? ' panel' : ''), style: { transform: 'translateY(' + (-off[i]) + 'px)' } },
+    ...items.map((it, i) => h('div', { key: it.key, className: 'anavslot' + (it.panel ? ' panel' : '') + (bigRow && !it.panel && i !== last ? ' above' : ''), style: { transform: 'translateY(' + (-off[i]) + 'px)' } },
       body(it, i === last ? 'anav' : it.panel ? 'up' : 'anavup', i === last))),
     ...gone.map(o => h('div', { key: 'gone-' + o.it.key + o.k, className: 'anavslot' + (o.it.panel ? ' panel' : '') }, body(o.it, 'anavout', false))));
 }

@@ -951,7 +951,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .auto{position:fixed;inset:0;display:flex;flex-direction:column;gap:6px;box-sizing:border-box;
   padding:max(6px,env(safe-area-inset-top)) 8px calc(8px + env(safe-area-inset-bottom));
   background:#08040f;color:#f1ecff;touch-action:none;user-select:none;-webkit-user-select:none;overflow:hidden}
-.aplay{position:relative;flex:0 0 55%;transition:flex-basis .28s cubic-bezier(.3,.8,.3,1),margin-bottom .28s cubic-bezier(.3,.8,.3,1);border-radius:18px;overflow:hidden;border:2px solid #ff8a1f;
+.aplay{position:relative;flex:0 0 55%;transition:flex-basis .28s cubic-bezier(.3,.8,.3,1),margin-bottom .28s cubic-bezier(.3,.8,.3,1),opacity .2s;border-radius:18px;overflow:hidden;border:2px solid #ff8a1f;
   box-shadow:0 0 18px rgba(255,120,30,0.35);background:#000}
 /* (owner, v1.0.47) grown down over the nav and the bag (a double tap); the stick and buttons stay on top */
 .aplay.big{z-index:8}
@@ -1040,6 +1040,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .anavrow.slots.big{position:absolute;left:0;right:0;bottom:0;height:auto;max-height:min(330px,60vh);display:grid;grid-template-columns:repeat(7,1fr);align-content:end;
   gap:6px;padding:8px;overflow-x:hidden;overflow-y:auto;touch-action:pan-y;z-index:3;background:#0e091a}
 .anavrow.slots.big .anavs{width:auto;height:auto;aspect-ratio:1}
+/* (owner, after v1.0.82) grown, it all goes up (AutoScreen rowLift): the gun panel at the top, the rows above it hidden, the bag
+   over the play area with the room */
+.auto.rowup .aplay{z-index:0;opacity:0;pointer-events:none}
+.anavslot.above{opacity:0;pointer-events:none;transition:transform .28s cubic-bezier(.3,.8,.3,1),opacity .2s}
+.auto.rowup .abag{background:#08040f}
 /* the insert bar between two mods (.insat: a green bar left of it) and the tiles after it sliding aside (.shove, SHOVE px) */
 .anavs{transition:transform .12s ease-out}
 .anavs.shove{transform:translateX(10px)}

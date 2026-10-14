@@ -21,7 +21,7 @@ and `game/systems/shotlooks.js`.
 
 ## Rules
 
-- **`planCast(g, others)` mutates `g.idx`**: it walks the slots from where the gun left off. (v1.0.72) It also replaces `g.swc` (each Switch's turn, by slot) with a new object, never edits it, so a copy of the gun can plan freely; roll back both on a short pull: `g.idx = plan.start; g.swc = plan.swc0`.
+- **`planCast(g, others)` mutates `g.idx`**: it walks the slots from where the gun left off. (v1.0.72) It also replaces `g.swc` (each Switch's turn, by slot; after v1.0.82 a Switch takes turns between the next n single mods, passives not counted, not groups) with a new object, never edits it, so a copy of the gun can plan freely; roll back both on a short pull: `g.idx = plan.start; g.swc = plan.swc0`.
   Callers that only look (previews, the advisor, `castGroups`, the fire preview) pass a copy.
   It returns `{ shots, defs, start, cost, delay, acts, hp, wrap }`.
 - **Spell kinds.** `shot` (a projectile) and `static` (a field that stays put) take a cast slot,
@@ -36,7 +36,7 @@ and `game/systems/shotlooks.js`.
 - **Aim Assist** (`aimassist`, a `path`-family modifier; `assist: 1` on the next spell): while the gun in hand carries it
   ANYWHERE, the right stick is a pointer (`aimAndCast`, game/systems/gun.js) and the whole pull aims at the
   creature it's on (one aim per pull, so a spell sharing the pull goes the same way). It does nothing else to a shot.
-- **Discriminate** (`discrim`; LIST3 #11): an unset copy does nothing; a set one gives the next spell `only`
+- **Discriminate** (`discrim`; LIST3 #11): an unset copy does nothing; a set one gives the next spell `only` (several add up: `only.or`, `addTarget`/`targetsOf`; `matchesTarget` checks them all)
   (the target), and the bullet loop (`game/systems/bullets.js`: `mayHit`/`onlyAt`/`onlyBlast`) and props
   (`systems/props.js`) let that shot touch only matching things. It stops at rock without digging/burning it.
   Its target is picked once in the game (`input.pickTarget` = the bag index; `aimAndCast` reuses Aim Assist's

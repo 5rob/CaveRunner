@@ -129,14 +129,14 @@ export const MODS = {
              info: 'fires the next 3 shots at once', multi: 2 },
   quad:    { name: 'Quad Cast', kind: 'mod', glyph: '④', col: '#ffe066', mana: 5,
              info: 'fires the next 4 shots at once', multi: 3 },
-  // owner (v1.0.72): Switches. Like a multicast, but of the next n groups (a spell and the modifiers on it) only one casts,
+  // owner (v1.0.72): Switches. (after v1.0.82: of the next n mods, not groups) only one is drawn,
   // taking turns each pull (spells/cast.js planCast `sw`)
   switch2: { name: 'Double Switch', kind: 'mod', glyph: '[2]', col: '#ffe066', mana: 0,
-             info: 'Takes turns between the next 2 spells (each with its own modifiers): one a pull', swN: 2 },
+             info: 'Takes turns between the next 2 mods: one a pull', swN: 2 },
   switch3: { name: 'Triple Switch', kind: 'mod', glyph: '[3]', col: '#ffe066', mana: 1,
-             info: 'Takes turns between the next 3 spells (each with its own modifiers): one a pull', swN: 3 },
+             info: 'Takes turns between the next 3 mods: one a pull', swN: 3 },
   switch4: { name: 'Quad Switch', kind: 'mod', glyph: '[4]', col: '#ffe066', mana: 2,
-             info: 'Takes turns between the next 4 spells (each with its own modifiers): one a pull', swN: 4 },
+             info: 'Takes turns between the next 4 mods: one a pull', swN: 4 },
   cheap:   { name: 'Efficient', kind: 'mod', glyph: '◇', col: '#46c48c', mana: 0, d: 0.1,
              info: 'halves the mana cost', manaMul: 0.5 },
 
