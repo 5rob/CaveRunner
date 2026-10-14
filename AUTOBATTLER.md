@@ -380,6 +380,7 @@ chest slow ×0.5. Grab radius 35% of a tile.
 | play round (23 notes) | done | v1.0.74 | PM + one agent (bag drag, ~12 min, merged). Owner's phone notes: boss → guns down, straight to the exit, heads pop at the exit pad; pads one at a time; Borer past Bounce; Vigour + Discriminate; jelly turn by level; roam height goals; beam fade; fire particle room; spider legs; camera on the last down; Top N, version, stick knob, nugget icons, distinct shot glyphs, orange fields, Dev mod grid; bag rows/edge scroll/group/insert. Owner OK'd (rows push the stack up). |
 | 7 notes + spider zone | done | v1.0.75 | PM alone. Post-boss run to the exit on foot, pace by level (1 → 3 by level 20), bag group keeps its layout (green outlines), bag gun view in the play area (drag mods off), Dev mod grid grab circles, no trigger variants in it; orb webs (world/orbweb.js), the spider zone (rocks / vines / beams, levels only), spider mines; fuel-wait hover fixed. Owner OK'd. |
 | webs round | done | v1.0.76 | PM alone. No scenery straight strands in a level's webs / spider zones (spiders still spin lines); orb webs sized 30–150, up to 5 near the screen, kept apart. Owner OK'd. |
+| mana mods | done | v1.0.84 | PM alone. Recharge Battery, Mana Spring, Mana Burst (owner picked 3 of 10 ideas; the rest in HANDOVER). Owner OK'd the shots. |
 | Switch mods, Discriminates add up, row up | done | v1.0.83 | PM alone. Switch over single mods; several Discriminates = several targets; grown mod row: gun panel at the top, bag bigger. Owner OK'd the shots. |
 | Follow Me → Discriminate's player | done | v1.0.82 | Fix: a field with Follow Me and Discriminate:Pn follows Pn, not its caster (fieldFollow). |
 | Dev mod grid scrolls | done | v1.0.81 | Fix: the grid moved inside the Dev panel's scrolling body. |
@@ -482,7 +483,7 @@ Start with stage 0.
 ### Kick-start for a play-and-notes round (2026-10-13)
 
 ```
-You're the PM for CaveRunner Auto (branch `autobattler`, live at /CaveRunner/auto/, v1.0.83, nothing waiting).
+You're the PM for CaveRunner Auto (branch `autobattler`, live at /CaveRunner/auto/, v1.0.84, nothing waiting).
 Read CLAUDE.md, then HANDOVER.md's BRANCH section ("Next session" and "Open, in order") and AUTOBATTLER.md section 8
 (agent limits) and section 7 (the Log, newest rows at the top of the feedback block). Don't start anything off the open
 list yet: I'll guide this round with notes from playing on my phone.

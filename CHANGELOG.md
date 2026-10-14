@@ -5,6 +5,10 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.84 — CaveRunner Auto: three mana mods (branch `autobattler`)
+Released 2026-10-15 on the branch; owner OK'd the screenshots (tools/manashots.js).
+- Owner asked for more mana mods (picked 3 of 10 ideas; the rest are in HANDOVER): **Recharge Battery** (`rechbat`, passive: mana to full at every reload, -40 max mana; `gunPassives().rechFill`, art/scenegun.js `gunPull`'s wrap), **Mana Spring** (`manaspring`, Vigour's blue twin: players inside get `MANA_TICK` 8 mana a tick in the gun in hand; scenegun.js `vigourCircle` with `mana`, titlescene.js `vigourStep`/`giveMana`), **Mana Burst** (`manaburst`, a modifier: the next spell's `manaB` 30 mana to each player within `MANA_BURST_R` 60 where it ends, however it ends; titlescene.js `manaBurst`, its blue ring autolooks.js `drawBoom`). Suite: auto-mana.
+
 ## v1.0.83 — CaveRunner Auto: Switch takes single mods, Discriminates add up, the grown mod row puts the gun panel at the top (branch `autobattler`)
 Released 2026-10-15 on the branch; owner OK'd the screenshots (tools/rowupshots.js).
 - Owner: a Switch takes turns between the next n single mods (passives not counted), not groups: the one up is drawn as usual (a modifier lands on the next spell), the others passed over for free (spells/cast.js `planCast` `sw`; the pull flashing, auto/preview.js `pvPull`). Suites: switch, auto-preview.
