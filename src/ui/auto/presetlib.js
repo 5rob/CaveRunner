@@ -96,7 +96,7 @@ function PresetEdit({ list, i, setList, setOpen }) {
     h('div', { className: 'apledslots' }, draft.slots.map((id, s) => {
       /** @type {BagItem | null} */
       const it = id && MODS[id] ? { kind: 'mod', id, n: 1 } : null;
-      return h('button', { key: s, className: 'aslot' + (it ? ' full k-mod' : '') + (s === pick ? ' sel' : ''), 'data-pslot': s, style: itemEdge(it),
+      return h('button', { key: s, className: 'aslot anavs' + (it ? ' full k-mod' : '') + (s === pick ? ' sel' : ''), 'data-pslot': s, style: itemEdge(it),
         onPointerDown: tap(() => slotTap(s)) }, it ? h(ItemIcon, { it }) : null);
     })),
     h('div', { className: 'apledbtns' },

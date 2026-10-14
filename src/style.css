@@ -1248,7 +1248,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .apledhead b{flex:1;font:800 12px ui-monospace,monospace;color:#ffc93c}
 .apleddel.sure{background:#d0282e;color:#fff}
 .apled .agunpanel{animation:none}
-.apledslots{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.apledslots{display:grid;grid-template-columns:repeat(7,1fr);align-content:start;gap:6px;padding:8px;max-height:min(330px,40vh);overflow-y:auto;touch-action:pan-y;
+  border-radius:14px;border:2px solid #ffc93c;background:#0e091a;box-shadow:0 0 12px rgba(255,201,60,0.33)}   /* (owner) stacked rows of 7, as the main game's grown mod row (.anavrow.slots.big) */
+.apledslots .aslot:not(.full){opacity:.55}
 .apledslots .aslot{padding:0}
 .apledslots .aslot.sel{box-shadow:0 0 0 3px #fff}
 .apledbtns{display:flex;align-items:center;gap:8px}

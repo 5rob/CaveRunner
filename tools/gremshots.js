@@ -11,7 +11,7 @@ require('./build')();
 require('../tests/build')();
 
 const PRESETS = [['Pea Shooter', ['bolt']], ['Double Spark', ['double', 'spark']], ['Bouncer', ['bounce', 'slug', 'slug']], ['Fireball', ['fball', 'big']],
-  ['Triple Orb', ['triple', 'orb']], ['Missiles', ['homing', 'missile', 'missile']], ['Lance', ['pierce', 'lance']], ['Buzz', ['saw', 'double', 'saw']]];
+  ['Triple Orb', ['triple', 'orb']], ['Missiles', ['homing', 'missile', 'missile']], ['Lance', ['pierce', 'lance']], ['Buzz', ['saw', 'double', 'saw']], ['Big Wand', ['triple', 'bolt', 'spark', 'slug', 'orb', 'bounce', 'double', 'bolt', 'spark', 'fball', 'big', 'pierce', 'lance', 'bolt', 'spark', 'orb', null, null, null, null, null, null, null, null, null]]];
 
 (async () => {
   const browser = await launch();
@@ -71,7 +71,7 @@ const PRESETS = [['Pea Shooter', ['bolt']], ['Double Spark', ['double', 'spark']
   await page.locator('.devtab[data-t="presets"]').click();
   await page.waitForTimeout(400);
   await save('c-presets', 'Dev → Presets: every saved gun in its unlock order, its Grem price under it');
-  await page.locator('.apltile[data-preset="2"]').dispatchEvent('pointerdown');
+  await page.locator('.apltile[data-preset="8"]').dispatchEvent('pointerdown');
   await page.waitForTimeout(2500);
   await page.locator('.apledslots [data-pslot="1"]').dispatchEvent('pointerdown');
   await page.waitForTimeout(200);
