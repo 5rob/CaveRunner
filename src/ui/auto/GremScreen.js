@@ -2,8 +2,10 @@
 // Grem Mode's screen (owner, 2026-10-15; the rules: auto/grem.js): the title's GREM MODE button opens it. No hub, no nav, no
 // saving: one player teleports straight into an endless level (auto/level.js levelScene's grem: gold the only drop, after each
 // boss LEVEL CLEARED and on into more cave, the level + 1). Top to bottom: the play area (⏸ top right, the level top left), the
-// gold collected (a big nugget and number, centred), the gun presets in their order (GremGuns: locked ones dim, the one being
-// paid off filling its outline clockwise, a tap on an unlocked one gives it to player 1), and the stick, B and A. No bag (owner):
+// gold collected (a big nugget and number, centred), the gun presets in their order (GremGuns, one row scrolling sideways:
+// locked ones dim, the one being paid off filling its outline clockwise, a freshly unlocked one flashing NEW till it's tapped;
+// a tap on an unlocked one gives it to the picked player), the players' helmets (GremHelms: health rings, the picked one
+// ringed white; a tap picks him), and the stick (it steers the picked player), B and A. No bag (owner):
 // the gold is kept in the run's bag (bagCount) but each pickup flies into the gold counter.
 // The stick takes player 1 over by hand at once (levelControl; the camera follows him); DEV.autoCtlWait s after it's let go
 // the autopilot has him again. A tap on the play area picks the creature nearest the tap (within DEV.gremPickR): every player
@@ -26,7 +28,8 @@ import { loadPresets, presetGun } from '../../save/presets.js';
 import { GunIcon } from '../editor.js';
 import { PauseMenu } from '../pause.js';
 import { runScene } from '../scenecanvas.js';
-import { NuggetIcon } from './icons.js';
+import { HelmetIcon, NuggetIcon } from './icons.js';
+import { hpFrac } from '../../auto/nav.js';
 import { FlyTile, PillStick } from './AutoScreen.js';
 import { h, useEffect, useRef, useState } from '../h.js';
 
@@ -42,7 +45,16 @@ export function GremScreen() {
   pausedRef.current = paused;
   const [gold, setGold] = useState(0);
   const [lvl, setLvl] = useState(1);
-  const [sel, setSel] = useState(-1);          // the preset player 1 has (-1: his starter gun)
+  /** @type {number[]} */
+  const noHas = [-1];
+  const [has, setHas] = useState(noHas);      // the preset each player has (-1: his starter gun)
+  const [who, setWho] = useState(0);          // the picked player: the guns go to him, the stick steers him
+  const whoRef = useRef(0);
+  whoRef.current = who;
+  /** @type {number[]} */
+  const noFresh = [];
+  const [fresh, setFresh] = useState(noFresh); // unlocked and not tapped yet: flashing NEW
+  const guns = useRef(null);
   const [, setV] = useState(0);
   const unlocked = useRef(0);
   const cvs = useRef(null);
@@ -52,13 +64,13 @@ export function GremScreen() {
   const cam = useRef(null);
   const input = useRef({});
 
-  // preset i to player p (a fresh copy); player 1's pick shows on the grid
+  // preset i to player p (a fresh copy); the picked player's shows ringed on the row
   /** @param {number} p @param {number} i */
   const give = (p, i) => {
     const pl = run.current.players[p], g = presets[i] ? presetGun(presets[i]) : null;
     if (!pl || !g) return;
     pl.guns[0] = g; pl.active = 0;
-    if (p === 0) setSel(i);
+    setHas(a => { const b = a.slice(); b[p] = i; return b; });
   };
   // the extra players' guns: one each of the unlocked presets, the newest first (auto/grem.js gremTeamGun)
   const dealOut = () => { for (let j = 1; j < run.current.players.length; j++) { const k = gremTeamGun(unlocked.current, j); if (k >= 0) give(j, k); } };
@@ -85,7 +97,14 @@ export function GremScreen() {
       setGold(g); setLvl(R.tier);
       // gold paid off the next preset(s): player 1 gets the newest, the extra players theirs
       const u = gremUnlocked(g, presets.length);
-      if (u > unlocked.current) { unlocked.current = u; give(0, u - 1); dealOut(); SFX.fx('open'); }
+      if (u > unlocked.current) {
+        const was = unlocked.current;
+        unlocked.current = u; give(0, u - 1); dealOut(); SFX.fx('open');
+        setFresh(f => [...f, ...Array.from({ length: u - was }, (_, k) => was + k)]);
+        // the row scrolled to the new one
+        const el = guns.current && guns.current.querySelector('[data-gun="' + (u - 1) + '"]');
+        if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+      }
       // the extra players join at their levels (DEV.gremP2 …), teleporting in beside the team
       const L = levelState(S);
       while (L && L.phase !== 'arrive' && !L.failed && R.players.length < gremTeam(R.tier) && S.runners.length < 4) {
@@ -140,21 +159,37 @@ export function GremScreen() {
         if (!levelLost(S)) return false;
         window.__AUTO_LEVEL = 0;
         run.current = gremRun(gremKitLoad());
-        unlocked.current = 0; setSel(-1); setGold(0); setLvl(1); setFlies([]);
+        unlocked.current = 0; setHas([-1]); setWho(0); setFresh([]); setGold(0); setLvl(1); setFlies([]);
         return true;
       },
     });
   }, []);
 
-  // the stick: player 1 by hand at once (past the dead zone), the camera on him; let go, he plays himself after a moment
+  // the stick: the picked player by hand at once (past the dead zone), the camera on him; let go, he plays himself after a moment
   /** @param {import('./AutoScreen.js').PillState} st */
   const steer = st => {
-    const S = scene.current, C = cam.current, r = S && S.runners[0];
+    const S = scene.current, C = cam.current, w = whoRef.current, r = S && S.runners.find(q => q.id === w);
     if (!S || !S.lvl || !r || r.out) return;
     levelHold(S, 0);
     if (!(st.active && st.mag > DEAD) && !r.ctl) return;
-    if (C) C.lock = 0;
-    levelControl(S, 0, st);
+    if (C) C.lock = w;
+    levelControl(S, w, st);
+  };
+  // a gun tapped: an unlocked one to the picked player (its NEW goes)
+  /** @param {number} i */
+  const pickGun = i => {
+    if (i >= unlocked.current) { SFX.ui('tap'); return; }
+    give(who, i); SFX.fx('open');
+    setFresh(f => f.filter(k => k !== i));
+  };
+  // a helmet tapped: that player picked (a hand-steered other one let go)
+  /** @param {number} i */
+  const pickWho = i => {
+    SFX.ui('tap');
+    if (i === who) return;
+    const S = scene.current, C = cam.current;
+    if (S && S.runners.some(r => r.ctl)) { if (C) C.lock = -1; levelControl(S, -1, null); }
+    setWho(i);
   };
   const pressA = () => {
     SFX.unlock(); SFX.ui('tap');
@@ -186,7 +221,8 @@ export function GremScreen() {
       h('div', { className: 'glvl' }, 'Level ' + lvl),
       h('button', { className: 'pausebtn', title: 'Pause', onPointerDown: e => { e.preventDefault(); SFX.fx('open'); setPaused(true); } }, '⏸')),
     h('div', { className: 'ggold', 'data-gold': gold }, h('span', { className: 'ggicon' }, h(NuggetIcon, { kind: 'gold' })), h('b', null, gold.toLocaleString())),
-    h(GremGuns, { presets, gold, sel, pick: i => { if (i < unlocked.current) { give(0, i); SFX.fx('open'); } else SFX.ui('tap'); } }),
+    h(GremGuns, { presets, gold, sel: has[who] ?? -1, fresh, pick: pickGun, box: guns }),
+    h(GremHelms, { run: run.current, who, pick: pickWho }),
     h('div', { className: 'abtns' },
       h(PillStick, { onMove: steer }),
       h('button', { className: 'abtn ab', onPointerDown: tap(pressB) }, 'B'),
@@ -195,16 +231,30 @@ export function GremScreen() {
     paused ? h(PauseMenu, { input, label: 'Grem Mode · Level ' + lvl, onNew: () => location.reload(), close: () => { SFX.fx('close'); setPaused(false); } }) : null);
 }
 
-// The presets as Grem Mode's guns, in their order: unlocked ones bright (a tap gives it to player 1; his has a white ring),
-// the next one's outline filling clockwise as the gold comes in (gremFill), the rest dim and locked
-/** @param {{ presets: GunPreset[], gold: number, sel: number, pick: (i: number) => void }} props */
-function GremGuns({ presets, gold, sel, pick }) {
+// The presets as Grem Mode's guns, in their order, one row scrolling sideways: unlocked ones bright (a tap gives it to the
+// picked player; his has a white ring), a fresh one flashing NEW till it's tapped, the next one's outline filling clockwise as
+// the gold comes in (gremFill), the rest dim and locked
+/** @param {{ presets: GunPreset[], gold: number, sel: number, fresh: number[], pick: (i: number) => void, box: { current: any } }} props */
+function GremGuns({ presets, gold, sel, fresh, pick, box }) {
   const u = gremUnlocked(gold, presets.length);
   if (!presets.length) return h('div', { className: 'gguns none' }, h('p', null, 'No gun presets yet: Dev → Presets'));
-  return h('div', { className: 'gguns' }, presets.map((p, i) => {
-    const f = i < u ? 1 : i === u ? gremFill(gold, i) : 0;
-    return h('button', { key: i, className: 'ggun' + (i < u ? ' open' : i === u ? ' next' : ' locked') + (i === sel ? ' sel' : ''), 'data-gun': i, 'data-fill': f.toFixed(3),
-      title: p.name + (i < u ? '' : ' · ' + gremPrice(i) + ' gold'), style: { '--f': (f * 360).toFixed(1) + 'deg' }, onPointerDown: tap(() => pick(i)) },
-      h('span', { className: 'gginner' }, h(GunIcon, { gun: p.gun })));
+  return h('div', { className: 'gguns', ref: box }, presets.map((p, i) => {
+    const f = i < u ? 1 : i === u ? gremFill(gold, i) : 0, nu = i < u && fresh.includes(i);
+    return h('button', { key: i, className: 'ggun' + (i < u ? ' open' : i === u ? ' next' : ' locked') + (i === sel ? ' sel' : '') + (nu ? ' fresh' : ''), 'data-gun': i, 'data-fill': f.toFixed(3),
+      title: p.name + (i < u ? '' : ' · ' + gremPrice(i) + ' gold'), style: { '--f': (f * 360).toFixed(1) + 'deg' }, onClick: () => pick(i) },
+      h('span', { className: 'gginner' }, h(GunIcon, { gun: p.gun })),
+      nu ? h('i', { className: 'gnew' }, 'NEW') : null);
+  }));
+}
+
+// The players' helmets (as the nav's player row): each in a ring of his health (his colour; flashing red under a quarter), the
+// picked one ringed white; a tap picks him
+/** @param {{ run: AutoRun, who: number, pick: (i: number) => void }} props */
+function GremHelms({ run, who, pick }) {
+  return h('div', { className: 'ghelms' }, run.players.map((q, i) => {
+    const hp = hpFrac(q);
+    return h('button', { key: i, className: 'anavc on' + (i === who ? ' sel' : ''), 'data-player': i, onPointerDown: tap(() => pick(i)),
+      style: { boxShadow: i === who ? undefined : '0 0 10px ' + q.col + '66', '--hp': (hp * 360).toFixed(1) + 'deg', '--hc': q.col, '--fl': (0.12 + hp * 2.4).toFixed(2) + 's' } },
+      h(HelmetIcon, { col: q.col, size: 35 }), h('i', { className: 'ahp' }), hp < 0.25 ? h('i', { className: 'ahp ahpf' }) : null);
   }));
 }

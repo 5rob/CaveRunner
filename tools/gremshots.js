@@ -47,14 +47,20 @@ const PRESETS = [['Pea Shooter', ['bolt']], ['Double Spark', ['double', 'spark']
     bagAdd(run, { kind: 'gold', n: gremPaidAt(1) + Math.round(gremPrice(2) * 0.4) });
   });
   await page.waitForTimeout(2500);
+  await page.evaluate(() => { window.__gremScene.lvl.data.run.tier = 10; });   // players 2 and 3 join
+  await page.waitForTimeout(1500);
+  await page.locator('.ghelms [data-player="1"]').dispatchEvent('pointerdown');
+  await page.waitForTimeout(200);
+  await page.locator('.ggun[data-gun="0"]').click();
+  await page.waitForTimeout(300);
   await page.evaluate(() => {
     const S = window.__gremScene, r = S.runners[0];
     const f = S.foes.filter(q => q.hp > 0).sort((a, b) => Math.abs(a.x - S.scroll - r.x - 80) - Math.abs(b.x - S.scroll - r.x - 80))[0];
     if (f) S.pick = f;
   });
   await page.waitForTimeout(400);
-  await save('b-play', 'Grem Mode: guns 1 and 2 paid off (player 1 has the newest: white ring), the third filling clockwise, a tapped creature in a red ring');
-  await save('b-panel', 'close up: the gold and the guns', { x: 0, y: 470, width: 412, height: 260 });
+  await save('b-play', 'Grem Mode: one row of guns (scrolls sideways): gun 1 given to player 2 (picked: white ring on his helmet and on his gun), gun 2 still flashing NEW, gun 3 filling; the helmets with health rings; a tapped creature in a red ring');
+  await save('b-panel', 'close up: the gold and the guns', { x: 0, y: 560, width: 412, height: 320 });
   // the normal game's Dev panel: Presets, a preset open, Grem
   await page.goto(url);
   await page.waitForTimeout(1200);

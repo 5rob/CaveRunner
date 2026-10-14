@@ -1207,19 +1207,27 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .ggicon{width:42px;height:42px;display:flex}
 .ggicon canvas{width:100%;height:100%;image-rendering:pixelated}
 .ggold b{font:900 38px ui-monospace,SFMono-Regular,Menlo,monospace;color:#ffc93c;text-shadow:0 0 12px rgba(255,180,40,0.6),0 2px 0 #6a3a00}
-.gguns{flex:none;max-height:152px;overflow-y:auto;touch-action:pan-y;display:grid;grid-template-columns:repeat(5,1fr);gap:7px;padding:8px;
+.gguns{flex:none;overflow-x:auto;overflow-y:hidden;touch-action:pan-x;display:flex;gap:7px;padding:8px;scroll-padding:8px;
   border-radius:14px;background:#0e091a;border:2px solid #3d2f5c}
 .gguns.none{display:block;color:#8f84ad;font:600 13px system-ui,sans-serif;text-align:center}
 .gguns.none p{margin:6px 0}
 /* a gun: its outline a ring that fills clockwise from the top as it's paid off (--f degrees), bright gold when it's open */
-.ggun{position:relative;aspect-ratio:1;padding:4px;border:none;border-radius:12px;background:conic-gradient(#ffc93c var(--f,0deg),#2c2340 0)}
+.ggun{position:relative;flex:0 0 72px;height:72px;padding:4px;border:none;border-radius:12px;background:conic-gradient(#ffc93c var(--f,0deg),#2c2340 0)}
 .ggun.open{background:#ffc93c;box-shadow:0 0 10px rgba(255,201,60,0.5)}
 .ggun.sel{background:#fff;box-shadow:0 0 14px rgba(255,255,255,0.8)}
 .ggun.next{box-shadow:0 0 10px rgba(255,201,60,0.35)}
 .gginner{width:100%;height:100%;border-radius:9px;background:#1d1531;display:flex;align-items:center;justify-content:center;overflow:hidden}
 .gginner .gicon{width:84%;height:auto}
 .ggun.locked .gginner,.ggun.next .gginner{filter:grayscale(1) brightness(.55)}
-.grem .gguns{max-height:230px;margin-bottom:66px}   /* (no bag, owner: the guns' panel clear of the stick's dome) */
+/* a fresh one: NEW flashing on its corner, the tile pulsing */
+.ggun.fresh{animation:gfresh .7s ease-in-out infinite alternate}
+@keyframes gfresh{from{box-shadow:0 0 6px rgba(255,201,60,0.5)}to{box-shadow:0 0 22px rgba(255,240,150,1)}}
+.gnew{position:absolute;right:-2px;top:-2px;padding:1px 5px;border-radius:7px;background:#ff3d6e;color:#fff;font:900 11px ui-monospace,monospace;font-style:normal;
+  box-shadow:0 0 8px #ff3d6e;animation:gnew .45s steps(1) infinite;pointer-events:none}
+@keyframes gnew{50%{background:#fff;color:#ff3d6e}}
+/* the players' helmets, between the guns and the buttons, right of the stick's dome */
+.ghelms{flex:none;height:70px;display:flex;align-items:center;justify-content:center;gap:12px;padding-left:150px}
+.ghelms .anavc{padding:0;display:flex;align-items:center;justify-content:center}
 /* Dev → Presets (ui/auto/presetlib.js) */
 .apltiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:7px;margin-bottom:10px}
 .apltile{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 4px 4px;border-radius:10px;background:#2c1f45;border:2px solid #ffc93c88;color:#f1ecff;touch-action:pan-y}
@@ -1228,7 +1236,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .aplname{font:700 10px system-ui,sans-serif;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .aplnum{position:absolute;left:4px;top:2px;font:800 10px ui-monospace,monospace;color:#ffc93c;font-style:normal}
 .aplprice{font:700 9px ui-monospace,monospace;color:#b9add8;font-style:normal}
-.apled{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+.apled{position:fixed;inset:0;z-index:30;display:flex;flex-direction:column;gap:8px;box-sizing:border-box;
+  padding:max(8px,env(safe-area-inset-top)) 10px calc(8px + env(safe-area-inset-bottom));background:#0e091a;color:#f1ecff;font:14px system-ui,sans-serif}
+.apledtop{flex:none;display:flex;flex-direction:column;gap:8px}
+.apledgrid{flex:1 1 0;min-height:0;overflow-y:auto;touch-action:pan-y;-webkit-overflow-scrolling:touch;border-top:1px solid #3d2f5c;padding-top:6px}
+.apled .dbg{min-height:34px;padding:0 12px;border-radius:10px;border:1px solid #3d2f5c;background:#1d1531;color:#f1ecff;font:700 13px system-ui,sans-serif}
+.apled .dbg:disabled{opacity:.4}
+.apled .devsearch{height:38px;border-radius:10px;border:1px solid #3d2f5c;background:#1d1531;color:#f1ecff;padding:0 12px;font:600 14px system-ui,sans-serif}
+.apled .devnote{margin:0 0 6px;font-size:12px;color:#b9add8}
 .apledhead{display:flex;align-items:center;gap:6px}
 .apledhead b{flex:1;font:800 12px ui-monospace,monospace;color:#ffc93c}
 .apleddel.sure{background:#d0282e;color:#fff}

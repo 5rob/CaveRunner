@@ -4,7 +4,8 @@
 // (dev mode) adds one. A tap opens the gun editor (PresetEdit): the gun panel (AutoScreen GunPanel: its stats and the firing
 // window simulating it), its mod slots (tap one to pick it; tap another to swap them; ✕ empties it), the Dev mod grid (a tap
 // on a mod puts it in the picked slot, else the first empty one), its name, ◀ ▶ to move it in the order, 🗑️ (twice) to
-// delete it, and Save changes (writes it back; nothing is saved until then).
+// delete it, and Save changes (writes it back; nothing is saved until then). (owner) The editor takes the whole window (over
+// the Dev panel, as the grown mod row does): everything down to the slots stays put at the top, the mod grid scrolls under it.
 
 import { SFX } from '../../audio/sfx.js';
 import { MODS } from '../../spells/mods.js';
@@ -82,7 +83,7 @@ function PresetEdit({ list, i, setList, setOpen }) {
     savePresets(next); setList(next); setOpen(-1); SFX.fx('close');
   };
   const sig = 'pre|' + i + '|' + v + '|' + draft.slots.join();
-  return h('div', { className: 'apled' },
+  return ReactDOM.createPortal(h('div', { className: 'apled' }, h('div', { className: 'apledtop' },
     h('div', { className: 'apledhead' },
       h('button', { className: 'dbg apledback', onPointerDown: tap(() => { SFX.fx('close'); setOpen(-1); }) }, '‹ Presets'),
       h('b', null, '#' + (i + 1) + ' of ' + list.length),
@@ -101,6 +102,7 @@ function PresetEdit({ list, i, setList, setOpen }) {
     h('div', { className: 'apledbtns' },
       h('button', { className: 'dbg', disabled: pick < 0 || !draft.slots[pick], onPointerDown: tap(empty) }, '✕ Empty slot'),
       h('button', { className: 'dbg apledsave' + (dirty ? ' on' : ''), disabled: !dirty, onPointerDown: tap(save) }, 'Save changes'),
-      flash ? h('span', { key: flash + v, className: 'apledflash' }, flash) : null),
-    h(ModGrid, { onMod: put, onTap: put, note: 'Tap a slot to pick it (tap another to swap them), then tap a mod to put it there; no slot picked: the first empty one.' }));
+      flash ? h('span', { key: flash + v, className: 'apledflash' }, flash) : null)),
+    h('div', { className: 'apledgrid' },
+      h(ModGrid, { onMod: put, onTap: put, note: 'Tap a slot to pick it (tap another to swap them), then tap a mod to put it there; no slot picked: the first empty one.' }))), document.body);
 }

@@ -1216,19 +1216,27 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .ggicon{width:42px;height:42px;display:flex}
 .ggicon canvas{width:100%;height:100%;image-rendering:pixelated}
 .ggold b{font:900 38px ui-monospace,SFMono-Regular,Menlo,monospace;color:#ffc93c;text-shadow:0 0 12px rgba(255,180,40,0.6),0 2px 0 #6a3a00}
-.gguns{flex:none;max-height:152px;overflow-y:auto;touch-action:pan-y;display:grid;grid-template-columns:repeat(5,1fr);gap:7px;padding:8px;
+.gguns{flex:none;overflow-x:auto;overflow-y:hidden;touch-action:pan-x;display:flex;gap:7px;padding:8px;scroll-padding:8px;
   border-radius:14px;background:#0e091a;border:2px solid #3d2f5c}
 .gguns.none{display:block;color:#8f84ad;font:600 13px system-ui,sans-serif;text-align:center}
 .gguns.none p{margin:6px 0}
 /* a gun: its outline a ring that fills clockwise from the top as it's paid off (--f degrees), bright gold when it's open */
-.ggun{position:relative;aspect-ratio:1;padding:4px;border:none;border-radius:12px;background:conic-gradient(#ffc93c var(--f,0deg),#2c2340 0)}
+.ggun{position:relative;flex:0 0 72px;height:72px;padding:4px;border:none;border-radius:12px;background:conic-gradient(#ffc93c var(--f,0deg),#2c2340 0)}
 .ggun.open{background:#ffc93c;box-shadow:0 0 10px rgba(255,201,60,0.5)}
 .ggun.sel{background:#fff;box-shadow:0 0 14px rgba(255,255,255,0.8)}
 .ggun.next{box-shadow:0 0 10px rgba(255,201,60,0.35)}
 .gginner{width:100%;height:100%;border-radius:9px;background:#1d1531;display:flex;align-items:center;justify-content:center;overflow:hidden}
 .gginner .gicon{width:84%;height:auto}
 .ggun.locked .gginner,.ggun.next .gginner{filter:grayscale(1) brightness(.55)}
-.grem .gguns{max-height:230px;margin-bottom:66px}   /* (no bag, owner: the guns' panel clear of the stick's dome) */
+/* a fresh one: NEW flashing on its corner, the tile pulsing */
+.ggun.fresh{animation:gfresh .7s ease-in-out infinite alternate}
+@keyframes gfresh{from{box-shadow:0 0 6px rgba(255,201,60,0.5)}to{box-shadow:0 0 22px rgba(255,240,150,1)}}
+.gnew{position:absolute;right:-2px;top:-2px;padding:1px 5px;border-radius:7px;background:#ff3d6e;color:#fff;font:900 11px ui-monospace,monospace;font-style:normal;
+  box-shadow:0 0 8px #ff3d6e;animation:gnew .45s steps(1) infinite;pointer-events:none}
+@keyframes gnew{50%{background:#fff;color:#ff3d6e}}
+/* the players' helmets, between the guns and the buttons, right of the stick's dome */
+.ghelms{flex:none;height:70px;display:flex;align-items:center;justify-content:center;gap:12px;padding-left:150px}
+.ghelms .anavc{padding:0;display:flex;align-items:center;justify-content:center}
 /* Dev → Presets (ui/auto/presetlib.js) */
 .apltiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:7px;margin-bottom:10px}
 .apltile{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 4px 4px;border-radius:10px;background:#2c1f45;border:2px solid #ffc93c88;color:#f1ecff;touch-action:pan-y}
@@ -1237,7 +1245,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .aplname{font:700 10px system-ui,sans-serif;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .aplnum{position:absolute;left:4px;top:2px;font:800 10px ui-monospace,monospace;color:#ffc93c;font-style:normal}
 .aplprice{font:700 9px ui-monospace,monospace;color:#b9add8;font-style:normal}
-.apled{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+.apled{position:fixed;inset:0;z-index:30;display:flex;flex-direction:column;gap:8px;box-sizing:border-box;
+  padding:max(8px,env(safe-area-inset-top)) 10px calc(8px + env(safe-area-inset-bottom));background:#0e091a;color:#f1ecff;font:14px system-ui,sans-serif}
+.apledtop{flex:none;display:flex;flex-direction:column;gap:8px}
+.apledgrid{flex:1 1 0;min-height:0;overflow-y:auto;touch-action:pan-y;-webkit-overflow-scrolling:touch;border-top:1px solid #3d2f5c;padding-top:6px}
+.apled .dbg{min-height:34px;padding:0 12px;border-radius:10px;border:1px solid #3d2f5c;background:#1d1531;color:#f1ecff;font:700 13px system-ui,sans-serif}
+.apled .dbg:disabled{opacity:.4}
+.apled .devsearch{height:38px;border-radius:10px;border:1px solid #3d2f5c;background:#1d1531;color:#f1ecff;padding:0 12px;font:600 14px system-ui,sans-serif}
+.apled .devnote{margin:0 0 6px;font-size:12px;color:#b9add8}
 .apledhead{display:flex;align-items:center;gap:6px}
 .apledhead b{flex:1;font:800 12px ui-monospace,monospace;color:#ffc93c}
 .apleddel.sure{background:#d0282e;color:#fff}
@@ -36421,51 +36436,59 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       SFX.fx("close");
     };
     const sig = "pre|" + i + "|" + v + "|" + draft.slots.join();
-    return h(
+    return ReactDOM.createPortal(h(
       "div",
       { className: "apled" },
       h(
         "div",
-        { className: "apledhead" },
-        h("button", { className: "dbg apledback", onPointerDown: tap(() => {
-          SFX.fx("close");
-          setOpen(-1);
-        }) }, "‹ Presets"),
-        h("b", null, "#" + (i + 1) + " of " + list.length),
-        h("button", { className: "dbg", disabled: i === 0, onPointerDown: tap(() => move(-1)) }, "◀"),
-        h("button", { className: "dbg", disabled: i === list.length - 1, onPointerDown: tap(() => move(1)) }, "▶"),
-        h("button", { className: "dbg apleddel" + (asking ? " sure" : ""), onPointerDown: tap(del) }, asking ? "Delete" : "🗑️")
+        { className: "apledtop" },
+        h(
+          "div",
+          { className: "apledhead" },
+          h("button", { className: "dbg apledback", onPointerDown: tap(() => {
+            SFX.fx("close");
+            setOpen(-1);
+          }) }, "‹ Presets"),
+          h("b", null, "#" + (i + 1) + " of " + list.length),
+          h("button", { className: "dbg", disabled: i === 0, onPointerDown: tap(() => move(-1)) }, "◀"),
+          h("button", { className: "dbg", disabled: i === list.length - 1, onPointerDown: tap(() => move(1)) }, "▶"),
+          h("button", { className: "dbg apleddel" + (asking ? " sure" : ""), onPointerDown: tap(del) }, asking ? "Delete" : "🗑️")
+        ),
+        h("input", {
+          className: "devsearch aplname",
+          value: name,
+          maxLength: PRESET_NAME_MAX,
+          placeholder: draft.name,
+          onChange: (e) => {
+            setName(e.target.value);
+            setDirty(true);
+          }
+        }),
+        h(GunPanel, { gun: draft, sig, col: "#ffc93a", cls: "apledpanel", pl: pl.current, gi: 0, noSave: true }),
+        h("div", { className: "apledslots" }, draft.slots.map((id, s) => {
+          const it = id && MODS[id] ? { kind: "mod", id, n: 1 } : null;
+          return h("button", {
+            key: s,
+            className: "aslot" + (it ? " full k-mod" : "") + (s === pick ? " sel" : ""),
+            "data-pslot": s,
+            style: itemEdge(it),
+            onPointerDown: tap(() => slotTap(s))
+          }, it ? h(ItemIcon, { it }) : null);
+        })),
+        h(
+          "div",
+          { className: "apledbtns" },
+          h("button", { className: "dbg", disabled: pick < 0 || !draft.slots[pick], onPointerDown: tap(empty) }, "✕ Empty slot"),
+          h("button", { className: "dbg apledsave" + (dirty2 ? " on" : ""), disabled: !dirty2, onPointerDown: tap(save) }, "Save changes"),
+          flash ? h("span", { key: flash + v, className: "apledflash" }, flash) : null
+        )
       ),
-      h("input", {
-        className: "devsearch aplname",
-        value: name,
-        maxLength: PRESET_NAME_MAX,
-        placeholder: draft.name,
-        onChange: (e) => {
-          setName(e.target.value);
-          setDirty(true);
-        }
-      }),
-      h(GunPanel, { gun: draft, sig, col: "#ffc93a", cls: "apledpanel", pl: pl.current, gi: 0, noSave: true }),
-      h("div", { className: "apledslots" }, draft.slots.map((id, s) => {
-        const it = id && MODS[id] ? { kind: "mod", id, n: 1 } : null;
-        return h("button", {
-          key: s,
-          className: "aslot" + (it ? " full k-mod" : "") + (s === pick ? " sel" : ""),
-          "data-pslot": s,
-          style: itemEdge(it),
-          onPointerDown: tap(() => slotTap(s))
-        }, it ? h(ItemIcon, { it }) : null);
-      })),
       h(
         "div",
-        { className: "apledbtns" },
-        h("button", { className: "dbg", disabled: pick < 0 || !draft.slots[pick], onPointerDown: tap(empty) }, "✕ Empty slot"),
-        h("button", { className: "dbg apledsave" + (dirty2 ? " on" : ""), disabled: !dirty2, onPointerDown: tap(save) }, "Save changes"),
-        flash ? h("span", { key: flash + v, className: "apledflash" }, flash) : null
-      ),
-      h(ModGrid, { onMod: put, onTap: put, note: "Tap a slot to pick it (tap another to swap them), then tap a mod to put it there; no slot picked: the first empty one." })
-    );
+        { className: "apledgrid" },
+        h(ModGrid, { onMod: put, onTap: put, note: "Tap a slot to pick it (tap another to swap them), then tap a mod to put it there; no slot picked: the first empty one." })
+      )
+    ), document.body);
   }
 
   // src/ui/auto/gremkit.js
@@ -38397,7 +38420,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     pausedRef.current = paused;
     const [gold, setGold] = useState(0);
     const [lvl, setLvl] = useState(1);
-    const [sel, setSel] = useState(-1);
+    const noHas = [-1];
+    const [has, setHas] = useState(noHas);
+    const [who, setWho] = useState(0);
+    const whoRef = useRef(0);
+    whoRef.current = who;
+    const noFresh = [];
+    const [fresh2, setFresh] = useState(noFresh);
+    const guns = useRef(null);
     const [, setV] = useState(0);
     const unlocked = useRef(0);
     const cvs = useRef(null);
@@ -38409,7 +38439,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (!pl || !g) return;
       pl.guns[0] = g;
       pl.active = 0;
-      if (p === 0) setSel(i);
+      setHas((a) => {
+        const b = a.slice();
+        b[p] = i;
+        return b;
+      });
     };
     const dealOut = () => {
       for (let j = 1; j < run.current.players.length; j++) {
@@ -38436,10 +38470,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         setLvl(R.tier);
         const u = gremUnlocked(g, presets.length);
         if (u > unlocked.current) {
+          const was = unlocked.current;
           unlocked.current = u;
           give(0, u - 1);
           dealOut();
           SFX.fx("open");
+          setFresh((f) => [...f, ...Array.from({ length: u - was }, (_, k) => was + k)]);
+          const el = guns.current && guns.current.querySelector('[data-gun="' + (u - 1) + '"]');
+          if (el && el.scrollIntoView) el.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
         }
         const L = levelState(S2);
         while (L && L.phase !== "arrive" && !L.failed && R.players.length < gremTeam(R.tier) && S2.runners.length < 4) {
@@ -38512,7 +38550,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           window.__AUTO_LEVEL = 0;
           run.current = gremRun(gremKitLoad());
           unlocked.current = 0;
-          setSel(-1);
+          setHas([-1]);
+          setWho(0);
+          setFresh([]);
           setGold(0);
           setLvl(1);
           setFlies([]);
@@ -38521,12 +38561,31 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       });
     }, []);
     const steer = (st) => {
-      const S2 = scene.current, C = cam.current, r = S2 && S2.runners[0];
+      const S2 = scene.current, C = cam.current, w = whoRef.current, r = S2 && S2.runners.find((q) => q.id === w);
       if (!S2 || !S2.lvl || !r || r.out) return;
       levelHold(S2, 0);
       if (!(st.active && st.mag > DEAD) && !r.ctl) return;
-      if (C) C.lock = 0;
-      levelControl(S2, 0, st);
+      if (C) C.lock = w;
+      levelControl(S2, w, st);
+    };
+    const pickGun = (i) => {
+      if (i >= unlocked.current) {
+        SFX.ui("tap");
+        return;
+      }
+      give(who, i);
+      SFX.fx("open");
+      setFresh((f) => f.filter((k) => k !== i));
+    };
+    const pickWho = (i) => {
+      SFX.ui("tap");
+      if (i === who) return;
+      const S2 = scene.current, C = cam.current;
+      if (S2 && S2.runners.some((r) => r.ctl)) {
+        if (C) C.lock = -1;
+        levelControl(S2, -1, null);
+      }
+      setWho(i);
     };
     const pressA = () => {
       SFX.unlock();
@@ -38576,12 +38635,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         } }, "⏸")
       ),
       h("div", { className: "ggold", "data-gold": gold }, h("span", { className: "ggicon" }, h(NuggetIcon, { kind: "gold" })), h("b", null, gold.toLocaleString())),
-      h(GremGuns, { presets, gold, sel, pick: (i) => {
-        if (i < unlocked.current) {
-          give(0, i);
-          SFX.fx("open");
-        } else SFX.ui("tap");
-      } }),
+      h(GremGuns, { presets, gold, sel: has[who] ?? -1, fresh: fresh2, pick: pickGun, box: guns }),
+      h(GremHelms, { run: run.current, who, pick: pickWho }),
       h(
         "div",
         { className: "abtns" },
@@ -38596,23 +38651,42 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       } }) : null
     );
   }
-  function GremGuns({ presets, gold, sel, pick }) {
+  function GremGuns({ presets, gold, sel, fresh: fresh2, pick, box }) {
     const u = gremUnlocked(gold, presets.length);
     if (!presets.length) return h("div", { className: "gguns none" }, h("p", null, "No gun presets yet: Dev → Presets"));
-    return h("div", { className: "gguns" }, presets.map((p, i) => {
-      const f = i < u ? 1 : i === u ? gremFill(gold, i) : 0;
+    return h("div", { className: "gguns", ref: box }, presets.map((p, i) => {
+      const f = i < u ? 1 : i === u ? gremFill(gold, i) : 0, nu = i < u && fresh2.includes(i);
       return h(
         "button",
         {
           key: i,
-          className: "ggun" + (i < u ? " open" : i === u ? " next" : " locked") + (i === sel ? " sel" : ""),
+          className: "ggun" + (i < u ? " open" : i === u ? " next" : " locked") + (i === sel ? " sel" : "") + (nu ? " fresh" : ""),
           "data-gun": i,
           "data-fill": f.toFixed(3),
           title: p.name + (i < u ? "" : " · " + gremPrice(i) + " gold"),
           style: { "--f": (f * 360).toFixed(1) + "deg" },
-          onPointerDown: tap2(() => pick(i))
+          onClick: () => pick(i)
         },
-        h("span", { className: "gginner" }, h(GunIcon, { gun: p.gun }))
+        h("span", { className: "gginner" }, h(GunIcon, { gun: p.gun })),
+        nu ? h("i", { className: "gnew" }, "NEW") : null
+      );
+    }));
+  }
+  function GremHelms({ run, who, pick }) {
+    return h("div", { className: "ghelms" }, run.players.map((q, i) => {
+      const hp = hpFrac(q);
+      return h(
+        "button",
+        {
+          key: i,
+          className: "anavc on" + (i === who ? " sel" : ""),
+          "data-player": i,
+          onPointerDown: tap2(() => pick(i)),
+          style: { boxShadow: i === who ? void 0 : "0 0 10px " + q.col + "66", "--hp": (hp * 360).toFixed(1) + "deg", "--hc": q.col, "--fl": (0.12 + hp * 2.4).toFixed(2) + "s" }
+        },
+        h(HelmetIcon, { col: q.col, size: 35 }),
+        h("i", { className: "ahp" }),
+        hp < 0.25 ? h("i", { className: "ahp ahpf" }) : null
       );
     }));
   }
