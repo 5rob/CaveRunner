@@ -1,33 +1,37 @@
 // CaveRunner Auto stage 12: a player added mid-scene (auto/addrunner.js sceneAddRunner, after run.js addPlayer):
-// in the hub and in a level the runner count goes up, he arrives at once with a flash, sparks and lightning beside
+// in the hub he comes through the enter pad (after v1.0.78); in a level he arrives at once with a flash, sparks and lightning beside
 // player 1, and in a level he fires his own starter gun.
 const G = require('../load');
 let fails = 0;
 const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FAIL'} ${n}${x !== undefined ? ' -> ' + JSON.stringify(x) : ''}`); };
 
-// ---- the hub ----
+// ---- the hub ---- (owner, after v1.0.78) he comes through the enter teleporter: it charges, then he's through with its
+// flash, lightning and arc (heard wherever the team is: H.far, the play area's flash from the left when it's off screen)
 {
   const run = G.newRun(4);
   const S = G.hubScene(200, 4, run.players.length, run.tier, {});
   for (let t = 0; t < 4; t += 1 / 60) G.titleStep(S, 1 / 60);
   const H = G.hubState(S);
+  H.stick = { active: true, nx: 1, ny: 0, mag: 1, dy: 0 };   // (player 1 walks off down the hallway)
+  for (let t = 0; t < 3; t += 1 / 60) G.titleStep(S, 1 / 60);
+  H.stick = { active: false, nx: 0, ny: 0, mag: 0, dy: 0 };
   G.bagAdd(run, { kind: 'green', n: 1 });
   const pl = G.addPlayer(run);
-  const n0 = S.runners.length, z0 = S.zaps.length, p0 = S.parts.length;
-  S.flash = 0;
+  const n0 = S.runners.length, pad = G.hubStopX('enter');
   const r = G.sceneAddRunner(S);
   check('hub: addPlayer gives a second player', !!pl && run.players.length === 2);
-  check('hub: one more runner, not hidden, player 2\'s', !!r && S.runners.length === n0 + 1 && !r.hide && r.id === 1, { n: S.runners.length });
-  check('hub: he arrives with a flash, sparks, lightning and the arc sound', S.flash > 0 && S.parts.length > p0 && S.zaps.length > z0 && S.snd.some(s => s.k === 'arc'));
-  check('hub: he stands on the floor near player 1', !!r && Math.abs(r.y + G.PH - H.fy) < 1e-6 && Math.abs(r.x - S.runners[0].x) < 60, r && { x: r.x, l: S.runners[0].x });
-  check('hub: counted as arrived', H.arrived[1] === true);
-  // the leader walks; he follows in the line
-  H.stick = { active: true, nx: 1, ny: 0, mag: 1, dy: 0 };
-  for (let t = 0; t < 1.5; t += 1 / 60) G.titleStep(S, 1 / 60);
-  H.stick = { active: false, nx: 0, ny: 0, mag: 0, dy: 0 };
-  for (let t = 0; t < 3; t += 1 / 60) G.titleStep(S, 1 / 60);
+  check("hub: one more runner, player 2's, hidden on the enter pad", !!r && S.runners.length === n0 + 1 && r.hide && r.id === 1 && Math.abs(r.x + G.PW / 2 - pad) < 1 && !H.arrived[1], r && { n: S.runners.length, x: r.x, hide: r.hide });
+  check('hub: the pad charges', G.hubCharge(S).ch >= 0 && G.hubCharge(S).ch < 0.1);
+  for (let t = 0; t < 0.5; t += 1 / 60) G.titleStep(S, 1 / 60);
+  check('hub: half way, still charging, not through', G.hubCharge(S).ch > 0.4 && r.hide && !H.arrived[1], G.hubCharge(S));
+  const z0 = S.zaps.length;
+  let snd = false;
+  for (let t = 0; t < 0.7 && !H.arrived[1]; t += 1 / 60) { S.flash = 0; G.titleStep(S, 1 / 60); snd = snd || S.snd.some(e => e.k === 'arc' && e.a && e.a.near); }
+  check('hub: through after the charge, with lightning and the arc heard from afar', H.arrived[1] && !r.hide && S.zaps.length > z0 && snd && H.far === S.t, { arr: H.arrived[1], zaps: S.zaps.length - z0, snd, far: H.far, t: S.t });
+  check('hub: on the floor on the pad, the team far off', Math.abs(r.y + G.PH - H.fy) < 1e-6 && Math.abs(r.x + G.PW / 2 - pad) < 8 && S.runners[0].x - r.x > 100, { x: r.x, l: S.runners[0].x });
+  for (let t = 0; t < 6; t += 1 / 60) G.titleStep(S, 1 / 60);
   const gap = Math.abs(S.runners[0].x - S.runners[1].x);
-  check('hub: he follows the leader, kept apart', gap > 4 && gap < 60, gap);
+  check('hub: he runs to the team and follows, kept apart', gap > 4 && gap < 60, gap);
   const r3 = G.sceneAddRunner(S), r4 = G.sceneAddRunner(S), r5 = G.sceneAddRunner(S);
   check('hub: at most 4 runners', !!r3 && !!r4 && r5 === null && S.runners.length === 4);
 }

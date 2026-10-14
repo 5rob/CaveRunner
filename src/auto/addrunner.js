@@ -1,11 +1,11 @@
 // CaveRunner Auto, stage 12: a player added mid-scene (a green gem dragged onto an empty player circle: run.js
-// addPlayer). His runner teleports in beside the team, hub or level, wherever they are: the screen's flash, a burst
-// of sparks, lightning down onto him and the pad's arc sound. In a level he fires his own gun at once (the scene's
+// addPlayer). (owner, after v1.0.78: the hub only, ui/auto/AutoScreen.js) In the hub he comes through the enter
+// teleporter, its charge and flash, wherever the team is (hub.js hubLate). In a level (tests): he teleports in beside
+// the team: the screen's flash, a burst of sparks, lightning down onto him and the pad's arc sound. In a level he fires his own gun at once (the scene's
 // S.team is the run's players, so his starter gun is already in it) and gets his meters.
-import { DEV } from '../dev/knobs.js';
 import { PH, PW } from '../core/consts.js';
 import { titleFloor, titleRunner, zapArc } from '../art/titlescene.js';
-import { HUB_W, hubState } from './hub.js';
+import { hubLate, hubState, hubStopX } from './hub.js';
 import { meterNew } from './meters.js';
 import { levelState } from './level.js';
 
@@ -15,19 +15,19 @@ export function sceneAddRunner(S) {
   const i = S.runners.length, lead = S.runners[0];
   if (i >= 4 || !lead) return null;
   const H = hubState(S), L = levelState(S);
-  let cx, fy;
   if (H) {
-    // in the hub: his place in the line behind the leader
-    cx = Math.max(10, Math.min(HUB_W - 10, H.lx - H.dir * DEV.autoHubSpace * i));
-    fy = H.fy;
-  } else {
-    // in a level: a step behind player 1 (screen x), on the floor there
-    cx = lead.x + PW / 2 - 10 - 4 * i;
-    fy = titleFloor(S.scroll + cx, S);   // runners stand in screen x, the floor is the world's
+    // in the hub: on the enter pad, hidden till it has charged (hubLate)
+    const r = titleRunner(S, i, hubStopX('enter') - PW / 2, H.fy - PH);
+    r.mode = 'run'; r.ground = true; r.stand = true; r.hide = true; r.face = 1; r.ang = lead.ang; r.flame = 0;
+    S.runners.push(r);
+    hubLate(S, i);
+    return r;
   }
+  // in a level: a step behind player 1 (screen x), on the floor there
+  const cx = lead.x + PW / 2 - 10 - 4 * i;
+  const fy = titleFloor(S.scroll + cx, S);   // runners stand in screen x, the floor is the world's
   const r = titleRunner(S, i, cx - PW / 2, fy - PH);
   r.mode = 'run'; r.ground = true; r.face = lead.face; r.ang = lead.ang;
-  if (H) { r.stand = true; H.arrived[i] = true; }
   if (L) {
     L.arrived[i] = true;
     L.meters[i] = { dmg: meterNew(), hp: meterNew(), dealt: 0 };

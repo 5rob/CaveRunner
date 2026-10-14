@@ -263,7 +263,8 @@ export function AutoScreen() {
         const a = levelClearedAge(S); if (a >= 0) clearedText(ctx, a, DEV.autoClearT, w, hh * 0.14);
         if (jcvs.current) journeyDraw(jcvs.current, S, run, cam.current);
         if (devRef.current) {
-          fpsTick(fps, performance.now(), { step: perf.step, draw: perf.draw, shots: S.shots.length, parts: S.parts.length, foes: S.foes.length, burn: S.burning ? S.burning.size : 0 });
+          hubFarFlash(ctx, S, cam.current, w, hh);
+        fpsTick(fps, performance.now(), { step: perf.step, draw: perf.draw, shots: S.shots.length, parts: S.parts.length, foes: S.foes.length, burn: S.burning ? S.burning.size : 0 });
           perfDraw(ctx, fps, w, hh, perfShow.current); c.dataset.fps = String(fps.graphs.fps.length);
         }
         if (levelDeathPrompt(S)) { const k = w / 150; ctx.save(); ctx.scale(k, k); drawHint(ctx, w / 2 / k, hh * 0.3 / k, 'Tap A to Teleport back to Hub', S.t); ctx.restore(); }
@@ -585,7 +586,7 @@ export function AutoScreen() {
       return { key: 'n' + s, to: 'nav', s, ok };
     }
     // stage 12: a green gem onto an empty player circle: a new player
-    if (t.dataset.pslot !== undefined) return { key: 'p' + t.dataset.pslot, to: 'player', s: Number(t.dataset.pslot), ok: src.from === 'bag' && it.kind === 'green' && run.players.length < MAX_PLAYERS };
+    if (t.dataset.pslot !== undefined) return { key: 'p' + t.dataset.pslot, to: 'player', s: Number(t.dataset.pslot), ok: src.from === 'bag' && it.kind === 'green' && run.players.length < MAX_PLAYERS && where.current === 'hub' };   // (owner, after v1.0.78: players join in the hub only)
     if (t.dataset.gslot !== undefined) {
       const s = Number(t.dataset.gslot);
       return { key: 'g' + s, to: 'gun', s, ok: (src.from === 'bag' && n.level === 'guns' && it.kind === 'gun') || (src.from === 'guns' && s !== src.i) };
@@ -627,7 +628,7 @@ export function AutoScreen() {
           setTimeout(() => setBurst(b => b && b.k === k ? null : b), 900);
           SFX.ui('coin');
         }
-      } else if (src.from === 'bag' && at.to === 'player') {
+      } else if (src.from === 'bag' && at.to === 'player' && where.current === 'hub') {
         const pl = addPlayer(run);
         done = !!pl;
         if (pl && scene.current) sceneAddRunner(scene.current);
@@ -1299,6 +1300,26 @@ function GunArc({ arc, run }) {
     return h('div', { key: c.key, className: 'anavc gun aarcc' + (c.dim ? ' locked' : ' on') + (c.sel ? ' sel' : '') + (arc.hi === i ? ' drop' : ''),
       'data-arc': i, style }, c.gun ? h(GunIcon, { gun: c.gun }) : null);
   }));
+}
+
+// (owner, after v1.0.78) a player came through the hub's enter pad while it's off screen (to the left, auto/hub.js H.far):
+// a bluish flash lights the play area from its left edge, fading out by half way across, gone in FAR_T s (on screen: the
+// whole screen's flash, as when the team came through)
+const FAR_T = 0.7;
+/** @param {CanvasRenderingContext2D} ctx @param {import('../../art/titlescene.js').TitleScene} S @param {TitleCam | null} C @param {number} w @param {number} hh */
+function hubFarFlash(ctx, S, C, w, hh) {
+  const H = S.lvl ? null : hubState(S);
+  if (!H || H.far == null || !C) return;
+  const age = S.t - H.far;
+  if (age < 0 || age > FAR_T) return;
+  const k = w / TITLE_VW, px = camTo(C, hubStopX('enter') + 15, 0).x * k;
+  if (px >= 0) { if (age < 0.05) S.flash = Math.max(S.flash, 0.5); return; }   // the pad (its right edge) on screen: the screen's flash, as the team's arrival
+  const a = 0.6 * (1 - age / FAR_T) * Math.min(1, age / 0.05 + 0.3);
+  const g = ctx.createLinearGradient(0, 0, w / 2, 0);
+  g.addColorStop(0, 'rgba(140,200,255,' + a.toFixed(3) + ')');
+  g.addColorStop(0.4, 'rgba(110,170,255,' + (a * 0.4).toFixed(3) + ')');
+  g.addColorStop(1, 'rgba(90,150,255,0)');
+  ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = g; ctx.fillRect(0, 0, w / 2, hh); ctx.restore();
 }
 
 // the performance graphs (Dev mode only, auto/fps.js PERF_ROWS), stacked up from the bottom right of the play area, no box

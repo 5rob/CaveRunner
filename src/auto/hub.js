@@ -14,7 +14,7 @@ import { approach } from '../core/util.js';
 import { DEV } from '../dev/knobs.js';
 import { STAT_PERKS } from '../data/perks.js';
 import { LIGHT_RUN, LIGHT_WAIT, tubeLevel } from '../world/shoplights.js';
-import { TCELL, TM, jetLift, jetStep, jetThrottle, titleScene } from '../art/titlescene.js';
+import { TCELL, TM, jetLift, jetStep, jetThrottle, titleScene, zapArc } from '../art/titlescene.js';
 import { EXO_CATS, EXO_GLYPH, autoExoPrice, autoGunPrice } from './run.js';
 import { hubPayAt, stepThrown } from './throw.js';
 import { mapState, mapsOf, payMap, selectMap } from './maps.js';
@@ -78,7 +78,9 @@ const hubCell = fy => (c, r) => {
  *   lx: number, dir: number, exitT: number, exitZ?: number, stick: HubStick, thrown: import('./throw.js').HubThrow[],
  *   paid: Record<string, number>, back: { kind: import('./throw.js').Cash, n: number }[],
  *   vend: Record<string, number>, paidV: number, demo: Record<string, HubDemo>,
- *   run?: AutoRun, mapSel: number, mapFlick: number, mapT: number }} HubState */
+ *   run?: AutoRun, mapSel: number, mapFlick: number, mapT: number, late?: number, at?: number[], far?: number }} HubState */
+// late: when the enter pad began charging for a player added mid-hub (hubLate); at: his arrival time; far: when he came
+// through (the play area's flash from the left when the pad is off screen, ui/auto/AutoScreen.js)
 // a crystal machine's hologram demo (the old shop's stepDemo): t s into it, the side of the machine it plays on
 /** @typedef {{ t: number, side: number }} HubDemo */
 /** @param {import('../art/titlescene.js').TitleScene} S @returns {HubState} */
@@ -102,6 +104,14 @@ export function hubScene(vh, seed, n, tier = 1, paid = {}, run) {
   return S;
 }
 
+// (owner, after v1.0.78) a player added in the hub (a green gem: ui/auto/AutoScreen.js): he comes through the enter pad
+// as the team did, the pad charging HUB_ARRIVE first, wherever the team is (off screen: the flash from the left)
+/** @param {import('../art/titlescene.js').TitleScene} S @param {number} i his runner, hidden on the pad */
+export function hubLate(S, i) {
+  const H = hubState(S);
+  if (!H) return;
+  H.late = S.t; (H.at || (H.at = []))[i] = S.t + HUB_ARRIVE; H.arrived[i] = false;
+}
 // when player i comes through the enter pad (s into the run)
 /** @param {number} i */
 export const hubArriveT = i => HUB_ARRIVE + i * 0.5;
@@ -120,16 +130,19 @@ export function hubStep(S, dt) {
   const H = hubState(S);
   if (!H) return;
   S.runners.forEach((r, i) => {
-    if (padNext(S, H.arrived, i, hubStopX('enter'))) {
+    const due = !H.at || H.at[i] == null || S.t >= H.at[i];
+    if (due && padNext(S, H.arrived, i, hubStopX('enter'))) {
+      const late = !!H.at && H.at[i] != null;
       H.arrived[i] = true; H.zap = S.t; r.hide = false;
-      S.flash = Math.max(S.flash, 0.5);
+      if (late) { H.far = S.t; for (let k = 0; k < 3; k++) zapArc(S, r.x + PW / 2 + (S.rnd() - 0.5) * 16, H.fy - PH - 40, r.x + PW / 2 + (S.rnd() - 0.5) * 6, H.fy, k ? '#7cc8ff' : '#e6f6ff', true); }
+      if (!late) S.flash = Math.max(S.flash, 0.5);   // (a late one: the play area flashes, whole or from the left, as the pad shows: AutoScreen.js hubFarFlash)
       const cx = r.x + PW / 2;
       for (let k = 0; k < 18; k++) {
         const a = S.rnd() * Math.PI * 2, sp = 20 + S.rnd() * 60;
         S.parts.push({ x: cx, y: H.fy - PH / 2, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 20, life: 0.5, max: 0.5, r: 1.2,
           col: k % 3 ? '#7cc8ff' : '#e6f6ff', kind: 'spark' });
       }
-      S.snd.push({ k: 'arc', x: cx, y: H.fy - PH / 2 });
+      S.snd.push({ k: 'arc', x: cx, y: H.fy - PH / 2, a: late ? { near: true } : undefined });   // (a late one heard wherever we are)
     }
     if (!H.arrived[i]) { r.y = H.fy - PH; r.vy = 0; r.ground = true; r.mode = 'run'; }
   });
@@ -174,7 +187,7 @@ export function hubTube(S, i) {
 // the enter pad's charge (0-1 while charging, else 0) and what's left of the flash (0-1)
 /** @param {import('../art/titlescene.js').TitleScene} S */
 export function hubCharge(S) {
-  const t = S.t;
+  const H = hubState(S), t = H && H.late != null ? S.t - H.late : S.t;
   return { ch: t < HUB_ARRIVE ? Math.max(0, t / HUB_ARRIVE) : 0, fl: t >= HUB_ARRIVE ? Math.max(0, 1 - (t - HUB_ARRIVE) / HUB_FLASH) : 0 };
 }
 

@@ -6,7 +6,7 @@
 
 import { Music } from '../audio/music.js';
 import { SFX } from '../audio/sfx.js';
-import { TCELL } from '../art/titlescene.js';
+import { TCELL, TITLE_VW } from '../art/titlescene.js';
 import { PH, PW } from '../core/consts.js';
 import { THEMES } from '../data/themes.js';
 
@@ -47,7 +47,7 @@ export function titleSound(S, C, L, dt) {
       case 'bounce': SFX.bounce(x, y); break;
       case 'boom': SFX.boom(x, y, e.a * 2.5); break;
       case 'debris': SFX.debris(x, y); break;
-      case 'arc': SFX.arc(x, y, false); break;
+      case 'arc': SFX.arc(e.a && e.a.near ? Math.max(x, -TITLE_VW / 2 * k) : x, y, false); break;   // (near: a hub arrival off screen, heard from the left edge)
       case 'lamp': SFX.fx('shatter', x, y, 'glass'); SFX.fx('whoosh', x, y); break;
       case 'rustle': SFX.rustle(x, y, e.a.v, e.a.st); break;
       case 'die': case 'hurt': case 'alert': case 'idle': case 'bite': case 'fire': SFX.creature(e.a, e.k, x, y); break;

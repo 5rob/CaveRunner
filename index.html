@@ -24631,6 +24631,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     });
     return S2;
   }
+  function hubLate(S2, i) {
+    const H = hubState(S2);
+    if (!H) return;
+    H.late = S2.t;
+    (H.at || (H.at = []))[i] = S2.t + HUB_ARRIVE;
+    H.arrived[i] = false;
+  }
   var hubArriveT = (i) => HUB_ARRIVE + i * 0.5;
   var padBusy = (S2, arrived, px, sx = 0) => S2.runners.some((r, i) => arrived[i] && !r.hide && !r.out && Math.abs(r.x + PW / 2 + sx - px) < PAD_HALF);
   var PAD_HALF = 15;
@@ -24639,11 +24646,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const H = hubState(S2);
     if (!H) return;
     S2.runners.forEach((r, i) => {
-      if (padNext(S2, H.arrived, i, hubStopX("enter"))) {
+      const due = !H.at || H.at[i] == null || S2.t >= H.at[i];
+      if (due && padNext(S2, H.arrived, i, hubStopX("enter"))) {
+        const late = !!H.at && H.at[i] != null;
         H.arrived[i] = true;
         H.zap = S2.t;
         r.hide = false;
-        S2.flash = Math.max(S2.flash, 0.5);
+        if (late) {
+          H.far = S2.t;
+          for (let k = 0; k < 3; k++) zapArc(S2, r.x + PW / 2 + (S2.rnd() - 0.5) * 16, H.fy - PH - 40, r.x + PW / 2 + (S2.rnd() - 0.5) * 6, H.fy, k ? "#7cc8ff" : "#e6f6ff", true);
+        }
+        if (!late) S2.flash = Math.max(S2.flash, 0.5);
         const cx = r.x + PW / 2;
         for (let k = 0; k < 18; k++) {
           const a = S2.rnd() * Math.PI * 2, sp = 20 + S2.rnd() * 60;
@@ -24659,7 +24672,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             kind: "spark"
           });
         }
-        S2.snd.push({ k: "arc", x: cx, y: H.fy - PH / 2 });
+        S2.snd.push({ k: "arc", x: cx, y: H.fy - PH / 2, a: late ? { near: true } : void 0 });
       }
       if (!H.arrived[i]) {
         r.y = H.fy - PH;
@@ -24700,7 +24713,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return !H || H.on[i] < 0 ? 0 : tubeLevel(S2.t - H.on[i], i + 1);
   }
   function hubCharge(S2) {
-    const t = S2.t;
+    const H = hubState(S2), t = H && H.late != null ? S2.t - H.late : S2.t;
     return { ch: t < HUB_ARRIVE ? Math.max(0, t / HUB_ARRIVE) : 0, fl: t >= HUB_ARRIVE ? Math.max(0, 1 - (t - HUB_ARRIVE) / HUB_FLASH) : 0 };
   }
   function hubStick(S2, st) {
@@ -31813,8 +31826,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           SFX.debris(x, y);
           break;
         case "arc":
-          SFX.arc(x, y, false);
+          SFX.arc(e.a && e.a.near ? Math.max(x, -TITLE_VW / 2 * k) : x, y, false);
           break;
+        // (near: a hub arrival off screen, heard from the left edge)
         case "lamp":
           SFX.fx("shatter", x, y, "glass");
           SFX.fx("whoosh", x, y);
@@ -35973,23 +35987,26 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const i = S2.runners.length, lead = S2.runners[0];
     if (i >= 4 || !lead) return null;
     const H = hubState(S2), L = levelState(S2);
-    let cx, fy;
     if (H) {
-      cx = Math.max(10, Math.min(HUB_W - 10, H.lx - H.dir * DEV.autoHubSpace * i));
-      fy = H.fy;
-    } else {
-      cx = lead.x + PW / 2 - 10 - 4 * i;
-      fy = titleFloor(S2.scroll + cx, S2);
+      const r2 = titleRunner(S2, i, hubStopX("enter") - PW / 2, H.fy - PH);
+      r2.mode = "run";
+      r2.ground = true;
+      r2.stand = true;
+      r2.hide = true;
+      r2.face = 1;
+      r2.ang = lead.ang;
+      r2.flame = 0;
+      S2.runners.push(r2);
+      hubLate(S2, i);
+      return r2;
     }
+    const cx = lead.x + PW / 2 - 10 - 4 * i;
+    const fy = titleFloor(S2.scroll + cx, S2);
     const r = titleRunner(S2, i, cx - PW / 2, fy - PH);
     r.mode = "run";
     r.ground = true;
     r.face = lead.face;
     r.ang = lead.ang;
-    if (H) {
-      r.stand = true;
-      H.arrived[i] = true;
-    }
     if (L) {
       L.arrived[i] = true;
       L.meters[i] = { dmg: meterNew(), hp: meterNew(), dealt: 0 };
@@ -36199,6 +36216,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           if (a >= 0) clearedText(ctx, a, DEV.autoClearT, w, hh2 * 0.14);
           if (jcvs.current) journeyDraw(jcvs.current, S2, run, cam.current);
           if (devRef.current) {
+            hubFarFlash(ctx, S2, cam.current, w, hh2);
             fpsTick(fps, performance.now(), { step: perf.step, draw: perf.draw, shots: S2.shots.length, parts: S2.parts.length, foes: S2.foes.length, burn: S2.burning ? S2.burning.size : 0 });
             perfDraw(ctx, fps, w, hh2, perfShow.current);
             c.dataset.fps = String(fps.graphs.fps.length);
@@ -36663,7 +36681,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         const ok = src.from === "nav" && rowLevel && src.i !== s || src.from === "bag" && (n.level === "gun" && it.kind === "mod" || n.level === "cat" && it.kind === "exo" && it.cat === n.cat || n.level === "perks" && it.kind === "perk" && !!it.id && !!PERKS[it.id] && !PERKS[it.id].stat);
         return { key: "n" + s, to: "nav", s, ok };
       }
-      if (t.dataset.pslot !== void 0) return { key: "p" + t.dataset.pslot, to: "player", s: Number(t.dataset.pslot), ok: src.from === "bag" && it.kind === "green" && run.players.length < MAX_PLAYERS };
+      if (t.dataset.pslot !== void 0) return { key: "p" + t.dataset.pslot, to: "player", s: Number(t.dataset.pslot), ok: src.from === "bag" && it.kind === "green" && run.players.length < MAX_PLAYERS && where.current === "hub" };
       if (t.dataset.gslot !== void 0) {
         const s = Number(t.dataset.gslot);
         return { key: "g" + s, to: "gun", s, ok: src.from === "bag" && n.level === "guns" && it.kind === "gun" || src.from === "guns" && s !== src.i };
@@ -36705,7 +36723,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             setTimeout(() => setBurst((b) => b && b.k === k ? null : b), 900);
             SFX.ui("coin");
           }
-        } else if (src.from === "bag" && at.to === "player") {
+        } else if (src.from === "bag" && at.to === "player" && where.current === "hub") {
           const pl = addPlayer(run);
           done = !!pl;
           if (pl && scene.current) sceneAddRunner(scene.current);
@@ -37538,6 +37556,28 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         style
       }, c.gun ? h(GunIcon, { gun: c.gun }) : null);
     }));
+  }
+  var FAR_T = 0.7;
+  function hubFarFlash(ctx, S2, C, w, hh2) {
+    const H = S2.lvl ? null : hubState(S2);
+    if (!H || H.far == null || !C) return;
+    const age = S2.t - H.far;
+    if (age < 0 || age > FAR_T) return;
+    const k = w / TITLE_VW, px = camTo(C, hubStopX("enter") + 15, 0).x * k;
+    if (px >= 0) {
+      if (age < 0.05) S2.flash = Math.max(S2.flash, 0.5);
+      return;
+    }
+    const a = 0.6 * (1 - age / FAR_T) * Math.min(1, age / 0.05 + 0.3);
+    const g = ctx.createLinearGradient(0, 0, w / 2, 0);
+    g.addColorStop(0, "rgba(140,200,255," + a.toFixed(3) + ")");
+    g.addColorStop(0.4, "rgba(110,170,255," + (a * 0.4).toFixed(3) + ")");
+    g.addColorStop(1, "rgba(90,150,255,0)");
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, w / 2, hh2);
+    ctx.restore();
   }
   var PERF_W = 100, PERF_ROW_H = 24, PERF_PAD = 6;
   function perfDraw(ctx, F2, w, hh2, shown) {
