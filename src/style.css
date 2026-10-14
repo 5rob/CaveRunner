@@ -268,6 +268,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .mgrid .tile.cold{opacity:.45}
 .pulse{position:absolute;inset:0;border-radius:8px;border:2px solid;opacity:.22;pointer-events:none}
 .pulse.on{opacity:.42;box-shadow:0 0 10px currentColor}
+/* a Switch's group passed over this pull (auto/preview.js pvPull): dimmed, a dashed edge */
+.pulse.skip{opacity:1;background:rgba(0,0,0,.6);border:2px dashed rgba(255,255,255,.35)}
 .grp{display:flex;flex-direction:column;gap:2px;min-width:0;max-width:100%}
 .gtiles{display:flex;flex-wrap:wrap;gap:6px;padding:5px;border:1.5px solid var(--ring);border-radius:12px;
   background:var(--pad);min-width:0;max-width:100%;box-sizing:border-box}

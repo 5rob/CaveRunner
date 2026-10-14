@@ -25,7 +25,7 @@ export const PV_HOLO_X = 30;     // the hologram's middle this far in from the r
 export const PV_HIT_T = 0.3;     // a hit lights the hologram this long (s)
 
 /** @typedef {{ dx: number, dy: number, foe?: Enemy, cells: Uint8Array, hitT: number, regrow: number, log: number[][], dealt: number,
- *   graph: number[], gmark: number[], mark: boolean, graphT: number, dps: number, pulls: number, lit: { slots: number[], pull: number, t: number } | null, fy: number }} PreviewState */
+ *   graph: number[], gmark: number[], mark: boolean, graphT: number, dps: number, pulls: number, lit: { slots: number[], skip: number[], pull: number, t: number } | null, fy: number }} PreviewState */
 
 // a copy of the player for the window: his perks, all his guns copied fresh (the window never spends the real gun's mana or
 // moves its place in the list), the one shown active
@@ -70,6 +70,31 @@ function pinFoe(pv) {
 // is now (to the end when it ran out), trailing modifiers that modified nothing left off
 /** @param {Gun} g @param {number[]} order @param {number} start @returns {number[]} */
 export function pvLit(g, order, start) {
+  return pvPull(g, order, start).slots;
+}
+// (owner, after v1.0.78: "the switch must show which mods it's paired with") a pull's slots as pvLit, less the groups a
+// Switch passed over this pull (skip): after a Switch in the pull, the next swN groups (a spell and the modifiers before it);
+// the one up (its count in g.swc, spells/cast.js planCast, one less than now, mod swN) stays lit, the others are skipped
+/** @param {Gun} g @param {number[]} order @param {number} start @returns {{ slots: number[], skip: number[] }} */
+export function pvPull(g, order, start) {
+  const all = pvLitAll(g, order, start), skip = [];
+  /** @param {string} id */
+  const casts = id => !!MODS[id] && (MODS[id].kind === 'shot' || MODS[id].kind === 'static');
+  for (let i = 0; i < all.length; i++) {
+    const m = MODS[g.slots[all[i]]];
+    if (!m || !m.swN) continue;
+    const seen = ((g.swc && g.swc[all[i]]) || 1) - 1, pick = seen % m.swN;
+    let k = 0, j = i + 1;
+    for (; j < all.length && k < m.swN; j++) {
+      if (k !== pick) skip.push(all[j]);
+      if (casts(g.slots[all[j]])) k++;
+    }
+    i = j - 1;
+  }
+  return { slots: all.filter(s => !skip.includes(s)), skip };
+}
+/** @param {Gun} g @param {number[]} order @param {number} start @returns {number[]} */
+function pvLitAll(g, order, start) {
   const end = (g.idx || 0) <= start ? order.length : g.idx || 0, slots = [];
   for (let i = start; i < end; i++) if (g.slots[order[i]]) slots.push(order[i]);
   /** @param {string} id */
@@ -93,7 +118,7 @@ export function previewStep(S, dt) {
   if (g) {
     const order = (g.order || []).slice(), start = g.idx || 0, n0 = g.pulls || 0;
     stepRunnerGun(S, r, dt);
-    if ((g.pulls || 0) > n0) { pv.lit = { slots: pvLit(g, order, start), pull: pv.pulls, t: Math.max(0.1, Math.min(g.delayMax || 0, 0.45)) }; pv.pulls++; }
+    if ((g.pulls || 0) > n0) { pv.lit = Object.assign(pvPull(g, order, start), { pull: pv.pulls, t: Math.max(0.1, Math.min(g.delayMax || 0, 0.45)) }); pv.pulls++; }
     else if (pv.lit && (pv.lit.t -= dt) <= 0) pv.lit = null;
   }
   // the damage per second (the runner's damage dealt, as the level's meters read it) and its graph

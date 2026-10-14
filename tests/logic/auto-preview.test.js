@@ -30,6 +30,16 @@ const run = (S, n, seen) => { for (let i = 0; i < n; i++) { G.titleStep(S, 1 / 6
   check('the slots a pull fired (pvLit)', JSON.stringify(G.pvLit({ slots: ['bolt', 'heavy', 'bolt'], idx: 2 }, [0, 1, 2], 0)) === '[0]' &&
     JSON.stringify(G.pvLit({ slots: ['heavy', 'bolt'], idx: 0 }, [0, 1], 0)) === '[0,1]');
 }
+// (owner, after v1.0.78) a Switch lights the group it picked this pull; the others are skipped (dimmed in the slots)
+{
+  const sl = ['switch2', 'follow', 'vigour', 'discrim', 'follow', 'vigour'], O = [0, 1, 2, 3, 4, 5];
+  const p1 = G.pvPull({ slots: sl, idx: 6, swc: { 0: 1 } }, O, 0), p2 = G.pvPull({ slots: sl, idx: 6, swc: { 0: 2 } }, O, 0);
+  check('Switch: pull 1 lights the first group, skips the second', JSON.stringify(p1) === JSON.stringify({ slots: [0, 1, 2], skip: [3, 4, 5] }), p1);
+  check('Switch: pull 2 lights the second, skips the first', JSON.stringify(p2) === JSON.stringify({ slots: [0, 3, 4, 5], skip: [1, 2] }), p2);
+  const { pl, gi } = withGun(sl), S = G.previewScene(200, 120, pl, gi), pv = G.previewState(S), seen = [];
+  for (let i = 0; i < 30 * 8 && seen.length < 4; i++) { const was = pv.lit; G.titleStep(S, 1 / 30); if (pv.lit && pv.lit !== was) seen.push(pv.lit.skip.join()); }
+  check('Switch in the window: the skipped group takes turns pull by pull', seen.length >= 4 && seen[0] !== seen[1] && seen[0] === seen[2] && seen[1] === seen[3], seen);
+}
 // a shot flies the same in the window and in a level (one stepShots): the same shot, open air, no creatures
 {
   const { pl, gi } = withGun(['bolt']);

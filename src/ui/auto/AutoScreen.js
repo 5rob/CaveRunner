@@ -1061,7 +1061,7 @@ function PreviewWindow({ sim, sig, onLit, pl, gi, flip }) {
 // pull lighting the mod slots.
 /** @param {{ row: import('../../auto/nav.js').NavRow, level: string, cls: string, pick?: string | number, open: (w: string | number) => void,
  *   down: (e: any, src: DragSrc) => void, drag: Drag | null, holdHelm: (e: any, i: number) => void, holdGun: (e: any, i: number) => void,
- *   meters: () => PlayerMeters | null, lit: { slots: number[], pull: number } | null, slide?: boolean, cold?: Set<number> | null,
+ *   meters: () => PlayerMeters | null, lit: { slots: number[], skip?: number[], pull: number } | null, slide?: boolean, cold?: Set<number> | null,
  *   pinNav: (kind: 'dmg' | 'hp', span: number) => void, manual?: number, big?: boolean, rowEmpty?: (e: any) => void }} props */
 function NavRow({ row, level, cls, pick, open, down, drag, holdHelm, holdGun, meters, lit, slide, cold, pinNav, manual, big, rowEmpty }) {
   const [slideIn] = useState(!!slide);
@@ -1071,7 +1071,7 @@ function NavRow({ row, level, cls, pick, open, down, drag, holdHelm, holdGun, me
   let ie = -1;
   if (ib >= 0) { ie = row.cells.findIndex((c, k) => k >= ib && !c.item); if (ie < 0) ie = row.cells.length; }
   const lifted = drag && drag.src.from === 'nav' ? drag.src.i : -1;
-  const on = new Set(lit ? lit.slots : []), pc = lit ? PULL_COL[lit.pull % PULL_COL.length] : '';
+  const on = new Set(lit ? lit.slots : []), off = new Set(lit && lit.skip ? lit.skip : []), pc = lit ? PULL_COL[lit.pull % PULL_COL.length] : '';
   /** @param {import('../../auto/nav.js').NavCell} c @param {number} i */
   const cell = (c, i) => {
     const to = c.open;
@@ -1090,7 +1090,8 @@ function NavRow({ row, level, cls, pick, open, down, drag, holdHelm, holdGun, me
         (i === ib ? ' insat' : '') + (i >= ib && i < ie && ib >= 0 ? ' shove' : ''),
         style: itemEdge(it), 'data-nslot': i, onPointerDown: it ? grab : level === 'gun' ? rowEmpty : undefined },
         it ? h(ItemIcon, { it }) : null, it ? h(Grab) : null,
-        on.has(i) ? h('i', { className: 'pulse on', style: { background: pc, borderColor: pc, color: pc } }) : null);
+        on.has(i) ? h('i', { className: 'pulse on', style: { background: pc, borderColor: pc, color: pc } }) : null,
+        off.has(i) ? h('i', { className: 'pulse skip' }) : null);   // (a Switch's group not up this pull: dimmed)
     }
     const cls2 = 'anavc' + (c.dim ? ' locked' : ' on') + (c.sel ? ' sel' : '') + (c.gun ? ' gun' : '') + (c.helm && level === 'players' && i === manual ? ' manual' : '') + (over === 'g' + i || over === 'p' + i ? ' drop' : '') +
       (pick !== undefined && to === pick ? ' pick' : '');

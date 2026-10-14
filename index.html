@@ -277,6 +277,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .mgrid .tile.cold{opacity:.45}
 .pulse{position:absolute;inset:0;border-radius:8px;border:2px solid;opacity:.22;pointer-events:none}
 .pulse.on{opacity:.42;box-shadow:0 0 10px currentColor}
+/* a Switch's group passed over this pull (auto/preview.js pvPull): dimmed, a dashed edge */
+.pulse.skip{opacity:1;background:rgba(0,0,0,.6);border:2px dashed rgba(255,255,255,.35)}
 .grp{display:flex;flex-direction:column;gap:2px;min-width:0;max-width:100%}
 .gtiles{display:flex;flex-wrap:wrap;gap:6px;padding:5px;border:1.5px solid var(--ring);border-radius:12px;
   background:var(--pad);min-width:0;max-width:100%;box-sizing:border-box}
@@ -35731,6 +35733,25 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     f.aggro = false;
   }
   function pvLit(g, order, start) {
+    return pvPull(g, order, start).slots;
+  }
+  function pvPull(g, order, start) {
+    const all = pvLitAll(g, order, start), skip = [];
+    const casts = (id) => !!MODS[id] && (MODS[id].kind === "shot" || MODS[id].kind === "static");
+    for (let i = 0; i < all.length; i++) {
+      const m = MODS[g.slots[all[i]]];
+      if (!m || !m.swN) continue;
+      const seen = (g.swc && g.swc[all[i]] || 1) - 1, pick = seen % m.swN;
+      let k = 0, j = i + 1;
+      for (; j < all.length && k < m.swN; j++) {
+        if (k !== pick) skip.push(all[j]);
+        if (casts(g.slots[all[j]])) k++;
+      }
+      i = j - 1;
+    }
+    return { slots: all.filter((s) => !skip.includes(s)), skip };
+  }
+  function pvLitAll(g, order, start) {
     const end = (g.idx || 0) <= start ? order.length : g.idx || 0, slots = [];
     for (let i = start; i < end; i++) if (g.slots[order[i]]) slots.push(order[i]);
     const casts = (id) => !!MODS[id] && (MODS[id].kind === "shot" || MODS[id].kind === "static");
@@ -35753,7 +35774,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const order = (g.order || []).slice(), start = g.idx || 0, n0 = g.pulls || 0;
       stepRunnerGun(S2, r, dt);
       if ((g.pulls || 0) > n0) {
-        pv.lit = { slots: pvLit(g, order, start), pull: pv.pulls, t: Math.max(0.1, Math.min(g.delayMax || 0, 0.45)) };
+        pv.lit = Object.assign(pvPull(g, order, start), { pull: pv.pulls, t: Math.max(0.1, Math.min(g.delayMax || 0, 0.45)) });
         pv.pulls++;
       } else if (pv.lit && (pv.lit.t -= dt) <= 0) pv.lit = null;
     }
@@ -37259,7 +37280,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (ie < 0) ie = row.cells.length;
     }
     const lifted = drag && drag.src.from === "nav" ? drag.src.i : -1;
-    const on = new Set(lit ? lit.slots : []), pc = lit ? PULL_COL[lit.pull % PULL_COL.length] : "";
+    const on = new Set(lit ? lit.slots : []), off = new Set(lit && lit.skip ? lit.skip : []), pc = lit ? PULL_COL[lit.pull % PULL_COL.length] : "";
     const cell = (c, i) => {
       const to = c.open;
       const go = (e) => {
@@ -37283,7 +37304,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           },
           it ? h(ItemIcon, { it }) : null,
           it ? h(Grab) : null,
-          on.has(i) ? h("i", { className: "pulse on", style: { background: pc, borderColor: pc, color: pc } }) : null
+          on.has(i) ? h("i", { className: "pulse on", style: { background: pc, borderColor: pc, color: pc } }) : null,
+          off.has(i) ? h("i", { className: "pulse skip" }) : null
         );
       }
       const cls2 = "anavc" + (c.dim ? " locked" : " on") + (c.sel ? " sel" : "") + (c.gun ? " gun" : "") + (c.helm && level === "players" && i === manual ? " manual" : "") + (over === "g" + i || over === "p" + i ? " drop" : "") + (pick !== void 0 && to === pick ? " pick" : "");
