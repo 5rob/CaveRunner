@@ -2250,7 +2250,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "autoBossDmg", g: "autofoes", label: "Boss damage (× a normal one)", min: 0.5, max: 10, step: 0.25 }
   );
   DEV_GROUPS.push(["autofoes", "Auto: enemies"]);
-  Object.assign(DEV_DEFAULTS, { autoMoveK: 0.75, autoJetTilt: 1, autoJetSmoke: 1, autoDeathStop: 1.5, autoTpBlink: 1, autoTpBoomWait: 0.6, autoTpBoomR: 60, autoExitPopGap: 0.5, autoSpStride: 0.14, autoRoamT: 8, autoRoamHi: 0.45, autoRoamMid: 0.4, autoRoamFly: 2.5, autoRoamRun: 0.4, autoJeTurnTier: 0.2, autoJeTurnMax: 2.5, autoExitRagT: 1.6, autoExitPopR: 40, autoFuelDrain: 1, autoFuelRegen: 1, autoCtlWait: 3, autoVineFire: 1, autoVineSpread: 4, autoVineJitter: 0.8, autoVineAsh: 8, autoFireJump: 2, autoFireJumpP: 0.5, autoNavCut: 0.8, autoNavGive: 1.2 });
+  Object.assign(DEV_DEFAULTS, { autoMoveK: 0.75, autoJetTilt: 1, autoJetSmoke: 1, autoDeathStop: 1.5, autoTpBlink: 1, autoTpBoomWait: 0.6, autoTpBoomR: 60, autoSpStride: 0.14, autoRoamT: 8, autoRoamHi: 0.45, autoRoamMid: 0.4, autoRoamFly: 2.5, autoRoamRun: 0.4, autoJeTurnTier: 0.2, autoJeTurnMax: 2.5, autoExitNukeR: 90, autoExitNukeF: 1600, autoExitNukeWait: 3.5, autoMushT: 3.2, autoMushK: 1, autoFuelDrain: 1, autoFuelRegen: 1, autoCtlWait: 3, autoVineFire: 1, autoVineSpread: 4, autoVineJitter: 0.8, autoVineAsh: 8, autoFireJump: 2, autoFireJumpP: 0.5, autoNavCut: 0.8, autoNavGive: 1.2 });
   DEV_META.push(
     { k: "autoVineFire", g: "autofire", label: "Vines burn up at this × the old game speed (the title menu: 0.1)", min: 0.1, max: 5, step: 0.1 },
     { k: "autoVineSpread", g: "autofire", label: "Auto levels: the flames climb a vine this × faster than it burns away (1: only the tip burns)", min: 1, max: 40, step: 0.5 },
@@ -2268,9 +2268,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "autoTpBlink", g: "autodeath", label: "Tap A: the helmet light blinks for (s)", min: 0.1, max: 4, step: 0.05 },
     { k: "autoTpBoomWait", g: "autodeath", label: "… then the blast, home after (s)", min: 0.1, max: 4, step: 0.05 },
     { k: "autoTpBoomR", g: "autodeath", label: "The blast’s size", min: 10, max: 200, step: 1 },
-    { k: "autoExitPopGap", g: "autodeath", label: "Level exit: each head blows up to this long (s, random) after the one before", min: 0, max: 2, step: 0.05 },
-    { k: "autoExitPopR", g: "autodeath", label: "… its blast’s size", min: 10, max: 200, step: 1 },
-    { k: "autoExitRagT", g: "autodeath", label: "… the ragdolls fly this long (s) after the last, then the hub", min: 0.2, max: 5, step: 0.1 },
+    { k: "autoExitNukeR", g: "autodeath", label: "Level exit: the nuke’s size (its blast and mushroom cloud, world units)", min: 20, max: 300, step: 5 },
+    { k: "autoExitNukeF", g: "autodeath", label: "… how hard it throws the players (ragdoll push)", min: 100, max: 5e3, step: 50 },
+    { k: "autoExitNukeWait", g: "autodeath", label: "… the hub this long after it (s)", min: 0.5, max: 10, step: 0.1 },
+    { k: "autoMushT", g: "autodeath", label: "Nuke (the shot and the exit’s): its mushroom cloud lasts (s)", min: 0.5, max: 10, step: 0.1 },
+    { k: "autoMushK", g: "autodeath", label: "Nuke shot: its mushroom cloud’s size (× its blast)", min: 0.2, max: 5, step: 0.05 },
     { k: "autoFuelDrain", g: "autodeath", label: "Jet fuel: drain (× the old game’s; a level only, auto/fuel.js)", min: 0, max: 3, step: 0.05 },
     { k: "autoFuelRegen", g: "autodeath", label: "Jet fuel: refill on the ground (× the old game’s)", min: 0.1, max: 3, step: 0.05 }
   );
@@ -15128,6 +15130,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     burst(S2, f.x - S2.scroll, f.ty, 4, col, 80, "spark", 0.25);
     if (f.hp <= 0) killFoe(S2, f);
   }
+  function titleMushroom(S2, sx, y, r) {
+    (S2.mush || (S2.mush = [])).push({ wx: sx + S2.scroll, y, r, t: 0, max: DEV.autoMushT, seed: S2.rnd() * 100 });
+    if (S2.mush.length > 4) S2.mush.shift();
+  }
   function shotEnd(S2, s) {
     s.life = 0;
     if (s.explode) {
@@ -15135,6 +15141,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       snd(S2, "boom", s.x, s.y, s.explode);
       const bl = boomLook(s.sid);
       S2.booms.push({ x: s.x, y: s.y, r: r * 1.6 * bl.k, t: 0, max: bl.max, sid: s.sid });
+      if (s.sid === "nuke") titleMushroom(S2, s.x, s.y, r * DEV.autoMushK);
       if (bl.k > 1) {
         for (const p of bigBoomFx(s.sid || "", s.x, s.y, r, Math.random)) if (S2.parts.length < TITLE_PARTS) S2.parts.push(p);
         S2.flash = Math.max(S2.flash, 0.5);
@@ -15278,6 +15285,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     stepGold(S2, dt);
     stepLoot(S2, dt);
     for (const b of S2.booms) b.t += dt;
+    if (S2.mush) {
+      for (const m of S2.mush) m.t += dt;
+      S2.mush = S2.mush.filter((m) => m.t < m.max);
+    }
     S2.booms = S2.booms.filter((b) => b.t < b.max);
     for (const z of S2.zaps) z.t -= dt;
     S2.zaps = S2.zaps.filter((z) => z.t > 0);
@@ -25480,17 +25491,38 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (S2.snd.length < 80) S2.snd.push({ k: "boom", x, y, a: R * 2 });
     for (const q of S2.runners) if (q.rag) ragPush(q.rag, x + S2.scroll, y, R * 1.2, 900);
   }
-  function exitPop(S2, r) {
-    r.out = true;
-    r.outT = S2.t;
-    r.dig = 0;
-    r.clr = null;
-    if (r.keep) {
-      r.kit = r.keep;
-      r.keep = null;
+  function exitNuke(S2, wx, fy) {
+    const R = DEV.autoExitNukeR, rnd2 = S2.rnd, x = wx - S2.scroll, y = fy - 2;
+    for (const r of S2.runners) {
+      if (r.out) continue;
+      r.out = true;
+      r.outT = S2.t;
+      r.dig = 0;
+      r.clr = null;
+      if (r.keep) {
+        r.kit = r.keep;
+        r.keep = null;
+      }
+      deathFall(S2, r);
     }
-    deathFall(S2, r);
-    deathBlast(S2, r, DEV.autoExitPopR);
+    S2.booms.push({ x, y, r: R * 1.4, t: 0, max: 0.6, sid: "nuke" }, { x, y: y - R * 0.2, r: R * 0.6, t: 0, max: 0.45 });
+    titleMushroom(S2, x, y, R);
+    const burst3 = (n, col, spd, kind, life, up = 0) => {
+      for (let i = 0; i < n && S2.parts.length < 400; i++) {
+        const an = -Math.PI * rnd2(), v = spd * (0.3 + rnd2() * 0.7), l = life * (0.6 + rnd2() * 0.6);
+        S2.parts.push({ x: x + (rnd2() - 0.5) * 20, y, vx: Math.cos(an) * v, vy: Math.sin(an) * v - up, life: l, max: l, r: kind === "smoke" ? 3 + rnd2() * 4 : 1 + rnd2() * 1.8, col, kind });
+      }
+    };
+    burst3(60, "#ffd27a", R * 3.2, "fire", 0.9);
+    burst3(30, "#ffffff", R * 4.5, "spark", 0.5);
+    burst3(16, "#5c6470", R * 2.4, "chunk", 1.6, 60);
+    burst3(8, "#7cc8ff", R * 2, "chunk", 1.4, 60);
+    burst3(14, "#3a3346", R * 0.8, "smoke", 2.2);
+    S2.shake = Math.max(S2.shake, 14);
+    S2.flash = Math.max(S2.flash, 1);
+    if (S2.snd.length < 80) S2.snd.push({ k: "boom", x, y, a: R * 3 });
+    titleCarve(S2, x, fy, R * 0.45);
+    for (const q of S2.runners) if (q.rag) ragPush(q.rag, wx, fy + 6, R * 2.5, DEV.autoExitNukeF);
   }
   var deathPrompt = (S2, L) => L.deadT != null && L.tpT == null && S2.t - L.deadT >= DEV.autoDeathStop;
   function deathTeleport(S2, L) {
@@ -26021,18 +26053,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function exitStep(S2, L, dt) {
     S2.pace = 0;
     gather(S2, L, dt);
-    if (!L.popT) {
-      if (S2.runners.every((r) => r.out || r.stand && r.ground)) {
-        let t = S2.t + 0.25;
-        L.popT = S2.runners.map((r) => r.out ? -1 : t += S2.rnd() * DEV.autoExitPopGap);
-      }
+    if (L.nukeT == null) {
+      const pf = titleFloor(L.plan.exitX, S2);
+      if (L.gatherT == null) L.gatherT = S2.t;
+      if (S2.runners.every((r) => r.out || r.stand && r.ground && Math.abs(r.y + PH - pf) < 6) || S2.t - L.gatherT > 6) L.nukeT = S2.t + 0.5;
       return;
     }
-    const P2 = L.popT;
-    S2.runners.forEach((r, i) => {
-      if (!r.out && S2.t >= P2[i]) exitPop(S2, r);
-    });
-    if (L.doneT < 0 && S2.runners.every((r) => r.out) && S2.t >= Math.max(...P2) + DEV.autoExitRagT) L.doneT = S2.t;
+    if (!L.padGone && S2.t >= L.nukeT) {
+      L.padGone = true;
+      exitNuke(S2, L.plan.exitX, titleFloor(L.plan.exitX, S2));
+    }
+    if (L.doneT < 0 && L.padGone && S2.t >= L.nukeT + DEV.autoExitNukeWait) L.doneT = S2.t;
   }
   function stepOff(S2, L, dt) {
     const px = L.plan.padX - S2.scroll;
@@ -26082,7 +26113,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function levelPads(S2) {
     const L = levelState(S2);
     if (!L) return [];
-    return [{ id: "enter", x: L.plan.padX - S2.scroll, fy: titleFloor(L.plan.padX, S2) }, { id: "exit", x: L.plan.exitX - S2.scroll, fy: titleFloor(L.plan.exitX, S2) }].filter((p) => p.x > -60 && p.x < TITLE_VW + 60);
+    return [{ id: "enter", x: L.plan.padX - S2.scroll, fy: titleFloor(L.plan.padX, S2) }, { id: "exit", x: L.plan.exitX - S2.scroll, fy: titleFloor(L.plan.exitX, S2) }].filter((p) => p.x > -60 && p.x < TITLE_VW + 60 && !(p.id === "exit" && L.padGone));
   }
 
   // src/game/systems/lightning.js
@@ -28756,9 +28787,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     "autoCtlWait",
     "autoDeathStop",
     "autoDiscPull",
-    "autoExitPopGap",
-    "autoExitPopR",
-    "autoExitRagT",
+    "autoExitNukeF",
+    "autoExitNukeR",
+    "autoExitNukeWait",
     "autoExoPrice",
     "autoFireJump",
     "autoFireJumpP",
@@ -28817,6 +28848,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     "autoMapStep",
     "autoModGold",
     "autoMoveK",
+    "autoMushK",
+    "autoMushT",
     "autoNavCut",
     "autoNavGive",
     "autoOrbChance",
@@ -30492,16 +30525,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ctx.beginPath();
     ctx.arc(b.x, b.y, b.r * (0.2 + q * 1.3), 0, 6.283);
     ctx.stroke();
-    if (b.sid === "nuke") {
-      ctx.globalAlpha = 0.5 * (1 - q);
-      ctx.fillStyle = "#ffd35a";
-      ctx.beginPath();
-      ctx.ellipse(b.x, b.y - b.r * 0.5 * q, b.r * 0.12, b.r * 0.5 * q + 1, 0, 0, 6.283);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.ellipse(b.x, b.y - b.r * q, b.r * 0.45 * Math.sqrt(q) + 1, b.r * 0.22 * Math.sqrt(q) + 1, 0, 0, 6.283);
-      ctx.fill();
-    }
     ctx.globalAlpha = 1;
   }
   function shotLights(ctx, shots, cap = 40) {
@@ -30513,6 +30536,64 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const big = s.sid === "bubble" || s.sid === "pollen";
       const fl = s.sid === "bubble" ? 1 + 0.12 * Math.sin(s.spin * 2.3) : 1;
       glowAt(ctx, s.x, s.y, (s.lightR || 30) * (big ? 0.9 : 0.6) * fl, big ? 0.32 : 0.18, s.sid === "bubble" ? "70,170,255" : lt);
+    }
+  }
+  function drawMushroom(ctx, m, sx) {
+    const t = m.t, R = m.r, x = m.wx - sx, gy = m.y;
+    const rn = (i, k) => {
+      const v = Math.sin(i * 12.9898 + k * 78.233 + m.seed * 3.7) * 43758.5453;
+      return v - Math.floor(v);
+    };
+    const heat = Math.exp(-t / 0.75), fade = Math.min(1, t / 0.06) * (t > m.max * 0.6 ? Math.max(0, 1 - (t - m.max * 0.6) / (m.max * 0.4)) : 1);
+    if (fade <= 0) return;
+    const H = R * 1.2, rise = 1 - Math.exp(-t / 0.55), capY = gy - H * rise, capR = R * 0.5 * (0.3 + 0.7 * (1 - Math.exp(-t / 0.7)));
+    const puff = (px, py, pr, h3, sh) => {
+      if (pr < 0.5) return;
+      const st = [[0, 72, 68, 74], [0.12, 105, 82, 66], [0.3, 190, 100, 40], [0.5, 255, 160, 55], [0.78, 255, 240, 200], [1, 255, 252, 235]];
+      let j = 1;
+      while (j < st.length - 1 && h3 > st[j][0]) j++;
+      const a0 = st[j - 1], a1 = st[j], f = Math.max(0, Math.min(1, (h3 - a0[0]) / (a1[0] - a0[0])));
+      const c = [1, 2, 3].map((q) => a0[q] + (a1[q] - a0[q]) * f);
+      const k = 1 - sh * 0.45, col = c.map((v) => Math.round(v * k)).join(","), hi = c.map((v) => Math.round(Math.min(255, v * k * 1.25 + 12))).join(","), lo = c.map((v) => Math.round(v * k * 0.55)).join(",");
+      const g = ctx.createRadialGradient(px - pr * 0.25, py - pr * 0.3, pr * 0.1, px, py, pr);
+      g.addColorStop(0, "rgba(" + hi + "," + (0.95 * fade).toFixed(3) + ")");
+      g.addColorStop(0.55, "rgba(" + col + "," + (0.9 * fade).toFixed(3) + ")");
+      g.addColorStop(0.85, "rgba(" + lo + "," + (0.7 * fade).toFixed(3) + ")");
+      g.addColorStop(1, "rgba(" + lo + ",0)");
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(px, py, pr, 0, 6.283);
+      ctx.fill();
+    };
+    ctx.save();
+    ctx.globalCompositeOperation = "source-over";
+    const sk = R * 1.5 * (1 - Math.exp(-t / 0.45));
+    for (let i = 0; i < 20; i++) {
+      const s = i / 19 * 2 - 1, px = x + s * sk + (rn(i, 1) - 0.5) * 6, pr = R * (0.1 + 0.07 * rn(i, 2)) * (1 - Math.abs(s) * 0.45) * (0.5 + 0.5 * rise);
+      puff(px, gy - pr * 0.3, pr, heat * (1 - Math.abs(s)) * 0.6, 0.45);
+    }
+    const n = 20;
+    for (let i = 0; i < n; i++) {
+      const u = i / (n - 1), py = gy - (gy - capY) * u, w = R * (0.12 + 0.03 * Math.sin(u * 9 + t * 3 + m.seed)) * (1 + (1 - u) * (1 - u) * 1.1) * (0.8 + 0.4 * rn(i, 8));
+      const px = x + Math.sin(u * 5 + t * 1.7 + m.seed) * R * 0.035 + (rn(i, 3) - 0.5) * R * 0.09;
+      puff(px, py, w, heat * (0.55 + 0.45 * (1 - u)), 0.25 + 0.3 * u);
+    }
+    const N = 22, P2 = [];
+    for (let i = 0; i < N; i++) {
+      const th = i / N * 6.283 + rn(i, 4) * 0.25, roll = th * 2 + t * 2.4;
+      const px = x + Math.cos(th) * capR * (1 + 0.08 * Math.sin(roll)), py = capY + Math.sin(th) * capR * 0.3 - Math.cos(roll) * capR * 0.18;
+      P2.push({ px, py, pr: capR * (0.36 + 0.12 * rn(i, 5)) * (1 + 0.1 * Math.sin(roll)), z: Math.sin(th), h: heat * (0.65 + 0.35 * Math.max(0, Math.cos(roll))) });
+    }
+    for (let i = 0; i < 7; i++) {
+      const a = (i / 6 - 0.5) * 1.6;
+      P2.push({ px: x + Math.sin(a) * capR * 0.7, py: capY - capR * (0.35 + 0.15 * Math.cos(a)) - rn(i, 6) * capR * 0.1, pr: capR * (0.42 + 0.1 * rn(i, 7)), z: 0.2, h: heat * 0.45 });
+    }
+    P2.sort((a, b) => a.z - b.z);
+    for (const p of P2) puff(p.px, p.py, p.pr, p.h, p.z < 0 ? 0.5 : p.py < capY ? 0.05 : 0.35);
+    ctx.restore();
+    if (heat > 0.15) {
+      glowAt(ctx, x, capY + capR * 0.15, capR * 2, 0.3 * heat * fade, "255,150,60");
+      glowAt(ctx, x, gy, R, 0.25 * heat * fade, "255,190,110");
     }
   }
 
@@ -30766,6 +30847,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     });
     ctx.globalAlpha = 1;
     for (const b of S2.booms) drawBoom(ctx, b);
+    if (S2.mush) for (const m of S2.mush) drawMushroom(ctx, m, S2.scroll);
     for (const p of S2.props) if (p.k === "lamp" && p.x > -60 && p.x < TITLE_VW + 60) {
       const pr = p;
       propGlow(ctx, pr, S2.t, T, 0, 1);

@@ -146,6 +146,8 @@ export const zoneHome = Z => TITLE_HOME[Z.spid ? 'spider' : Z.z] || TITLE_HOME.m
  *   beam?: number, ang?: number, bx?: number, by2?: number, pull?: number, vac?: number, heal?: number, tick?: number, follow?: number, sp0?: number, orbit?: number, spiral?: number, boomer?: number, pong?: number, born?: number, back?: number, caught?: number, oa?: number, or0?: number, odir?: number, pdir?: number, ptr?: number[], homN?: number, seekN?: number, nearN?: number, autoaim?: number, aimed?: number, gravN?: number, floatN?: number, flat?: number, tgt?: Enemy | null, sp1?: number, max?: number, hopT?: number, hx?: number, hy?: number, only?: DiscrimTarget | null }} TShot */
 /** @typedef {{ x: number, y: number, vx: number, vy: number, life: number, max: number, r: number, col: string, kind: string, to?: { x: number, y: number, life: number }, fx?: boolean, u?: number, a?: number, g?: number }} TPart */
 /** @typedef {{ x: number, y: number, r: number, t: number, max: number, sid?: string }} TBoom */
+/** a nuke's mushroom cloud (game/render/autolooks.js drawMushroom): wx its world x, y the blast's, r its size
+ * @typedef {{ wx: number, y: number, r: number, t: number, max: number, seed: number }} MushCloud */
 /** @typedef {{ pts: { x: number, y: number }[], t: number, col: string, fade?: boolean }} TZap */
 // a prop: `ox` its world x (not `wx`: art/props.js reads that as an arch's or a vine's sideways bend)
 /** @typedef {{ k: string, st: string, ox: number, x: number, y: number, len: number, seed: number, side: number, burn: number, ac: number, ar: number, lit?: number, ch?: number, rot?: number, rv?: number, rp?: number[], rq?: number[], rs?: number,
@@ -157,7 +159,7 @@ export const zoneHome = Z => TITLE_HOME[Z.spid ? 'spider' : Z.z] || TITLE_HOME.m
  *   kills: number, gold: number, got: number, runner: TRunner, runners: TRunner[], foes: Enemy[], shots: TShot[], parts: TPart[], coins: Coin[],
  *   booms: TBoom[], zaps: TZap[], flash: number, rows: number, ncol: number, cells: Uint8Array, gen: number, props: TProp[],
  *   fire: TFire[], dirty: number[][], dirtyAll: boolean, carved: number, burnt: number, swaps: number, groundT: number, flyT: number, kinds: Record<string, number>,
- *   webs: WebLine[], orbN?: number, orbs?: Record<number, OrbRig>, orbHub?: { x: number, y: number, r: number }[], orbT?: number, cut: number, lineT: number, silk: { x: number, y: number, ax: number, ay: number, vx: number, vy: number, life: number }[],
+ *   webs: WebLine[], orbN?: number, orbs?: Record<number, OrbRig>, mush?: MushCloud[], orbHub?: { x: number, y: number, r: number }[], orbT?: number, cut: number, lineT: number, silk: { x: number, y: number, ax: number, ay: number, vx: number, vy: number, life: number }[],
  *   nav: { F: any, fx: number, fy: number, t: number }, fireAcc: number, fireN: number, burning: Set<number>, gotN: number, pops: number, lampsPopped: number, kitNames: Set<string>,
  *   digT: number, digs: number, digWhy: Record<string, number>, still?: boolean, zp: TitlePlan, snd: TSnd[], hub?: TitleHub, lvl?: TitleLevel, lab?: boolean, back?: (ctx: CanvasRenderingContext2D, S: TitleScene) => void, pace?: number, team?: RunPlayer[], blocked?: number, blockedKind?: string, huddle?: boolean, gunsOff?: boolean, hgoal?: number, hgoalT?: number, fuelWait?: number, tier?: number, loot?: TLoot[],
  *   onTake?: (it: BagItem, x: number, y: number) => void }} TitleScene */
@@ -1322,6 +1324,12 @@ function hitFoe(S, f, dmg, col, by) {
 }
 
 // a shot ends: blows up (a hole, fire), digs its pit, or sets things alight, as its mod does in the game
+// (owner, after v1.0.78) a mushroom cloud rising off a blast at screen point (sx, y), size r (it lasts DEV.autoMushT s)
+/** @param {TitleScene} S @param {number} sx @param {number} y @param {number} r */
+export function titleMushroom(S, sx, y, r) {
+  (S.mush || (S.mush = [])).push({ wx: sx + S.scroll, y, r, t: 0, max: DEV.autoMushT, seed: S.rnd() * 100 });
+  if (S.mush.length > 4) S.mush.shift();
+}
 /** @param {TitleScene} S @param {TShot} s */
 function shotEnd(S, s) {
   s.life = 0;
@@ -1330,6 +1338,7 @@ function shotEnd(S, s) {
     snd(S, 'boom', s.x, s.y, s.explode);
     const bl = boomLook(s.sid);   // a nuke's and meteor's blast looks far bigger (looks only: the radius stays r)
     S.booms.push({ x: s.x, y: s.y, r: r * 1.6 * bl.k, t: 0, max: bl.max, sid: s.sid });
+    if (s.sid === 'nuke') titleMushroom(S, s.x, s.y, r * DEV.autoMushK);
     if (bl.k > 1) { for (const p of bigBoomFx(s.sid || '', s.x, s.y, r, Math.random)) if (S.parts.length < TITLE_PARTS) S.parts.push(p); S.flash = Math.max(S.flash, 0.5); }
     burst(S, s.x, s.y, 14, '#ffb02e', 90, 'fire', 0.5);
     burst(S, s.x, s.y, 4, '#3a3346', 25, 'smoke', 1.2);
@@ -1435,6 +1444,7 @@ export function titleStep(S, dt) {
   stepGold(S, dt);
   stepLoot(S, dt);
   for (const b of S.booms) b.t += dt;
+  if (S.mush) { for (const m of S.mush) m.t += dt; S.mush = S.mush.filter(m => m.t < m.max); }
   S.booms = S.booms.filter(b => b.t < b.max);
   for (const z of S.zaps) z.t -= dt;
   S.zaps = S.zaps.filter(z => z.t > 0);

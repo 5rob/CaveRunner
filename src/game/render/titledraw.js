@@ -30,7 +30,7 @@ import { MACH_H, hubPayAt, throwR } from '../../auto/throw.js';
 import { drawItemTile, tileItem } from '../../auto/itemtile.js';
 import { perkFront, perkGlow } from './perkdraw.js';
 import { trajLook, trajRgb } from '../../auto/traj.js';
-import { drawBoom, drawGlowShot, drawSolidShot, shotLights } from './autolooks.js';
+import { drawBoom, drawGlowShot, drawMushroom, drawSolidShot, shotLights } from './autolooks.js';
 // a pickup drawn as its bag tile: this many world units across
 export const LOOT_TILE = 13;
 
@@ -250,7 +250,8 @@ export function titleDraw(ctx, S, cw, ch, cam) {
     }
   });
   ctx.globalAlpha = 1;
-  for (const b of S.booms) drawBoom(ctx, b);   // autolooks.js: a nuke's and meteor's far bigger
+  for (const b of S.booms) drawBoom(ctx, b);
+  if (S.mush) for (const m of S.mush) drawMushroom(ctx, m, S.scroll);   // autolooks.js: a nuke's mushroom cloud
   // the lanterns' warm light (art/props.js propGlow, as the game adds it after the fog)
   for (const p of S.props) if (p.k === 'lamp' && p.x > -60 && p.x < TITLE_VW + 60) {
     /** @type {any} */

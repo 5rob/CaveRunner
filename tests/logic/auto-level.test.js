@@ -74,9 +74,10 @@ check('stopped in the arena till the boss was dead', seenArena > 0 && arenaStill
 check('moving every 3 s window on the way (never stuck; the first is the setting off)', windows.length > 3 && windows.slice(1).every(w => w > 5), windows);
 check('no one sawing for more than 8 s on end', longDig === 0, longDig);
 const ex = P.exitX - S.scroll;
-// (owner v1.0.74) on the pad each head blew (a ragdoll thrown), a random gap apart; nobody hurt
-check('every head blew on the exit pad: ragdolls thrown, still round it', S.runners.every(r => r.out && r.rag && Math.abs(r.rag.joints[2].x - S.scroll - ex) < 200), S.runners.map(r => (r.rag ? r.rag.joints[2].x - S.scroll - ex : null)));
-check('the pops a random gap apart', !!L.popT && new Set(L.popT.map(t => t.toFixed(3))).size === L.popT.length, L.popT);
+// (owner, after v1.0.78) all on the pad, one nuke under it: the pad gone, a mushroom cloud, everyone thrown off as a ragdoll; nobody hurt
+const far = S.runners.map(r => (r.rag ? Math.abs(r.rag.joints[2].x - S.scroll - ex) : -1));
+check('the exit nuke went off: the pad gone, everyone a ragdoll thrown off it', L.padGone && L.nukeT > 0 && S.runners.every(r => r.out && r.rag) && Math.max(...far) > 20 && Math.max(...far) < 600, far);
+check('… the exit pad no longer drawn', !G.levelPads(S).some(p => p.id === 'exit'));
 check('nobody hurt by it', !S.team || S.team.every(p => p.alive !== false));
 check('the team stopped at the exit pad', Math.abs(G.levelTeamX(S) - P.exitX) < 1 && S.pace === 0);
 // the stick: full left slows the team but never stops it

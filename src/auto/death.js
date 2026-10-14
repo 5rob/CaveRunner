@@ -9,7 +9,7 @@
 import { PW, PH } from '../core/consts.js';
 import { DEV } from '../dev/knobs.js';
 import { ragNew, ragPush, ragStep } from '../world/ragdoll.js';
-import { titleSolid } from '../art/titlescene.js';
+import { titleCarve, titleMushroom, titleSolid } from '../art/titlescene.js';
 
 /** @typedef {import('../art/titlescene.js').TitleScene} DScene */
 /** @typedef {import('../art/titlescene.js').TRunner} DRunner */
@@ -93,14 +93,37 @@ function deathBlast(S, r, R = DEV.autoTpBoomR) {
   for (const q of S.runners) if (q.rag) ragPush(q.rag, x + S.scroll, y, R * 1.2, 900);
 }
 
-// (owner v1.0.74) at the level's exit pad (level.js exitStep): his head blows as in a death, but he isn't hurt: his body
-// thrown as a ragdoll (r.out only for the scene; the run's player stays alive) till the hub
-/** @param {DScene} S @param {DRunner} r */
-export function exitPop(S, r) {
-  r.out = true; r.outT = S.t; r.dig = 0; r.clr = null;
-  if (r.keep) { r.kit = r.keep; r.keep = null; }
-  deathFall(S, r);
-  deathBlast(S, r, DEV.autoExitPopR);
+// (owner, after v1.0.78) the level's end: the team gathered on the exit pad, one big nuke goes off under it: a nuke's
+// blast and its mushroom cloud (DEV.autoExitNukeR), the pad blown apart (L.padGone: no longer drawn) and a crater, and
+// every player thrown away from it as a ragdoll (DEV.autoExitNukeF; r.out for the scene only, the run's players live).
+// wx, fy: the pad's middle (world x) and floor
+/** @param {DScene} S @param {number} wx @param {number} fy */
+export function exitNuke(S, wx, fy) {
+  const R = DEV.autoExitNukeR, rnd = S.rnd, x = wx - S.scroll, y = fy - 2;
+  for (const r of S.runners) {
+    if (r.out) continue;
+    r.out = true; r.outT = S.t; r.dig = 0; r.clr = null;
+    if (r.keep) { r.kit = r.keep; r.keep = null; }
+    deathFall(S, r);
+  }
+  S.booms.push({ x, y, r: R * 1.4, t: 0, max: 0.6, sid: 'nuke' }, { x, y: y - R * 0.2, r: R * 0.6, t: 0, max: 0.45 });
+  titleMushroom(S, x, y, R);
+  /** @param {number} n @param {string} col @param {number} spd @param {string} kind @param {number} life @param {number} [up] */
+  const burst = (n, col, spd, kind, life, up = 0) => {
+    for (let i = 0; i < n && S.parts.length < 400; i++) {
+      const an = -Math.PI * rnd(), v = spd * (0.3 + rnd() * 0.7), l = life * (0.6 + rnd() * 0.6);
+      S.parts.push({ x: x + (rnd() - 0.5) * 20, y, vx: Math.cos(an) * v, vy: Math.sin(an) * v - up, life: l, max: l, r: kind === 'smoke' ? 3 + rnd() * 4 : 1 + rnd() * 1.8, col, kind });
+    }
+  };
+  burst(60, '#ffd27a', R * 3.2, 'fire', 0.9);
+  burst(30, '#ffffff', R * 4.5, 'spark', 0.5);
+  burst(16, '#5c6470', R * 2.4, 'chunk', 1.6, 60);   // the pad's plating
+  burst(8, '#7cc8ff', R * 2, 'chunk', 1.4, 60);       // its lit panel
+  burst(14, '#3a3346', R * 0.8, 'smoke', 2.2);
+  S.shake = Math.max(S.shake, 14); S.flash = Math.max(S.flash, 1);
+  if (S.snd.length < 80) S.snd.push({ k: 'boom', x, y, a: R * 3 });
+  titleCarve(S, x, fy, R * 0.45);
+  for (const q of S.runners) if (q.rag) ragPush(q.rag, wx, fy + 6, R * 2.5, DEV.autoExitNukeF);
 }
 
 // the prompt "Tap A to Teleport back to Hub" shows: everyone down, the scroll stopped, A not pressed yet

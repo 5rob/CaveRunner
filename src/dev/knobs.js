@@ -755,7 +755,7 @@ DEV_META.push(
 DEV_GROUPS.push(['autofoes', 'Auto: enemies']);
 // the jetpack (art/titlescene.js jetStep, feedback round 2: the old game's flame and smoke) and a death (auto/death.js: the ragdoll,
 // the slow stop, Tap A, the helmet light, the blast, home)
-Object.assign(DEV_DEFAULTS, { autoMoveK: 0.75, autoJetTilt: 1, autoJetSmoke: 1, autoDeathStop: 1.5, autoTpBlink: 1, autoTpBoomWait: 0.6, autoTpBoomR: 60, autoExitPopGap: 0.5, autoSpStride: 0.14, autoRoamT: 8, autoRoamHi: 0.45, autoRoamMid: 0.4, autoRoamFly: 2.5, autoRoamRun: 0.4, autoJeTurnTier: 0.2, autoJeTurnMax: 2.5, autoExitRagT: 1.6, autoExitPopR: 40, autoFuelDrain: 1, autoFuelRegen: 1, autoCtlWait: 3, autoVineFire: 1, autoVineSpread: 4, autoVineJitter: 0.8, autoVineAsh: 8, autoFireJump: 2, autoFireJumpP: 0.5, autoNavCut: 0.8, autoNavGive: 1.2 });
+Object.assign(DEV_DEFAULTS, { autoMoveK: 0.75, autoJetTilt: 1, autoJetSmoke: 1, autoDeathStop: 1.5, autoTpBlink: 1, autoTpBoomWait: 0.6, autoTpBoomR: 60, autoSpStride: 0.14, autoRoamT: 8, autoRoamHi: 0.45, autoRoamMid: 0.4, autoRoamFly: 2.5, autoRoamRun: 0.4, autoJeTurnTier: 0.2, autoJeTurnMax: 2.5, autoExitNukeR: 90, autoExitNukeF: 1600, autoExitNukeWait: 3.5, autoMushT: 3.2, autoMushK: 1, autoFuelDrain: 1, autoFuelRegen: 1, autoCtlWait: 3, autoVineFire: 1, autoVineSpread: 4, autoVineJitter: 0.8, autoVineAsh: 8, autoFireJump: 2, autoFireJumpP: 0.5, autoNavCut: 0.8, autoNavGive: 1.2 });
 DEV_META.push(
   { k: 'autoVineFire',   g: 'autofire', label: 'Vines burn up at this × the old game speed (the title menu: 0.1)', min: 0.1, max: 5, step: 0.1 },
   { k: 'autoVineSpread', g: 'autofire', label: 'Auto levels: the flames climb a vine this × faster than it burns away (1: only the tip burns)', min: 1, max: 40, step: 0.5 },
@@ -773,9 +773,11 @@ DEV_META.push(
   { k: 'autoTpBlink',    g: 'autodeath', label: 'Tap A: the helmet light blinks for (s)', min: 0.1, max: 4, step: 0.05 },
   { k: 'autoTpBoomWait', g: 'autodeath', label: '… then the blast, home after (s)', min: 0.1, max: 4, step: 0.05 },
   { k: 'autoTpBoomR',    g: 'autodeath', label: 'The blast’s size', min: 10, max: 200, step: 1 },
-  { k: 'autoExitPopGap', g: 'autodeath', label: 'Level exit: each head blows up to this long (s, random) after the one before', min: 0, max: 2, step: 0.05 },
-  { k: 'autoExitPopR',   g: 'autodeath', label: '… its blast’s size', min: 10, max: 200, step: 1 },
-  { k: 'autoExitRagT',   g: 'autodeath', label: '… the ragdolls fly this long (s) after the last, then the hub', min: 0.2, max: 5, step: 0.1 },
+  { k: 'autoExitNukeR',  g: 'autodeath', label: 'Level exit: the nuke’s size (its blast and mushroom cloud, world units)', min: 20, max: 300, step: 5 },
+  { k: 'autoExitNukeF',  g: 'autodeath', label: '… how hard it throws the players (ragdoll push)', min: 100, max: 5000, step: 50 },
+  { k: 'autoExitNukeWait', g: 'autodeath', label: '… the hub this long after it (s)', min: 0.5, max: 10, step: 0.1 },
+  { k: 'autoMushT',      g: 'autodeath', label: 'Nuke (the shot and the exit’s): its mushroom cloud lasts (s)', min: 0.5, max: 10, step: 0.1 },
+  { k: 'autoMushK',      g: 'autodeath', label: 'Nuke shot: its mushroom cloud’s size (× its blast)', min: 0.2, max: 5, step: 0.05 },
   { k: 'autoFuelDrain',  g: 'autodeath', label: 'Jet fuel: drain (× the old game’s; a level only, auto/fuel.js)', min: 0, max: 3, step: 0.05 },
   { k: 'autoFuelRegen',  g: 'autodeath', label: 'Jet fuel: refill on the ground (× the old game’s)', min: 0.1, max: 3, step: 0.05 });
 DEV_GROUPS.push(['autodeath', 'Auto: jetpack and death']);

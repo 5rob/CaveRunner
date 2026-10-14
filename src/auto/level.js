@@ -16,7 +16,7 @@ import { meterAdd, meterNew, meterSet, meterStep } from './meters.js';
 import { lvlPace, pilotEase, pilotPace } from './pilot.js';
 import { clearPower, teamClearer } from './clear.js';
 import { blockCell, blockCol, blockKind, planBlocks, rollBlock, webSlow } from './blocked.js';
-import { deathPrompt, deathRags, deathStep, deathTeleport, exitPop } from './death.js';
+import { deathPrompt, deathRags, deathStep, deathTeleport, exitNuke } from './death.js';
 import { autoFoe, elitePlan, levelFoes, levelHurt } from './enemies.js';
 import { bagFits, killLoot, lootCol } from './loot.js';
 import { bagAdd, playerStats } from './run.js';
@@ -125,7 +125,7 @@ export function levelFree(S, L, r) {
 // run (stage 6 part 2: the drops go into its bag; none: they're just taken), bagV (+1 each time something goes in: the screen redraws the bag)
 /** @typedef {{ plan: LevelPlan, phase: string, arrived: boolean[], zap: number, goT: number, arenaT: number, bossDead: boolean, hold: number,
  *   elites: import('./enemies.js').LevelFoe[], chests: import('./chests.js').LevelChest[], doneT: number, meters: PlayerMeters[], blocked: boolean,
- *   boss: Enemy | null, failed: boolean, run?: AutoRun | null, bagV: number, blockKind?: string, webK?: number, webT?: number, lootT?: number, clearT?: number, popT?: number[],
+ *   boss: Enemy | null, failed: boolean, run?: AutoRun | null, bagV: number, blockKind?: string, webK?: number, webT?: number, lootT?: number, clearT?: number, popT?: number[], nukeT?: number, gatherT?: number, padGone?: boolean,
  *   deadT?: number, pace0?: number, base?: number, lastI?: number, tpT?: number, boomed?: boolean, far?: number }} LevelState */
 // (far: the furthest the scroll got, world units: manual mode roams back at most DEV.autoRoamBack screens behind it)
 // (blockKind: what the block is, rock / web / timber (stage 6b); webK: the team's pace through webs (1 free, auto/blocked.js webSlow); webT: the next cut)
@@ -358,22 +358,23 @@ export function levelClearedAge(S) {
   return a < DEV.autoClearT ? a : -1;
 }
 
-// (owner v1.0.74) at the exit, instead of a teleport: everyone gathered on the pad, each one's head blows (auto/death.js's
-// blast; he isn't hurt), a random DEV.autoExitPopGap apart, his body thrown as a ragdoll; DEV.autoExitRagT s after the last, home
+// (owner v1.0.74; after v1.0.78 one nuke, not each head popping) at the exit, instead of a teleport: everyone gathered on
+// the pad, the nuke under it (auto/death.js exitNuke; nobody hurt), the bodies thrown as ragdolls; DEV.autoExitNukeWait s later, home
 /** @param {import('../art/titlescene.js').TitleScene} S @param {LevelState} L @param {number} dt */
 function exitStep(S, L, dt) {
   S.pace = 0;
   gather(S, L, dt);
-  if (!L.popT) {
-    if (S.runners.every(r => r.out || (r.stand && r.ground))) {
-      let t = S.t + 0.25;
-      L.popT = S.runners.map(r => (r.out ? -1 : (t += S.rnd() * DEV.autoExitPopGap)));
-    }
+  // (owner, after v1.0.78) all on the pad: a moment, then one big nuke under it (death.js exitNuke) throws them all off,
+  // and the hub DEV.autoExitNukeWait s later
+  if (L.nukeT == null) {
+    // (on the pad: standing on its floor, not on a ledge over it; after 6 s it goes off anyway: someone stuck up there)
+    const pf = titleFloor(L.plan.exitX, S);
+    if (L.gatherT == null) L.gatherT = S.t;
+    if (S.runners.every(r => r.out || (r.stand && r.ground && Math.abs(r.y + PH - pf) < 6)) || S.t - L.gatherT > 6) L.nukeT = S.t + 0.5;
     return;
   }
-  const P = L.popT;
-  S.runners.forEach((r, i) => { if (!r.out && S.t >= P[i]) exitPop(S, r); });
-  if (L.doneT < 0 && S.runners.every(r => r.out) && S.t >= Math.max(...P) + DEV.autoExitRagT) L.doneT = S.t;
+  if (!L.padGone && S.t >= L.nukeT) { L.padGone = true; exitNuke(S, L.plan.exitX, titleFloor(L.plan.exitX, S)); }
+  if (L.doneT < 0 && L.padGone && S.t >= L.nukeT + DEV.autoExitNukeWait) L.doneT = S.t;
 }
 
 // (owner v1.0.74) through the start pad, each walks off it to the right (a line, the first furthest) to clear it for the next
@@ -415,5 +416,5 @@ export function levelPads(S) {
   const L = levelState(S);
   if (!L) return [];
   return [{ id: 'enter', x: L.plan.padX - S.scroll, fy: titleFloor(L.plan.padX, S) }, { id: 'exit', x: L.plan.exitX - S.scroll, fy: titleFloor(L.plan.exitX, S) }]
-    .filter(p => p.x > -60 && p.x < TITLE_VW + 60);
+    .filter(p => p.x > -60 && p.x < TITLE_VW + 60 && !(p.id === 'exit' && L.padGone));   // (the exit pad: gone in the end's nuke)
 }

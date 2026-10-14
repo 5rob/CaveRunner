@@ -233,7 +233,7 @@ export function drawGlowShot(c, s, W) {
 }
 
 // a blast's look (titledraw.js, after the shot layer): the usual fireball; a nuke's and meteor's (bigger, longer: auto/shotfx.js
-// boomLook) a white flash, a fireball rolling out, and a shockwave ring racing past it
+// boomLook) a white flash, a fireball rolling out, and a shockwave ring racing past it (a nuke's mushroom: drawMushroom)
 /** @param {CanvasRenderingContext2D} ctx @param {TBoom} b */
 export function drawBoom(ctx, b) {
   const q = b.t / b.max, big = b.sid === 'nuke' || b.sid === 'meteor';
@@ -247,11 +247,6 @@ export function drawBoom(ctx, b) {
   if (q < 0.15) { ctx.globalAlpha = 1 - q / 0.15; ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(b.x, b.y, b.r * 0.6, 0, 6.283); ctx.fill(); }
   ctx.globalAlpha = Math.max(0, 0.9 * (1 - q)); ctx.strokeStyle = b.sid === 'nuke' ? '#e8ffb0' : '#ffd8a0'; ctx.lineWidth = 3 * (1 - q) + 0.5;
   ctx.beginPath(); ctx.arc(b.x, b.y, b.r * (0.2 + q * 1.3), 0, 6.283); ctx.stroke();
-  if (b.sid === 'nuke') {   // a mushroom's stem and cap, rising
-    ctx.globalAlpha = 0.5 * (1 - q); ctx.fillStyle = '#ffd35a';
-    ctx.beginPath(); ctx.ellipse(b.x, b.y - b.r * 0.5 * q, b.r * 0.12, b.r * 0.5 * q + 1, 0, 0, 6.283); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(b.x, b.y - b.r * q, b.r * 0.45 * Math.sqrt(q) + 1, b.r * 0.22 * Math.sqrt(q) + 1, 0, 0, 6.283); ctx.fill();
-  }
   ctx.globalAlpha = 1;
 }
 
@@ -267,5 +262,72 @@ export function shotLights(ctx, shots, cap = 40) {
     const big = s.sid === 'bubble' || s.sid === 'pollen';
     const fl = s.sid === 'bubble' ? 1 + 0.12 * Math.sin(s.spin * 2.3) : 1;
     glowAt(ctx, s.x, s.y, (s.lightR || 30) * (big ? 0.9 : 0.6) * fl, big ? 0.32 : 0.18, s.sid === 'bubble' ? '70,170,255' : lt);
+  }
+}
+
+// (owner, after v1.0.78: "a good looking mushroom cloud") a nuke's mushroom cloud (art/titlescene.js S.mush, MushCloud): a
+// column of billowing puffs rising off the blast, a cap rolling as a ring of puffs round its rim, and a dust skirt racing
+// out along the ground. Hot at first (white-yellow cores, orange, dark red, lit from below), cooling to grey smoke, then
+// fading. All its puffs are worked out from its seed each frame (no state but its age). sx: the scene's scroll
+/** @param {CanvasRenderingContext2D} ctx @param {{ wx: number, y: number, r: number, t: number, max: number, seed: number }} m @param {number} sx */
+export function drawMushroom(ctx, m, sx) {
+  const t = m.t, R = m.r, x = m.wx - sx, gy = m.y;
+  /** @param {number} i @param {number} k */
+  const rn = (i, k) => { const v = Math.sin(i * 12.9898 + k * 78.233 + m.seed * 3.7) * 43758.5453; return v - Math.floor(v); };
+  const heat = Math.exp(-t / 0.75), fade = Math.min(1, t / 0.06) * (t > m.max * 0.6 ? Math.max(0, 1 - (t - m.max * 0.6) / (m.max * 0.4)) : 1);
+  if (fade <= 0) return;
+  const H = R * 1.2, rise = 1 - Math.exp(-t / 0.55), capY = gy - H * rise, capR = R * 0.5 * (0.3 + 0.7 * (1 - Math.exp(-t / 0.7)));
+  // a puff: a soft ball, its colour by its heat (h 0-1: smoke to white hot), darker where it's in shade (sh 0-1)
+  /** @param {number} px @param {number} py @param {number} pr @param {number} h @param {number} sh */
+  const puff = (px, py, pr, h, sh) => {
+    if (pr < 0.5) return;
+    // (white hot, orange, burnt orange, brown, then smoke; blended between, so no band shows)
+    const st = [[0, 72, 68, 74], [0.12, 105, 82, 66], [0.3, 190, 100, 40], [0.5, 255, 160, 55], [0.78, 255, 240, 200], [1, 255, 252, 235]];
+    let j = 1;
+    while (j < st.length - 1 && h > st[j][0]) j++;
+    const a0 = st[j - 1], a1 = st[j], f = Math.max(0, Math.min(1, (h - a0[0]) / (a1[0] - a0[0])));
+    const c = [1, 2, 3].map(q => a0[q] + (a1[q] - a0[q]) * f);
+    const k = 1 - sh * 0.45, col = c.map(v => Math.round(v * k)).join(','), hi = c.map(v => Math.round(Math.min(255, v * k * 1.25 + 12))).join(','), lo = c.map(v => Math.round(v * k * 0.55)).join(',');
+    const g = ctx.createRadialGradient(px - pr * 0.25, py - pr * 0.3, pr * 0.1, px, py, pr);
+    // (a lit top, its colour, a darker rim: each puff reads as a billow)
+    g.addColorStop(0, 'rgba(' + hi + ',' + (0.95 * fade).toFixed(3) + ')');
+    g.addColorStop(0.55, 'rgba(' + col + ',' + (0.9 * fade).toFixed(3) + ')');
+    g.addColorStop(0.85, 'rgba(' + lo + ',' + (0.7 * fade).toFixed(3) + ')');
+    g.addColorStop(1, 'rgba(' + lo + ',0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(px, py, pr, 0, 6.283); ctx.fill();
+  };
+  ctx.save();
+  ctx.globalCompositeOperation = 'source-over';   // (drawn in the bright pass, which adds: smoke would add up to white)
+  // the dust skirt along the ground
+  const sk = R * 1.5 * (1 - Math.exp(-t / 0.45));
+  for (let i = 0; i < 20; i++) {
+    const s = (i / 19) * 2 - 1, px = x + s * sk + (rn(i, 1) - 0.5) * 6, pr = R * (0.1 + 0.07 * rn(i, 2)) * (1 - Math.abs(s) * 0.45) * (0.5 + 0.5 * rise);
+    puff(px, gy - pr * 0.3, pr, heat * (1 - Math.abs(s)) * 0.6, 0.45);
+  }
+  // the stem: puffs from the ground up to the cap, swaying a little, hot at its foot early on
+  const n = 20;
+  for (let i = 0; i < n; i++) {
+    const u = i / (n - 1), py = gy - (gy - capY) * u, w = R * (0.12 + 0.03 * Math.sin(u * 9 + t * 3 + m.seed)) * (1 + (1 - u) * (1 - u) * 1.1) * (0.8 + 0.4 * rn(i, 8));
+    const px = x + Math.sin(u * 5 + t * 1.7 + m.seed) * R * 0.035 + (rn(i, 3) - 0.5) * R * 0.09;
+    puff(px, py, w, heat * (0.55 + 0.45 * (1 - u)), 0.25 + 0.3 * u);
+  }
+  // the cap: a ring of puffs rolling round its rim (back half first, in shade), puffs piled on top, and its hot underside
+  const N = 22, P = [];
+  for (let i = 0; i < N; i++) {
+    const th = (i / N) * 6.283 + rn(i, 4) * 0.25, roll = th * 2 + t * 2.4;
+    const px = x + Math.cos(th) * capR * (1 + 0.08 * Math.sin(roll)), py = capY + Math.sin(th) * capR * 0.3 - Math.cos(roll) * capR * 0.18;
+    P.push({ px, py, pr: capR * (0.36 + 0.12 * rn(i, 5)) * (1 + 0.1 * Math.sin(roll)), z: Math.sin(th), h: heat * (0.65 + 0.35 * Math.max(0, Math.cos(roll))) });
+  }
+  for (let i = 0; i < 7; i++) {
+    const a = (i / 6 - 0.5) * 1.6;
+    P.push({ px: x + Math.sin(a) * capR * 0.7, py: capY - capR * (0.35 + 0.15 * Math.cos(a)) - rn(i, 6) * capR * 0.1, pr: capR * (0.42 + 0.1 * rn(i, 7)), z: 0.2, h: heat * 0.45 });
+  }
+  P.sort((a, b) => a.z - b.z);
+  for (const p of P) puff(p.px, p.py, p.pr, p.h, p.z < 0 ? 0.5 : p.py < capY ? 0.05 : 0.35);   // (lit on top, shaded under the rim)
+  ctx.restore();
+  // the glow it throws while hot: round the cap's underside and the stem's foot
+  if (heat > 0.15) {
+    glowAt(ctx, x, capY + capR * 0.15, capR * 2, 0.3 * heat * fade, '255,150,60');
+    glowAt(ctx, x, gy, R, 0.25 * heat * fade, '255,190,110');
   }
 }
