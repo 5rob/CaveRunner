@@ -41,6 +41,22 @@ check('never past his max', pl.hp <= max, [pl.hp, max]);
   for (let i = 0; i < 120; i++) { S2.foes.length = 0; G.titleStep(S2, 1 / 60); }
   if (c) { const d = Math.hypot(r.x + G.PW / 2 - c.x, r.y + G.PH / 2 - c.y); check('2 s on, the level moved on and it is still round him', d < 20 && S2.scroll - s1 > 20 && c.life > 0, [Math.round(d), Math.round(S2.scroll - s1)]); }
 }
+// (owner, after v1.0.81) Discriminate set on player 1 + Follow Me + Vigour on player 2's gun: it goes to player 1, not its caster
+{
+  const run3 = G.newRun(3); const p2x = G.newPlayer(1); p2x.guns[0] = G.scratchPistol(); p2x.active = 0; run3.players.push(p2x);
+  const p2 = run3.players[1], g3 = p2.guns[p2.active];
+  g3.slots = ['auto', G.discrimId({ kind: 'player', id: '1' }), 'follow', 'vigour']; g3.cap = 4; G.resetGun(g3);
+  const S3 = G.levelScene(400, 5, 2, G.levelPlan(5), run3.players.slice(0, 2)), r1 = S3.runners[0], r2 = S3.runners[1];
+  let c = null;
+  for (let i = 0; i < 600 && !c; i++) { S3.foes.length = 0; G.titleStep(S3, 1 / 60); c = S3.shots.find(q => q.sid === 'vigour' && q.by === 1) || null; }
+  check('Discriminate:P1 + Follow Me + Vigour (player 2): cast', !!c && !!c.only && c.follow > 0, c && [c.only, c.follow]);
+  let near1 = 0, n = 0;
+  for (let i = 0; i < 240; i++) {
+    S3.foes.length = 0; G.titleStep(S3, 1 / 60);
+    if (c && i > 120) { n++; const d1 = Math.hypot(r1.x + G.PW / 2 - c.x, r1.y + G.PH / 2 - c.y), d2 = Math.hypot(r2.x + G.PW / 2 - c.x, r2.y + G.PH / 2 - c.y); if (d1 < 20 && d1 <= d2 + 1) near1++; }
+  }
+  check('… it flies to player 1 and stays with him', n > 0 && near1 > n * 0.8, [near1, n, Math.round(r1.x), Math.round(r2.x)]);
+}
 G.DEV.autoFoeElites = keep;
 console.log(fails ? `${fails} FAILED` : 'all passed');
 process.exit(fails ? 1 : 0);

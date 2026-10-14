@@ -2115,10 +2115,11 @@ export function stepRunnerGun(S, r, dt) {
 }
 
 // Follow Me on a field (owner v1.0.66, the old game's spells/paths.js rule): it steers to its caster's middle, slowing as it
-// arrives, and stays with him (none left: it stays put)
+// arrives, and stays with him (none left: it stays put). (owner, after v1.0.81) with Discriminate set on a player, it follows
+// that player instead
 /** @param {TitleScene} S @param {TShot} s @param {number} dt */
 function fieldFollow(S, s, dt) {
-  const r = S.runners[s.by];
+  const r = s.only && s.only.kind === 'player' ? S.runners.find(u => String(u.id + 1) === s.only?.id) : S.runners[s.by];
   if (!r || r.out) { s.vx = s.vy = 0; return; }
   const dx = r.x + PW / 2 - s.x, dy = r.y + PH / 2 - s.y, d = Math.hypot(dx, dy) || 1;
   const want = Math.min(FIELD_SPEED * 2, d * 5), k = Math.min(1, SEEK_ACC * dt);

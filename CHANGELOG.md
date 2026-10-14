@@ -5,6 +5,10 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.82 — CaveRunner Auto: Follow Me + Discriminate on a player follows that player (branch `autobattler`)
+Released 2026-10-14 on the branch (a fix).
+- Owner: a Vigour circle with Discriminate set on player 1 didn't go to player 1. Discriminate alone only picks who it heals (the circle stays where cast); with Follow Me the circle followed its caster. Now Follow Me follows the Discriminate's player (titlescene.js `fieldFollow`). Suite: auto-vigour.
+
 ## v1.0.81 — CaveRunner Auto: the Dev mod grid scrolls (branch `autobattler`)
 Released 2026-10-14 on the branch (a fix).
 - Owner: the Dev panel's mod grid wouldn't scroll. It sat outside the panel's scrolling body (squeezing the knob list to nothing); it's now the body's first child, scrolling with the knobs (ui/devpanel.js). Suite: auto-modgrid (browser, a real touch swipe).
