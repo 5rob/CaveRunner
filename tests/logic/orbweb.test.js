@@ -67,5 +67,53 @@ for (let seed = 1; seed <= 12 && hubGone === null; seed++) {
 }
 D.autoOrbChance = keep;
 check('hub cleared: none of that web stays up', hubGone === 0, hubGone);
+// (owner, after v1.0.78) a spoke gone: the hub moves to a new rest point, away from that spoke's anchor and a little lower
+const four = [{ ax: 0, ay: -20 }, { ax: 20, ay: 0 }, { ax: 0, ay: 20 }, { ax: -20, ay: 0 }];
+const same = G.orbHubRest(0, 0, four, [true, true, true, true]), noR = G.orbHubRest(0, 0, four, [true, false, true, true]);
+check('all spokes: the hub stays put', Math.abs(same.x) + Math.abs(same.y) < 1e-9, same);
+check('right spoke gone: the hub swings left and drops', noR.x < -3 && noR.y > 0, noR);
+const H = { x: 0, y: 0, vx: 0, vy: 0, tx: noR.x, ty: noR.y };
+let moving = true, n = 0, past = false;
+for (; moving && n < 600; n++) { moving = G.orbSpring(H, 1 / 60); if (H.x < noR.x) past = true; }
+check('the hub swings past and settles there', past && !moving && Math.hypot(H.x - noR.x, H.y - noR.y) < 0.2, { n, H });
+// the scene: one spoke cut mid-way, the hub moves and the spiral threads still sit on their spokes
+D.autoOrbChance = 1;
+let moved = null;
+for (let seed = 1; seed <= 12 && moved === null; seed++) {
+  const S = G.titleScene(190, seed);
+  for (let f = 0; f < 30 * 60 && moved === null; f++) {
+    G.titleStep(S, 1 / 30);
+    const L = S.webs.find(w => w.orb && !w.sp && !w.fr && w.b0x - S.scroll > 40 && w.b0x - S.scroll < 180 && Math.hypot(w.b0x - w.a0x, w.b0y - w.a0y) > 30);
+    if (!L || !S.orbs || !S.orbs[L.orb]) continue;
+    const id = L.orb, H0 = { x: S.orbs[id].x, y: S.orbs[id].y };
+    L.out = true; S.webs = S.webs.filter(w => w !== L);
+    G.titleOrbSettle(S, id);
+    for (let k = 0; k < 60; k++) G.titleStep(S, 1 / 30);
+    const Hn = S.orbs[id], left = S.webs.filter(w => w.orb === id);
+    if (!Hn || !left.length) continue;
+    const sp = left.filter(w => w.sp && w.oa), on = sp.every(w => Math.hypot(w.a0x - (w.oa.s.a0x + (w.oa.s.b0x - w.oa.s.a0x) * w.oa.u), w.a0y - (w.oa.s.a0y + (w.oa.s.b0y - w.oa.s.a0y) * w.oa.u)) < 0.01);
+    const hubOn = left.filter(w => !w.sp && !w.fr).every(w => Math.abs(w.b0x - Hn.x) < 0.01 && Math.abs(w.b0y - Hn.y) < 0.01);
+    moved = { d: Math.hypot(Hn.x - H0.x, Hn.y - H0.y), on, hubOn, sp: sp.length };
+  }
+}
+D.autoOrbChance = keep;
+check('a spoke cut in the scene: the hub moved, its spokes and spiral went with it', !!moved && moved.d > 0.5 && moved.on && moved.hubOn, moved);
+// (owner, after v1.0.78: webs popped on) a level strings every orb web before it comes into view, big ones too
+D.autoOrbChance = 1;
+let made = 0, pops = 0, big = 0;
+for (let seed = 1; seed <= 4; seed++) {
+  const S = G.levelScene(200, seed, 1), seen = new Set();
+  for (let f = 0; f < 30 * 30; f++) {
+    G.titleStep(S, 1 / 30);
+    for (const L of S.webs) if (L.orb && !seen.has(L.orb)) {
+      seen.add(L.orb); made++;
+      const T = S.webs.filter(w => w.orb === L.orb), x0 = Math.min(...T.map(w => Math.min(w.a0x, w.b0x))), x1 = Math.max(...T.map(w => Math.max(w.a0x, w.b0x)));
+      if (x0 - S.scroll < G.TITLE_VW && S.t > 0.1) pops++;
+      if (x1 - x0 > 120) big++;
+    }
+  }
+}
+D.autoOrbChance = keep;
+check('no orb web strung in view in a level, big ones still made', made > 10 && pops === 0 && big > 0, { made, pops, big });
 console.log(fails ? `${fails} FAILED` : 'all passed');
 process.exit(fails ? 1 : 0);

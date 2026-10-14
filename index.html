@@ -9855,6 +9855,31 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       return held.some((s) => onSeg(L.ax, L.ay, s)) && held.some((s) => onSeg(L.bx, L.by, s)) ? "keep" : "fall";
     });
   }
+  var ORB_DROOP = 0.15;
+  function orbHubRest(hx, hy, spokes, alive) {
+    let kAll = 0, kOn = 0, sx = 0, sy = 0, len = 0;
+    spokes.forEach((s, i) => {
+      const d = Math.hypot(s.ax - hx, s.ay - hy) || 1, k = 1 / d;
+      kAll += k;
+      len += d;
+      if (alive[i]) kOn += k;
+      else {
+        sx += k * (s.ax - hx);
+        sy += k * (s.ay - hy);
+      }
+    });
+    if (kOn <= 0) return { x: hx, y: hy };
+    const lost = 1 - kOn / kAll, drop = ORB_DROOP * (len / Math.max(1, spokes.length)) * lost;
+    return { x: hx - sx / kOn, y: hy - sy / kOn + drop };
+  }
+  function orbSpring(H, dt) {
+    const w = 7, z = 0.3;
+    H.vx += ((H.tx - H.x) * w * w - 2 * z * w * H.vx) * dt;
+    H.vy += ((H.ty - H.y) * w * w - 2 * z * w * H.vy) * dt;
+    H.x += H.vx * dt;
+    H.y += H.vy * dt;
+    return Math.abs(H.vx) + Math.abs(H.vy) > 0.05 || Math.abs(H.tx - H.x) + Math.abs(H.ty - H.y) > 0.05;
+  }
 
   // src/spells/cast.js
   var MIN_CAST = 0.016;
@@ -14254,15 +14279,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         { spokes: Math.round(DEV.autoOrbSpokes * Math.max(1, sz)), maxR: rr2, gap: DEV.autoOrbGap * Math.max(1, sz), hole: 4 * Math.max(1, sz), tries: 6, spread: 25 * Math.max(1, sz) }
       );
       const hub = W && W.find((t) => !t.spiral && !t.bin) || null, apart = !!hub && !(S2.orbHub || []).some((h3) => Math.hypot(h3.x - hub.bx, h3.y - hub.by) < (h3.r + rr2) * 0.6);
-      if (W && apart && W.every((t) => t.spiral || (!t.ain || holds(t.ain)) && (!t.bin || holds(t.bin)))) {
+      const seen = S2.t > 0 && Math.min(...(W || []).map((t) => Math.min(t.ax, t.bx))) - 4 < S2.scroll + TITLE_VW;
+      if (W && apart && !seen && W.every((t) => t.spiral || (!t.ain || holds(t.ain)) && (!t.bin || holds(t.bin)))) {
         S2.orbHub = (S2.orbHub || []).filter((h3) => h3.x > wx - TITLE_VW * 3);
         S2.orbHub.push({ x: hub.bx, y: hub.by, r: rr2 });
-        const id = S2.orbN = (S2.orbN || 0) + 1;
+        const id = S2.orbN = (S2.orbN || 0) + 1, made = S2.webs.length;
         for (const t of W) {
           const L = { ax: t.ax, ay: t.ay, bx: t.bx, by: t.by, a0x: t.ax, a0y: t.ay, b0x: t.bx, b0y: t.by, ain: t.ain, bin: t.bin || { x: t.bx, y: t.by }, owner: null, orb: id, sp: t.spiral, fr: !t.spiral && !!t.bin };
           L.sag = DEV.webSag * Math.hypot(t.bx - t.ax, t.by - t.ay) * (t.spiral ? 0.6 : 0.3);
           S2.webs.push(L);
         }
+        orbRig(S2, id, S2.webs.slice(made));
       }
     }
     if ((zr === "webs" || zr === "spider") && !S2.lvl && b === 0 && !(c % 4) && R() < 0.42 * Zr.dens && S2.webs.filter((L) => !L.orb).length < TITLE_WEBS) {
@@ -14455,7 +14482,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     };
   }
   function titleScene(vh, seed = 7, top = vh * 0.3, bot = vh * 0.62, opts = {}) {
-    const rnd2 = titleRng(seed), rows = Math.ceil(vh / TCELL) + 1, hub = opts.hub, ncol = hub ? hub.w : opts.ncol || Math.ceil((TITLE_VW + 50 + AHEAD + (opts.level ? TITLE_BACK : 0)) / TCELL);
+    const rnd2 = titleRng(seed), rows = Math.ceil(vh / TCELL) + 1, hub = opts.hub, ncol = hub ? hub.w : opts.ncol || Math.ceil((TITLE_VW + 50 + (opts.level ? AHEAD_LVL + TITLE_BACK : AHEAD)) / TCELL);
     const S2 = {
       t: 0,
       vh,
@@ -14575,6 +14602,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     };
   }
   var AHEAD = 130;
+  var AHEAD_LVL = 340;
   var TITLE_BACK = 400;
   var behind = (S2, d) => S2.lab ? -Infinity : S2.lvl ? -TITLE_BACK : d;
   var snd = (S2, k, x, y, a) => {
@@ -14582,7 +14610,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   };
   function genTo(S2) {
     if (S2.hub) return;
-    while (S2.gen * TCELL < S2.scroll + TITLE_VW + AHEAD) {
+    while (S2.gen * TCELL < S2.scroll + TITLE_VW + (S2.lvl ? AHEAD_LVL : AHEAD)) {
       genCol(S2, S2.gen);
       S2.gen++;
     }
@@ -14915,7 +14943,65 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
     });
     if (gone.size) S2.webs = S2.webs.filter((L) => !gone.has(L));
+    const H = S2.orbs && S2.orbs[id];
+    if (H && H.spokes.some((s) => !s.out)) {
+      const r = orbHubRest(H.x0, H.y0, H.spokes.map((s) => ({ ax: s.a0x, ay: s.a0y })), H.spokes.map((s) => !s.out));
+      if (Math.abs(r.x - H.tx) + Math.abs(r.y - H.ty) > 0.01) {
+        H.tx = r.x;
+        H.ty = r.y;
+        H.moving = true;
+      }
+    }
   }
+  function orbRig(S2, id, T2) {
+    const spokes = T2.filter((L) => !L.sp && !L.fr);
+    if (!spokes.length) return;
+    const hx = spokes[0].b0x, hy = spokes[0].b0y;
+    const on = (x, y) => {
+      for (const s of spokes) {
+        const vx = s.b0x - s.a0x, vy = s.b0y - s.a0y, u = Math.max(0, Math.min(1, ((x - s.a0x) * vx + (y - s.a0y) * vy) / (vx * vx + vy * vy || 1)));
+        if (Math.hypot(s.a0x + vx * u - x, s.a0y + vy * u - y) < 1) return { s, u };
+      }
+      return null;
+    };
+    for (const L of T2) if (L.sp) {
+      L.oa = on(L.a0x, L.a0y);
+      L.ob = on(L.b0x, L.b0y);
+    }
+    (S2.orbs || (S2.orbs = {}))[id] = { x: hx, y: hy, vx: 0, vy: 0, tx: hx, ty: hy, x0: hx, y0: hy, spokes, moving: false };
+  }
+  function orbSwing(S2, dt) {
+    if (!S2.orbs) return;
+    for (const k in S2.orbs) {
+      const H = S2.orbs[k];
+      if (H.x0 - S2.scroll < behind(S2, -40) - 200) {
+        delete S2.orbs[k];
+        continue;
+      }
+      if (!H.moving || H.x0 > S2.scroll + TITLE_VW + 120) continue;
+      H.moving = orbSpring(H, Math.min(dt, 0.05));
+      for (const s of H.spokes) if (!s.out) {
+        s.b0x = s.bx = H.x;
+        s.b0y = s.by = H.y;
+      }
+    }
+    for (const L of S2.webs) if (L.sp && L.orb && S2.orbs[L.orb] && S2.orbs[L.orb].moving) {
+      const a = L.oa, b = L.ob;
+      if (a) {
+        L.a0x = a.s.a0x + (a.s.b0x - a.s.a0x) * a.u;
+        L.a0y = a.s.a0y + (a.s.b0y - a.s.a0y) * a.u;
+      }
+      if (b) {
+        L.b0x = b.s.a0x + (b.s.b0x - b.s.a0x) * b.u;
+        L.b0y = b.s.a0y + (b.s.b0y - b.s.a0y) * b.u;
+      }
+      L.ax = L.a0x;
+      L.ay = L.a0y;
+      L.bx = L.b0x;
+      L.by = L.b0y;
+    }
+  }
+  var titleOrbSettle = orbSettle;
   var canSwing = (p) => p.k === "climb" && !p.arc && !!p.len;
   function stepSway(S2, dt) {
     for (const r of S2.runners) r.rub = "";
@@ -15194,6 +15280,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     for (const z of S2.zaps) z.t -= dt;
     S2.zaps = S2.zaps.filter((z) => z.t > 0);
     stepSway(S2, dt);
+    orbSwing(S2, dt);
     for (const p of S2.props) {
       p.x = p.ox - S2.scroll;
       if (p.gone) continue;

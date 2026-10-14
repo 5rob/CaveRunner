@@ -142,3 +142,36 @@ export function orbHeld(T, rock) {
     return held.some(s => onSeg(L.ax, L.ay, s)) && held.some(s => onSeg(L.bx, L.by, s)) ? 'keep' : 'fall';
   });
 }
+
+// (owner, after v1.0.78: "the centre point doesn't adjust when a main line breaks; it seems fixed") the hub hangs on its
+// spokes as springs (each as stiff as it is short, 1 / its length), balanced where it was made. A spoke gone: the hub's
+// new rest point, away from that spoke's anchor (by what the rest can hold) and a little lower (ORB_DROOP × the web's
+// mean spoke × the share of stiffness lost). orbSpring eases it there with a swing.
+export const ORB_DROOP = 0.15;
+/**
+ * @param {number} hx @param {number} hy the hub where it was made
+ * @param {{ ax: number, ay: number }[]} spokes every spoke it was made with (ax, ay: its anchor)
+ * @param {boolean[]} alive which still hold
+ * @returns {{ x: number, y: number }}
+ */
+export function orbHubRest(hx, hy, spokes, alive) {
+  let kAll = 0, kOn = 0, sx = 0, sy = 0, len = 0;
+  spokes.forEach((s, i) => {
+    const d = Math.hypot(s.ax - hx, s.ay - hy) || 1, k = 1 / d;
+    kAll += k; len += d;
+    if (alive[i]) kOn += k;
+    else { sx += k * (s.ax - hx); sy += k * (s.ay - hy); }
+  });
+  if (kOn <= 0) return { x: hx, y: hy };
+  const lost = 1 - kOn / kAll, drop = ORB_DROOP * (len / Math.max(1, spokes.length)) * lost;
+  return { x: hx - sx / kOn, y: hy - sy / kOn + drop };
+}
+// one step of the hub easing to its rest point (tx, ty): a damped spring, so it swings past and settles
+/** @param {{ x: number, y: number, vx: number, vy: number, tx: number, ty: number }} H @param {number} dt */
+export function orbSpring(H, dt) {
+  const w = 7, z = 0.3;
+  H.vx += ((H.tx - H.x) * w * w - 2 * z * w * H.vx) * dt;
+  H.vy += ((H.ty - H.y) * w * w - 2 * z * w * H.vy) * dt;
+  H.x += H.vx * dt; H.y += H.vy * dt;
+  return Math.abs(H.vx) + Math.abs(H.vy) > 0.05 || Math.abs(H.tx - H.x) + Math.abs(H.ty - H.y) > 0.05;
+}

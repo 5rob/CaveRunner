@@ -53,7 +53,8 @@ G.levelControl(S, r.id, push(0, 1));
 let dug = false;
 for (let i = 0; i < 60; i++) { G.titleStep(S, 1 / 30); dug = dug || r.dig > 0; }
 check('pushed down on the ground: he saws down into the floor', dug && r.y > gy + 6, [gy, r.y, r.dig]);
-check('… straight down, not pulled to the autopilot\'s target', Math.abs(r.x + S.scroll - gx) < 12, [gx, r.x + S.scroll]);
+// (the target is 150 right and 80 up: pulled there he'd go sideways and up; sawing down he drifts a little with the scroll)
+check('… straight down, not pulled to the autopilot\'s target', Math.abs(r.x + S.scroll - gx) < (r.y - gy) / 2, [gx, r.x + S.scroll, gy, r.y]);
 G.levelControl(S, r.id, { active: true, nx: 0, ny: 0, mag: 0 });
 G.titleStep(S, 1 / 30);
 check('the stick let go: back on the autopilot (his saw no longer the stick\'s)', !G.ctlOn(r) && !r.ctlWas, r.dig);

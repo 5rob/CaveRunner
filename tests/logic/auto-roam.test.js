@@ -12,7 +12,7 @@ check('roamPace: proportional to the offset (damped: half the offset, half the s
 check('roamMin: autoRoamBack screens behind the furthest point, capped by TITLE_BACK',
   G.roamMin({ far: 1000 }) === 1000 - Math.min(D.autoRoamBack * G.TITLE_VW, G.TITLE_BACK - 50), G.roamMin({ far: 1000 }));
 
-const S = G.levelScene(200, 7, 3);
+const S = G.levelScene(200, 8, 3);   // (seed 7's cave, once a level made columns further ahead, dropped a follower in a dip: cave chance, not roaming)
 const L = G.levelState(S);
 const step = s => { for (let i = 0; i < s * 30; i++) G.titleStep(S, 1 / 30); };
 step(4);
@@ -34,9 +34,10 @@ const lag = S.runners.slice(1).map(o => o.x);
 check('the others follow, behind him', lag.every(x => x < r.x + 4), { lead: r.x, lag });
 
 G.levelControl(S, r.id, push(-1, 0));
-step(2.5);
+let sTop = S.scroll;   // (the scroll carries on a moment before it turns: measured from its furthest)
+for (let i = 0; i < 2.5 * 30; i++) { G.titleStep(S, 1 / 30); sTop = Math.max(sTop, S.scroll); }
 const s2 = S.scroll;
-check('stick left: back through the world, the scroll goes back', s2 < s1 - 40 && S.pace < 0, [s1, s2, S.pace]);
+check('stick left: back through the world, the scroll goes back', s2 < sTop - 40 && S.pace < 0, [s1, sTop, s2, S.pace]);
 check('the others follow back (behind him: to his right now)', S.runners.slice(1).every(o => o.x > r.x - 20), S.runners.map(o => o.x));
 
 step(6);

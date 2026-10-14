@@ -23,7 +23,7 @@ import { navField, navWay } from '../world/nav.js';
 import { collideNuggets, spillGold, stepNugget } from '../world/nuggets.js';
 import { losClear } from '../world/vision.js';
 import { archCurve, archNear } from '../world/decorate.js';
-import { orbHeld, orbPlace } from '../world/orbweb.js';
+import { orbHeld, orbHubRest, orbPlace, orbSpring } from '../world/orbweb.js';
 import { bendPush, swingStep, swings, tailStep, vinePt, webAt, webNearU } from '../world/sway.js';
 import { MODS, VAC_PULL } from '../spells/mods.js';
 import { gunPassives } from '../spells/cast.js';
@@ -157,7 +157,7 @@ export const zoneHome = Z => TITLE_HOME[Z.spid ? 'spider' : Z.z] || TITLE_HOME.m
  *   kills: number, gold: number, got: number, runner: TRunner, runners: TRunner[], foes: Enemy[], shots: TShot[], parts: TPart[], coins: Coin[],
  *   booms: TBoom[], zaps: TZap[], flash: number, rows: number, ncol: number, cells: Uint8Array, gen: number, props: TProp[],
  *   fire: TFire[], dirty: number[][], dirtyAll: boolean, carved: number, burnt: number, swaps: number, groundT: number, flyT: number, kinds: Record<string, number>,
- *   webs: WebLine[], orbN?: number, orbHub?: { x: number, y: number, r: number }[], orbT?: number, cut: number, lineT: number, silk: { x: number, y: number, ax: number, ay: number, vx: number, vy: number, life: number }[],
+ *   webs: WebLine[], orbN?: number, orbs?: Record<number, OrbRig>, orbHub?: { x: number, y: number, r: number }[], orbT?: number, cut: number, lineT: number, silk: { x: number, y: number, ax: number, ay: number, vx: number, vy: number, life: number }[],
  *   nav: { F: any, fx: number, fy: number, t: number }, fireAcc: number, fireN: number, burning: Set<number>, gotN: number, pops: number, lampsPopped: number, kitNames: Set<string>,
  *   digT: number, digs: number, digWhy: Record<string, number>, still?: boolean, zp: TitlePlan, snd: TSnd[], hub?: TitleHub, lvl?: TitleLevel, lab?: boolean, back?: (ctx: CanvasRenderingContext2D, S: TitleScene) => void, pace?: number, team?: RunPlayer[], blocked?: number, blockedKind?: string, huddle?: boolean, gunsOff?: boolean, hgoal?: number, hgoalT?: number, fuelWait?: number, tier?: number, loot?: TLoot[],
  *   onTake?: (it: BagItem, x: number, y: number) => void }} TitleScene */
@@ -654,16 +654,19 @@ function genCol(S, c) {
       { spokes: Math.round(DEV.autoOrbSpokes * Math.max(1, sz)), maxR: rr, gap: DEV.autoOrbGap * Math.max(1, sz), hole: 4 * Math.max(1, sz), tries: 6, spread: 25 * Math.max(1, sz) });
     // (kept apart: none over another's hub)
     const hub = W && W.find(t => !t.spiral && !t.bin) || null, apart = !!hub && !(S.orbHub || []).some(h => Math.hypot(h.x - hub.bx, h.y - hub.by) < (h.r + rr) * 0.6);
-    if (W && apart && W.every(t => t.spiral || ((!t.ain || holds(t.ain)) && (!t.bin || holds(t.bin))))) {
+    // (none strung where it shows: it popped on; the level makes columns far enough ahead for the big ones)
+    const seen = S.t > 0 && Math.min(...(W || []).map(t => Math.min(t.ax, t.bx))) - 4 < S.scroll + TITLE_VW;
+    if (W && apart && !seen && W.every(t => t.spiral || ((!t.ain || holds(t.ain)) && (!t.bin || holds(t.bin))))) {
       S.orbHub = (S.orbHub || []).filter(h => h.x > wx - TITLE_VW * 3);
       S.orbHub.push({ x: hub.bx, y: hub.by, r: rr });
-      const id = (S.orbN = (S.orbN || 0) + 1);
+      const id = (S.orbN = (S.orbN || 0) + 1), made = S.webs.length;
       for (const t of W) {
         /** @type {WebLine} */
         const L = { ax: t.ax, ay: t.ay, bx: t.bx, by: t.by, a0x: t.ax, a0y: t.ay, b0x: t.bx, b0y: t.by, ain: t.ain, bin: t.bin || { x: t.bx, y: t.by }, owner: null, orb: id, sp: t.spiral, fr: !t.spiral && !!t.bin };
         L.sag = DEV.webSag * Math.hypot(t.bx - t.ax, t.by - t.ay) * (t.spiral ? 0.6 : 0.3);
         S.webs.push(L);
       }
+      orbRig(S, id, S.webs.slice(made));
     }
   }
   // (owner, after v1.0.75: too many tall single strands) a level's webs and spider zones: orb webs only (spiders spin their own lines)
@@ -801,7 +804,7 @@ function kitOf(shot, mods, art) {
 // opts.team: the run's players (RunPlayer, CaveRunner Auto): each runner fires its player's active gun (art/scenegun.js) in place of the menu's kits
 /** @param {number} vh the view's height in world units @param {number} [seed] @param {number} [top] the action's band (world units) @param {number} [bot] @param {{ runners?: number, hub?: TitleHub, level?: TitleLevel, team?: RunPlayer[], tier?: number, ncol?: number }} [opts] @returns {TitleScene} */
 export function titleScene(vh, seed = 7, top = vh * 0.3, bot = vh * 0.62, opts = {}) {
-  const rnd = titleRng(seed), rows = Math.ceil(vh / TCELL) + 1, hub = opts.hub, ncol = hub ? hub.w : opts.ncol || Math.ceil((TITLE_VW + 50 + AHEAD + (opts.level ? TITLE_BACK : 0)) / TCELL);
+  const rnd = titleRng(seed), rows = Math.ceil(vh / TCELL) + 1, hub = opts.hub, ncol = hub ? hub.w : opts.ncol || Math.ceil((TITLE_VW + 50 + (opts.level ? AHEAD_LVL + TITLE_BACK : AHEAD)) / TCELL);
   /** @type {TitleScene} */
   const S = { t: 0, vh, top, bot, seed, rnd, zp: titlePlan(seed), scroll: 0, shake: 0, spawn: 0, kills: 0, gold: 0, got: 0, runner: null, runners: [], foes: [], shots: [],
     parts: [], coins: [], booms: [], zaps: [], flash: 0, rows, ncol, cells: new Uint8Array(rows * ncol), gen: -25, props: [],
@@ -837,6 +840,9 @@ export function titleRunner(S, i, x, y) {
 // the terrain is made this far past the screen's right edge (v0.0.170: was 40, and a rat swarm coming in
 // at the edge spread past it, into what wasn't made yet, and sank into the rock)
 const AHEAD = 130;
+// (owner, after v1.0.78: webs popped on) a level makes its columns further ahead, so an orb web (up to autoOrbR across
+// each way, its hub behind the column that makes it) is strung before it comes into view; one that would show is skipped
+const AHEAD_LVL = 340;
 // (CaveRunner Auto's level, feedback round 2: roaming back by hand) a level keeps this much more behind the screen's left
 // edge: its ring of columns is this much wider, and props, webs, creatures, coins and loot are culled only past it
 export const TITLE_BACK = 400;
@@ -849,7 +855,7 @@ const snd = (S, k, x, y, a) => { if (S.snd.length < 80) S.snd.push({ k, x, y, a 
 /** @param {TitleScene} S */
 function genTo(S) {
   if (S.hub) return;
-  while (S.gen * TCELL < S.scroll + TITLE_VW + AHEAD) { genCol(S, S.gen); S.gen++; }
+  while (S.gen * TCELL < S.scroll + TITLE_VW + (S.lvl ? AHEAD_LVL : AHEAD)) { genCol(S, S.gen); S.gen++; }
 }
 
 // the terrain as the creatures' brains see it (the game's terrain cells, world coordinates): out
@@ -1145,7 +1151,51 @@ function orbSettle(S, id) {
     if (p && hang && L.ain) { p.ac = Math.floor(L.ain.x / TCELL); p.ar = Math.floor(L.ain.y / TCELL); }
   });
   if (gone.size) S.webs = S.webs.filter(L => !gone.has(L));
+  // what still holds: the hub's new rest point
+  const H = S.orbs && S.orbs[id];
+  if (H && H.spokes.some(s => !s.out)) {
+    const r = orbHubRest(H.x0, H.y0, H.spokes.map(s => ({ ax: s.a0x, ay: s.a0y })), H.spokes.map(s => !s.out));
+    if (Math.abs(r.x - H.tx) + Math.abs(r.y - H.ty) > 0.01) { H.tx = r.x; H.ty = r.y; H.moving = true; }
+  }
 }
+// (owner, after v1.0.78) an orb web's hub hangs on its spokes (world/orbweb.js orbHubRest, orbSpring): its rig keeps the
+// hub, its spokes, and each spiral thread's ends as a spoke and a fraction along it, so they ride the hub when it moves
+/** @typedef {{ x: number, y: number, vx: number, vy: number, tx: number, ty: number, x0: number, y0: number, spokes: WebLine[], moving: boolean }} OrbRig */
+/** @param {TitleScene} S @param {number} id @param {WebLine[]} T */
+function orbRig(S, id, T) {
+  const spokes = T.filter(L => !L.sp && !L.fr);
+  if (!spokes.length) return;
+  const hx = spokes[0].b0x, hy = spokes[0].b0y;
+  /** @param {number} x @param {number} y */
+  const on = (x, y) => {
+    for (const s of spokes) {
+      const vx = s.b0x - s.a0x, vy = s.b0y - s.a0y, u = Math.max(0, Math.min(1, ((x - s.a0x) * vx + (y - s.a0y) * vy) / (vx * vx + vy * vy || 1)));
+      if (Math.hypot(s.a0x + vx * u - x, s.a0y + vy * u - y) < 1) return { s, u };
+    }
+    return null;
+  };
+  for (const L of T) if (L.sp) { L.oa = on(L.a0x, L.a0y); L.ob = on(L.b0x, L.b0y); }
+  (S.orbs || (S.orbs = {}))[id] = { x: hx, y: hy, vx: 0, vy: 0, tx: hx, ty: hy, x0: hx, y0: hy, spokes, moving: false };
+}
+// the hub's swing to its rest point after a spoke went; its spokes and spiral threads follow (on screen only)
+/** @param {TitleScene} S @param {number} dt */
+function orbSwing(S, dt) {
+  if (!S.orbs) return;
+  for (const k in S.orbs) {
+    const H = S.orbs[k];
+    if (H.x0 - S.scroll < behind(S, -40) - 200) { delete S.orbs[k]; continue; }
+    if (!H.moving || H.x0 > S.scroll + TITLE_VW + 120) continue;
+    H.moving = orbSpring(H, Math.min(dt, 0.05));
+    for (const s of H.spokes) if (!s.out) { s.b0x = s.bx = H.x; s.b0y = s.by = H.y; }
+  }
+  for (const L of S.webs) if (L.sp && L.orb && S.orbs[L.orb] && S.orbs[L.orb].moving) {
+    const a = L.oa, b = L.ob;
+    if (a) { L.a0x = a.s.a0x + (a.s.b0x - a.s.a0x) * a.u; L.a0y = a.s.a0y + (a.s.b0y - a.s.a0y) * a.u; }
+    if (b) { L.b0x = b.s.a0x + (b.s.b0x - b.s.a0x) * b.u; L.b0y = b.s.a0y + (b.s.b0y - b.s.a0y) * b.u; }
+    L.ax = L.a0x; L.ay = L.a0y; L.bx = L.b0x; L.by = L.b0y;
+  }
+}
+export const titleOrbSettle = orbSettle;   // (the orbweb suite)
 // can a title prop swing (a hanging vine, chain, root or strand; a cut piece)?
 /** @param {TProp} p */
 const canSwing = p => p.k === 'climb' && !p.arc && !!p.len;
@@ -1389,6 +1439,7 @@ export function titleStep(S, dt) {
   for (const z of S.zaps) z.t -= dt;
   S.zaps = S.zaps.filter(z => z.t > 0);
   stepSway(S, dt);
+  orbSwing(S, dt);
   // plants whose rock is gone fall away (and an arch's strands with it)
   for (const p of S.props) {
     p.x = p.ox - S.scroll;

@@ -34,7 +34,7 @@ Object.assign(D, { zv_veg_moss: 0, zv_veg_spider: 1, zv_spid_timber: 1, zv_spid_
   const b = zs();
   check('moss knobs: twice as long, roof 20 lower, half the density', a.length && b.length && Math.abs((b[0].x1 - b[0].x0) / (a[0].x1 - a[0].x0) - 2) < 1e-9 && Math.abs(b[0].co - a[0].co - 20) < 1e-9 && Math.abs(b[0].dens / a[0].dens - 0.5) < 1e-9, [a.length, b.length]);
   D.zl_moss_len = 1; D.zl_moss_roof = 0; D.zl_moss_dens = 1;
-  const v1 = s => G.zoneLabScene(260, 5, 'moss', { veg: true }).S.props.filter(p => p.k === 'climb').length;
+  const v1 = s => { const L = G.zoneLabScene(260, 5, 'moss', { veg: true }); return L.S.props.filter(p => p.k === 'climb' && p.ox >= L.Z.x0 && p.ox < L.Z.x1).length; };   // (in the zone: a level makes columns further ahead now)
   const n0 = v1(); D.zl_moss_vegThick = 0; const n1 = v1(); D.zl_moss_vegThick = 1;
   check('heavy vegetation thickness 0: its patches are gone', n1 < n0 / 3, [n0, n1]);
 }
