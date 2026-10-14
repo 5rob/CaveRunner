@@ -5,7 +5,8 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
-## v1.0.86 — CaveRunner Auto: a buffed or Enlarged White Hole keeps its core (branch `autobattler`; UNRELEASED, waiting on the owner's OK)
+## v1.0.86 — CaveRunner Auto: a buffed or Enlarged White Hole keeps its core (branch `autobattler`)
+Released 2026-10-15 on the branch; owner OK'd the screenshot (tools/whshots.js).
 - Owner: Buff and Enlarge already grew a White Hole's reach (`r`: 64 → 128 with Buff ×2, 96 with Enlarge) but its bright core grew with it (`drawWhiteHole`'s core is 5.5% of its radius). `game/render/autolooks.js` now draws the core at a plain hole's size (`WH_REACH`); the rim stays at the reach, and `auto/shotfx.js` spawns sparkles over the reach, as many more as it's wider (up to 4×). Grem Mode too (the same scene). Shot `node tools/whshots.js`.
 
 ## v1.0.85 — CaveRunner Auto: Grem Mode, Dev → Presets, White Hole + Follow Me (branch `autobattler`)
