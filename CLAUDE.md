@@ -47,6 +47,12 @@ They play on a phone through the **installed Android app**, so **every change ha
 width with touch**. The owner's rules for each area are in that folder's README; a Dev-panel report
 they paste becomes the new defaults (`src/dev/README.md`).
 
+**Keep Dev → "Copy Dev settings" complete, always (the owner's rule, 2026-10-16).** It is how the owner's
+tuning becomes the game's defaults, so every device plays the same. Anything new the owner can set in the
+Dev panel (a knob, a check box, a page that keeps its own list or kit) must be in that copy *and* have a
+default in `src/` that the pasted value can replace. A setting kept outside `DEV` goes into
+`src/auto/devcopy.js`; the `devcopy` suite checks it. Skip this and the owner's settings stay on one phone.
+
 **`node serve.js`** serves the game to their phone over the LAN for a quick look without a release,
 at **http://192.168.86.233:8000/** (the PC's wifi address: only while `serve.js` runs and the phone is
 on the same network; if it stops answering, `ipconfig` and update this line). Run `node tools/build.js
@@ -84,7 +90,7 @@ Runs of 30–50 minutes burned the owner's credits (Level 2, stage 4). The main 
    `https://5rob.github.io/CaveRunner/version.txt` shows the new `<number> vX.Y.Z` and the app offers the update.
    (No artifact publish; `https://claude.ai/artifact/2rarFzJoTseCKXhTPwMyLT` and `serve.js` are fallbacks.)
 
-**Current version: v0.0.176** (release channel `main`); the `autobattler` branch counts its own from **v1.0.0** (AUTOBATTLER.md; **v1.0.93** as of 2026-10-16, live at `/CaveRunner/auto/`; HANDOVER's BRANCH section says where it stands; **on `autobattler` the release is a push to `autobattler`, never `main`**: confirm at `https://5rob.github.io/CaveRunner/auto/version.txt`). **The version number is not optional.**
+**Current version: v0.0.176** (release channel `main`); the `autobattler` branch counts its own from **v1.0.0** (AUTOBATTLER.md; **v1.0.94** as of 2026-10-16, live at `/CaveRunner/auto/`; HANDOVER's BRANCH section says where it stands; **on `autobattler` the release is a push to `autobattler`, never `main`**: confirm at `https://5rob.github.io/CaveRunner/auto/version.txt`). **The version number is not optional.**
 It's **major.minor.patch** (since v0.0.132; before it a single `vNN`, up to v131): the owner's
 grouping — a **major release** bumps X, a **major update** Y, a **minor update** Z (reset the parts
 after the one you bump). Ask the owner which kind a release is if it isn't obvious; small fixes and

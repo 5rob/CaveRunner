@@ -2,6 +2,7 @@
 // Dev → Spawn gun lists them and drops an exact copy. Shared across runs and save slots, never cleared
 // by the game: localStorage PRESET_KEY = [{ name, gun }].
 import { cleanGun } from './save.js';
+import { DEFAULT_PRESETS } from './presetdefaults.js';
 
 export const PRESET_KEY = 'caverunner-gunpresets';
 export const PRESET_NAME_MAX = 40;
@@ -37,7 +38,8 @@ export function cleanPresets(list) {
 
 /** @returns {GunPreset[]} */
 export const loadPresets = () => {
-  try { return cleanPresets(JSON.parse(localStorage.getItem(PRESET_KEY) || '[]')); } catch (_) { return []; }
+  // (v1.0.94) never saved on this device: the built-in list (save/presetdefaults.js)
+  try { const raw = localStorage.getItem(PRESET_KEY); return cleanPresets(raw == null ? DEFAULT_PRESETS : JSON.parse(raw)); } catch (_) { return cleanPresets(DEFAULT_PRESETS); }
 };
 /** @param {GunPreset[]} list */
 export const savePresets = list => { try { localStorage.setItem(PRESET_KEY, JSON.stringify(list)); } catch (_) {} };

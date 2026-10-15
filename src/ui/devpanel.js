@@ -15,9 +15,10 @@ import {
 import { enemyFor } from '../data/creatures.js';
 import { THEMES, themeFor } from '../data/themes.js';
 import {
-  CURVES, DEV, DEV_DEFAULTS, DEV_GROUPS, DEV_META, DEV_TABS, devReport, devSet, devTabOf, kr, kru
+  CURVES, DEV, DEV_DEFAULTS, DEV_GROUPS, DEV_META, DEV_TABS, devSet, devTabOf, kr, kru
 } from '../dev/knobs.js';
 import { auditText, loadAudit } from '../save/audit.js';
+import { devCopyText } from '../auto/devcopy.js';
 import { loadPresets, presetGun, removePreset, savePresets } from '../save/presets.js';
 import { gunColor } from '../spells/guns.js';
 import { AUTO_KNOBS } from '../dev/autouse.js';
@@ -633,7 +634,7 @@ export function DevPanel({ input, refresh, close, onRestart, onSpawnGun, onSpawn
           // (Auto) a red / green crystal straight into the bag, one a tap
           ...(onGem ? [act('gemred', '+1 red crystal', () => onGem('red')), act('gemgreen', '+1 green crystal', () => onGem('green'))] : []),
           ...(onMod ? [act('toggle modgridbtn' + (grid ? ' on' : ''), 'Mod grid', () => setGrid(g => !g))] : []),
-          act('devcopy', 'Copy Dev settings', () => copyText(devReport)),
+          act('devcopy', 'Copy Dev settings', () => copyText(devCopyText)),   // (v1.0.94) everything Dev keeps: auto/devcopy.js
           act('devaudit', 'Copy mod & perk audit', () => copyText(() => auditText(loadAudit()), 'audit'))),
         copied ? h('p', { className: 'devnote devcopied' + (copied.ok ? ' ok' : '') }, copied.empty
           ? 'Nothing audited yet — pin, trash or give feedback on a mod or perk card first.'

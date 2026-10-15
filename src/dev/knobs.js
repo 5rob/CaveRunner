@@ -129,17 +129,23 @@ export const DEV_TABS = [
 /** @param {string} g @returns {string} the tab a group sits on */
 export const devTabOf = g => (DEV_TABS.find(t => t[2].includes(g)) || DEV_TABS[DEV_TABS.length - 1])[0];
 // The dev values that differ from their defaults, as text to paste back to Claude so they
-// can become the new defaults.
+// can become the new defaults. Every DEV key, rows or not (v1.0.94: the Zones page's check boxes,
+// zv_*, have no row); numbers rounded (a slider's float noise). The whole Copy Dev settings, with
+// the parts kept outside DEV (gun presets, the Grem kit), is auto/devcopy.js devCopyText.
+/** @param {number | string} v */
+const shown = v => (typeof v === 'number' ? +v.toFixed(6) : v);
 export function devReport() {
-  const changed = DEV_META.filter(m => DEV[m.k] !== DEV_DEFAULTS[m.k]);
+  const label = new Map(DEV_META.map(m => [m.k, m.label]));
+  const keys = Object.keys(DEV_DEFAULTS), changed = keys.filter(k => DEV[k] !== DEV_DEFAULTS[k]);
   const lines = ['CaveRunner ' + VERSION + ' dev settings — please make these the new defaults:', ''];
   if (!changed.length) lines.push('(nothing changed — everything is at its default)');
-  for (const m of changed)
-    lines.push('- ' + m.label + ' (DEV.' + m.k + '): ' + DEV[m.k] + '   [default ' + DEV_DEFAULTS[m.k] + ']');
-  lines.push('', 'Unchanged: ' + (DEV_META.filter(m => DEV[m.k] === DEV_DEFAULTS[m.k])
-    .map(m => m.k).join(', ') || 'none'));
+  for (const k of changed)
+    lines.push('- ' + (label.get(k) || k) + ' (DEV.' + k + '): ' + shown(DEV[k]) + '   [default ' + DEV_DEFAULTS[k] + ']');
+  lines.push('', 'Unchanged: ' + (keys.filter(k => DEV[k] === DEV_DEFAULTS[k]).join(', ') || 'none'));
   return lines.join('\n');
 }
+/** the DEV values that differ from their defaults (what a device keeps, v1.0.94) */
+export const devChanged = () => Object.fromEntries(Object.keys(DEV_DEFAULTS).filter(k => DEV[k] !== DEV_DEFAULTS[k]).map(k => [k, DEV[k]]));
 // Creature knobs are ranges: every one has a min and a max, and each time the creature
 // uses one it rolls a fresh number between them — kr(k). The owner's rule: no two bursts,
 // bites or shots quite alike. Set min = max for a fixed number. rangeKnobs(group, rows)
@@ -1064,5 +1070,6 @@ export const dueMs = floor => floor === 1 ? DEV.due1 * 60000 : DEADLINE_MS;
 /** @param {string} k @param {number | string} v */
 export function devSet(k, v) {
   DEV[k] = v;
-  try { localStorage.setItem(DEV_KEY, JSON.stringify(DEV)); } catch (_) {}
+  // (v1.0.94) only the changed ones: a device follows every new default for the knobs it hasn't touched
+  try { localStorage.setItem(DEV_KEY, JSON.stringify(devChanged())); } catch (_) {}
 }

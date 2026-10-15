@@ -6,8 +6,14 @@
 - `DEV_DEFAULTS` (plain knobs), `DEV_META` (one row each: key, group `g`, label, min/max/step,
   optional `type: 'color' | 'slider'`), `DEV_GROUPS` (the collapsible sections, in order), `DEV_TABS` (the panel's tabs: `[id, name, groups]`;
   `devTabOf(g)` = a group's tab; **a new group goes in a tab too**, `devsettings.test.js` checks it).
-- `devSet(k, v)` writes through to localStorage (`DEV_KEY` = `caverunner-dev`); `devReport()`
-  is the text behind **Copy all dev settings to clipboard**.
+- `devSet(k, v)` writes through to localStorage (`DEV_KEY` = `caverunner-dev`): since v1.0.94 only the keys that
+  differ from `DEV_DEFAULTS` (`devChanged()`), so a device follows every new default for knobs it hasn't touched
+  (a store from before v1.0.94 holds every key; it thins out on its next change). `devReport()` lists every
+  `DEV_DEFAULTS` key (rows or not: the `zv_*` boxes too; numbers rounded to 6 places).
+- **Copy Dev settings** (the panel's button) is `auto/devcopy.js devCopyText()`: `devReport()` + the gun presets
+  (Dev → Presets; JSON between `PRESETS-JSON-BEGIN`/`-END` → `save/presetdefaults.js DEFAULT_PRESETS`) + Grem's kit
+  (Dev → Grem; `GREM-KIT-JSON-BEGIN`/`-END` → `auto/grem.js GREM_KIT_DEFAULT`), each JSON only when it differs from
+  the built-in one. A device that never saved its own presets / kit gets those built-in ones.
 - Range knobs: `rangeKnobs(group, rows)` registers `k+'Lo'`/`k+'Hi'` and two rows each; `kr(k, rnd)`
   rolls one (`spr` is the same, the spider's name for it); `kru(k, u)` is the value at fraction `u`
   (for looks rolled once per creature that should still update live).
@@ -87,6 +93,17 @@
 
 ## Rules
 
+- **Copy Dev settings must hold everything the owner can set in Dev (the owner's rule, 2026-10-16; CLAUDE.md).** A new
+  knob in `DEV_DEFAULTS` is in it by itself; a setting kept anywhere else (its own localStorage key, a list, a kit)
+  goes into `auto/devcopy.js` with a built-in default in `src/` for the pasted value to replace, and a check in
+  `tests/logic/devcopy.test.js`. Device-only on purpose: Dev mode on/off, the open groups and tab, the audit and
+  the zone notes (each has its own copy button), volumes, save slots.
+- **Applying a pasted copy:** a plain line `(DEV.k): v` → `DEV_DEFAULTS.k` (or its `Object.assign` / table row); a
+  range's `kLo`/`kHi` → that `rangeKnobs` row's default min / max; a colour's `kLo`/`kHi` → the `colourKnobs` row's
+  A / B; a curve's `p0`, `pC1x`, `pC1y`, `pC2x`, `pC2y`, `p1` → its `curveKnobs(…, def)` as `y0, x1, y1, x2, y2, y3`;
+  a zone's `zl_<zone>_<k>` → all zones share `ZONE_KNOBS`' default, so a one-zone change is an `Object.assign
+  (DEV_DEFAULTS, { zl_<zone>_<k>: v })` after the zone loop; a `zv_*` box → its entry in the `zv_` `Object.assign`;
+  `PRESETS-JSON` → `DEFAULT_PRESETS` and `GREM-KIT-JSON` → `GREM_KIT_DEFAULT`, pasted as they are.
 - The last report made defaults: v0.0.159's (applied in v0.0.161; `fireSpreadHi` put back to 0.2 in v0.0.162 at the
   owner's word). Tests that measured the old numbers pin them (`rats`, `dark`, `furnish`, `tomb`).
 - **The owner pastes a Dev report → those numbers become the new `DEV_DEFAULTS`** (or the range

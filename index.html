@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v1.0.93</title>
-<!-- VERSION = 'v1000093' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v1.0.94</title>
+<!-- VERSION = 'v1000094' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -1301,7 +1301,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v1.0.93';</script>
+<script>const VERSION = 'v1.0.94';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -1700,15 +1700,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ["level2", "Level 2", ["level2", "l2dark", "l2boom", "l2alien"]]
   ];
   var devTabOf = (g) => (DEV_TABS.find((t) => t[2].includes(g)) || DEV_TABS[DEV_TABS.length - 1])[0];
+  var shown = (v) => typeof v === "number" ? +v.toFixed(6) : v;
   function devReport() {
-    const changed = DEV_META.filter((m) => DEV[m.k] !== DEV_DEFAULTS[m.k]);
+    const label = new Map(DEV_META.map((m) => [m.k, m.label]));
+    const keys = Object.keys(DEV_DEFAULTS), changed = keys.filter((k) => DEV[k] !== DEV_DEFAULTS[k]);
     const lines = ["CaveRunner " + VERSION + " dev settings — please make these the new defaults:", ""];
     if (!changed.length) lines.push("(nothing changed — everything is at its default)");
-    for (const m of changed)
-      lines.push("- " + m.label + " (DEV." + m.k + "): " + DEV[m.k] + "   [default " + DEV_DEFAULTS[m.k] + "]");
-    lines.push("", "Unchanged: " + (DEV_META.filter((m) => DEV[m.k] === DEV_DEFAULTS[m.k]).map((m) => m.k).join(", ") || "none"));
+    for (const k of changed)
+      lines.push("- " + (label.get(k) || k) + " (DEV." + k + "): " + shown(DEV[k]) + "   [default " + DEV_DEFAULTS[k] + "]");
+    lines.push("", "Unchanged: " + (keys.filter((k) => DEV[k] === DEV_DEFAULTS[k]).join(", ") || "none"));
     return lines.join("\n");
   }
+  var devChanged = () => Object.fromEntries(Object.keys(DEV_DEFAULTS).filter((k) => DEV[k] !== DEV_DEFAULTS[k]).map((k) => [k, DEV[k]]));
   function rangeKnobs(g, rows) {
     for (const [k, label, min, max, step, lo, hi] of rows) {
       DEV_DEFAULTS[k + "Lo"] = lo;
@@ -2681,7 +2684,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function devSet(k, v) {
     DEV[k] = v;
     try {
-      localStorage.setItem(DEV_KEY, JSON.stringify(DEV));
+      localStorage.setItem(DEV_KEY, JSON.stringify(devChanged()));
     } catch (_) {
     }
   }
@@ -17165,7 +17168,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function camPack(C, S2, e) {
     const last = [];
     for (const r of S2.runners) if (r.out && (!last[0] || (r.outT || 0) >= (last[0].outT || 0))) last[0] = r;
-    const up = S2.runners.filter((r) => !r.out), shown = up.filter((r) => !r.hide), rs = shown.length ? shown : up.length ? up : last;
+    const up = S2.runners.filter((r) => !r.out), shown2 = up.filter((r) => !r.hide), rs = shown2.length ? shown2 : up.length ? up : last;
     const y = rs.length ? (Math.min(...rs.map((r) => r.y)) + Math.max(...rs.map((r) => r.y))) / 2 + PH / 2 : C.by / 2;
     C.y += (y - C.y) * e;
     camClamp(C);
@@ -24597,12 +24600,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const fs = 13, lh = 17, pad = 9;
     ctx.font = "500 " + fs + "px system-ui, sans-serif";
     const bw = Math.min(250, cw - 24), lines = wrapLines(ctx, sp.text, bw - pad * 2);
-    let shown = 0;
+    let shown2 = 0;
     for (let i = 0, left2 = sp.n; i < lines.length && left2 > 0; i++) {
-      shown++;
+      shown2++;
       left2 -= lines[i].length + 1;
     }
-    const bh = Math.max(1, shown) * lh + pad * 2 - 3;
+    const bh = Math.max(1, shown2) * lh + pad * 2 - 3;
     const bx = clamp(sx - bw / 2, 10, cw - bw - 10), by = Math.max(8, sy - 10 - bh);
     ctx.fillStyle = "rgba(6,20,38,0.9)";
     ctx.strokeStyle = rude && hash(Math.floor(t * 18)) < 0.6 ? "#ff6a7a" : "#7fd8ff";
@@ -25804,11 +25807,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     out.names = out.names.map((_, i) => typeof nm[i] === "string" ? nm[i].slice(0, GREM_NAME_MAX) : "");
     return out;
   }
+  var GREM_KIT_DEFAULT = null;
   var gremKitLoad = () => {
     try {
-      return gremKitClean(JSON.parse(localStorage.getItem(GREM_KIT_KEY) || "null"));
+      const raw = localStorage.getItem(GREM_KIT_KEY);
+      return gremKitClean(raw == null ? GREM_KIT_DEFAULT : JSON.parse(raw));
     } catch (_) {
-      return gremKitNew();
+      return gremKitClean(GREM_KIT_DEFAULT);
     }
   };
   var gremKitSave = (k) => {
@@ -28945,8 +28950,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var c01 = (v) => Math.max(0, Math.min(1, v));
   function parseGrad(s) {
     const out = [];
-    for (const part of String(s || "").trim().split(/\s+/)) {
-      const [t, c] = part.split(":");
+    for (const part2 of String(s || "").trim().split(/\s+/)) {
+      const [t, c] = part2.split(":");
       if (c && /^#[0-9a-f]{6}$/i.test(c) && isFinite(+t)) out.push({ t: c01(+t), c: c.toLowerCase() });
     }
     if (!out.length) out.push({ t: 0, c: "#ffffff" });
@@ -28956,8 +28961,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var rampStr = (r) => r.slice().sort((a, b) => a.x - b.x).map((p) => +p.x.toFixed(3) + ":" + +p.y.toFixed(3)).join(" ");
   function parseRamp(s) {
     const out = [];
-    for (const part of String(s || "").trim().split(/\s+/)) {
-      const [x, y] = part.split(":");
+    for (const part2 of String(s || "").trim().split(/\s+/)) {
+      const [x, y] = part2.split(":");
       if (y != null && isFinite(+x) && isFinite(+y)) out.push({ x: c01(+x), y: c01(+y) });
     }
     if (!out.length) out.push({ x: 0, y: 1 }, { x: 1, y: 1 });
@@ -29082,6 +29087,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ].join("\n") + "\n";
   }
 
+  // src/save/presetdefaults.js
+  var DEFAULT_PRESETS = [];
+
   // src/save/presets.js
   var PRESET_KEY = "caverunner-gunpresets";
   var PRESET_NAME_MAX = 40;
@@ -29107,9 +29115,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   var loadPresets = () => {
     try {
-      return cleanPresets(JSON.parse(localStorage.getItem(PRESET_KEY) || "[]"));
+      const raw = localStorage.getItem(PRESET_KEY);
+      return cleanPresets(raw == null ? DEFAULT_PRESETS : JSON.parse(raw));
     } catch (_) {
-      return [];
+      return cleanPresets(DEFAULT_PRESETS);
     }
   };
   var savePresets = (list) => {
@@ -29136,6 +29145,39 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const [p] = out.splice(i, 1);
     out.splice(j, 0, p);
     return out;
+  }
+
+  // src/auto/devcopy.js
+  function part(title, tag, where, now, def, count) {
+    const same = JSON.stringify(now) === JSON.stringify(def);
+    const out = ["", title + ": " + count + (same ? " — the same as the default" : " — please make these the default (" + where + ")")];
+    if (!same) out.push(tag + "-BEGIN", JSON.stringify(now), tag + "-END");
+    return out;
+  }
+  function devCopyText() {
+    const pre = loadPresets(), kit = gremKitLoad();
+    const fitted = Object.values(kit.exo).flat().filter(Boolean).length + kit.perks.filter(Boolean).length;
+    return [
+      devReport(),
+      ...part(
+        "Gun presets (Dev → Presets)",
+        "PRESETS-JSON",
+        "src/save/presetdefaults.js DEFAULT_PRESETS",
+        pre,
+        cleanPresets(DEFAULT_PRESETS),
+        pre.length + " gun" + (pre.length === 1 ? "" : "s") + (pre.length ? ": " + pre.map((p) => p.name).join(", ") : "")
+      ),
+      ...part(
+        "Grem kit (Dev → Grem)",
+        "GREM-KIT-JSON",
+        "src/auto/grem.js GREM_KIT_DEFAULT",
+        kit,
+        gremKitClean(GREM_KIT_DEFAULT),
+        fitted + " exo mods and perks fitted, name tags: " + (kit.names.filter(Boolean).join(", ") || "none")
+      ),
+      "",
+      "(" + Object.keys(DEV_DEFAULTS).length + " knobs, the presets and the Grem kit: everything Dev keeps.)"
+    ].join("\n");
   }
 
   // src/dev/autouse.js
@@ -32655,7 +32697,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
 
   // src/version.js
-  var VERSION2 = "v1.0.93";
+  var VERSION2 = "v1.0.94";
 
   // src/art/zonelab.js
   var ZLAB_LEAD = 60;
@@ -34034,7 +34076,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     } }, label);
     const needle = q.trim().toLowerCase();
     const tabName = (t) => (DEV_TABS.find((x) => x[0] === t) || DEV_TABS[0])[1];
-    const shown = DEV_GROUPS.filter(([g]) => needle || devTabOf(g) === tab && !g.startsWith("zone_")).map(
+    const shown2 = DEV_GROUPS.filter(([g]) => needle || devTabOf(g) === tab && !g.startsWith("zone_")).map(
       // (a zone's own group: in its card, ui/zonesim.js)
       ([g, name]) => {
         const rows = DEV_META.filter((m) => m.g === g);
@@ -34086,7 +34128,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             ] : [],
             ...onGem ? [act("gemred", "+1 red crystal", () => onGem("red")), act("gemgreen", "+1 green crystal", () => onGem("green"))] : [],
             ...onMod ? [act("toggle modgridbtn" + (grid ? " on" : ""), "Mod grid", () => setGrid((g) => !g))] : [],
-            act("devcopy", "Copy Dev settings", () => copyText(devReport)),
+            act("devcopy", "Copy Dev settings", () => copyText(devCopyText)),
+            // (v1.0.94) everything Dev keeps: auto/devcopy.js
             act("devaudit", "Copy mod & perk audit", () => copyText(() => auditText(loadAudit()), "audit"))
           ),
           copied ? h("p", { className: "devnote devcopied" + (copied.ok ? " ok" : "") }, copied.empty ? "Nothing audited yet — pin, trash or give feedback on a mod or perk card first." : copied.ok ? copied.what === "audit" ? "Audit copied — paste it into Claude Code." : "Copied — paste it to Claude." : "Could not reach the clipboard — press and hold the text below to copy it.") : null,
@@ -34133,8 +34176,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           grid && onMod ? h(ModGrid, { onMod }) : null,
           !needle && pages && pages[tab] ? pages[tab]() : null,
           h("p", { className: "devkey" }, h("i", { className: "devauto" }), "works in Auto ", h("i", { className: "devsome" }), "some ", h("i", { className: "devold" }), "old game only"),
-          shown.length || !needle && pages && pages[tab] ? null : h("p", { className: "devnote" }, "No knob matches “" + q.trim() + "”."),
-          shown.map(({ g, name, rows, hits, nameHit }) => {
+          shown2.length || !needle && pages && pages[tab] ? null : h("p", { className: "devnote" }, "No knob matches “" + q.trim() + "”."),
+          shown2.map(({ g, name, rows, hits, nameHit }) => {
             const shut = needle ? false : !isOpen(g);
             const changed = rows.filter((m) => DEV[m.k] !== DEV_DEFAULTS[m.k]).length;
             return h(
@@ -36118,7 +36161,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         // a stack: how many copies
       );
     };
-    const shown = info && MODS[info];
+    const shown2 = info && MODS[info];
     const behind2 = (e) => {
       e.preventDefault();
       const el = e.currentTarget;
@@ -36173,7 +36216,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         ) : null
       );
     })() : null;
-    const card = shown ? h(
+    const card = shown2 ? h(
       "div",
       { key: "card" },
       h("div", { className: "shade", onPointerDown: behind2 }),
@@ -36190,7 +36233,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ) : null;
     return h(
       "div",
-      { className: "sheet" + (shown ? " withcard" : "") },
+      { className: "sheet" + (shown2 ? " withcard" : "") },
       h(BagHead, { gun, sel, refresh, close, onArt: () => setArtOpen(true) }),
       h(
         "div",
@@ -38541,14 +38584,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ctx.restore();
   }
   var PERF_W = 100, PERF_ROW_H = 24, PERF_PAD = 6;
-  function perfDraw(ctx, F2, w, hh2, shown) {
+  function perfDraw(ctx, F2, w, hh2, shown2) {
     const x = w - PERF_W - PERF_PAD;
     ctx.save();
     ctx.font = "700 9px ui-monospace,SFMono-Regular,Menlo,monospace";
     ctx.textAlign = "left";
     ctx.textBaseline = "top";
     ctx.lineJoin = "round";
-    if (!shown) {
+    if (!shown2) {
       ctx.globalAlpha = 0.35;
       ctx.fillStyle = "#fff";
       ctx.textAlign = "right";

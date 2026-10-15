@@ -106,8 +106,12 @@ export function gremKitClean(k) {
   out.names = out.names.map((_, i) => (typeof nm[i] === 'string' ? nm[i].slice(0, GREM_NAME_MAX) : ''));
   return out;
 }
+// (v1.0.94) the kit a device starts with when it has never saved its own (Dev → Grem): a pasted Copy Dev settings
+// carries the owner's as JSON between GREM-KIT-JSON-BEGIN / -END, and it goes here as it is (null: an empty kit)
+/** @type {any} */
+export const GREM_KIT_DEFAULT = null;
 /** @returns {GremKit} */
-export const gremKitLoad = () => { try { return gremKitClean(JSON.parse(localStorage.getItem(GREM_KIT_KEY) || 'null')); } catch (_) { return gremKitNew(); } };
+export const gremKitLoad = () => { try { const raw = localStorage.getItem(GREM_KIT_KEY); return gremKitClean(raw == null ? GREM_KIT_DEFAULT : JSON.parse(raw)); } catch (_) { return gremKitClean(GREM_KIT_DEFAULT); } };
 /** @param {GremKit} k */
 export const gremKitSave = k => { try { localStorage.setItem(GREM_KIT_KEY, JSON.stringify(k)); } catch (_) { /* nowhere to keep it */ } };
 // the kit fitted to a player (his exo and perk slots replaced)
