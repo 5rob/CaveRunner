@@ -18,8 +18,20 @@ Your team of jetpack runners plays the caves by itself; you kit them out.
 - **Machines:** in the hub, flick **gold** (or red and green gems) from the bag at a machine to pay it: a swipe
   throws one, a hold streams them, a long press on the stack lifts it all. What it gives flies into the bag.
 - **Extra players:** drag a **green gem** onto an empty player circle: a new runner teleports in (up to four).
-- **⏸** pauses: Resume, Save, the volumes, **New run** (tap twice), Exit. The game saves by itself in the hub,
+- **⏸** pauses: Resume, Save, the volumes (**hold** a volume slider still for 4 s to lock or unlock all three), **New run** (tap twice), Exit. The game saves by itself in the hub,
   as things go into the bag, and at a level's end; quit mid-level and you're back in the hub, bag kept.
+
+### Grem Mode (the title's GREM MODE)
+
+A gentle mode for a toddler: one endless level, nobody gets hurt, gold is the only drop.
+
+- The **gold** pays off the unlocks along the row under it: your saved gun presets (Dev → Presets), in a random
+  order, with players 2-4 among them. A new one glows till you tap it: a gun goes to the picked player (tap a helmet
+  to pick him), a player joins in a teleport flash.
+- The **stick** (bottom middle) steers the picked player; let go and he plays himself again. **Tap** a creature to make
+  everyone shoot it; near a chest, **tap** the play area to open it.
+- GO! at the start; each boss slides in under its name, then the fight; after it the level goes on, one level up.
+- Dev → Grem: the players' **name tags**, player 1's starting kit, and the Grem knobs.
 
 *The rest of this file describes the original game (branch `main`).*
 
