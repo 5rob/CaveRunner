@@ -2169,13 +2169,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "autoHubDemoNear", g: "autohub", label: "A crystal machine plays its demo with you this near (world units; the old shop’s 100)", min: 20, max: 240, step: 5 }
   );
   DEV_GROUPS.push(["autohub", "Auto: hub"]);
-  Object.assign(DEV_DEFAULTS, { gremPrice: 100, gremGrow: 1.5, gremHard: 0.25, gremGold: 2, gremDark: 0.85, gremPickR: 40 });
+  Object.assign(DEV_DEFAULTS, { gremPrice: 100, gremGrow: 1.5, gremHard: 0.25, gremGold: 2, gremDark: 0.85, gremPickR: 40, gremChestSize: 2, gremChestGlow: 1 });
   DEV_META.push(
     { k: "gremPrice", g: "grem", label: "The first unlock costs (gold)", min: 5, max: 1e4, step: 5 },
     { k: "gremGrow", g: "grem", label: "Each unlock after it costs × this more", min: 1, max: 4, step: 0.05 },
     { k: "gremHard", g: "grem", label: "Creatures toughen per level × (1 = as CaveRunner Auto)", min: 0, max: 1, step: 0.05 },
     { k: "gremGold", g: "grem", label: "Gold drops × (kills and chests)", min: 1, max: 10, step: 0.5 },
     { k: "gremDark", g: "grem", label: "The dark × (1 = as CaveRunner Auto; owner: 0.85, 15% brighter)", min: 0, max: 1, step: 0.05 },
+    { k: "gremChestSize", g: "grem", label: "Chests × bigger", min: 1, max: 4, step: 0.25 },
+    { k: "gremChestGlow", g: "grem", label: "Chests: the green light pulsing behind (0 off)", min: 0, max: 1, step: 0.05 },
     { k: "gremPickR", g: "grem", label: "A tap picks the creature nearest it within (world units; the screen is 220 across)", min: 5, max: 220, step: 5 }
   );
   DEV_GROUPS.push(["grem", "Grem Mode"]);
@@ -29294,6 +29296,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     "fxSmSideLo",
     "fxSmSizeHi",
     "fxSmSizeLo",
+    "gremChestGlow",
+    "gremChestSize",
     "gremDark",
     "gremGold",
     "gremGrow",
@@ -30001,12 +30005,25 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
 
   // src/game/render/leveldraw.js
+  var chestK = (S2) => S2.lvl && S2.lvl.data && S2.lvl.data.grem ? DEV.gremChestSize : 1;
+  function chestAt(ctx, S2, x, y, age) {
+    const k = chestK(S2);
+    if (k === 1) {
+      drawChest(ctx, x, y, age);
+      return;
+    }
+    ctx.save();
+    ctx.translate(Math.round(x), Math.round(y));
+    ctx.scale(k, k);
+    drawChest(ctx, 0, 0, age);
+    ctx.restore();
+  }
   function levelBack(ctx, S2) {
     for (const p of levelPads(S2)) drawHubPad(ctx, p.x, p.fy, S2.t + (p.id === "enter" ? 0 : 5));
     const L = levelState(S2);
     if (L) for (const c of L.chests) {
       const x = c.x - S2.scroll;
-      if (x > -20 && x < TITLE_VW + 20 && c.y != null) drawChest(ctx, x, c.y, c.open ? S2.t - (c.openT || 0) : -1);
+      if (x > -20 && x < TITLE_VW + 20 && c.y != null) chestAt(ctx, S2, x, c.y, c.open ? S2.t - (c.openT || 0) : -1);
     }
     levelRags(ctx, S2);
   }
@@ -30076,7 +30093,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     for (const p of levelPads(S2)) pool(p.x, p.fy - 16, 34 + 30 * (p.id === "enter" ? fl : 0), Math.min(1, p.id === "enter" ? 0.35 + 0.6 * ch * ch + 0.6 * fl : 0.45), 0.2);
     for (const c of L.chests) {
       const x = c.x - S2.scroll;
-      if (x > -30 && x < TITLE_VW + 30 && c.y != null) pool(x, c.y - 6, c.open ? 16 : 22, c.open ? 0.25 : 0.4, 0.2);
+      if (x > -30 && x < TITLE_VW + 30 && c.y != null) {
+        const k = chestK(S2);
+        pool(x, c.y - 6 * k, (c.open ? 16 : 22) * k, c.open ? 0.25 : 0.4, 0.2);
+      }
     }
     for (const r of S2.runners) if (r.out && r.rag) {
       const hp = r.rag.joints[2];
@@ -30101,8 +30121,22 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         ctx.fillRect(Math.round(h3.x - 1), Math.round(h3.y - 4), 2, 2);
       }
     }
+    if (L.grem && DEV.gremChestGlow > 0) for (const q of L.chests) {
+      const x = q.x - S2.scroll, k = chestK(S2);
+      if (q.open || q.y == null || x < -40 || x > TITLE_VW + 40) continue;
+      const p = 0.5 + 0.5 * Math.sin(S2.t * 3.2);
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      glowAt(ctx, x, q.y - 6 * k, (20 + 10 * p) * k, DEV.gremChestGlow * (0.4 + 0.6 * p), "60,255,110");
+      ctx.restore();
+      ctx.save();
+      ctx.globalCompositeOperation = "source-over";
+      ctx.globalAlpha = 1;
+      chestAt(ctx, S2, x, q.y, -1);
+      ctx.restore();
+    }
     const c = chestInRange(S2), G = S2.lvl && S2.lvl.data && S2.lvl.data.grem;
-    if (c && c.y != null) drawHint(ctx, c.x - S2.scroll, c.y - 28, G ? "Tap to open." : "Tap A to open", S2.t, !!G);
+    if (c && c.y != null) drawHint(ctx, c.x - S2.scroll, c.y - 16 - 12 * chestK(S2), G ? "Tap to open." : "Tap A to open", S2.t, !!G);
   }
   function levelBars(ctx, S2) {
     const L = levelState(S2), boss = L && L.boss;

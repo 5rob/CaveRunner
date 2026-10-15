@@ -257,6 +257,8 @@ export const AUTO_KNOBS = new Set([
   'fxSmSideLo',
   'fxSmSizeHi',
   'fxSmSizeLo',
+  'gremChestGlow',
+  'gremChestSize',
   'gremDark',
   'gremGold',
   'gremGrow',

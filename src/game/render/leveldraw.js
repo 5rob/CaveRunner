@@ -10,6 +10,18 @@ import { drawRagdoll, glowAt, pixelSprite } from '../../art/sprites.js';
 import { drawHint, drawHubPad, padGlow } from './hubdraw.js';
 import { chestInRange } from '../../auto/chests.js';
 import { TITLE_VW } from '../../art/titlescene.js';
+import { DEV } from '../../dev/knobs.js';
+
+// (Grem Mode, owner v1.0.91) a chest's size × (DEV.gremChestSize; 1 elsewhere)
+/** @param {import('../../art/titlescene.js').TitleScene} S */
+const chestK = S => (S.lvl && S.lvl.data && S.lvl.data.grem ? DEV.gremChestSize : 1);
+// a chest drawn at that size (its bottom middle at x, y)
+/** @param {CanvasRenderingContext2D} ctx @param {import('../../art/titlescene.js').TitleScene} S @param {number} x @param {number} y @param {number} age */
+function chestAt(ctx, S, x, y, age) {
+  const k = chestK(S);
+  if (k === 1) { drawChest(ctx, x, y, age); return; }
+  ctx.save(); ctx.translate(Math.round(x), Math.round(y)); ctx.scale(k, k); drawChest(ctx, 0, 0, age); ctx.restore();
+}
 
 // Before the dark: the pads, the chests (stage 11)
 /** @param {CanvasRenderingContext2D} ctx @param {import('../../art/titlescene.js').TitleScene} S */
@@ -18,7 +30,7 @@ export function levelBack(ctx, S) {
   const L = levelState(S);
   if (L) for (const c of L.chests) {
     const x = c.x - S.scroll;
-    if (x > -20 && x < TITLE_VW + 20 && c.y != null) drawChest(ctx, x, c.y, c.open ? S.t - (c.openT || 0) : -1);
+    if (x > -20 && x < TITLE_VW + 20 && c.y != null) chestAt(ctx, S, x, c.y, c.open ? S.t - (c.openT || 0) : -1);
   }
   levelRags(ctx, S);
 }
@@ -78,7 +90,7 @@ export function levelLight(S, pool) {
   for (const p of levelPads(S)) pool(p.x, p.fy - 16, 34 + 30 * (p.id === 'enter' ? fl : 0), Math.min(1, p.id === 'enter' ? 0.35 + 0.6 * ch * ch + 0.6 * fl : 0.45), 0.2);
   for (const c of L.chests) {
     const x = c.x - S.scroll;
-    if (x > -30 && x < TITLE_VW + 30 && c.y != null) pool(x, c.y - 6, c.open ? 16 : 22, c.open ? 0.25 : 0.4, 0.2);
+    if (x > -30 && x < TITLE_VW + 30 && c.y != null) { const k = chestK(S); pool(x, c.y - 6 * k, (c.open ? 16 : 22) * k, c.open ? 0.25 : 0.4, 0.2); }
   }
   // (feedback round 2) a soft light on each fallen body (no gun light any more), so the ragdoll is seen
   for (const r of S.runners) if (r.out && r.rag) { const hp = r.rag.joints[2]; pool(hp.x - S.scroll, hp.y - 4, 30, 0.45, 0.2); }
@@ -101,9 +113,20 @@ export function levelGlow(ctx, S) {
     const h = deathHelmet(S, r);
     if (h) { glowAt(ctx, h.x, h.y - 1, 10, 0.7, '255,40,30'); ctx.fillStyle = '#ff3a2a'; ctx.fillRect(Math.round(h.x - 1), Math.round(h.y - 4), 2, 2); }
   }
+  // (Grem Mode, owner v1.0.91) a shut chest: a green light pulsing behind it (DEV.gremChestGlow bright), the chest drawn again
+  // over it so it stands out of the dark
+  if (L.grem && DEV.gremChestGlow > 0) for (const q of L.chests) {
+    const x = q.x - S.scroll, k = chestK(S);
+    if (q.open || q.y == null || x < -40 || x > TITLE_VW + 40) continue;
+    const p = 0.5 + 0.5 * Math.sin(S.t * 3.2);
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    glowAt(ctx, x, q.y - 6 * k, (20 + 10 * p) * k, DEV.gremChestGlow * (0.4 + 0.6 * p), '60,255,110');
+    ctx.restore();
+    ctx.save(); ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1; chestAt(ctx, S, x, q.y, -1); ctx.restore();   // (the glow pass draws additive)
+  }
   // stage 11: a player in range of a shut chest: "Tap A to open" over it (the hub exit's hint; Grem Mode, no A: a tap on the play area)
   const c = chestInRange(S), G = S.lvl && S.lvl.data && S.lvl.data.grem;
-  if (c && c.y != null) drawHint(ctx, c.x - S.scroll, c.y - 28, G ? 'Tap to open.' : 'Tap A to open', S.t, !!G);
+  if (c && c.y != null) drawHint(ctx, c.x - S.scroll, c.y - 16 - 12 * chestK(S), G ? 'Tap to open.' : 'Tap A to open', S.t, !!G);
 }
 
 // (owner, v1.0.44) a thin health bar over each creature's head, over the dark (so it shows in the cave's black); the

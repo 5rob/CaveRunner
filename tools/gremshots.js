@@ -72,6 +72,7 @@ const PRESETS = [['Pea Shooter', ['bolt']], ['Double Spark', ['double', 'spark']
   });
   await page.waitForTimeout(600);
   await save('c-chest', 'a chest in reach: Tap to open.');
+  await save('c-chest-close', 'close up: the chest twice the size, its green light pulsing behind', { x: 0, y: 300, width: 412, height: 260 });
   await page.locator('.aplay').dispatchEvent('pointerdown', { clientX: 200, clientY: 300 });
   await page.waitForTimeout(700);
   await save('c-chest-open', 'tapped anywhere on the play area: the chest opens, its (doubled) gold spills');
