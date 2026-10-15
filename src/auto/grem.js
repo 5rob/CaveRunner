@@ -45,29 +45,37 @@ export function gremFill(gold, i) {
 // (owner, v1.0.90) the unlocks in their order: the n presets with the 3 extra players spread evenly among them (player j
 // after round(j × n / 4) presets, at least one gun first); gremPrice / gremUnlocked / gremFill count along this list
 /** @typedef {{ gun: number } | { player: number }} GremUnlock */
-/** @param {number} n @returns {GremUnlock[]} */
-export function gremUnlocks(n) {
+// (owner, v1.0.92) rnd: the guns in a random order (a fresh one each Grem run), the players still where they were
+/** @param {number} n @param {() => number} [rnd] @returns {GremUnlock[]} */
+export function gremUnlocks(n, rnd) {
+  const order = Array.from({ length: n }, (_, i) => i);
+  if (rnd) for (let i = n - 1; i > 0; i--) { const k = Math.floor(rnd() * (i + 1)); [order[i], order[k]] = [order[k], order[i]]; }
   /** @type {GremUnlock[]} */
   const out = [];
   for (let i = 0, j = 1; i <= n; i++) {
     for (; j <= 3 && Math.max(Math.min(1, n), Math.round(j * n / 4)) === i; j++) out.push({ player: j });
-    if (i < n) out.push({ gun: i });
+    if (i < n) out.push({ gun: order[i] });
   }
   return out;
 }
 // preset i's place on that list (for its price)
 /** @param {number} i @param {number} n */
 export const gremGunAt = (i, n) => gremUnlocks(n).findIndex(u => 'gun' in u && u.gun === i);
-// how many of the first u unlocks are guns (the presets 0 … that − 1 are open) and how many players there are (1 + the extra ones)
-/** @param {number} u @param {number} n @returns {{ guns: number, team: number }} */
-export function gremOpen(u, n) {
-  const l = gremUnlocks(n).slice(0, u);
-  return { guns: l.filter(q => 'gun' in q).length, team: 1 + l.filter(q => 'player' in q).length };
+// the first u unlocks of list: the presets open (in the order they opened) and how many players there are (1 + the extra ones)
+/** @param {number} u @param {GremUnlock[]} list @returns {{ guns: number[], team: number }} */
+export function gremOpen(u, list) {
+  const l = list.slice(0, u), guns = [];
+  for (const q of l) if ('gun' in q) guns.push(q.gun);
+  return { guns, team: 1 + l.filter(q => 'player' in q).length };
 }
 
 // (owner, v1.0.90) the creatures' level: each level past 1 counts DEV.gremHard of one (0.25: a quarter of the normal climb)
 /** @param {number} tier */
 export const gremHardTier = tier => 1 + Math.max(0, tier - 1) * DEV.gremHard;
+// (owner, v1.0.92) the guns' damage at a level: × what the creatures' health has grown by (DEV.autoTierHp a level past 1 at
+// gremHardTier), DEV.gremDmgScale of it (1: all of it, so the first guns stay as good as at level 1)
+/** @param {number} tier */
+export const gremDmgMul = tier => 1 + (Math.pow(DEV.autoTierHp, gremHardTier(tier) - 1) - 1) * DEV.gremDmgScale;
 // (owner, v1.0.90) a drop's gold × DEV.gremGold (kills; chests: chests.js chestRoll)
 /** @param {BagItem} it @returns {BagItem} */
 export const gremGold = it => (it.kind === 'gold' ? Object.assign({}, it, { n: Math.max(1, Math.round((it.n || 1) * DEV.gremGold)) }) : it);
@@ -78,9 +86,11 @@ export const gremTeamGun = (u, j) => (u > 0 ? ((u - j) % u + u) % u : -1);
 
 // ---- player 1's kit (Dev → Grem): exo mods and perks, kept on this device ----
 export const GREM_KIT_KEY = 'caverunner-grem-kit';
-/** @typedef {{ exo: Record<string, number[]>, perks: (string | null)[] }} GremKit */
+/** @typedef {{ exo: Record<string, number[]>, perks: (string | null)[], names: string[] }} GremKit */
+// (owner, v1.0.92) names: the 4 players' name tags (over their heads in Grem; '' none), at most GREM_NAME_MAX letters
+export const GREM_NAME_MAX = 12;
 /** an empty kit (every exo slot 0: empty; tiers 1-5) @returns {GremKit} */
-export const gremKitNew = () => ({ exo: Object.fromEntries(EXO_CATS.map(c => [c, Array(EXO_SLOTS).fill(0)])), perks: Array(PERK_SLOTS).fill(null) });
+export const gremKitNew = () => ({ exo: Object.fromEntries(EXO_CATS.map(c => [c, Array(EXO_SLOTS).fill(0)])), perks: Array(PERK_SLOTS).fill(null), names: ['', '', '', ''] });
 // whatever was stored → a clean kit (unknown perks and bad tiers dropped)
 /** @param {any} k @returns {GremKit} */
 export function gremKitClean(k) {
@@ -92,6 +102,8 @@ export function gremKitClean(k) {
   }
   const p = Array.isArray(k.perks) ? k.perks : [];
   out.perks = out.perks.map((_, i) => (typeof p[i] === 'string' && PERKS[p[i]] && !PERKS[p[i]].stat ? p[i] : null));
+  const nm = Array.isArray(k.names) ? k.names : [];
+  out.names = out.names.map((_, i) => (typeof nm[i] === 'string' ? nm[i].slice(0, GREM_NAME_MAX) : ''));
   return out;
 }
 /** @returns {GremKit} */

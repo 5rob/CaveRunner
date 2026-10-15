@@ -1217,12 +1217,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .gginner{width:100%;height:100%;border-radius:9px;background:#1d1531;display:flex;align-items:center;justify-content:center;overflow:hidden}
 .gginner .gicon{width:84%;height:auto}
 .ggun.locked .gginner,.ggun.next .gginner{filter:grayscale(1) brightness(.55)}
-/* a fresh one: NEW flashing on its corner, the tile pulsing */
-.ggun.fresh{animation:gfresh .7s ease-in-out infinite alternate}
-@keyframes gfresh{from{box-shadow:0 0 6px rgba(255,201,60,0.5)}to{box-shadow:0 0 22px rgba(255,240,150,1)}}
-.gnew{position:absolute;right:-2px;top:-2px;padding:1px 5px;border-radius:7px;background:#ff3d6e;color:#fff;font:900 11px ui-monospace,monospace;font-style:normal;
-  box-shadow:0 0 8px #ff3d6e;animation:gnew .45s steps(1) infinite;pointer-events:none}
-@keyframes gnew{50%{background:#fff;color:#ff3d6e}}
+/* (owner v1.0.92) a fresh one (not used yet): a glow pulsing behind it (no NEW badge) */
+.ggun.fresh{animation:gfresh .8s ease-in-out infinite alternate}
+@keyframes gfresh{from{box-shadow:0 0 4px 0 rgba(255,220,90,0.35)}to{box-shadow:0 0 18px 6px rgba(255,236,140,0.95)}}
+/* (owner v1.0.92) the pause button twice the size; the boss bar under the level */
+.grem .pausebtn{width:76px;height:76px;font-size:34px;border-radius:14px}
+.gboss{position:absolute;left:10px;right:96px;top:30px;pointer-events:none}
 /* the players' helmets, between the guns and the stick: 1-2 left of the stick's dome, 3-4 right of it */
 .ghelms{flex:none;height:70px;display:grid;grid-template-columns:1fr 152px 1fr;align-items:center}
 .ghl,.ghr{display:flex;align-items:center;gap:12px}
@@ -1244,7 +1244,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .apltile.lift{opacity:.35}
 .apltile.drop{border-color:#5ee05a;box-shadow:0 0 0 2px #5ee05a,0 0 14px rgba(94,224,90,0.7)}
 .aplghost{position:fixed;z-index:50;width:76px;margin:-70px 0 0 -38px;pointer-events:none;opacity:.92;transform:scale(1.1)}
-.aplprice{font:700 9px ui-monospace,monospace;color:#b9add8;font-style:normal}
 .apled{position:fixed;inset:0;z-index:30;display:flex;flex-direction:column;gap:8px;box-sizing:border-box;
   padding:max(8px,env(safe-area-inset-top)) 10px calc(8px + env(safe-area-inset-bottom));background:#0e091a;color:#f1ecff;font:14px system-ui,sans-serif}
 .apledtop{flex:none;display:flex;flex-direction:column;gap:8px}
@@ -1278,6 +1277,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .agklab{flex:0 0 92px;display:flex;align-items:center;gap:5px;font:700 12px system-ui,sans-serif;color:#d8cff0}
 .agkslot{flex:1;height:36px;padding:0;border-radius:8px;background:#1d1531;border:2px solid #3d2f5c;color:#8f84ad;font:800 13px ui-monospace,monospace}
 .agkslot.on{border-color:#c084fc;background:#2c1f45;color:#fff}
+.agknames{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.agkname{height:34px;min-width:0;padding:0 8px;border-radius:8px;background:#1d1531;border:2px solid;font:800 13px system-ui,sans-serif;box-sizing:border-box}
+.agkname::placeholder{color:#8f84ad;opacity:1}
 .agkperks{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .agkperk{height:34px;border-radius:8px;background:#1d1531;border:2px solid #3d2f5c;color:#d8cff0;font:600 12px system-ui,sans-serif}
 .agkperk.on{border-color:#ffc93c;color:#fff}

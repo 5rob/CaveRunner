@@ -4,12 +4,13 @@
 // teleports in on the start pad). Screen x (the cave scrolls under them).
 
 import { hubCharge } from '../../auto/hub.js';
-import { levelPads, levelState } from '../../auto/level.js';
+import { JOIN_CH, levelPads, levelState } from '../../auto/level.js';
 import { deathHelmet } from '../../auto/death.js';
 import { drawRagdoll, glowAt, pixelSprite } from '../../art/sprites.js';
 import { drawHint, drawHubPad, padGlow } from './hubdraw.js';
 import { chestInRange } from '../../auto/chests.js';
 import { TITLE_VW } from '../../art/titlescene.js';
+import { PH, PW } from '../../core/consts.js';
 import { DEV } from '../../dev/knobs.js';
 
 // (Grem Mode, owner v1.0.91) a chest's size × (DEV.gremChestSize; 1 elsewhere)
@@ -106,6 +107,12 @@ export function levelGlow(ctx, S) {
   for (const p of levelPads(S)) {
     if (p.id === 'enter') padGlow(ctx, S, p.x, p.fy, 0, L.phase === 'arrive' || S.t < 3 ? hubCharge(S) : { ch: 0, fl: 0 }, L.zap);
     else padGlow(ctx, S, p.x, p.fy, 5, { ch: 0, fl: 0 }, -99);
+  }
+  // (Grem Mode, owner v1.0.92) a player joining: the start pad's charge on him (hidden, moving with the team) (JOIN_CH s), then its flash
+  if (L.joins) for (const j of L.joins) {
+    const a = S.t - j.t, r = S.runners[j.i];
+    if (a > JOIN_CH + 0.6 || !r) continue;
+    padGlow(ctx, S, r.x + PW / 2, r.y + PH, j.i, a < JOIN_CH ? { ch: a / JOIN_CH, fl: 0 } : { ch: 0, fl: Math.max(0, 1 - (a - JOIN_CH) / 0.6) }, -99);
   }
   ctx.restore();
   // (feedback round 2) the fallen's helmet light blinking (Tap A: the teleport home), and the prompt over the last one

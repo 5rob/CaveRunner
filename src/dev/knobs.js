@@ -606,7 +606,7 @@ DEV_META.push(
   { k: 'autoHubDemoNear', g: 'autohub', label: 'A crystal machine plays its demo with you this near (world units; the old shop’s 100)', min: 20, max: 240, step: 5 });
 DEV_GROUPS.push(['autohub', 'Auto: hub']);
 // Grem Mode (auto/grem.js): the unlocks' prices (each dearer than the last), how fast the creatures toughen, the gold, the dark
-Object.assign(DEV_DEFAULTS, { gremPrice: 100, gremGrow: 1.5, gremHard: 0.25, gremGold: 2, gremDark: 0.85, gremPickR: 40, gremChestSize: 2, gremChestGlow: 1 });
+Object.assign(DEV_DEFAULTS, { gremPrice: 100, gremGrow: 1.5, gremHard: 0.25, gremGold: 2, gremDark: 0.85, gremPickR: 40, gremChestSize: 2, gremChestGlow: 1, gremBossT: 3.2, gremGoT: 1.6, gremDmgScale: 1, gremGoldWait: 0.6 });
 DEV_META.push(
   { k: 'gremPrice', g: 'grem', label: 'The first unlock costs (gold)', min: 5, max: 10000, step: 5 },
   { k: 'gremGrow',  g: 'grem', label: 'Each unlock after it costs × this more', min: 1, max: 4, step: 0.05 },
@@ -615,6 +615,10 @@ DEV_META.push(
   { k: 'gremDark',  g: 'grem', label: 'The dark × (1 = as CaveRunner Auto; owner: 0.85, 15% brighter)', min: 0, max: 1, step: 0.05 },
   { k: 'gremChestSize', g: 'grem', label: 'Chests × bigger', min: 1, max: 4, step: 0.25 },
   { k: 'gremChestGlow', g: 'grem', label: 'Chests: the green light pulsing behind (0 off)', min: 0, max: 1, step: 0.05 },
+  { k: 'gremBossT', g: 'grem', label: 'The boss comes in under its name for (s; then the fight)', min: 0.5, max: 8, step: 0.1 },
+  { k: 'gremGoT', g: 'grem', label: 'GO! shows for (s)', min: 0.5, max: 5, step: 0.1 },
+  { k: 'gremDmgScale', g: 'grem', label: 'Guns grow with the level: share of the creatures’ health growth (1 all, 0 none)', min: 0, max: 2, step: 0.05 },
+  { k: 'gremGoldWait', g: 'grem', label: 'Gold bounces this long before it flies to you (s)', min: 0, max: 3, step: 0.05 },
   { k: 'gremPickR', g: 'grem', label: 'A tap picks the creature nearest it within (world units; the screen is 220 across)', min: 5, max: 220, step: 5 });
 DEV_GROUPS.push(['grem', 'Grem Mode']);
 // CaveRunner Auto's maps (auto/maps.js): the map machine's prices, and how much harder each map starts

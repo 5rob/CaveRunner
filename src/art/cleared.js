@@ -18,8 +18,9 @@ const FADE = 0.5;           // the fade at the end (s)
 // when letter i (0 … CLEARED_N - 1, reading order) first touches down, s after the start
 /** @param {number} i */
 export const clearedLand = i => i * STAGGER + FALL * 0.55;
-// when the shine sweeps (s after the start): once the last letter has settled
-export const clearedShine = () => (CLEARED_N - 1) * STAGGER + FALL + 0.1;
+// when the shine sweeps (s after the start): once the last letter (of n) has settled
+/** @param {number} [n] */
+export const clearedShine = (n = CLEARED_N) => (n - 1) * STAGGER + FALL + 0.1;
 
 // the drop: 1 (high above) → 0 (landed) with two bounces (an ease-out bounce), u the drop's share done (0-1)
 /** @param {number} u */
@@ -33,28 +34,31 @@ function dropAt(u) {
 /** @param {number} n */
 const hash = n => { const v = Math.sin(n * 127.1 + 311.7) * 43758.5453; return v - Math.floor(v); };
 
-// Paints the words over a cw × hh area (css px), a s into the show, which lasts dur s; top: the first line's top
-/** @param {CanvasRenderingContext2D} ctx @param {number} a @param {number} dur @param {number} cw @param {number} top */
-export function clearedText(ctx, a, dur, cw, top) {
+// Paints the words over a cw × hh area (css px), a s into the show, which lasts dur s; top: the first line's top.
+// (Grem Mode, owner v1.0.92) lines: other words the same way (GO!, the boss's name), red: the boss's red letters and sparks
+/** @param {CanvasRenderingContext2D} ctx @param {number} a @param {number} dur @param {number} cw @param {number} top @param {string[]} [lines] @param {boolean} [red] */
+export function clearedText(ctx, a, dur, cw, top, lines = CLEARED_LINES, red = false) {
   if (a < 0 || a > dur) return;
-  const px = Math.max(3, Math.floor(Math.min(cw * 0.86 / pixWidth('CLEARED', 1, 1), 13)));
+  const wide = Math.max(...lines.map(s => pixWidth(s, 1, 1)), pixWidth('CLEARED', 1, 1));
+  const px = Math.max(3, Math.floor(Math.min(cw * 0.86 / wide, 13)));
+  const N = lines.join('').length;
   const fade = Math.max(0, Math.min(1, (dur - a) / FADE));
   ctx.save();
   ctx.globalAlpha = fade;
-  const shine = (a - clearedShine()) / SHINE_T * 1.6 - 0.3;
+  const shine = (a - clearedShine(N)) / SHINE_T * 1.6 - 0.3;
   let y = top + 7 * px, n = 0;
   /** @type {{ x: number, y: number, t: number, n: number }[]} */
   const lands = [];
-  for (const s of CLEARED_LINES) {
+  for (const s of lines) {
     let x = (cw - pixWidth(s, px, 1)) / 2;
     for (const c of s) {
       const u = (a - n * STAGGER) / FALL;
       if (u > 0) {
-        const settle = Math.max(0, a - clearedShine());
+        const settle = Math.max(0, a - clearedShine(N));
         const bob = Math.sin(settle * 3.2 + n * 0.7) * px * 0.45 * Math.min(1, settle * 2);
         const cy = y - dropAt(u) * (y + px * 4) + bob;
         const lx = (x + pixWidth(c, px, 1) / 2) / cw;
-        titleLetter(ctx, c, x, cy, px, 1 - Math.abs(lx - shine) * 5);
+        titleLetter(ctx, c, x, cy, px, 1 - Math.abs(lx - shine) * 5, red);
         const lt = a - clearedLand(n);
         if (lt >= 0 && lt < SPARK_T) lands.push({ x: x + pixWidth(c, px, 1) / 2, y, t: lt, n });
       }
@@ -72,7 +76,7 @@ export function clearedText(ctx, a, dur, cw, top) {
       const ang = Math.PI + h1 * Math.PI, sp = px * (5 + h2 * 9);
       const sx = L.x + Math.cos(ang) * sp * L.t * 2.2, sy = L.y + Math.sin(ang) * sp * L.t * 2.2 + px * 30 * L.t * L.t;
       const r = Math.max(1, px * 0.35 * (1 - k));
-      ctx.fillStyle = j % 3 ? 'rgba(255,190,70,' + (1 - k).toFixed(3) + ')' : 'rgba(255,250,215,' + (1 - k).toFixed(3) + ')';
+      ctx.fillStyle = j % 3 ? (red ? 'rgba(255,60,60,' : 'rgba(255,190,70,') + (1 - k).toFixed(3) + ')' : (red ? 'rgba(255,215,215,' : 'rgba(255,250,215,') + (1 - k).toFixed(3) + ')';
       ctx.fillRect(sx - r, sy - r, r * 2, r * 2);
     }
     // a flash ring at the touch-down

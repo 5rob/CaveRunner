@@ -10,15 +10,15 @@
 
 import { PH, PW } from '../core/consts.js';
 import { DEV } from '../dev/knobs.js';
-import { TITLE_BACK, TITLE_VW, TITLE_ZLEN, TITLE_ZONES, ctlOn, titleClearWebs, titleRng, titleFloor, titlePlan, titleScene, titleSurf, titleZoneAdd } from '../art/titlescene.js';
+import { TITLE_BACK, TITLE_VW, TITLE_ZLEN, TITLE_ZONES, ctlOn, zapArc, titleClearWebs, titleRng, titleFloor, titlePlan, titleScene, titleSurf, titleZoneAdd } from '../art/titlescene.js';
 import { PAD_HALF, padNext } from './hub.js';
 import { meterAdd, meterNew, meterSet, meterStep } from './meters.js';
 import { lvlPace, pilotEase, pilotPace } from './pilot.js';
 import { clearPower, teamClearer } from './clear.js';
 import { blockCell, blockCol, blockKind, planBlocks, rollBlock, webSlow } from './blocked.js';
 import { deathPrompt, deathRags, deathStep, deathTeleport, exitNuke } from './death.js';
-import { autoFoe, elitePlan, gremFoe, levelFoes, levelHurt } from './enemies.js';
-import { gremGold, gremHardTier } from './grem.js';
+import { autoFoe, bossIntro, elitePlan, gremFoe, levelFoes, levelHurt } from './enemies.js';
+import { gremDmgMul, gremGold, gremHardTier } from './grem.js';
 import { bagFits, killLoot, lootCol } from './loot.js';
 import { bagAdd, playerStats } from './run.js';
 import { chestPlan, chestsStep } from './chests.js';
@@ -132,7 +132,10 @@ export function levelFree(S, L, r) {
 /** @typedef {{ plan: LevelPlan, phase: string, grem?: boolean, ups?: number, arrived: boolean[], zap: number, goT: number, arenaT: number, bossDead: boolean, hold: number,
  *   elites: import('./enemies.js').LevelFoe[], chests: import('./chests.js').LevelChest[], doneT: number, meters: PlayerMeters[], blocked: boolean,
  *   boss: Enemy | null, failed: boolean, run?: AutoRun | null, bagV: number, blockKind?: string, webK?: number, webT?: number, lootT?: number, clearT?: number, popT?: number[], nukeT?: number, gatherT?: number, padGone?: boolean,
- *   deadT?: number, pace0?: number, base?: number, lastI?: number, tpT?: number, boomed?: boolean, far?: number }} LevelState */
+ *   deadT?: number, pace0?: number, base?: number, lastI?: number, tpT?: number, boomed?: boolean, far?: number,
+ *   introT?: number, bossFrom?: number, bossTo?: number, introDone?: boolean, joins?: { i: number, x: number, fy: number, t: number, done?: boolean }[] }} LevelState */
+// (Grem Mode, owner v1.0.92: introT when the boss began coming in from bossFrom to bossTo (world x) under its title; joins: players
+// teleporting in mid-level, the pad's charge then the flash where they land)
 // (far: the furthest the scroll got, world units: manual mode roams back at most DEV.autoRoamBack screens behind it)
 // (blockKind: what the block is, rock / web / timber (stage 6b); webK: the team's pace through webs (1 free, auto/blocked.js webSlow); webT: the next cut)
 /** @param {import('../art/titlescene.js').TitleScene} S @returns {LevelState | null} */
@@ -161,6 +164,7 @@ export function levelScene(vh, seed, n, plan, team, tier = 1, run = null, grem =
     fits: (_S, it) => !L.run || bagFits(L.run, it),
     take: (_S, it) => { if (L.run && bagAdd(L.run, it)) return false; L.bagV++; return true; },
     kind: grem ? gremFoe : autoFoe, hardY: (S, wx) => levelHardY(S, plan, wx), lootCol, blockCell, blockCol, blockKind, free: (S, r) => levelFree(S, L, r), fuel: (_S, r) => (team && team[r.id] ? playerStats(team[r.id]) : null), spawn: S => levelSpawn(S, L) }, team, tier });
+  if (grem) { S.dmgMul = gremDmgMul(tier); S.coinWait = DEV.gremGoldWait; }   // (owner v1.0.92) the guns keep up; the gold bounces first
   L.elites = elitePlan(plan, S.rnd);
   L.chests = chestPlan(plan);
   L.meters = S.runners.map(() => ({ dmg: meterNew(), hp: meterNew(), dealt: 0 }));
@@ -213,6 +217,47 @@ export function levelTeleportHome(S) {
   const L = levelState(S);
   return !!L && deathTeleport(S, L);
 }
+// (Grem Mode, owner v1.0.92) the titles: GO! as the team sets off from the start pad (the first stretch only), the boss's name
+// (red) while it comes in. Their age (s) and words, or null
+/** @param {import('../art/titlescene.js').TitleScene} S @returns {{ a: number, dur: number, lines: string[], red: boolean } | null} */
+export function levelTitle(S) {
+  const L = levelState(S);
+  if (!L || !L.grem) return null;
+  if (L.introT != null && L.boss && !L.bossDead && S.t - L.introT < DEV.gremBossT) return { a: S.t - L.introT, dur: DEV.gremBossT, lines: bossLines(L.boss.k.name), red: true };
+  if (!L.ups && L.goT >= 0 && S.t - L.goT - LVL_GO < DEV.gremGoT) return { a: S.t - L.goT - LVL_GO, dur: DEV.gremGoT, lines: ['GO!'], red: false };
+  return null;
+}
+// a creature's name as title lines: capitals, accents dropped, a line a word
+/** @param {string} name */
+export const bossLines = name => name.toUpperCase().normalize('NFD').replace(/[^A-Z0-9! ]/g, '').split(/\s+/).filter(Boolean);
+
+// (Grem Mode, owner v1.0.92) a player joining mid-level: JOIN_CH s of the start pad's charge where he lands (leveldraw.js), then
+// the flash, sparks and lightning, and he shows (auto/addrunner.js puts him in hidden)
+export const JOIN_CH = 1;
+/** @param {import('../art/titlescene.js').TitleScene} S @param {LevelState} L */
+function joinStep(S, L) {
+  if (L.joins) for (const j of L.joins) {
+    if (j.done || S.t - j.t < JOIN_CH) continue;
+    j.done = true;
+    const r = S.runners[j.i];
+    if (!r) continue;
+    r.hide = false;
+    teleFx(S, r.x + PW / 2, r.y + PH / 2);
+  }
+}
+// the teleport's look and sound where someone lands (screen x): the pads' arrival, plus lightning from above
+/** @param {import('../art/titlescene.js').TitleScene} S @param {number} cx @param {number} cy */
+export function teleFx(S, cx, cy) {
+  S.flash = Math.max(S.flash, 0.5);
+  for (let k = 0; k < 18; k++) {
+    const a = S.rnd() * Math.PI * 2, sp = 20 + S.rnd() * 60;
+    S.parts.push({ x: cx, y: cy, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 20, life: 0.5, max: 0.5, r: 1.2,
+      col: k % 3 ? '#7cc8ff' : '#e6f6ff', kind: 'spark' });
+  }
+  for (let k = 0; k < 3; k++) zapArc(S, cx + (S.rnd() - 0.5) * 16, cy - 40, cx + (S.rnd() - 0.5) * 6, cy + PH / 2, k ? '#7cc8ff' : '#e6f6ff', true);
+  S.snd.push({ k: 'arc', x: cx, y: cy });
+}
+
 // is the team gathered on the exit pad (stage 4b: teleport to the hub)?
 /** @param {import('../art/titlescene.js').TitleScene} S */
 export function levelDone(S) {
@@ -278,6 +323,8 @@ export function levelStep(S, dt) {
   if (L.phase === 'arena' && (L.bossDead || S.t - L.arenaT >= DEV.autoLvlBossT)) { L.bossDead = true; L.phase = 'cleared'; L.lootT = S.t; L.clearT = -1; }   // (the timeout: a fallback, a boss out of reach)
   S.huddle = L.phase === 'cleared' || L.phase === 'out' || L.phase === 'exit';   // the team keeps together after the boss (titlescene.js's pack pick)
   S.gunsOff = L.bossDead;   // (owner v1.0.74) the boss dead: guns down
+  if (bossIntro(S, L)) S.gunsOff = true;   // (Grem Mode) its title still up: not yet
+  joinStep(S, L);
   if (L.phase === 'cleared') { S.pace = 0; cleared(S, L); return; }
   if (L.phase === 'out' && levelTeamX(S) >= stop - 0.5) { L.phase = 'exit'; S.still = true; return; }
   if (L.phase === 'arena') { S.pace = 0; return; }
@@ -360,6 +407,7 @@ export function levelOnward(S, L) {
   if (L.run) L.run.tier = tier;
   L.ups = (L.ups || 0) + 1;
   L.base = lvlPace(gremHardTier(tier));
+  S.dmgMul = gremDmgMul(tier);
   const z0 = P.arena.x1, want = Math.max(TITLE_ZLEN[0], DEV.autoLvlMin * 60 * LVL_SCROLL * L.base);
   let x = Math.max(z0, zp.z[zp.z.length - 1].x1);
   while (x - z0 < want) x = titleZoneAdd(zp, x).x1;

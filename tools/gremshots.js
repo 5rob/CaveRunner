@@ -20,6 +20,7 @@ const PRESETS = [['Pea Shooter', ['bolt']], ['Double Spark', ['double', 'spark']
   await ctx.addInitScript(p => {
     window.__TEST_TITLE = true; window.__TITLE_SEED = 101; localStorage.setItem('caverunner-devshow', '1');
     window.__PRESETS = p;
+    localStorage.setItem('caverunner-grem-kit', JSON.stringify({ names: ['Grem', 'Mum', 'Dad', 'Pip'] }));
   }, PRESETS);
   const page = await ctx.newPage();
   page.on('pageerror', e => console.log('PAGEERROR', e.message));
@@ -41,16 +42,24 @@ const PRESETS = [['Pea Shooter', ['bolt']], ['Double Spark', ['double', 'spark']
   const save = async (n, what, clip) => { await page.screenshot({ path: path.join(OUT, 'grem-' + n + '.png'), clip }); said.push(`grem-${n}.png  ${what}`); };
   await save('a-title', 'the title: GREM MODE between ⚙ and ▶');
   await page.locator('.tgrem').dispatchEvent('pointerdown');
-  await page.waitForTimeout(9000);
+  // (v1.0.92) GO! once the team is through the start pad
+  for (let i = 0; i < 200; i++) {
+    const t = await page.evaluate(() => { const S = window.__gremScene, T = S && levelTitle(S); return T ? T.a : -1; });
+    if (t > 0.75) break;
+    await page.waitForTimeout(50);
+  }
+  await save('f-go', 'GO! at the start (the LEVEL CLEARED letters), the name tags over the heads, the pause button twice the size');
+  await page.waitForTimeout(4000);
   await page.evaluate(() => {
     const S = window.__gremScene, run = S.lvl.data.run;
-    bagAdd(run, { kind: 'gold', n: gremPaidAt(5) + Math.round(gremPrice(6) * 0.4) });   // 5 guns and players 2 and 3 (the unlocks spread them)
+    bagAdd(run, { kind: 'gold', n: gremPaidAt(5) + Math.round(gremPrice(6) * 0.4) });   // 5 guns and player 2 (the unlocks spread them)
   });
+  await page.waitForTimeout(650);
+  await save('g-join', 'player 2 unlocked: the start pad’s charge where he lands (then its flash); the new unlocks glowing on the row, nothing equipped');
   await page.waitForTimeout(2500);
-  await page.waitForTimeout(1500);
   await page.locator('.ghelms [data-player="1"]').dispatchEvent('pointerdown');
   await page.waitForTimeout(200);
-  await page.locator('.ggun[data-gun="0"]').click();
+  await page.locator('.ggun.open[data-gun]').first().click();
   await page.waitForTimeout(300);
   await page.evaluate(() => {
     const S = window.__gremScene, r = S.runners[0];
@@ -58,11 +67,14 @@ const PRESETS = [['Pea Shooter', ['bolt']], ['Double Spark', ['double', 'spark']
     if (f) S.pick = f;
   });
   await page.waitForTimeout(400);
-  await save('b-play', 'Grem Mode: one row of guns (scrolls sideways): gun 1 given to player 2 (picked: white ring on his helmet and on his gun), gun 2 still flashing NEW, gun 3 filling; the helmets with health rings; a tapped creature in a red ring');
-  await save('b-panel', 'close up: the gold, the unlocks row (guns with players 2-4 among them), the helmets either side of the stick', { x: 0, y: 560, width: 412, height: 320 });
-  await page.evaluate(() => { DEV.gremDark = 1; });
-  await page.waitForTimeout(200);
-  await save('b-dark1', 'the same with the dark as before (DEV.gremDark 1), to compare');
+  await save('b-play', 'Grem Mode: the first open gun given to player 2 (picked: white ring), the other new ones still glowing till used; a tapped creature in a red ring');
+  await save('b-panel', 'close up: the gold, the unlocks row (random gun order, players among them), the helmets either side of the stick', { x: 0, y: 560, width: 412, height: 320 });
+  // (v1.0.92) the boss: made off screen, coming in under its name in red, then the fight and its bar
+  await page.evaluate(() => { const S = window.__gremScene, L = S.lvl.data; L.phase = 'arena'; L.arenaT = S.t; });
+  await page.waitForTimeout(1300);
+  await save('h-boss-title', 'the boss coming in from the right under its name (red LEVEL CLEARED letters); guns down till it’s gone');
+  await page.waitForTimeout(2600);
+  await save('h-boss-fight', 'the title gone: the fight, the boss’s health bar (the normal game’s) under the level');
   // a chest beside player 1: Tap to open., then a tap on the play area opens it
   await page.evaluate(() => {
     const S = window.__gremScene, L = S.lvl.data, r = S.runners[0];
@@ -85,7 +97,7 @@ const PRESETS = [['Pea Shooter', ['bolt']], ['Double Spark', ['double', 'spark']
   await page.waitForTimeout(500);
   await page.locator('.devtab[data-t="presets"]').click();
   await page.waitForTimeout(400);
-  await save('c-presets', 'Dev → Presets: every saved gun in its unlock order, its Grem price under it');
+  await save('c-presets', 'Dev → Presets: every saved gun');
   await page.locator('.apltile[data-preset="8"]').dispatchEvent('pointerdown');
   await page.waitForTimeout(2500);
   await page.locator('.apledslots [data-eslot="1"]').dispatchEvent('pointerdown');
@@ -98,7 +110,7 @@ const PRESETS = [['Pea Shooter', ['bolt']], ['Double Spark', ['double', 'spark']
   await page.locator('.agkrow[data-cat="hp"] .agkslot[data-slot="0"]').dispatchEvent('pointerdown');
   await page.locator('.agkrow[data-cat="hp"] .agkslot[data-slot="0"]').dispatchEvent('pointerdown');
   await page.waitForTimeout(300);
-  await save('e-kit', 'Dev → Grem: player 1’s exo mods (tap steps the tier) and perks, then the Grem knobs');
+  await save('e-kit', 'Dev → Grem: the name tags, player 1’s exo mods (tap steps the tier) and perks, then the Grem knobs');
   await browser.close();
   console.log(said.join('\n'));
 })();

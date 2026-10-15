@@ -161,7 +161,7 @@ export const zoneHome = Z => TITLE_HOME[Z.spid ? 'spider' : Z.z] || TITLE_HOME.m
  *   fire: TFire[], dirty: number[][], dirtyAll: boolean, carved: number, burnt: number, swaps: number, groundT: number, flyT: number, kinds: Record<string, number>,
  *   webs: WebLine[], orbN?: number, orbs?: Record<number, OrbRig>, mush?: MushCloud[], orbHub?: { x: number, y: number, r: number }[], orbT?: number, cut: number, lineT: number, silk: { x: number, y: number, ax: number, ay: number, vx: number, vy: number, life: number }[],
  *   nav: { F: any, fx: number, fy: number, t: number }, fireAcc: number, fireN: number, burning: Set<number>, gotN: number, pops: number, lampsPopped: number, kitNames: Set<string>,
- *   digT: number, digs: number, digWhy: Record<string, number>, still?: boolean, zp: TitlePlan, snd: TSnd[], hub?: TitleHub, lvl?: TitleLevel, lab?: boolean, back?: (ctx: CanvasRenderingContext2D, S: TitleScene) => void, pace?: number, team?: RunPlayer[], blocked?: number, blockedKind?: string, huddle?: boolean, gunsOff?: boolean, hgoal?: number, hgoalT?: number, fuelWait?: number, tier?: number, loot?: TLoot[],
+ *   digT: number, digs: number, digWhy: Record<string, number>, still?: boolean, zp: TitlePlan, snd: TSnd[], hub?: TitleHub, lvl?: TitleLevel, lab?: boolean, back?: (ctx: CanvasRenderingContext2D, S: TitleScene) => void, pace?: number, team?: RunPlayer[], blocked?: number, blockedKind?: string, huddle?: boolean, gunsOff?: boolean, dmgMul?: number, coinWait?: number, hgoal?: number, hgoalT?: number, fuelWait?: number, tier?: number, loot?: TLoot[],
  *   onTake?: (it: BagItem, x: number, y: number) => void, pick?: Enemy | null }} TitleScene */
 // (pick: Grem Mode's tapped target, ui/auto/GremScreen.js: every player aims at it while it lives, titleAimPick)
 // a finite level in the scrolling ring (CaveRunner Auto, auto/level.js levelScene): zp its plan (made whole up front); step runs
@@ -1291,8 +1291,16 @@ function killFoe(S, f) {
   // CaveRunner Auto: the level's drops (auto/loot.js killLoot): the gold as nuggets, the rest as pickups (S.loot) thrown up
   const items = S.lvl && S.lvl.loot ? S.lvl.loot(S, f) : null;
   if (items) titleSpill(S, f.x, f.ty, items);
-  else { const amount = Math.round(f.k.gold + Math.floor(S.rnd() * 3)); spillGold(S.coins, f.x, f.ty, amount); S.gold += amount; }
+  else { const amount = Math.round(f.k.gold + Math.floor(S.rnd() * 3)); spillWait(S, f.x, f.ty, amount); S.gold += amount; }
   if (S.coins.length > TITLE_GOLD) S.coins.splice(0, S.coins.length - TITLE_GOLD);
+}
+
+// gold thrown out as nuggets; (Grem Mode, owner v1.0.92) S.coinWait: they bounce that long before they fly to the team
+/** @param {TitleScene} S @param {number} x @param {number} y @param {number} amount */
+function spillWait(S, x, y, amount) {
+  const n = S.coins.length;
+  spillGold(S.coins, x, y, amount);
+  if (S.coinWait) for (let i = n; i < S.coins.length; i++) S.coins[i].nopull = S.coinWait;
 }
 
 // CaveRunner Auto: BagItems thrown out at (world x, y): the gold as nuggets (S.coins), the rest as pickups (S.loot) thrown up;
@@ -1300,7 +1308,7 @@ function killFoe(S, f) {
 /** @param {TitleScene} S @param {number} x @param {number} y @param {BagItem[]} items @param {number} [up] */
 export function titleSpill(S, x, y, items, up = 1) {
   const amount = items.filter(it => it.kind === 'gold').reduce((a, it) => a + it.n, 0);
-  if (amount > 0) { spillGold(S.coins, x, y, amount); S.gold += amount; }
+  if (amount > 0) { spillWait(S, x, y, amount); S.gold += amount; }
   for (const it of items) {
     if (it.kind === 'gold') continue;
     const a = -Math.PI / 2 + (S.rnd() - 0.5) * 1.6, sp = (70 + S.rnd() * 60) * up;
@@ -1315,6 +1323,7 @@ export const titleKill = (S, f) => killFoe(S, f);
 /** @param {TitleScene} S @param {Enemy} f @param {number} dmg @param {string} col @param {number} [by] the runner who did it (its damage dealt, r.dealt) */
 function hitFoe(S, f, dmg, col, by) {
   if (f.hp <= 0) return;
+  if (S.dmgMul) dmg *= S.dmgMul;   // (Grem Mode, owner v1.0.92: the guns keep up with the level, auto/grem.js gremDmgMul)
   const ru = by != null && by >= 0 ? S.runners[by] : null;
   if (ru) ru.dealt = (ru.dealt || 0) + Math.min(dmg, f.hp);
   f.hp -= dmg; f.flash = 0.08;
@@ -2890,16 +2899,18 @@ export function titleText(ctx, t, cw, top) {
 // One letter in the title's look (titleText; the auto level's LEVEL CLEARED, art/cleared.js): a deep extrusion
 // down-right, the face yellow to orange to red down the letter with a glow, and sh (0-1; none at or below 0) of the
 // white shine over it. (cx, cy) its baseline's left, px its pixel size
-/** @param {CanvasRenderingContext2D} ctx @param {string} c @param {number} cx @param {number} cy @param {number} px @param {number} sh */
-export function titleLetter(ctx, c, cx, cy, px, sh) {
+/** @param {CanvasRenderingContext2D} ctx @param {string} c @param {number} cx @param {number} cy @param {number} px @param {number} sh @param {boolean} [red] (Grem's boss title) */
+export function titleLetter(ctx, c, cx, cy, px, sh, red = false) {
   const ph = px;
   for (let d = Math.ceil(px * 0.9); d > 0; d--) {
-    ctx.fillStyle = d > px * 0.45 ? '#2a0610' : '#6a1220';
+    ctx.fillStyle = d > px * 0.45 ? (red ? '#1a0206' : '#2a0610') : (red ? '#4a0610' : '#6a1220');
     pixText(ctx, c, cx + d * 0.5, cy + d, px, ph, 1, 8);
   }
   const g = ctx.createLinearGradient(0, cy - 7 * ph, 0, cy);
-  g.addColorStop(0, '#fff6b0'); g.addColorStop(0.35, '#ffd23a'); g.addColorStop(0.7, '#ff8a1f'); g.addColorStop(1, '#e8361a');
-  ctx.shadowColor = 'rgba(255,140,40,0.9)'; ctx.shadowBlur = px * 2.2;
+  // (Grem's boss title, owner v1.0.92: red) white-hot to blood red
+  if (red) { g.addColorStop(0, '#ffe2e2'); g.addColorStop(0.35, '#ff5a5a'); g.addColorStop(0.7, '#e0182a'); g.addColorStop(1, '#8a0816'); }
+  else { g.addColorStop(0, '#fff6b0'); g.addColorStop(0.35, '#ffd23a'); g.addColorStop(0.7, '#ff8a1f'); g.addColorStop(1, '#e8361a'); }
+  ctx.shadowColor = red ? 'rgba(255,30,40,0.95)' : 'rgba(255,140,40,0.9)'; ctx.shadowBlur = px * 2.2;
   ctx.fillStyle = g;
   pixText(ctx, c, cx, cy, px, ph, 1, 8);
   ctx.shadowBlur = 0;

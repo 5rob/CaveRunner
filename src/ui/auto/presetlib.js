@@ -1,6 +1,6 @@
 // @ts-check
 // Dev → Presets (owner, Grem Mode): the gun presets library (save/presets.js, shared with the old game's Spawn gun). A grid of
-// every saved gun in its order, which is the order Grem Mode unlocks them (auto/grem.js); 💾 on a gun's panel in the nav
+// every saved gun in its order (Grem Mode unlocks them in a random order since v1.0.92: auto/grem.js); 💾 on a gun's panel in the nav
 // (dev mode) adds one. (owner, v1.0.89) The ⠿ handle in a tile's corner drags it onto another tile's place (the order). A tap
 // opens the gun editor (PresetEdit): the gun panel (AutoScreen GunPanel: its stats and the firing window simulating it), its
 // mod slots (tap one to pick it; tap another to swap them; ✕ empties it), the Dev mod grid (a tap on a mod puts it in the
@@ -13,7 +13,6 @@
 import { SFX } from '../../audio/sfx.js';
 import { MODS } from '../../spells/mods.js';
 import { PRESET_NAME_MAX, loadPresets, movePreset, presetGun, removePreset, savePresets, setPreset } from '../../save/presets.js';
-import { gremGunAt, gremPrice } from '../../auto/grem.js';
 import { newPlayer } from '../../auto/run.js';
 import { GunIcon } from '../editor.js';
 import { GunArtPicker } from '../gunart.js';
@@ -69,15 +68,14 @@ export function PresetLib() {
   };
   const dp = drag ? list[drag.i] : null;
   return h('div', { className: 'aplib' },
-    h('p', { className: 'devnote' }, 'Your saved guns, in the order Grem Mode unlocks them. Tap one to see it fire and change it; drag ⠿ to move it. 💾 on a gun’s panel (dev mode) saves a new one.'),
+    h('p', { className: 'devnote' }, 'Your saved guns (Grem Mode unlocks them in a random order). Tap one to see it fire and change it; drag ⠿ to move it. 💾 on a gun’s panel (dev mode) saves a new one.'),
     list.length ? h('div', { className: 'apltiles' }, list.map((p, i) => h('button', { key: i,
       className: 'apltile' + (drag && drag.i === i ? ' lift' : '') + (drag && drag.over === i && drag.i !== i ? ' drop' : ''), 'data-preset': i,
       onPointerDown: tap(() => { SFX.fx('open'); setList(loadPresets()); setOpen(i); }) },
       h('i', { className: 'aplnum' }, i + 1),
       h('i', { className: 'aplhandle', onPointerDown: e => grab(e, i) }, '⠿'),
       h('span', { className: 'aplicon' }, h(GunIcon, { gun: p.gun })),
-      h('b', { className: 'aplname' }, p.name),
-      h('i', { className: 'aplprice' }, gremPrice(gremGunAt(i, list.length)) + 'g'))))
+      h('b', { className: 'aplname' }, p.name))))
       : h('p', { className: 'prenone' }, 'No presets yet — open a gun in the nav and tap 💾 on its panel.'),
     drag && dp ? h('div', { className: 'apltile aplghost', style: { left: drag.x + 'px', top: drag.y + 'px' } },
       h('span', { className: 'aplicon' }, h(GunIcon, { gun: dp.gun })), h('b', { className: 'aplname' }, dp.name)) : null);

@@ -25,8 +25,17 @@ check('1 preset: the gun first', seq(1) === 'GPPP', seq(1));
 check('no presets: just the players', seq(0) === 'PPP', seq(0));
 check('the guns stay in order', G.gremUnlocks(9).filter(q => 'gun' in q).every((q, i) => q.gun === i));
 check('a gun\'s place on the list', G.gremGunAt(2, 8) === 3 && G.gremGunAt(0, 8) === 0, G.gremGunAt(2, 8));
-check('open: 3 unlocks of 8 presets = 2 guns, 2 players', JSON.stringify(G.gremOpen(3, 8)) === JSON.stringify({ guns: 2, team: 2 }), G.gremOpen(3, 8));
-check('open: all = every gun, 4 players', JSON.stringify(G.gremOpen(11, 8)) === JSON.stringify({ guns: 8, team: 4 }));
+check('open: 3 unlocks of 8 presets = 2 guns, 2 players', JSON.stringify(G.gremOpen(3, G.gremUnlocks(8))) === JSON.stringify({ guns: [0, 1], team: 2 }), G.gremOpen(3, G.gremUnlocks(8)));
+check('open: all = every gun, 4 players', G.gremOpen(11, G.gremUnlocks(8)).guns.length === 8 && G.gremOpen(11, G.gremUnlocks(8)).team === 4);
+// (owner, v1.0.92) a random gun order, the players where they were
+{
+  const r = G.gremUnlocks(9, G.titleRng(11)), plain = G.gremUnlocks(9);
+  const kinds = l => l.map(q => ('gun' in q ? 'G' : 'P')).join('');
+  check('random order: the players in the same places', kinds(r) === kinds(plain), kinds(r));
+  check('… every gun once', r.filter(q => 'gun' in q).map(q => q.gun).sort((a, b) => a - b).join() === '0,1,2,3,4,5,6,7,8');
+  check("… not the presets' order", r.filter(q => 'gun' in q).map(q => q.gun).join() !== '0,1,2,3,4,5,6,7,8');
+  check('open guns in the order they opened', JSON.stringify(G.gremOpen(4, r).guns) === JSON.stringify(r.slice(0, 4).filter(q => 'gun' in q).map(q => q.gun)));
+}
 check('extra players: none unlocked, no preset', G.gremTeamGun(0, 1) === -1);
 check('extra players take the newest unlocked, one each', G.gremTeamGun(5, 1) === 4 && G.gremTeamGun(5, 2) === 3 && G.gremTeamGun(5, 3) === 2);
 check('… round again with fewer', G.gremTeamGun(2, 1) === 1 && G.gremTeamGun(2, 2) === 0 && G.gremTeamGun(2, 3) === 1);
@@ -89,6 +98,38 @@ check('the normal level still has its exit', !L2.grem && L2.plan.zp.z[L2.plan.zp
   const c1 = G.chestRoll(G.titleRng(5), 2, false), c2 = G.chestRoll(G.titleRng(5), 2, true);
   for (const [k, v] of keep) D[k] = v;
   check('chest gold × DEV.gremGold', Math.abs(c2[0].n - c1[0].n * D.gremGold) <= D.gremGold, [c1[0].n, c2[0].n]);
+}
+
+// ---- (owner, v1.0.92) name tags, guns that keep up, the boss's entrance, GO!, players teleporting in ----
+{
+  const k = G.gremKitClean({ names: ['Grem', 42, 'A very long name indeed'] });
+  check('names: kept, junk emptied, cut to the max', k.names[0] === 'Grem' && k.names[1] === '' && k.names[2].length === G.GREM_NAME_MAX && k.names[3] === '', k.names);
+  check('damage × 1 at level 1', G.gremDmgMul(1) === 1);
+  const hp9 = G.gremFoe('rotta', 9).hp / G.gremFoe('rotta', 1).hp;
+  check("damage at level 9 keeps up with the creatures' health", Math.abs(G.gremDmgMul(9) - hp9) / hp9 < 0.1, [G.gremDmgMul(9), hp9]);
+  check('boss name lines: capitals, accents gone, a line a word', JSON.stringify(G.bossLines('Elävät luut')) === '["ELAVAT","LUUT"]', G.bossLines('Elävät luut'));
+  const R = G.gremRun(G.gremKitNew(), G.titleRng(5));
+  G.healRun(R);
+  const B = G.levelScene(300, 6, 1, undefined, R.players, 1, R, true), L = G.levelState(B);
+  check('a Grem scene: the damage and gold wait set', B.dmgMul === 1 && B.coinWait === D.gremGoldWait);
+  for (let i = 0; i < 400 && L.phase === 'arrive'; i++) G.titleStep(B, 1 / 30);
+  for (let i = 0; i < 10; i++) G.titleStep(B, 1 / 30);
+  const T = G.levelTitle(B);
+  check('GO! as the team sets off', !!T && T.lines[0] === 'GO!' && !T.red, T);
+  L.phase = 'arena'; L.arenaT = B.t;
+  G.titleStep(B, 1 / 30);
+  const boss = L.boss;
+  check('the boss made off screen right', !!boss && boss.x - B.scroll > G.TITLE_VW, boss && boss.x - B.scroll);
+  const bt = G.levelTitle(B);
+  check('its name in red', !!bt && bt.red && bt.lines.join(' ').length > 0, bt);
+  check('guns off while it comes in', B.gunsOff === true);
+  for (let i = 0; i < Math.ceil(D.gremBossT * 30) + 4; i++) G.titleStep(B, 1 / 30);
+  check('in its place once the title is gone', Math.abs(boss.x - L.bossTo) < 30 && boss.x - B.scroll < G.TITLE_VW, [boss.x, L.bossTo]);
+  check('then the fight: guns on, it hunts', !B.gunsOff && boss.aggro === true && !G.levelTitle(B));
+  const r = G.sceneAddRunner(B);
+  check('a joining player: hidden while the pad charges', !!r && r.hide === true && L.joins.length === 1);
+  for (let i = 0; i < Math.ceil(G.JOIN_CH * 30) + 2; i++) G.titleStep(B, 1 / 30);
+  check('… then shows', r.hide === false && L.joins[0].done === true);
 }
 
 // ---- the tapped target ----

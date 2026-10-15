@@ -110,12 +110,28 @@ export function levelFoes(S, L, teamX) {
     const f = titleFoeAt(S, bossKind(id, tier, mk), Math.min(L.plan.arena.x1 - 30, teamX + BOSS_IN));
     f.aggro = true;
     L.boss = f;
+    // (Grem Mode, owner v1.0.92) made off screen right, it comes in to its place while its name's title plays (bossIntro)
+    if (L.grem) { L.introT = S.t; L.bossTo = f.x; L.bossFrom = S.scroll + TITLE_VW + f.r + 8; f.x = L.bossFrom; f.aggro = false; }
   }
   const B = L.boss;
   if (B && !L.bossDead) {
     if (B.hp <= 0) L.bossDead = true;
     else if (!S.foes.includes(B)) { B.x = Math.min(L.plan.arena.x1 - 30, teamX + BOSS_IN); B.y = B.ty = S.vh / 2; S.foes.push(B); }   // fell out of the scene: back in
   }
+}
+
+// (Grem Mode, owner v1.0.92) the boss coming in: eased from off screen to its place over 70% of DEV.gremBossT, holding its
+// fire; true till the title is gone (then it hunts, and the team's guns are on: level.js)
+/** @param {import('../art/titlescene.js').TitleScene} S @param {import('./level.js').LevelState} L */
+export function bossIntro(S, L) {
+  const B = L.boss;
+  if (!L.grem || !B || L.introT == null || L.bossDead || L.introDone) return false;
+  const a = S.t - L.introT;
+  if (a >= DEV.gremBossT) { L.introDone = true; B.aggro = true; return false; }
+  const u = Math.min(1, a / (DEV.gremBossT * 0.7)), e = 1 - (1 - u) ** 3, from = L.bossFrom ?? B.x, to = L.bossTo ?? B.x;
+  B.x = B.hx = from + (to - from) * e;
+  B.cd = Math.max(B.cd, 0.5);
+  return true;
 }
 
 // the boss's health bar (the screen's overlay): null when there's none
