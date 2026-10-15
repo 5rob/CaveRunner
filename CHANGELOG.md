@@ -5,6 +5,14 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.92 — CaveRunner Auto: Grem round 3 (branch `autobattler`)
+Released 2026-10-16 on the branch; owner OK'd the screenshots (`node tools/gremshots.js`).
+- Name tags for the 4 players (Dev → Grem), small in each player's colour over his head.
+- New guns aren't equipped by themselves; the NEW badge is gone: a fresh unlock glows behind till used once. A joining player still comes with one of the open guns.
+- The boss is made off screen and eases in under its name in red (cleared.js letters, red), guns held till the title is gone (`gremBossT`); its health bar as in Auto. GO! at the start (`gremGoT`).
+- A joining player teleports in: the start pad's charge on him, then the flash and lightning.
+- Gun damage × the creatures' health growth at the level (`gremDmgScale`), so early guns stay viable. Gold bounces `gremGoldWait` (0.6 s) before flying to the team. ⏸ twice the size. The guns unlock in a random order each run (players where they were); Dev → Presets no longer shows prices.
+
 ## v1.0.91 — CaveRunner Auto: Grem's chests bigger and glowing (branch `autobattler`)
 Released 2026-10-16 on the branch; owner OK'd the screenshots (`node tools/gremshots.js`: grem-c-chest, grem-c-chest-close).
 - Grem Mode's chests × `DEV.gremChestSize` (2), with a green light pulsing behind each shut one (`DEV.gremChestGlow` 1): leveldraw.js chestK / chestAt; levelGlow draws the glow additive, then the chest again over it. Normal Auto chests unchanged.
