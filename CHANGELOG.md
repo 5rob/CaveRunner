@@ -5,6 +5,10 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.93 — CaveRunner Auto: the volume lock (branch `autobattler`)
+Released 2026-10-16 on the branch; owner OK'd the screenshot (`node tests/run.js volume-lock` → tests/build/autoshots/volume-locked.png).
+- A press held 4 s without moving on any volume slider (pause menu, title settings) locks all three or unlocks them: locked they're dimmed with a 🔒 and take no touches; kept on the device (ui/volume.js). The press changes no volume.
+
 ## v1.0.92 — CaveRunner Auto: Grem round 3 (branch `autobattler`)
 Released 2026-10-16 on the branch; owner OK'd the screenshots (`node tools/gremshots.js`).
 - Name tags for the 4 players (Dev → Grem), small in each player's colour over his head.
