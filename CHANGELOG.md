@@ -5,6 +5,10 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.91 — CaveRunner Auto: Grem's chests bigger and glowing (branch `autobattler`)
+Released 2026-10-16 on the branch; owner OK'd the screenshots (`node tools/gremshots.js`: grem-c-chest, grem-c-chest-close).
+- Grem Mode's chests × `DEV.gremChestSize` (2), with a green light pulsing behind each shut one (`DEV.gremChestGlow` 1): leveldraw.js chestK / chestAt; levelGlow draws the glow additive, then the chest again over it. Normal Auto chests unchanged.
+
 ## v1.0.90 — CaveRunner Auto: Grem Mode made gentler (branch `autobattler`)
 Released 2026-10-15 on the branch; owner OK'd the screenshots (`node tools/gremshots.js`).
 - Players take no damage in Grem (enemies.js levelHurt); the helmets lose their health rings.
