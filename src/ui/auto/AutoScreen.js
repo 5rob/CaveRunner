@@ -939,7 +939,7 @@ const MACHINE_EDGE = HUB_MACHINES.mod.hue;
 // (pvSim), the damage per second over the target and its graph, and lights the mod slots below in each pull's colour (onLit).
 // (owner, round 2) A double tap on the window grows it left over the stats (.big: the stats hidden), again shrinks it back; the
 // room is made again at the new size, the player at its new left edge.
-// (Grem Mode) in dev mode a 💾 in its corner saves the gun as a gun preset (save/presets.js; Dev → Presets lists them); noSave:
+// (Grem Mode) in dev mode a 💾 (owner, v1.0.87: the window's top right, off the stats) saves the gun as a gun preset (save/presets.js; Dev → Presets lists them); noSave:
 // none (Dev → Presets' own editor)
 /** @param {{ gun: Gun, sig: string, col: string, onLit?: (lit: any) => void, cls: string, pl: RunPlayer, gi: number, noSave?: boolean }} props */
 export function GunPanel({ gun, sig, col, onLit, cls, pl, gi, noSave }) {

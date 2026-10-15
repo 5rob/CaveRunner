@@ -1258,7 +1258,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .apledflash{font:700 12px system-ui,sans-serif;color:#5ee05a;animation:agpsaved 1.6s ease-out both}
 /* 💾 on the gun panel (dev mode): save the gun as a preset */
 .agunpanel{position:relative}
-.agpsave{position:absolute;left:8px;bottom:8px;width:30px;height:30px;padding:0;border-radius:8px;border:1px solid #ffc93c88;background:#1d1531cc;font-size:15px;z-index:2}
+.agpsave{position:absolute;right:10px;top:10px;width:30px;height:30px;padding:0;border-radius:8px;border:1px solid #ffc93c88;background:#1d1531cc;font-size:15px;z-index:2}
 .agpsaved{color:#5ee05a;font:900 16px system-ui,sans-serif;animation:agpsaved 1.6s ease-out both}
 @keyframes agpsaved{from{opacity:1}to{opacity:.4}}
 /* Dev → Grem (ui/auto/gremkit.js) */
