@@ -14,6 +14,8 @@ mock-up `docs/autobattler-mockup.png`). Progress: AUTOBATTLER.md's Log. `main` k
 
 **v1.0.75 (released 2026-10-14):** the owner's 7 notes (post-boss run to the exit, pace by level, group layout + green outlines, bag gun view, mod grid grab zones, no trigger variants in it) and the spider zone + orb webs + spider mines (CHANGELOG v1.0.75). Owner OK'd the screenshots (tools/roundshots.js, tools/spidershots.js). Not built yet: dropping mods from the bag onto the bag gun view; orb webs may want to be bigger or brighter (knobs "Auto: orb webs"). `auto-steer` failed 2 of 4 runs this round (its known flake; level 5's mine is now a spider mine: the suite turns `autoSpiderMine` off).
 
+**Unreleased — Dev → Presets drags and gun look (waiting on the owner's OK of the screenshots, tests/build/autoshots/presets-*.png from `node tests/run.js auto-presets`):** the ⠿ handle drags a preset to reorder; in the editor drag mods between slots, onto the mod grid to throw away, from the grid (grab circle) onto a slot; 🖼️ picks the gun's sprite. Release as v1.0.89 once OK'd.
+
 **v1.0.88 — fix: a White Hole with several Discriminates (a creature, then gold, then a green gem) pulled only the first one's kind: RELEASED 2026-10-15 (owner's screenshot).** Nothing waiting.
 
 **v1.0.87 — the gun panel's 💾 (dev mode, save as a preset) moved to the firing window's top right (it covered PER CAST): RELEASED 2026-10-15 (owner asked, no approval needed).** Nothing waiting.

@@ -73,7 +73,7 @@ const PRESETS = [['Pea Shooter', ['bolt']], ['Double Spark', ['double', 'spark']
   await save('c-presets', 'Dev → Presets: every saved gun in its unlock order, its Grem price under it');
   await page.locator('.apltile[data-preset="8"]').dispatchEvent('pointerdown');
   await page.waitForTimeout(2500);
-  await page.locator('.apledslots [data-pslot="1"]').dispatchEvent('pointerdown');
+  await page.locator('.apledslots [data-eslot="1"]').dispatchEvent('pointerdown');
   await page.waitForTimeout(200);
   await save('d-edit', 'a preset open: its stats and firing window, its slots (slot 2 picked), ◀ ▶ order, 🗑️, Save changes, the mod grid below');
   await page.locator('.apledback').dispatchEvent('pointerdown');

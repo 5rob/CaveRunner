@@ -1244,6 +1244,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .aplicon .gicon{width:100%;height:auto}
 .aplname{font:700 10px system-ui,sans-serif;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .aplnum{position:absolute;left:4px;top:2px;font:800 10px ui-monospace,monospace;color:#ffc93c;font-style:normal}
+.aplhandle{position:absolute;right:0;top:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font:900 15px system-ui,sans-serif;color:#b9add8;font-style:normal;touch-action:none;cursor:grab}
+.apltile.lift{opacity:.35}
+.apltile.drop{border-color:#5ee05a;box-shadow:0 0 0 2px #5ee05a,0 0 14px rgba(94,224,90,0.7)}
+.aplghost{position:fixed;z-index:50;width:76px;margin:-70px 0 0 -38px;pointer-events:none;opacity:.92;transform:scale(1.1)}
 .aplprice{font:700 9px ui-monospace,monospace;color:#b9add8;font-style:normal}
 .apled{position:fixed;inset:0;z-index:30;display:flex;flex-direction:column;gap:8px;box-sizing:border-box;
   padding:max(8px,env(safe-area-inset-top)) 10px calc(8px + env(safe-area-inset-bottom));background:#0e091a;color:#f1ecff;font:14px system-ui,sans-serif}
@@ -1261,6 +1265,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   border-radius:14px;border:2px solid #ffc93c;background:#0e091a;box-shadow:0 0 12px rgba(255,201,60,0.33)}   /* (owner) stacked rows of 7, as the main game's grown mod row (.anavrow.slots.big) */
 .apledslots .aslot:not(.full){opacity:.55}
 .apledslots .aslot{padding:0}
+.apledslots .aslot.full{touch-action:none}   /* (v1.0.89) a slot's mod drags (the slots don't scroll from a full one) */
+.apled.bin .apledgrid{box-shadow:inset 0 0 0 2px #ff5a52,inset 0 0 18px rgba(255,90,82,0.45);border-radius:10px}   /* a slot's mod over the grid: let go throws it away */
 .apledslots .aslot.sel{box-shadow:0 0 0 3px #fff}
 .apledbtns{display:flex;align-items:center;gap:8px}
 .apledsave.on{background:#5ee05a;color:#10261a;font-weight:800}
@@ -9064,10 +9070,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (tries < 250 && hits(layers[ci2].holes, x0, x1, 4)) continue;
       const fs = Array.from(c.floor.slice(x0, x1 + 1)).sort((p, q) => p - q);
       let Lf = Math.round(fs[fs.length >> 1]);
-      const under = layers[ci2].bot, over = layers[ci2 + 1].top;
+      const under2 = layers[ci2].bot, over = layers[ci2 + 1].top;
       let maxOver = 0;
       for (let x = Math.max(0, x0 - 28); x <= Math.min(CW - 1, x1 + 28); x++) {
-        if (under) Lf = Math.min(Lf, Math.floor(under[x]) - 6);
+        if (under2) Lf = Math.min(Lf, Math.floor(under2[x]) - 6);
         maxOver = Math.max(maxOver, over[x]);
       }
       const Hw = Math.round(Math.min(K("lvWorkH"), Lf - 1 - (maxOver + 6)));
@@ -14250,11 +14256,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (h2(q, i + 31) > 0.7) continue;
       const x0 = k * 64 + h2(q, i + 32) * 24, w = 24 + h2(q, i + 33) * 34, by = cy + 18 + h2(q, i + 34) * Math.max(0, fy - cy - 50), u = wx - x0;
       if (u < 0 || u >= w || y < by) continue;
-      const under = y - by;
-      if (under < 2) return TM.BEAM;
-      if (under < 4) return TM.BEAMD;
+      const under2 = y - by;
+      if (under2 < 2) return TM.BEAM;
+      if (under2 < 4) return TM.BEAMD;
       if (u < 3 || u >= w - 3) return u < 1.5 || u >= w - 3 && u < w - 1.5 ? TM.BEAM : TM.BEAMD;
-      if (u >= 3 && u <= 11 && Math.abs(under - 4 - (11 - u)) < 1 || u >= w - 11 && u < w - 3 && Math.abs(under - 4 - (u - (w - 11))) < 1) return TM.BEAMD;
+      if (u >= 3 && u <= 11 && Math.abs(under2 - 4 - (11 - u)) < 1 || u >= w - 11 && u < w - 3 && Math.abs(under2 - 4 - (u - (w - 11))) < 1) return TM.BEAMD;
     }
     return -1;
   }
@@ -14366,10 +14372,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (M && !t && y < cy && !inHole(y)) m = TM.ROCK;
       else if (M && t) {
         if (t.frame && y >= t.c) {
-          const uc = t.uc, under = y - t.c, post = uc >= 0 && uc < 4 || uc >= FRAME_W - 4 && uc < FRAME_W;
-          if (uc >= -4 && uc < FRAME_W + 4 && under < 4) m = under < 2 ? TM.BEAM : TM.BEAMD;
+          const uc = t.uc, under2 = y - t.c, post = uc >= 0 && uc < 4 || uc >= FRAME_W - 4 && uc < FRAME_W;
+          if (uc >= -4 && uc < FRAME_W + 4 && under2 < 4) m = under2 < 2 ? TM.BEAM : TM.BEAMD;
           else if (post) m = uc < 2 || uc >= FRAME_W - 4 && uc < FRAME_W - 2 ? TM.BEAM : TM.BEAMD;
-          else if (uc >= 4 && uc <= 12 && Math.abs(under - 4 - (12 - uc)) < 1 || uc >= FRAME_W - 12 && uc < FRAME_W - 4 && Math.abs(under - 4 - (uc - (FRAME_W - 12))) < 1) m = TM.BEAMD;
+          else if (uc >= 4 && uc <= 12 && Math.abs(under2 - 4 - (12 - uc)) < 1 || uc >= FRAME_W - 12 && uc < FRAME_W - 4 && Math.abs(under2 - 4 - (uc - (FRAME_W - 12))) < 1) m = TM.BEAMD;
           else if (y >= t.f - 2 && (uc >= -1 && uc < 5 || uc >= FRAME_W - 5 && uc < FRAME_W + 1)) m = TM.BEAMD;
         }
       } else if (M && inHole(y)) m = TM.AIR;
@@ -16546,12 +16552,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       jump = false;
     }
     if (!e.arrive || R() < dt) e.arrive = kr("raArrive", R);
-    let way = goal, follow = false, air = false;
+    let way = goal, follow2 = false, air = false;
     if (hunting && e.ra) {
       const F2 = navYou(S2, ru, goal, CS), w = F2 && navWay(F2, e.x, e.y, 1);
       if (w) {
         way = w.dist > 2 ? w : goal;
-        follow = true;
+        follow2 = true;
         air = !!w.air && w.dist > 2;
       }
     }
@@ -16562,7 +16568,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       hunting,
       home: false,
       path: void 0,
-      follow,
+      follow: follow2,
       air,
       onWeb: onWeb(S2),
       speedMul: 1,
@@ -18115,12 +18121,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         digN(ex, ey, r);
       };
       const cr = rad * 0.5, crx0 = Math.max(15, Math.round(cr * 0.38)), fl0 = cy + Math.max(12, Math.round(cr * 0.26));
-      const under = (x, y) => x >= cx - crx0 - 2 && x <= cx + crx0 + 2 && y >= fl0 && y <= fl0 + 6;
+      const under2 = (x, y) => x >= cx - crx0 - 2 && x <= cx + crx0 + 2 && y >= fl0 && y <= fl0 + 6;
       const digS = (ex, ey, r, stamp = 0) => {
         let c = 0;
         for (let y = Math.floor(ey - r); y <= Math.ceil(ey + r); y++) for (let x = Math.floor(ex - r); x <= Math.ceil(ex + r); x++) {
           const i = y * CW + x;
-          if (x > 0 && y > 0 && x < CW && y < CH && mask[i] === id && mat[i] && !under(x, y) && (x + 0.5 - ex) ** 2 + (y + 0.5 - ey) ** 2 <= r * r) {
+          if (x > 0 && y > 0 && x < CW && y < CH && mask[i] === id && mat[i] && !under2(x, y) && (x + 0.5 - ex) ** 2 + (y + 0.5 - ey) ** 2 <= r * r) {
             mat[i] = 0;
             c++;
             if (stamp) own[i] = stamp;
@@ -18241,7 +18247,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         const src2 = mat.slice();
         for (let y = y0 + 1; y < y1; y++) for (let x = x0 + 1; x < x1; x++) {
           const i = y * CW + x;
-          if (mask[i] !== id || flat2(x, y) || under(x, y) || src2[i] === BED) continue;
+          if (mask[i] !== id || flat2(x, y) || under2(x, y) || src2[i] === BED) continue;
           const o = !src2[i];
           let d = A1 + 1;
           for (let dy = -A1; dy <= A1; dy++) for (let dx = -A1; dx <= A1; dx++) {
@@ -18316,7 +18322,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         const src2 = mat.slice(), sh = 1 - pass;
         for (let y = y0 + 1; y < y1; y++) for (let x = x0 + 1; x < x1; x++) {
           const i = y * CW + x;
-          if (mask[i] !== id || flat2(x, y) || under(x, y)) continue;
+          if (mask[i] !== id || flat2(x, y) || under2(x, y)) continue;
           let nb = 0;
           for (const j of [i - 1, i + 1, i - CW, i + CW, i - CW - 1, i - CW + 1, i + CW - 1, i + CW + 1]) if (src2[j]) nb++;
           const v = cellNoise(x >> sh, y >> sh, seed + id * 7 + pass);
@@ -18341,7 +18347,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const tunnels = [];
       const rockAt = (x, y) => {
         const i = Math.floor(y) * CW + Math.floor(x);
-        return mask[i] === id && mat[i] !== 0 && !under(Math.floor(x), Math.floor(y));
+        return mask[i] === id && mat[i] !== 0 && !under2(Math.floor(x), Math.floor(y));
       };
       for (let t = 0, tries = 1500 * area; t < tries && open < goal; t++) {
         const x = Math.floor(x0 + R() * (x1 - x0)), y = Math.floor(y0 + R() * (y1 - y0)), i = y * CW + x;
@@ -18373,7 +18379,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           if (l && !rr2) ang -= 0.25;
           else if (rr2 && !l) ang += 0.25;
           const nx = px + Math.cos(ang) * 1.5, ny = py + Math.sin(ang) * 1.5;
-          if (mask[Math.floor(ny) * CW + Math.floor(nx)] !== id || under(Math.floor(nx), Math.floor(ny))) {
+          if (mask[Math.floor(ny) * CW + Math.floor(nx)] !== id || under2(Math.floor(nx), Math.floor(ny))) {
             ang += 2.2;
             continue;
           }
@@ -23177,13 +23183,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
     }
     if (!e.arrive || Math.random() < dt) e.arrive = kr("raArrive");
-    let way = goal, follow = false, air = false;
+    let way = goal, follow2 = false, air = false;
     if (fast && S2 && S2.mode !== "tunnel") {
       const F2 = home ? navFor(W, N.nest, goal, 100) : want ? navFor(W, want, goal, 36) : navFor(W, W.navYou, goal, 56);
       const w = F2 && navWay(F2, e.x, e.y, 1);
       if (w) {
         way = w.dist > 2 ? w : goal;
-        follow = true;
+        follow2 = true;
         air = w.air && w.dist > 2;
       }
       const job = home ? N : want || W.navYou;
@@ -23205,7 +23211,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       hunting: fast,
       home,
       path: e.path,
-      follow,
+      follow: follow2,
       air,
       onWeb: G.ratOnWeb,
       speedMul: cold,
@@ -29523,11 +29529,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         paint3.push((x, y) => x >= s0 - 6 && x < s0 + LAB_SPOT + 6 && y < mroof ? TM.ROCK : -1);
         for (const left of [x0 + 4, x1 - 4 - FRAME_W]) {
           paint3.push((x, y) => {
-            const uc = x - left, under = y - mroof, post = uc >= 0 && uc < 4 || uc >= FRAME_W - 4 && uc < FRAME_W;
+            const uc = x - left, under2 = y - mroof, post = uc >= 0 && uc < 4 || uc >= FRAME_W - 4 && uc < FRAME_W;
             if (y < mroof || y >= fy) return -1;
-            if (uc >= -4 && uc < FRAME_W + 4 && under < 4) return under < 2 ? TM.BEAM : TM.BEAMD;
+            if (uc >= -4 && uc < FRAME_W + 4 && under2 < 4) return under2 < 2 ? TM.BEAM : TM.BEAMD;
             if (post) return uc < 2 || uc >= FRAME_W - 4 && uc < FRAME_W - 2 ? TM.BEAM : TM.BEAMD;
-            if (uc >= 4 && uc <= 12 && Math.abs(under - 4 - (12 - uc)) < 1 || uc >= FRAME_W - 12 && uc < FRAME_W - 4 && Math.abs(under - 4 - (uc - (FRAME_W - 12))) < 1) return TM.BEAMD;
+            if (uc >= 4 && uc <= 12 && Math.abs(under2 - 4 - (12 - uc)) < 1 || uc >= FRAME_W - 12 && uc < FRAME_W - 4 && Math.abs(under2 - 4 - (uc - (FRAME_W - 12))) < 1) return TM.BEAMD;
             if (y >= fy - 2 && (uc >= -1 && uc < 5 || uc >= FRAME_W - 5 && uc < FRAME_W + 1)) return TM.BEAMD;
             return -1;
           });
@@ -32861,7 +32867,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const fams = Object.keys(FAMILIES);
     return Object.keys(MODS).filter((id) => !id.includes(":") && !MODS[id].trig).sort((a, b) => fams.indexOf(FAMILY_OF[a] || "shots") - fams.indexOf(FAMILY_OF[b] || "shots") || MODS[a].name.localeCompare(MODS[b].name));
   };
-  function ModGrid({ onMod, onTap, note }) {
+  function ModGrid({ onMod, onTap, onDrag, note }) {
     const [pick, setPick] = useState(null);
     const [got, setGot] = useState("");
     const hold = useRef(null);
@@ -32870,6 +32876,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       hold.current = H;
       if (!(e.target && e.target.closest && e.target.closest(".agrab"))) return;
       e.preventDefault();
+      if (onDrag) {
+        hold.current = null;
+        setPick(id);
+        onDrag(e, id);
+        return;
+      }
       H.t = window.setTimeout(() => {
         if (hold.current !== H) return;
         H.done = true;
@@ -35884,9 +35896,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       e.preventDefault();
       const el = e.currentTarget;
       el.style.pointerEvents = "none";
-      const under = document.elementFromPoint(e.clientX, e.clientY);
+      const under2 = document.elementFromPoint(e.clientX, e.clientY);
       el.style.pointerEvents = "";
-      const tile2 = under && under.closest ? under.closest("[data-mod]") : null;
+      const tile2 = under2 && under2.closest ? under2.closest("[data-mod]") : null;
       const next = tile2 && tile2.dataset.mod;
       setInfo(next && next !== info ? next : null);
     };
@@ -36335,21 +36347,62 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     e.stopPropagation();
     fn();
   };
+  var DRAG_PX = 8;
+  function follow(e, move, end) {
+    const x0 = e.clientX, y0 = e.clientY;
+    let moved = false;
+    const mv = (ev) => {
+      if (!moved && Math.hypot(ev.clientX - x0, ev.clientY - y0) > DRAG_PX) moved = true;
+      if (moved) move(ev.clientX, ev.clientY);
+    };
+    const up = (ev) => {
+      window.removeEventListener("pointermove", mv);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+      end(ev.clientX, ev.clientY, moved && ev.type === "pointerup");
+    };
+    window.addEventListener("pointermove", mv);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
+  }
+  var under = (x, y, sel) => {
+    const el = document.elementFromPoint(x, y);
+    return el && el.closest ? el.closest(sel) : null;
+  };
   function PresetLib() {
     const [list, setList] = useState(loadPresets);
     const [open, setOpen] = useState(-1);
+    const [drag, setDrag] = useState(null);
     if (open >= 0 && list[open]) {
       return h(PresetEdit, { key: open + "|" + list[open].name, list, i: open, setList, setOpen });
     }
+    const grab = (e, i) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const at = (x, y) => {
+        const t = under(x, y, "[data-preset]");
+        return t ? Number(t.getAttribute("data-preset")) : -1;
+      };
+      follow(e, (x, y) => setDrag({ i, x, y, over: at(x, y) }), (x, y, moved) => {
+        setDrag(null);
+        const j = moved ? at(x, y) : -1;
+        if (j < 0 || j === i) return;
+        const next = movePreset(loadPresets(), i, j - i);
+        savePresets(next);
+        setList(next);
+        SFX.ui("tap");
+      });
+    };
+    const dp = drag ? list[drag.i] : null;
     return h(
       "div",
       { className: "aplib" },
-      h("p", { className: "devnote" }, "Your saved guns, in the order Grem Mode unlocks them. Tap one to see it fire and change it. 💾 on a gun’s panel (dev mode) saves a new one."),
+      h("p", { className: "devnote" }, "Your saved guns, in the order Grem Mode unlocks them. Tap one to see it fire and change it; drag ⠿ to move it. 💾 on a gun’s panel (dev mode) saves a new one."),
       list.length ? h("div", { className: "apltiles" }, list.map((p, i) => h(
         "button",
         {
           key: i,
-          className: "apltile",
+          className: "apltile" + (drag && drag.i === i ? " lift" : "") + (drag && drag.over === i && drag.i !== i ? " drop" : ""),
           "data-preset": i,
           onPointerDown: tap(() => {
             SFX.fx("open");
@@ -36358,10 +36411,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           })
         },
         h("i", { className: "aplnum" }, i + 1),
+        h("i", { className: "aplhandle", onPointerDown: (e) => grab(e, i) }, "⠿"),
         h("span", { className: "aplicon" }, h(GunIcon, { gun: p.gun })),
         h("b", { className: "aplname" }, p.name),
         h("i", { className: "aplprice" }, gremPrice(i) + "g")
-      ))) : h("p", { className: "prenone" }, "No presets yet — open a gun in the nav and tap 💾 on its panel.")
+      ))) : h("p", { className: "prenone" }, "No presets yet — open a gun in the nav and tap 💾 on its panel."),
+      drag && dp ? h(
+        "div",
+        { className: "apltile aplghost", style: { left: drag.x + "px", top: drag.y + "px" } },
+        h("span", { className: "aplicon" }, h(GunIcon, { gun: dp.gun })),
+        h("b", { className: "aplname" }, dp.name)
+      ) : null
     );
   }
   function PresetEdit({ list, i, setList, setOpen }) {
@@ -36372,6 +36432,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const [pick, setPick] = useState(-1);
     const [asking, setAsking] = useState(false);
     const [flash, setFlash] = useState("");
+    const [art, setArt] = useState(false);
+    const [drag, setDrag] = useState(null);
     const pl = useRef(newPlayer(0));
     if (!draft) return h("p", { className: "prenone" }, "This preset can’t be read.");
     pl.current.guns[0] = draft;
@@ -36406,6 +36468,34 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       setPick(-1);
       changed();
       SFX.fx("open");
+    };
+    const spot = (x, y) => {
+      const t = under(x, y, "[data-eslot]");
+      return { over: t ? Number(t.getAttribute("data-eslot")) : -1, out: !t && !!under(x, y, ".apledgrid") };
+    };
+    const dragMod = (e, id, from) => {
+      follow(e, (x, y) => setDrag(Object.assign({ id, from, x, y }, spot(x, y))), (x, y, moved) => {
+        setDrag(null);
+        if (!moved) {
+          if (from >= 0) slotTap(from);
+          return;
+        }
+        const { over, out } = spot(x, y);
+        if (over >= 0 && over !== from) {
+          if (from >= 0) {
+            draft.slots[from] = draft.slots[over];
+            draft.slots[over] = id;
+          } else draft.slots[over] = id;
+          setPick(-1);
+          changed();
+          SFX.fx("open");
+        } else if (out && from >= 0) {
+          draft.slots[from] = null;
+          setPick(-1);
+          changed();
+          SFX.fx("close");
+        }
+      });
     };
     const empty = () => {
       if (pick < 0) return;
@@ -36442,10 +36532,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       setOpen(-1);
       SFX.fx("close");
     };
-    const sig = "pre|" + i + "|" + v + "|" + draft.slots.join();
+    const sig = "pre|" + i + "|" + v + "|" + draft.slots.join() + "|" + (draft.art || "");
+    const dit = drag ? { kind: "mod", id: drag.id, n: 1 } : null;
     return ReactDOM.createPortal(h(
       "div",
-      { className: "apled" },
+      { className: "apled" + (drag && drag.from >= 0 && drag.out ? " bin" : "") },
       h(
         "div",
         { className: "apledtop" },
@@ -36457,6 +36548,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             setOpen(-1);
           }) }, "‹ Presets"),
           h("b", null, "#" + (i + 1) + " of " + list.length),
+          h("button", { className: "dbg apledart", title: "Gun look", onPointerDown: tap(() => {
+            SFX.fx("open");
+            setArt(true);
+          }) }, "🖼️"),
           h("button", { className: "dbg", disabled: i === 0, onPointerDown: tap(() => move(-1)) }, "◀"),
           h("button", { className: "dbg", disabled: i === list.length - 1, onPointerDown: tap(() => move(1)) }, "▶"),
           h("button", { className: "dbg apleddel" + (asking ? " sure" : ""), onPointerDown: tap(del) }, asking ? "Delete" : "🗑️")
@@ -36474,12 +36569,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         h(GunPanel, { gun: draft, sig, col: "#ffc93a", cls: "apledpanel", pl: pl.current, gi: 0, noSave: true }),
         h("div", { className: "apledslots" }, draft.slots.map((id, s) => {
           const it = id && MODS[id] ? { kind: "mod", id, n: 1 } : null;
+          const lifted = drag && drag.from === s, over = drag && drag.over === s && drag.from !== s;
           return h("button", {
             key: s,
-            className: "aslot anavs" + (it ? " full k-mod" : "") + (s === pick ? " sel" : ""),
-            "data-pslot": s,
+            className: "aslot anavs" + (it ? " full k-mod" : "") + (s === pick ? " sel" : "") + (lifted ? " lift" : "") + (over ? " drop" : ""),
+            "data-eslot": s,
             style: itemEdge(it),
-            onPointerDown: tap(() => slotTap(s))
+            onPointerDown: (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (id) dragMod(e, id, s);
+              else slotTap(s);
+            }
           }, it ? h(ItemIcon, { it }) : null);
         })),
         h(
@@ -36493,8 +36594,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       h(
         "div",
         { className: "apledgrid" },
-        h(ModGrid, { onMod: put, onTap: put, note: "Tap a slot to pick it (tap another to swap them), then tap a mod to put it there; no slot picked: the first empty one." })
-      )
+        h(ModGrid, {
+          onMod: put,
+          onTap: put,
+          onDrag: (e, id) => dragMod(e, id, -1),
+          note: "Drag a mod (its middle) onto a slot, or tap one to put it in the picked slot (no slot picked: the first empty one). Drag a slot’s mod onto another slot to swap them, or down here to throw it away."
+        })
+      ),
+      drag && dit ? h("div", { className: "aslot full aghost k-mod", style: Object.assign({ left: drag.x + "px", top: drag.y + "px" }, itemEdge(dit)) }, h(ItemIcon, { it: dit })) : null,
+      art ? h(GunArtPicker, { gun: draft, onPick: changed, close: () => setArt(false) }) : null
     ), document.body);
   }
 

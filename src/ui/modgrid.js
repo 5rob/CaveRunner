@@ -17,9 +17,10 @@ const gridIds = () => {
     .sort((a, b) => fams.indexOf(FAMILY_OF[a] || 'shots') - fams.indexOf(FAMILY_OF[b] || 'shots') || MODS[a].name.localeCompare(MODS[b].name));
 };
 
-// onTap (Dev → Presets' gun editor, ui/auto/presetlib.js): a tap also hands the mod over (it goes into the gun), with its note
-/** @param {{ onMod: (id: string) => void, onTap?: (id: string) => void, note?: string }} props */
-export function ModGrid({ onMod, onTap, note }) {
+// onTap (Dev → Presets' gun editor, ui/auto/presetlib.js): a tap also hands the mod over (it goes into the gun), with its note;
+// onDrag (the same editor, owner): a press on the grab circle drags the mod out (onto a slot) instead of the hold
+/** @param {{ onMod: (id: string) => void, onTap?: (id: string) => void, onDrag?: (e: any, id: string) => void, note?: string }} props */
+export function ModGrid({ onMod, onTap, onDrag, note }) {
   /** @type {[string | null, (v: string | null) => void]} */
   const [pick, setPick] = useState(null);
   /** @type {[string, (v: string | ((g: string) => string)) => void]} */
@@ -32,6 +33,7 @@ export function ModGrid({ onMod, onTap, note }) {
     hold.current = H;
     if (!(e.target && e.target.closest && e.target.closest('.agrab'))) return;   // (off the grab circle: a tap, or the start of a scroll)
     e.preventDefault();
+    if (onDrag) { hold.current = null; setPick(id); onDrag(e, id); return; }
     H.t = window.setTimeout(() => {
       if (hold.current !== H) return;
       H.done = true; onMod(id); setGot(id); setPick(id);
