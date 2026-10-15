@@ -5,6 +5,14 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.90 — CaveRunner Auto: Grem Mode made gentler (branch `autobattler`)
+Released 2026-10-15 on the branch; owner OK'd the screenshots (`node tools/gremshots.js`).
+- Players take no damage in Grem (enemies.js levelHurt); the helmets lose their health rings.
+- The creatures and the run's pace climb a quarter as fast per level (`DEV.gremHard` 0.25: grem.js gremHardTier, enemies.js gremFoe; kill gold still the level's). Gold drops × `DEV.gremGold` (2), kills and chests.
+- No A or B: a tap on the play area opens a chest in reach (hint "Tap to open.", drawHint's new noKey), else picks a target as before. The stick is centred at the bottom, helmets 1-2 left of it, 3-4 right.
+- The dark 15% brighter in Grem (`DEV.gremDark` 0.85, titledraw.js titleDark).
+- Players 2-4 no longer join by level (knobs gremP2-4 gone): they are unlocks on the gun row, helmet tiles spread among the guns (grem.js gremUnlocks; Dev → Presets prices count along it).
+
 ## v1.0.89 — CaveRunner Auto: Dev → Presets drags and gun look (branch `autobattler`)
 Released 2026-10-15 on the branch; owner OK'd the screenshots (`node tests/run.js auto-presets` → tests/build/autoshots/presets-*.png).
 - Owner: the ⠿ handle on a preset tile drags it onto another's place (the order, so Grem's unlock order). In the editor: a slot's mod dragged onto another slot swaps them, onto the mod grid throws it away (the grid glows red), a mod's grab circle in the grid drags a new one onto a slot; taps work as before. 🖼️ opens the gun look gallery (ui/gunart.js), saved with Save changes. The editor's slots are `data-eslot` now (`data-pslot` is the nav's player circles). Suite auto-presets (browser).
