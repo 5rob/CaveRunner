@@ -606,13 +606,13 @@ DEV_META.push(
   { k: 'autoHubDemoNear', g: 'autohub', label: 'A crystal machine plays its demo with you this near (world units; the old shop’s 100)', min: 20, max: 240, step: 5 });
 DEV_GROUPS.push(['autohub', 'Auto: hub']);
 // Grem Mode (auto/grem.js): the unlocks' prices (each dearer than the last), how fast the creatures toughen, the gold, the dark
-Object.assign(DEV_DEFAULTS, { gremPrice: 100, gremGrow: 1.5, gremHard: 0.25, gremGold: 2, gremDark: 0.15, gremPickR: 40 });
+Object.assign(DEV_DEFAULTS, { gremPrice: 100, gremGrow: 1.5, gremHard: 0.25, gremGold: 2, gremDark: 0.85, gremPickR: 40 });
 DEV_META.push(
   { k: 'gremPrice', g: 'grem', label: 'The first unlock costs (gold)', min: 5, max: 10000, step: 5 },
   { k: 'gremGrow',  g: 'grem', label: 'Each unlock after it costs × this more', min: 1, max: 4, step: 0.05 },
   { k: 'gremHard',  g: 'grem', label: 'Creatures toughen per level × (1 = as CaveRunner Auto)', min: 0, max: 1, step: 0.05 },
   { k: 'gremGold',  g: 'grem', label: 'Gold drops × (kills and chests)', min: 1, max: 10, step: 0.5 },
-  { k: 'gremDark',  g: 'grem', label: 'The dark × (1 = as CaveRunner Auto; 0.15: 85% lighter)', min: 0, max: 1, step: 0.05 },
+  { k: 'gremDark',  g: 'grem', label: 'The dark × (1 = as CaveRunner Auto; owner: 0.85, 15% brighter)', min: 0, max: 1, step: 0.05 },
   { k: 'gremPickR', g: 'grem', label: 'A tap picks the creature nearest it within (world units; the screen is 220 across)', min: 5, max: 220, step: 5 });
 DEV_GROUPS.push(['grem', 'Grem Mode']);
 // CaveRunner Auto's maps (auto/maps.js): the map machine's prices, and how much harder each map starts

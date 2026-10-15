@@ -63,10 +63,6 @@ const PRESETS = [['Pea Shooter', ['bolt']], ['Double Spark', ['double', 'spark']
   await page.evaluate(() => { DEV.gremDark = 1; });
   await page.waitForTimeout(200);
   await save('b-dark1', 'the same with the dark as before (DEV.gremDark 1), to compare');
-  await page.evaluate(() => { DEV.gremDark = 0.85; });
-  await page.waitForTimeout(200);
-  await save('b-dark85', 'the dark × 0.85, to compare');
-  await page.evaluate(() => { DEV.gremDark = 0.15; });
   // a chest beside player 1: Tap to open., then a tap on the play area opens it
   await page.evaluate(() => {
     const S = window.__gremScene, L = S.lvl.data, r = S.runners[0];
