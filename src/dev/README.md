@@ -104,7 +104,8 @@
   a zone's `zl_<zone>_<k>` → all zones share `ZONE_KNOBS`' default, so a one-zone change is an `Object.assign
   (DEV_DEFAULTS, { zl_<zone>_<k>: v })` after the zone loop; a `zv_*` box → its entry in the `zv_` `Object.assign`;
   `PRESETS-JSON` → `DEFAULT_PRESETS` and `GREM-KIT-JSON` → `GREM_KIT_DEFAULT`, pasted as they are.
-- The last report made defaults: v0.0.159's (applied in v0.0.161; `fireSpreadHi` put back to 0.2 in v0.0.162 at the
+- The last report made defaults on `autobattler`: v1.0.94's (applied in v1.0.95: zone knobs, presets, Grem kit).
+- The last report made defaults on `main`: v0.0.159's (applied in v0.0.161; `fireSpreadHi` put back to 0.2 in v0.0.162 at the
   owner's word). Tests that measured the old numbers pin them (`rats`, `dark`, `furnish`, `tomb`).
 - **The owner pastes a Dev report → those numbers become the new `DEV_DEFAULTS`** (or the range
   table's default min/max). Then check which tests leaned on the old default and pin the knob

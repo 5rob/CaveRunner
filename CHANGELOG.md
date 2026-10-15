@@ -5,6 +5,11 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.95 — CaveRunner Auto: the owner's Dev settings are the defaults (branch `autobattler`)
+Released 2026-10-16 on the branch, from the owner's Copy Dev settings of v1.0.94.
+- Mossy caves may have heavy vegetation and spider web (`zv_veg_moss`, `zv_spid_moss` 1); Mossy caves' own vegetation 0.8 patches, 0.55 thick, 0.95 vine length, orb webs ×10 (`zl_moss_*`, an `Object.assign` after the zone loop); Webs zone plants and webs density 0 (`zl_webs_dens`).
+- The owner's 22 gun presets are the built-in list (`save/presetdefaults.js`), and their Grem kit the built-in kit (5 tier-5 health exos; Pinpoint, Repel, Gold perks; `GREM_KIT_DEFAULT`): a device that never saved its own gets them.
+
 ## v1.0.94 — CaveRunner Auto: Copy Dev settings holds everything (branch `autobattler`)
 Released 2026-10-16 on the branch (plumbing, no look change). Owner: the copy should be complete enough to become the defaults, so another device plays the same.
 - Copy Dev settings (auto/devcopy.js `devCopyText`) now has every DEV key (the Zones page's check boxes `zv_*` were missing; numbers rounded), the gun presets (Dev → Presets) and Grem's kit (Dev → Grem: player 1's exo mods and perks, the name tags) as JSON when they differ from the built-in ones.

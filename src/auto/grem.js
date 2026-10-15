@@ -109,7 +109,8 @@ export function gremKitClean(k) {
 // (v1.0.94) the kit a device starts with when it has never saved its own (Dev → Grem): a pasted Copy Dev settings
 // carries the owner's as JSON between GREM-KIT-JSON-BEGIN / -END, and it goes here as it is (null: an empty kit)
 /** @type {any} */
-export const GREM_KIT_DEFAULT = null;
+// (v1.0.95) the owner's, from their Copy Dev settings of v1.0.94
+export const GREM_KIT_DEFAULT = { exo: { hp: [5, 5, 5, 5, 5], speed: [0, 0, 0, 0, 0], jet: [0, 0, 0, 0, 0] }, perks: ['pinpoint', 'repel', 'gold', null, null, null], names: ['', '', '', ''] };
 /** @returns {GremKit} */
 export const gremKitLoad = () => { try { const raw = localStorage.getItem(GREM_KIT_KEY); return gremKitClean(raw == null ? GREM_KIT_DEFAULT : JSON.parse(raw)); } catch (_) { return gremKitClean(GREM_KIT_DEFAULT); } };
 /** @param {GremKit} k */

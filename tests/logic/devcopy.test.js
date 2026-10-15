@@ -29,7 +29,9 @@ G.gremKitSave(kit);
 t = G.devCopyText();
 const between = (tag) => { const m = new RegExp(tag + '-BEGIN\\n(.*)\\n' + tag + '-END').exec(t); return m && JSON.parse(m[1]); };
 const pj = between('PRESETS-JSON'), kj = between('GREM-KIT-JSON');
-check('the presets are in it, by name and as JSON', /1 gun: Zapper/.test(t) && pj && pj.length === 1 && pj[0].name === 'Zapper', t.split('\n').slice(-12));
+const nDef = G.cleanPresets(G.DEFAULT_PRESETS).length;
+check('the presets are in it, by name and as JSON (the built-in ones, then the new one)', new RegExp((nDef + 1) + ' guns?: .*Zapper').test(t) && pj && pj.length === nDef + 1 && pj[nDef].name === 'Zapper',
+  pj && pj.map(p => p.name));
 check('the Grem kit is in it, name tags and fitted', /name tags: Rob/.test(t) && kj && kj.names[0] === 'Rob' && kj.exo[G.EXO_CATS[0]][0] === 2);
 check('the presets JSON cleans to the same list (it can be the default as it is)', JSON.stringify(G.cleanPresets(pj)) === JSON.stringify(G.loadPresets()));
 check('the kit JSON cleans to the same kit', JSON.stringify(G.gremKitClean(kj)) === JSON.stringify(G.gremKitLoad()));
