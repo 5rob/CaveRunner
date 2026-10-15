@@ -5,6 +5,10 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.89 — CaveRunner Auto: Dev → Presets drags and gun look (branch `autobattler`)
+Released 2026-10-15 on the branch; owner OK'd the screenshots (`node tests/run.js auto-presets` → tests/build/autoshots/presets-*.png).
+- Owner: the ⠿ handle on a preset tile drags it onto another's place (the order, so Grem's unlock order). In the editor: a slot's mod dragged onto another slot swaps them, onto the mod grid throws it away (the grid glows red), a mod's grab circle in the grid drags a new one onto a slot; taps work as before. 🖼️ opens the gun look gallery (ui/gunart.js), saved with Save changes. The editor's slots are `data-eslot` now (`data-pslot` is the nav's player circles). Suite auto-presets (browser).
+
 ## v1.0.88 — CaveRunner Auto: a White Hole pulls every Discriminate's target (branch `autobattler`)
 Released 2026-10-15 on the branch.
 - Fix (owner's screenshot: a White Hole with Discriminates rat, gold and green gem never pulled gold): `auto/shotfx.js vacPull` chose what to pull by the first target's kind only (`only.kind`), so a creature first meant no gold or gems. It now checks every target (`targetsOf` / `matchesTarget`); the same for players. Suite auto-discrim.
