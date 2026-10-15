@@ -946,6 +946,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   background:rgba(0,0,0,0.3);color:#fff;font:700 26px system-ui,sans-serif;line-height:34px}
 .tvol{padding:6px 12px}
 .volumes{display:flex;flex-direction:column;gap:9px}
+/* (owner v1.0.93) locked by a 4 s hold: dimmed, the sliders take no touches (the hold still reaches .volumes) */
+.volumes.locked .volslider{pointer-events:none;opacity:.4;filter:grayscale(1)}
+.volumes.locked .pvol{opacity:.75}
 
 /* CaveRunner Auto's screen (stage 2, ui/auto/AutoScreen.js): play area, nav, bag, buttons, in the title menu's colours */
 .auto{position:fixed;inset:0;display:flex;flex-direction:column;gap:6px;box-sizing:border-box;

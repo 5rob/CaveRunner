@@ -955,6 +955,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   background:rgba(0,0,0,0.3);color:#fff;font:700 26px system-ui,sans-serif;line-height:34px}
 .tvol{padding:6px 12px}
 .volumes{display:flex;flex-direction:column;gap:9px}
+/* (owner v1.0.93) locked by a 4 s hold: dimmed, the sliders take no touches (the hold still reaches .volumes) */
+.volumes.locked .volslider{pointer-events:none;opacity:.4;filter:grayscale(1)}
+.volumes.locked .pvol{opacity:.75}
 
 /* CaveRunner Auto's screen (stage 2, ui/auto/AutoScreen.js): play area, nav, bag, buttons, in the title menu's colours */
 .auto{position:fixed;inset:0;display:flex;flex-direction:column;gap:6px;box-sizing:border-box;
@@ -36410,11 +36413,55 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
 
   // src/ui/volume.js
+  var VOL_LOCK_KEY = "caverunner-vol-lock";
+  var VOL_HOLD_MS = 4e3;
+  var VOL_SLOP = 10;
+  var VOL_KEYS = ["master", "fx", "music"];
+  var lockLoad = () => {
+    try {
+      return localStorage.getItem(VOL_LOCK_KEY) === "1";
+    } catch (_) {
+      return false;
+    }
+  };
+  var lockSave = (on) => {
+    try {
+      localStorage.setItem(VOL_LOCK_KEY, on ? "1" : "0");
+    } catch (_) {
+    }
+  };
   function Volumes() {
     const [v, setV] = useState(() => ({ master: SFX.volume, fx: SFX.fxVolume, music: SFX.musicVolume }));
+    const [locked, setLocked] = useState(lockLoad);
+    const lockRef = useRef(locked);
+    lockRef.current = locked;
+    const hold = useRef(null);
     const SET = { master: SFX.setVolume, fx: SFX.setFxVolume, music: SFX.setMusicVolume };
+    const cancel = () => {
+      if (hold.current) clearTimeout(hold.current.t);
+      hold.current = null;
+    };
+    useEffect(() => cancel, []);
+    const down = (e) => {
+      cancel();
+      const v0 = { master: SFX.volume, fx: SFX.fxVolume, music: SFX.musicVolume };
+      hold.current = { id: e.pointerId, x: e.clientX, y: e.clientY, v0, t: setTimeout(() => {
+        const on = !lockRef.current, was = hold.current ? hold.current.v0 : v0;
+        hold.current = null;
+        for (const k of VOL_KEYS) SET[k](was[k]);
+        setV(was);
+        lockSave(on);
+        setLocked(on);
+        SFX.fx(on ? "close" : "open");
+      }, VOL_HOLD_MS) };
+    };
+    const move = (e) => {
+      const H = hold.current;
+      if (H && e.pointerId === H.id && Math.hypot(e.clientX - H.x, e.clientY - H.y) > VOL_SLOP) cancel();
+    };
     const row = (k, label) => {
       const slide = (e) => {
+        if (lockRef.current) return;
         const x = Number(e.target.value) / 100;
         SET[k](x);
         setV((o) => ({ ...o, [k]: x }));
@@ -36423,11 +36470,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       return h(
         "label",
         { key: k, className: "pvol tvol", "data-vol": k },
-        h("span", null, label, h("b", null, Math.round(v[k] * 100) + "%")),
-        h("input", { type: "range", min: 0, max: 100, step: 1, value: Math.round(v[k] * 100), className: "volslider", onInput: slide, onChange: slide })
+        h("span", null, label + (locked ? " 🔒" : ""), h("b", null, Math.round(v[k] * 100) + "%")),
+        h("input", { type: "range", min: 0, max: 100, step: 1, value: Math.round(v[k] * 100), className: "volslider", onInput: slide, onChange: slide, tabIndex: locked ? -1 : 0 })
       );
     };
-    return h("div", { className: "volumes" }, row("master", "Master"), row("fx", "FX"), row("music", "Music"));
+    return h(
+      "div",
+      { className: "volumes" + (locked ? " locked" : ""), onPointerDown: down, onPointerMove: move, onPointerUp: cancel, onPointerCancel: cancel, onPointerLeave: cancel },
+      row("master", "Master"),
+      row("fx", "FX"),
+      row("music", "Music")
+    );
   }
 
   // src/ui/pause.js
