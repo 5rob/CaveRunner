@@ -669,7 +669,8 @@ function titleDark(ctx, S) {
   }
   // the dark, the light cut out of it, laid over the scene smoothed
   dc.setTransform(1, 0, 0, 1, 0, 0); dc.globalCompositeOperation = 'source-over'; dc.clearRect(0, 0, w, h);
-  dc.fillStyle = 'rgba(9,10,14,' + DEV.fogDim + ')'; dc.fillRect(0, 0, w, h);
+  // (Grem Mode, owner v1.0.90: lighter, some of the level seen) × DEV.gremDark
+  dc.fillStyle = 'rgba(9,10,14,' + DEV.fogDim * (S.lvl && S.lvl.data && S.lvl.data.grem ? DEV.gremDark : 1) + ')'; dc.fillRect(0, 0, w, h);
   dc.globalCompositeOperation = 'destination-out'; dc.filter = 'blur(1.5px)'; dc.drawImage(L, 0, 0); dc.filter = 'none';
   dc.globalCompositeOperation = 'source-over';
   const sm = ctx.imageSmoothingEnabled;

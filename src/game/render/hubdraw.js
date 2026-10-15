@@ -389,21 +389,23 @@ export function drawPrice(ctx, cx, fy, p, t) {
 
 // main's machine hint (ui .buypanel.pickpanel: a dark see-through panel, a green edge, the key in a thin white ring,
 // the words in bold green) at x, its bottom at y, gently bobbing
-/** @param {CanvasRenderingContext2D} ctx @param {number} x @param {number} y @param {string} text @param {number} t */
-export function drawHint(ctx, x, y, text, t) {
+/** @param {CanvasRenderingContext2D} ctx @param {number} x @param {number} y @param {string} text @param {number} t @param {boolean} [noKey] no A key (Grem Mode: a tap) */
+export function drawHint(ctx, x, y, text, t, noKey = false) {
   ctx.save();
   ctx.font = '700 6px system-ui, sans-serif';
-  const tw = ctx.measureText(text).width, kr = 3.6, w = tw + kr * 2 + 10, h = 12;
+  const tw = ctx.measureText(text).width, kr = noKey ? -1.5 : 3.6, w = tw + kr * 2 + 10, h = 12;
   const l = x - w / 2, top = y - h + Math.sin(t * 3) * 0.6;
   ctx.fillStyle = 'rgba(18,20,26,0.55)'; ctx.strokeStyle = '#00ff3c'; ctx.lineWidth = 0.5;
   ctx.beginPath();
   if (ctx.roundRect) ctx.roundRect(l, top, w, h, 3); else ctx.rect(l, top, w, h);
   ctx.fill(); ctx.stroke();
   const ky = top + h / 2;
-  ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 0.5;
-  ctx.beginPath(); ctx.arc(l + 4 + kr, ky, kr, 0, Math.PI * 2); ctx.stroke();
-  ctx.fillStyle = '#ffffff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.font = '700 4.6px system-ui, sans-serif'; ctx.fillText('A', l + 4 + kr, ky + 0.2);
+  ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 0.5; ctx.textBaseline = 'middle';
+  if (!noKey) {
+    ctx.beginPath(); ctx.arc(l + 4 + kr, ky, kr, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = '#ffffff'; ctx.textAlign = 'center';
+    ctx.font = '700 4.6px system-ui, sans-serif'; ctx.fillText('A', l + 4 + kr, ky + 0.2);
+  }
   ctx.fillStyle = '#00ff3c'; ctx.textAlign = 'left';
   ctx.font = '700 6px system-ui, sans-serif'; ctx.fillText(text, l + 7 + kr * 2, ky + 0.3);
   ctx.restore();

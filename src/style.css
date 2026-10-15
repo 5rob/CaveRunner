@@ -1209,8 +1209,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .ggold b{font:900 38px ui-monospace,SFMono-Regular,Menlo,monospace;color:#ffc93c;text-shadow:0 0 12px rgba(255,180,40,0.6),0 2px 0 #6a3a00}
 .gguns{flex:none;overflow-x:auto;overflow-y:hidden;touch-action:pan-x;display:flex;gap:7px;padding:8px;scroll-padding:8px;
   border-radius:14px;background:#0e091a;border:2px solid #3d2f5c}
-.gguns.none{display:block;color:#8f84ad;font:600 13px system-ui,sans-serif;text-align:center}
-.gguns.none p{margin:6px 0}
 /* a gun: its outline a ring that fills clockwise from the top as it's paid off (--f degrees), bright gold when it's open */
 .ggun{position:relative;flex:0 0 72px;height:72px;padding:4px;border:none;border-radius:12px;background:conic-gradient(#ffc93c var(--f,0deg),#2c2340 0)}
 .ggun.open{background:#ffc93c;box-shadow:0 0 10px rgba(255,201,60,0.5)}
@@ -1225,8 +1223,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .gnew{position:absolute;right:-2px;top:-2px;padding:1px 5px;border-radius:7px;background:#ff3d6e;color:#fff;font:900 11px ui-monospace,monospace;font-style:normal;
   box-shadow:0 0 8px #ff3d6e;animation:gnew .45s steps(1) infinite;pointer-events:none}
 @keyframes gnew{50%{background:#fff;color:#ff3d6e}}
-/* the players' helmets, between the guns and the buttons, right of the stick's dome */
-.ghelms{flex:none;height:70px;display:flex;align-items:center;justify-content:center;gap:12px;padding-left:150px}
+/* the players' helmets, between the guns and the stick: 1-2 left of the stick's dome, 3-4 right of it */
+.ghelms{flex:none;height:70px;display:grid;grid-template-columns:1fr 152px 1fr;align-items:center}
+.ghl,.ghr{display:flex;align-items:center;gap:12px}
+.ghl{justify-content:flex-end}
+.ghr{justify-content:flex-start;grid-column:3}
+/* no A or B (owner v1.0.90): the bar is the stick alone, its dome in the middle */
+.grem .abtns.gstick{height:58px;padding:0;border-radius:14px}
+.grem .abtns.gstick::after{border-radius:12px}
+.grem .gstick .astick{left:calc(50% - 74px)}
 .ghelms .anavc{padding:0;display:flex;align-items:center;justify-content:center}
 /* Dev → Presets (ui/auto/presetlib.js) */
 .apltiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:7px;margin-bottom:10px}

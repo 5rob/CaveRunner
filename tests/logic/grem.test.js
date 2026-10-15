@@ -18,8 +18,15 @@ check('fill: half way through the second', Math.abs(G.gremFill(p[0] + p[1] / 2, 
 check('fill: an unlocked one is full, a later one empty', G.gremFill(p[0] + 1, 0) === 1 && G.gremFill(p[0] + 1, 2) === 0);
 
 // ---- the team ----
-check('one player at level 1', G.gremTeam(1) === 1);
-check('players join at the knobs\' levels', G.gremTeam(D.gremP2) === 2 && G.gremTeam(D.gremP3) === 3 && G.gremTeam(D.gremP4) === 4 && G.gremTeam(D.gremP2 - 1) === 1);
+// (owner, v1.0.90) the 3 extra players are unlocks spread among the guns, not by level
+const seq = n => G.gremUnlocks(n).map(q => ('gun' in q ? 'G' : 'P')).join('');
+check('8 presets: a player after every 2 guns', seq(8) === 'GGPGGPGGPGG', seq(8));
+check('1 preset: the gun first', seq(1) === 'GPPP', seq(1));
+check('no presets: just the players', seq(0) === 'PPP', seq(0));
+check('the guns stay in order', G.gremUnlocks(9).filter(q => 'gun' in q).every((q, i) => q.gun === i));
+check('a gun\'s place on the list', G.gremGunAt(2, 8) === 3 && G.gremGunAt(0, 8) === 0, G.gremGunAt(2, 8));
+check('open: 3 unlocks of 8 presets = 2 guns, 2 players', JSON.stringify(G.gremOpen(3, 8)) === JSON.stringify({ guns: 2, team: 2 }), G.gremOpen(3, 8));
+check('open: all = every gun, 4 players', JSON.stringify(G.gremOpen(11, 8)) === JSON.stringify({ guns: 8, team: 4 }));
 check('extra players: none unlocked, no preset', G.gremTeamGun(0, 1) === -1);
 check('extra players take the newest unlocked, one each', G.gremTeamGun(5, 1) === 4 && G.gremTeamGun(5, 2) === 3 && G.gremTeamGun(5, 3) === 2);
 check('… round again with fewer', G.gremTeamGun(2, 1) === 1 && G.gremTeamGun(2, 2) === 0 && G.gremTeamGun(2, 3) === 1);
@@ -58,6 +65,31 @@ check('a Grem chest holds gold only', /^g+$/.test(rolls), rolls);
 const S2 = G.levelScene(300, 5, 1, undefined, G.newRun(2).players, 1, G.newRun(2));
 const L2 = G.levelState(S2);
 check('the normal level still has its exit', !L2.grem && L2.plan.zp.z[L2.plan.zp.z.length - 1].x1 === 1e9);
+
+// ---- (owner, v1.0.90) no damage, a gentler climb, double gold ----
+{
+  const R = G.gremRun(G.gremKitNew(), G.titleRng(3));
+  G.healRun(R);
+  const Q = G.levelScene(300, 5, 1, undefined, R.players, 1, R, true), hp = R.players[0].hp;
+  G.levelHurt(Q, 0, 999);
+  check('a Grem player takes no damage', R.players[0].hp === hp && !Q.runners[0].out, R.players[0].hp);
+  const N = G.newRun(2); G.healRun(N);
+  const Q2 = G.levelScene(300, 5, 1, undefined, N.players, 1, N), hp2 = N.players[0].hp;
+  G.levelHurt(Q2, 0, 1);
+  check('… a normal one still does', N.players[0].hp < hp2);
+  const a = G.autoFoe('rotta', 9), g = G.gremFoe('rotta', 9), g3 = G.autoFoe('rotta', 3);
+  check('Grem level 9 creature = level 3 in Auto (a quarter of the climb)', g.hp === g3.hp && g.dmg === g3.dmg && g.hp < a.hp, [g.hp, g3.hp, a.hp]);
+  check('… its gold still level 9\'s', g.gold === a.gold, [g.gold, a.gold]);
+  check('the pace climbs a quarter as fast', Math.abs(G.levelState(G.levelScene(300, 5, 1, undefined, R.players, 9, R, true)).base - G.lvlPace(3)) < 1e-9);
+  const S9 = G.levelScene(300, 5, 1, undefined, R.players, 1, R, true);
+  const raw = G.killLoot('foe', 1, G.titleRng(8), 5)[0].n, got = S9.lvl.loot(Object.assign(S9, { rnd: G.titleRng(8) }), { k: { gold: 5 } })[0].n;
+  check('kill gold × DEV.gremGold', got === Math.round(raw * D.gremGold), [raw, got]);
+  const keep = ['autoChestMod', 'autoChestExo', 'autoChestRed', 'autoChestPerk', 'autoChestGreen'].map(k => [k, D[k]]);
+  for (const [k] of keep) D[k] = 0;   // (every chest gold, so both rolls use the random the same way)
+  const c1 = G.chestRoll(G.titleRng(5), 2, false), c2 = G.chestRoll(G.titleRng(5), 2, true);
+  for (const [k, v] of keep) D[k] = v;
+  check('chest gold × DEV.gremGold', Math.abs(c2[0].n - c1[0].n * D.gremGold) <= D.gremGold, [c1[0].n, c2[0].n]);
+}
 
 // ---- the tapped target ----
 const T = G.levelScene(300, 7, 1, undefined, G.newRun(2).players, 1, null);

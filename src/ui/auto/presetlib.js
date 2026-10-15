@@ -13,7 +13,7 @@
 import { SFX } from '../../audio/sfx.js';
 import { MODS } from '../../spells/mods.js';
 import { PRESET_NAME_MAX, loadPresets, movePreset, presetGun, removePreset, savePresets, setPreset } from '../../save/presets.js';
-import { gremPrice } from '../../auto/grem.js';
+import { gremGunAt, gremPrice } from '../../auto/grem.js';
 import { newPlayer } from '../../auto/run.js';
 import { GunIcon } from '../editor.js';
 import { GunArtPicker } from '../gunart.js';
@@ -77,7 +77,7 @@ export function PresetLib() {
       h('i', { className: 'aplhandle', onPointerDown: e => grab(e, i) }, '⠿'),
       h('span', { className: 'aplicon' }, h(GunIcon, { gun: p.gun })),
       h('b', { className: 'aplname' }, p.name),
-      h('i', { className: 'aplprice' }, gremPrice(i) + 'g'))))
+      h('i', { className: 'aplprice' }, gremPrice(gremGunAt(i, list.length)) + 'g'))))
       : h('p', { className: 'prenone' }, 'No presets yet — open a gun in the nav and tap 💾 on its panel.'),
     drag && dp ? h('div', { className: 'apltile aplghost', style: { left: drag.x + 'px', top: drag.y + 'px' } },
       h('span', { className: 'aplicon' }, h(GunIcon, { gun: dp.gun })), h('b', { className: 'aplname' }, dp.name)) : null);

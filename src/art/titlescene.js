@@ -2285,7 +2285,7 @@ function stepFoes(S, dt) {
 function jellyAct(S, e, hunting, goal, sees, CS, dt) {
   const R = S.rnd;
   // (owner v1.0.74) deeper levels: it turns faster, DEV.autoJeTurnTier more a level past the first, at most × DEV.autoJeTurnMax
-  const turnMul = S.lvl ? Math.min(DEV.autoJeTurnMax, 1 + DEV.autoJeTurnTier * Math.max(0, (S.tier || 1) - 1)) : 1;
+  const turnMul = S.lvl ? Math.min(DEV.autoJeTurnMax, 1 + DEV.autoJeTurnTier * Math.max(0, (S.tier || 1) - 1) * (S.lvl.data && S.lvl.data.grem ? DEV.gremHard : 1)) : 1;
   jellyStep(e, { solidCell: CS, hunting, goal, rnd: R, speedMul: 1, rangeMul: sees, turnMul, stay: x => built(x, S) === 0 }, dt);
   const J = e.je;
   if (hunting && J && J.inRange && J.aimed && e.cd <= 0) {

@@ -17,7 +17,8 @@ import { lvlPace, pilotEase, pilotPace } from './pilot.js';
 import { clearPower, teamClearer } from './clear.js';
 import { blockCell, blockCol, blockKind, planBlocks, rollBlock, webSlow } from './blocked.js';
 import { deathPrompt, deathRags, deathStep, deathTeleport, exitNuke } from './death.js';
-import { autoFoe, elitePlan, levelFoes, levelHurt } from './enemies.js';
+import { autoFoe, elitePlan, gremFoe, levelFoes, levelHurt } from './enemies.js';
+import { gremGold, gremHardTier } from './grem.js';
 import { bagFits, killLoot, lootCol } from './loot.js';
 import { bagAdd, playerStats } from './run.js';
 import { chestPlan, chestsStep } from './chests.js';
@@ -146,19 +147,20 @@ export const levelTeamX = S => S.scroll + LVL_TEAM;
 // and the creatures hurt the team (auto/enemies.js). run (stage 6 part 2): kills drop loot (auto/loot.js) that is vacuumed into its bag
 // (tall levels) the action band: the old 0.24..0.92 of vh at vh 190 or less; taller, it keeps the old rock over and
 // under it (at most 50 and 20) and the rest is the band, so the cave fills the screen's height
-// grem (Grem Mode, auto/grem.js): an endless plan (levelPlan's endless, no blocked zones) and gold the only drop (kills and chests)
+// grem (Grem Mode, auto/grem.js): an endless plan (levelPlan's endless, no blocked zones) and gold the only drop (kills and chests),
+// doubled (gremGold); the creatures (gremFoe) and the pace climb a quarter as fast (gremHardTier)
 /** @param {number} vh @param {number} seed @param {number} n @param {LevelPlan} [plan] (default levelPlan(seed)) @param {RunPlayer[]} [team] @param {number} [tier] @param {AutoRun | null} [run] @param {boolean} [grem] @returns {import('../art/titlescene.js').TitleScene} */
 export function levelScene(vh, seed, n, plan, team, tier = 1, run = null, grem = false) {
-  const base = lvlPace(tier);   // (owner, after v1.0.74) normal pace by level
+  const base = lvlPace(grem ? gremHardTier(tier) : tier);   // (owner, after v1.0.74) normal pace by level (Grem Mode: its gentler climb)
   if (!plan) plan = levelPlan(seed, undefined, grem ? 0 : undefined, base, grem);
   /** @type {LevelState} */
   const L = { plan, base, phase: 'arrive', arrived: [], zap: -99, goT: -1, arenaT: -1, bossDead: false, hold: 0, elites: [], chests: [], doneT: -1, meters: [], blocked: false,
     boss: null, failed: false, run, bagV: 0, grem, ups: 0 };
   const S = titleScene(vh, seed, Math.min(vh * 0.24, 50), vh - Math.min(vh * 0.08, 20), { runners: n, level: { zp: plan.zp, step: levelStep, data: L, hurt: levelHurt,
-    loot: (S, f) => killLoot(f.k.boss ? 'boss' : f.k.elite ? 'elite' : 'foe', S.tier || 1, S.rnd, f.k.gold).filter(it => !L.grem || it.kind === 'gold'),
+    loot: (S, f) => killLoot(f.k.boss ? 'boss' : f.k.elite ? 'elite' : 'foe', S.tier || 1, S.rnd, f.k.gold).filter(it => !L.grem || it.kind === 'gold').map(it => (L.grem ? gremGold(it) : it)),
     fits: (_S, it) => !L.run || bagFits(L.run, it),
     take: (_S, it) => { if (L.run && bagAdd(L.run, it)) return false; L.bagV++; return true; },
-    kind: autoFoe, hardY: (S, wx) => levelHardY(S, plan, wx), lootCol, blockCell, blockCol, blockKind, free: (S, r) => levelFree(S, L, r), fuel: (_S, r) => (team && team[r.id] ? playerStats(team[r.id]) : null), spawn: S => levelSpawn(S, L) }, team, tier });
+    kind: grem ? gremFoe : autoFoe, hardY: (S, wx) => levelHardY(S, plan, wx), lootCol, blockCell, blockCol, blockKind, free: (S, r) => levelFree(S, L, r), fuel: (_S, r) => (team && team[r.id] ? playerStats(team[r.id]) : null), spawn: S => levelSpawn(S, L) }, team, tier });
   L.elites = elitePlan(plan, S.rnd);
   L.chests = chestPlan(plan);
   L.meters = S.runners.map(() => ({ dmg: meterNew(), hp: meterNew(), dealt: 0 }));
@@ -357,7 +359,7 @@ export function levelOnward(S, L) {
   S.tier = tier;
   if (L.run) L.run.tier = tier;
   L.ups = (L.ups || 0) + 1;
-  L.base = lvlPace(tier);
+  L.base = lvlPace(gremHardTier(tier));
   const z0 = P.arena.x1, want = Math.max(TITLE_ZLEN[0], DEV.autoLvlMin * 60 * LVL_SCROLL * L.base);
   let x = Math.max(z0, zp.z[zp.z.length - 1].x1);
   while (x - z0 < want) x = titleZoneAdd(zp, x).x1;

@@ -1,5 +1,5 @@
 // Screenshots for the owner (Grem Mode): a: the title's GREM MODE; b: Grem Mode playing (2 guns paid off, the third filling, a
-// creature tapped: the red ring); c: Dev → Presets; d: a preset open in its editor; e: Dev → Grem (player 1's kit).
+// creature tapped: the red ring; v1.0.90: players among the unlocks, no A / B, the stick centred, lighter dark, a chest's Tap to open.); c: Dev → Presets; d: a preset open in its editor; e: Dev → Grem (player 1's kit).
 //   node tools/gremshots.js [outdir]      (default tests/build/autoshots)
 const { launch } = require('../tests/chromium');
 const path = require('path');
@@ -44,10 +44,9 @@ const PRESETS = [['Pea Shooter', ['bolt']], ['Double Spark', ['double', 'spark']
   await page.waitForTimeout(9000);
   await page.evaluate(() => {
     const S = window.__gremScene, run = S.lvl.data.run;
-    bagAdd(run, { kind: 'gold', n: gremPaidAt(1) + Math.round(gremPrice(2) * 0.4) });
+    bagAdd(run, { kind: 'gold', n: gremPaidAt(5) + Math.round(gremPrice(6) * 0.4) });   // 5 guns and players 2 and 3 (the unlocks spread them)
   });
   await page.waitForTimeout(2500);
-  await page.evaluate(() => { window.__gremScene.lvl.data.run.tier = 10; });   // players 2 and 3 join
   await page.waitForTimeout(1500);
   await page.locator('.ghelms [data-player="1"]').dispatchEvent('pointerdown');
   await page.waitForTimeout(200);
@@ -60,7 +59,26 @@ const PRESETS = [['Pea Shooter', ['bolt']], ['Double Spark', ['double', 'spark']
   });
   await page.waitForTimeout(400);
   await save('b-play', 'Grem Mode: one row of guns (scrolls sideways): gun 1 given to player 2 (picked: white ring on his helmet and on his gun), gun 2 still flashing NEW, gun 3 filling; the helmets with health rings; a tapped creature in a red ring');
-  await save('b-panel', 'close up: the gold and the guns', { x: 0, y: 560, width: 412, height: 320 });
+  await save('b-panel', 'close up: the gold, the unlocks row (guns with players 2-4 among them), the helmets either side of the stick', { x: 0, y: 560, width: 412, height: 320 });
+  await page.evaluate(() => { DEV.gremDark = 1; });
+  await page.waitForTimeout(200);
+  await save('b-dark1', 'the same with the dark as before (DEV.gremDark 1), to compare');
+  await page.evaluate(() => { DEV.gremDark = 0.85; });
+  await page.waitForTimeout(200);
+  await save('b-dark85', 'the dark × 0.85, to compare');
+  await page.evaluate(() => { DEV.gremDark = 0.15; });
+  // a chest beside player 1: Tap to open., then a tap on the play area opens it
+  await page.evaluate(() => {
+    const S = window.__gremScene, L = S.lvl.data, r = S.runners[0];
+    const c = L.chests.find(q => !q.open) || (L.chests[0] = { x: 0 });
+    Object.assign(c, { x: S.scroll + r.x + 14, y: undefined, set: false, open: false });
+    S.pace = 0; L.hold = 99;
+  });
+  await page.waitForTimeout(600);
+  await save('c-chest', 'a chest in reach: Tap to open.');
+  await page.locator('.aplay').dispatchEvent('pointerdown', { clientX: 200, clientY: 300 });
+  await page.waitForTimeout(700);
+  await save('c-chest-open', 'tapped anywhere on the play area: the chest opens, its (doubled) gold spills');
   // the normal game's Dev panel: Presets, a preset open, Grem
   await page.goto(url);
   await page.waitForTimeout(1200);

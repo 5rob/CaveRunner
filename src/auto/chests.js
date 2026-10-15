@@ -47,7 +47,7 @@ export function chestPlan(plan, n = DEV.autoChestN) {
 // What a chest holds, rolled on opening: one pick by the weights (DEV.autoChestGold … autoChestGreen): gold
 // (DEV.autoChestGoldN × the tier's gold scale), a gun mod (the tier's), an exo mod (a random category, the tier), a red
 // gem, a perk (a named one), a green gem
-// goldOnly (Grem Mode): always the gold
+// goldOnly (Grem Mode): always the gold, × DEV.gremGold
 /** @param {() => number} rnd @param {number} tier @param {boolean} [goldOnly] @returns {BagItem[]} */
 export function chestRoll(rnd, tier, goldOnly = false) {
   const w = [['gold', DEV.autoChestGold], ['mod', DEV.autoChestMod], ['exo', DEV.autoChestExo], ['red', DEV.autoChestRed], ['perk', DEV.autoChestPerk], ['green', DEV.autoChestGreen]];
@@ -60,7 +60,7 @@ export function chestRoll(rnd, tier, goldOnly = false) {
   if (kind === 'exo') return [exoMod(EXO_CATS[Math.floor(rnd() * EXO_CATS.length) % EXO_CATS.length], t)];
   if (kind === 'red' || kind === 'green') return [{ kind, n: 1 }];
   if (kind === 'perk') return [machineItem('perk', t, rnd)];
-  return [{ kind: 'gold', n: Math.max(1, Math.round(DEV.autoChestGoldN * goldScale(t) * (0.75 + rnd() * 0.5))) }];
+  return [{ kind: 'gold', n: Math.max(1, Math.round(DEV.autoChestGoldN * goldScale(t) * (0.75 + rnd() * 0.5) * (goldOnly ? DEV.gremGold : 1))) }];
 }
 
 /** @param {import('../art/titlescene.js').TitleScene} S @returns {LevelChest[]} */

@@ -12,6 +12,7 @@ import { DEV } from '../dev/knobs.js';
 import { eliteOf, enemyFor } from '../data/creatures.js';
 import { deathFall } from './death.js';
 import { shieldSoak } from './perks.js';
+import { gremHardTier } from './grem.js';
 import { TCELL, TITLE_KINDS, TITLE_VW, titleFoeAt, titleZoneSpan, zoneHome } from '../art/titlescene.js';
 
 export const FALL_FLICKER = 0.6;      // (retired, feedback round 2: a fallen player is a ragdoll now, auto/death.js)
@@ -49,10 +50,13 @@ export function autoFoe(id, tier) {
   const k = enemyFor(id, tier), b = enemyFor(id, 1), n = Math.max(0, tier - 1);
   return Object.assign(k, { hp: Math.max(1, Math.round(b.hp * Math.pow(DEV.autoTierHp, n))), dmg: Math.max(1, Math.round(b.dmg * Math.pow(DEV.autoTierDmg, n))) });
 }
-// the boss's kind: autoFoe(id, tier), huge
+// (Grem Mode, owner v1.0.90) a creature toughened a quarter as fast (gremHardTier), its gold still the level's
 /** @param {string} id @param {number} tier @returns {CreatureKind} */
-export function bossKind(id, tier) {
-  const k = autoFoe(id, tier);
+export const gremFoe = (id, tier) => Object.assign(autoFoe(id, gremHardTier(tier)), { gold: enemyFor(id, tier).gold });
+// the boss's kind: autoFoe(id, tier) (or mk's), huge
+/** @param {string} id @param {number} tier @param {(id: string, tier: number) => CreatureKind} [mk] @returns {CreatureKind} */
+export function bossKind(id, tier, mk = autoFoe) {
+  const k = mk(id, tier);
   return Object.assign({}, k, { boss: true, r: k.r * DEV.autoBossSize, hp: Math.round(k.hp * DEV.autoBossHp),
     dmg: Math.max(1, Math.round(k.dmg * DEV.autoBossDmg)) });
 }
@@ -62,6 +66,7 @@ export function bossKind(id, tier) {
 export function levelHurt(S, i, dmg) {
   const pl = S.team && S.team[i], r = S.runners[i];
   if (!pl || pl.alive === false || !r || r.out) return;
+  if (S.lvl && S.lvl.data && S.lvl.data.grem) return;   // (Grem Mode, owner v1.0.90) players take no damage
   if (dmg > 0 && shieldSoak(r, pl, S.t)) return;   // Permanent Shield: a ready one soaks the hit whole (auto/perks.js)
   pl.hp = Math.max(0, pl.hp - dmg * DEV.autoFoeDmg);
   if (pl.hp <= 0) levelFall(S, i);
@@ -85,14 +90,14 @@ export const allFallen = S => S.runners.length > 0 && S.runners.every(r => r.out
 /** @param {import('../art/titlescene.js').TitleScene} S @param {import('./level.js').LevelState} L @param {number} teamX the team's place (world x) */
 export function levelFoes(S, L, teamX) {
   if (L.phase === 'arrive') return;
-  const tier = S.tier || 1;
+  const tier = S.tier || 1, mk = L.grem ? gremFoe : autoFoe;
   // the elites: in as the scene's right edge reaches them (where the terrain is made), then tracked
   for (const e of L.elites) {
     if (e.alive === false) continue;
     if (!e.f) {
       if (e.x - S.scroll < TITLE_VW + 16 && e.x < S.gen * TCELL - 6) {
         const id = e.id || (e.id = homeKind(S, e.x));
-        e.f = titleFoeAt(S, eliteOf(autoFoe(id, tier), e.u == null ? 0.5 : e.u), e.x);
+        e.f = titleFoeAt(S, eliteOf(mk(id, tier), e.u == null ? 0.5 : e.u), e.x);
       }
       continue;
     }
@@ -102,7 +107,7 @@ export function levelFoes(S, L, teamX) {
   // the boss: in when the team reaches the arena, hunting at once
   if (L.phase === 'arena' && !L.boss && !L.bossDead) {
     const id = TITLE_KINDS[Math.floor(S.rnd() * TITLE_KINDS.length)];
-    const f = titleFoeAt(S, bossKind(id, tier), Math.min(L.plan.arena.x1 - 30, teamX + BOSS_IN));
+    const f = titleFoeAt(S, bossKind(id, tier, mk), Math.min(L.plan.arena.x1 - 30, teamX + BOSS_IN));
     f.aggro = true;
     L.boss = f;
   }

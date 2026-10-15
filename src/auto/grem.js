@@ -4,7 +4,9 @@
 // the level + 1). Gold is the only drop. The gun presets (save/presets.js, in their order) are locked; the gold collected pays
 // them off one after the other, each dearer than the last (gremPrice): a preset is unlocked once the gold collected reaches
 // its running total (gremUnlocked), its outline filling clockwise on the way (gremFill). The 3 extra players join at
-// DEV.gremP2 / gremP3 / gremP4 (the level), each with one of the unlocked guns (gremTeamGun). Player 1 starts with the
+// unlocks too, spread among the guns (gremUnlocks; owner v1.0.90, they joined by level before), each with one of the unlocked
+// guns (gremTeamGun). Players take no damage, the creatures toughen a quarter as fast (gremHardTier), gold drops are doubled
+// (DEV.gremGold), the dark is lighter (DEV.gremDark). Player 1 starts with the
 // kit set in Dev → Grem (exo mods and perks only: gremKit, saved on this device). Pure but for the kit's store.
 // The screen: ui/auto/GremScreen.js.
 
@@ -40,9 +42,35 @@ export function gremFill(gold, i) {
   return Math.max(0, Math.min(1, (gold - start) / Math.max(1, end - start)));
 }
 
-// how many players at a level: 1, + one each at DEV.gremP2, gremP3, gremP4
+// (owner, v1.0.90) the unlocks in their order: the n presets with the 3 extra players spread evenly among them (player j
+// after round(j × n / 4) presets, at least one gun first); gremPrice / gremUnlocked / gremFill count along this list
+/** @typedef {{ gun: number } | { player: number }} GremUnlock */
+/** @param {number} n @returns {GremUnlock[]} */
+export function gremUnlocks(n) {
+  /** @type {GremUnlock[]} */
+  const out = [];
+  for (let i = 0, j = 1; i <= n; i++) {
+    for (; j <= 3 && Math.max(Math.min(1, n), Math.round(j * n / 4)) === i; j++) out.push({ player: j });
+    if (i < n) out.push({ gun: i });
+  }
+  return out;
+}
+// preset i's place on that list (for its price)
+/** @param {number} i @param {number} n */
+export const gremGunAt = (i, n) => gremUnlocks(n).findIndex(u => 'gun' in u && u.gun === i);
+// how many of the first u unlocks are guns (the presets 0 … that − 1 are open) and how many players there are (1 + the extra ones)
+/** @param {number} u @param {number} n @returns {{ guns: number, team: number }} */
+export function gremOpen(u, n) {
+  const l = gremUnlocks(n).slice(0, u);
+  return { guns: l.filter(q => 'gun' in q).length, team: 1 + l.filter(q => 'player' in q).length };
+}
+
+// (owner, v1.0.90) the creatures' level: each level past 1 counts DEV.gremHard of one (0.25: a quarter of the normal climb)
 /** @param {number} tier */
-export const gremTeam = tier => Math.min(4, 1 + [DEV.gremP2, DEV.gremP3, DEV.gremP4].filter(lv => tier >= lv).length);
+export const gremHardTier = tier => 1 + Math.max(0, tier - 1) * DEV.gremHard;
+// (owner, v1.0.90) a drop's gold × DEV.gremGold (kills; chests: chests.js chestRoll)
+/** @param {BagItem} it @returns {BagItem} */
+export const gremGold = it => (it.kind === 'gold' ? Object.assign({}, it, { n: Math.max(1, Math.round((it.n || 1) * DEV.gremGold)) }) : it);
 // extra player j (1-3)'s gun among u unlocked presets: the newest for player 2, the one before it for player 3, … (round
 // again when there are fewer); -1: none unlocked yet (he keeps his starter gun)
 /** @param {number} u @param {number} j */

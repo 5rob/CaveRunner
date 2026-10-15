@@ -101,9 +101,9 @@ export function levelGlow(ctx, S) {
     const h = deathHelmet(S, r);
     if (h) { glowAt(ctx, h.x, h.y - 1, 10, 0.7, '255,40,30'); ctx.fillStyle = '#ff3a2a'; ctx.fillRect(Math.round(h.x - 1), Math.round(h.y - 4), 2, 2); }
   }
-  // stage 11: a player in range of a shut chest: "Tap A to open" over it (the hub exit's hint)
-  const c = chestInRange(S);
-  if (c && c.y != null) drawHint(ctx, c.x - S.scroll, c.y - 28, 'Tap A to open', S.t);
+  // stage 11: a player in range of a shut chest: "Tap A to open" over it (the hub exit's hint; Grem Mode, no A: a tap on the play area)
+  const c = chestInRange(S), G = S.lvl && S.lvl.data && S.lvl.data.grem;
+  if (c && c.y != null) drawHint(ctx, c.x - S.scroll, c.y - 28, G ? 'Tap to open.' : 'Tap A to open', S.t, !!G);
 }
 
 // (owner, v1.0.44) a thin health bar over each creature's head, over the dark (so it shows in the cave's black); the

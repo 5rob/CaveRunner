@@ -1218,8 +1218,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .ggold b{font:900 38px ui-monospace,SFMono-Regular,Menlo,monospace;color:#ffc93c;text-shadow:0 0 12px rgba(255,180,40,0.6),0 2px 0 #6a3a00}
 .gguns{flex:none;overflow-x:auto;overflow-y:hidden;touch-action:pan-x;display:flex;gap:7px;padding:8px;scroll-padding:8px;
   border-radius:14px;background:#0e091a;border:2px solid #3d2f5c}
-.gguns.none{display:block;color:#8f84ad;font:600 13px system-ui,sans-serif;text-align:center}
-.gguns.none p{margin:6px 0}
 /* a gun: its outline a ring that fills clockwise from the top as it's paid off (--f degrees), bright gold when it's open */
 .ggun{position:relative;flex:0 0 72px;height:72px;padding:4px;border:none;border-radius:12px;background:conic-gradient(#ffc93c var(--f,0deg),#2c2340 0)}
 .ggun.open{background:#ffc93c;box-shadow:0 0 10px rgba(255,201,60,0.5)}
@@ -1234,8 +1232,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .gnew{position:absolute;right:-2px;top:-2px;padding:1px 5px;border-radius:7px;background:#ff3d6e;color:#fff;font:900 11px ui-monospace,monospace;font-style:normal;
   box-shadow:0 0 8px #ff3d6e;animation:gnew .45s steps(1) infinite;pointer-events:none}
 @keyframes gnew{50%{background:#fff;color:#ff3d6e}}
-/* the players' helmets, between the guns and the buttons, right of the stick's dome */
-.ghelms{flex:none;height:70px;display:flex;align-items:center;justify-content:center;gap:12px;padding-left:150px}
+/* the players' helmets, between the guns and the stick: 1-2 left of the stick's dome, 3-4 right of it */
+.ghelms{flex:none;height:70px;display:grid;grid-template-columns:1fr 152px 1fr;align-items:center}
+.ghl,.ghr{display:flex;align-items:center;gap:12px}
+.ghl{justify-content:flex-end}
+.ghr{justify-content:flex-start;grid-column:3}
+/* no A or B (owner v1.0.90): the bar is the stick alone, its dome in the middle */
+.grem .abtns.gstick{height:58px;padding:0;border-radius:14px}
+.grem .abtns.gstick::after{border-radius:12px}
+.grem .gstick .astick{left:calc(50% - 74px)}
 .ghelms .anavc{padding:0;display:flex;align-items:center;justify-content:center}
 /* Dev → Presets (ui/auto/presetlib.js) */
 .apltiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:7px;margin-bottom:10px}
@@ -2164,13 +2169,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "autoHubDemoNear", g: "autohub", label: "A crystal machine plays its demo with you this near (world units; the old shop’s 100)", min: 20, max: 240, step: 5 }
   );
   DEV_GROUPS.push(["autohub", "Auto: hub"]);
-  Object.assign(DEV_DEFAULTS, { gremPrice: 100, gremGrow: 1.5, gremP2: 5, gremP3: 10, gremP4: 15, gremPickR: 40 });
+  Object.assign(DEV_DEFAULTS, { gremPrice: 100, gremGrow: 1.5, gremHard: 0.25, gremGold: 2, gremDark: 0.15, gremPickR: 40 });
   DEV_META.push(
-    { k: "gremPrice", g: "grem", label: "The first preset costs (gold)", min: 5, max: 1e4, step: 5 },
-    { k: "gremGrow", g: "grem", label: "Each preset after it costs × this more", min: 1, max: 4, step: 0.05 },
-    { k: "gremP2", g: "grem", label: "Player 2 joins at level", min: 1, max: 100, step: 1 },
-    { k: "gremP3", g: "grem", label: "Player 3 joins at level", min: 1, max: 100, step: 1 },
-    { k: "gremP4", g: "grem", label: "Player 4 joins at level", min: 1, max: 100, step: 1 },
+    { k: "gremPrice", g: "grem", label: "The first unlock costs (gold)", min: 5, max: 1e4, step: 5 },
+    { k: "gremGrow", g: "grem", label: "Each unlock after it costs × this more", min: 1, max: 4, step: 0.05 },
+    { k: "gremHard", g: "grem", label: "Creatures toughen per level × (1 = as CaveRunner Auto)", min: 0, max: 1, step: 0.05 },
+    { k: "gremGold", g: "grem", label: "Gold drops × (kills and chests)", min: 1, max: 10, step: 0.5 },
+    { k: "gremDark", g: "grem", label: "The dark × (1 = as CaveRunner Auto; 0.15: 85% lighter)", min: 0, max: 1, step: 0.05 },
     { k: "gremPickR", g: "grem", label: "A tap picks the creature nearest it within (world units; the screen is 220 across)", min: 5, max: 220, step: 5 }
   );
   DEV_GROUPS.push(["grem", "Grem Mode"]);
@@ -16475,7 +16480,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   function jellyAct(S2, e, hunting, goal, sees, CS, dt) {
     const R = S2.rnd;
-    const turnMul = S2.lvl ? Math.min(DEV.autoJeTurnMax, 1 + DEV.autoJeTurnTier * Math.max(0, (S2.tier || 1) - 1)) : 1;
+    const turnMul = S2.lvl ? Math.min(DEV.autoJeTurnMax, 1 + DEV.autoJeTurnTier * Math.max(0, (S2.tier || 1) - 1) * (S2.lvl.data && S2.lvl.data.grem ? DEV.gremHard : 1)) : 1;
     jellyStep(e, { solidCell: CS, hunting, goal, rnd: R, speedMul: 1, rangeMul: sees, turnMul, stay: (x) => built(x, S2) === 0 }, dt);
     const J = e.je;
     if (hunting && J && J.inRange && J.aimed && e.cd <= 0) {
@@ -25269,7 +25274,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (kind === "exo") return [exoMod(EXO_CATS[Math.floor(rnd2() * EXO_CATS.length) % EXO_CATS.length], t)];
     if (kind === "red" || kind === "green") return [{ kind, n: 1 }];
     if (kind === "perk") return [machineItem("perk", t, rnd2)];
-    return [{ kind: "gold", n: Math.max(1, Math.round(DEV.autoChestGoldN * goldScale(t) * (0.75 + rnd2() * 0.5))) }];
+    return [{ kind: "gold", n: Math.max(1, Math.round(DEV.autoChestGoldN * goldScale(t) * (0.75 + rnd2() * 0.5) * (goldOnly ? DEV.gremGold : 1))) }];
   }
   var chestsOf = (S2) => S2.lvl && S2.lvl.data && S2.lvl.data.chests || [];
   function chestsStep(S2) {
@@ -25716,6 +25721,81 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return true;
   }
 
+  // src/auto/grem.js
+  var five3 = (v) => Math.max(5, Math.round(v / 5) * 5);
+  var gremPrice = (i) => five3(DEV.gremPrice * Math.pow(DEV.gremGrow, Math.max(0, i)));
+  function gremPaidAt(i) {
+    let s = 0;
+    for (let k = 0; k <= i; k++) s += gremPrice(k);
+    return s;
+  }
+  function gremUnlocked(gold, n) {
+    let k = 0;
+    while (k < n && gold >= gremPaidAt(k)) k++;
+    return k;
+  }
+  function gremFill(gold, i) {
+    const end = gremPaidAt(i), start = end - gremPrice(i);
+    return Math.max(0, Math.min(1, (gold - start) / Math.max(1, end - start)));
+  }
+  function gremUnlocks(n) {
+    const out = [];
+    for (let i = 0, j = 1; i <= n; i++) {
+      for (; j <= 3 && Math.max(Math.min(1, n), Math.round(j * n / 4)) === i; j++) out.push({ player: j });
+      if (i < n) out.push({ gun: i });
+    }
+    return out;
+  }
+  var gremGunAt = (i, n) => gremUnlocks(n).findIndex((u) => "gun" in u && u.gun === i);
+  function gremOpen(u, n) {
+    const l = gremUnlocks(n).slice(0, u);
+    return { guns: l.filter((q) => "gun" in q).length, team: 1 + l.filter((q) => "player" in q).length };
+  }
+  var gremHardTier = (tier) => 1 + Math.max(0, tier - 1) * DEV.gremHard;
+  var gremGold = (it) => it.kind === "gold" ? Object.assign({}, it, { n: Math.max(1, Math.round((it.n || 1) * DEV.gremGold)) }) : it;
+  var gremTeamGun = (u, j) => u > 0 ? ((u - j) % u + u) % u : -1;
+  var GREM_KIT_KEY = "caverunner-grem-kit";
+  var gremKitNew = () => ({ exo: Object.fromEntries(EXO_CATS.map((c) => [c, Array(EXO_SLOTS).fill(0)])), perks: Array(PERK_SLOTS).fill(null) });
+  function gremKitClean(k) {
+    const out = gremKitNew();
+    if (!k || typeof k !== "object") return out;
+    for (const c of EXO_CATS) {
+      const a = k.exo && Array.isArray(k.exo[c]) ? k.exo[c] : [];
+      out.exo[c] = out.exo[c].map((_, i) => {
+        const t = Math.round(Number(a[i]) || 0);
+        return t >= 1 && t <= 5 ? t : 0;
+      });
+    }
+    const p = Array.isArray(k.perks) ? k.perks : [];
+    out.perks = out.perks.map((_, i) => typeof p[i] === "string" && PERKS[p[i]] && !PERKS[p[i]].stat ? p[i] : null);
+    return out;
+  }
+  var gremKitLoad = () => {
+    try {
+      return gremKitClean(JSON.parse(localStorage.getItem(GREM_KIT_KEY) || "null"));
+    } catch (_) {
+      return gremKitNew();
+    }
+  };
+  var gremKitSave = (k) => {
+    try {
+      localStorage.setItem(GREM_KIT_KEY, JSON.stringify(k));
+    } catch (_) {
+    }
+  };
+  function gremKitFit(pl, kit) {
+    for (const c of EXO_CATS) pl.exo[c] = kit.exo[c].map((t) => t ? exoMod(c, t) : null);
+    pl.perks = kit.perks.map((id) => id ? { kind: "perk", id, n: 1 } : null);
+  }
+  function gremRun(kit, rnd2 = Math.random) {
+    const pl = newPlayer(0);
+    pl.guns[0] = starterKit(rnd2).gun;
+    gremKitFit(pl, kit);
+    const run = { tier: 1, players: [pl], bag: Array(14).fill(null), seed: 1 + Math.floor(rnd2() * 1e6) };
+    mapsOf(run);
+    return run;
+  }
+
   // src/auto/enemies.js
   var FALL_FLICKER = 0.6;
   var BOSS_IN = 90;
@@ -25740,8 +25820,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const k = enemyFor(id, tier), b = enemyFor(id, 1), n = Math.max(0, tier - 1);
     return Object.assign(k, { hp: Math.max(1, Math.round(b.hp * Math.pow(DEV.autoTierHp, n))), dmg: Math.max(1, Math.round(b.dmg * Math.pow(DEV.autoTierDmg, n))) });
   }
-  function bossKind(id, tier) {
-    const k = autoFoe(id, tier);
+  var gremFoe = (id, tier) => Object.assign(autoFoe(id, gremHardTier(tier)), { gold: enemyFor(id, tier).gold });
+  function bossKind(id, tier, mk = autoFoe) {
+    const k = mk(id, tier);
     return Object.assign({}, k, {
       boss: true,
       r: k.r * DEV.autoBossSize,
@@ -25752,6 +25833,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function levelHurt(S2, i, dmg) {
     const pl = S2.team && S2.team[i], r = S2.runners[i];
     if (!pl || pl.alive === false || !r || r.out) return;
+    if (S2.lvl && S2.lvl.data && S2.lvl.data.grem) return;
     if (dmg > 0 && shieldSoak(r, pl, S2.t)) return;
     pl.hp = Math.max(0, pl.hp - dmg * DEV.autoFoeDmg);
     if (pl.hp <= 0) levelFall(S2, i);
@@ -25777,13 +25859,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var allFallen = (S2) => S2.runners.length > 0 && S2.runners.every((r) => r.out);
   function levelFoes(S2, L, teamX) {
     if (L.phase === "arrive") return;
-    const tier = S2.tier || 1;
+    const tier = S2.tier || 1, mk = L.grem ? gremFoe : autoFoe;
     for (const e of L.elites) {
       if (e.alive === false) continue;
       if (!e.f) {
         if (e.x - S2.scroll < TITLE_VW + 16 && e.x < S2.gen * TCELL - 6) {
           const id = e.id || (e.id = homeKind(S2, e.x));
-          e.f = titleFoeAt(S2, eliteOf(autoFoe(id, tier), e.u == null ? 0.5 : e.u), e.x);
+          e.f = titleFoeAt(S2, eliteOf(mk(id, tier), e.u == null ? 0.5 : e.u), e.x);
         }
         continue;
       }
@@ -25795,7 +25877,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     if (L.phase === "arena" && !L.boss && !L.bossDead) {
       const id = TITLE_KINDS[Math.floor(S2.rnd() * TITLE_KINDS.length)];
-      const f = titleFoeAt(S2, bossKind(id, tier), Math.min(L.plan.arena.x1 - 30, teamX + BOSS_IN));
+      const f = titleFoeAt(S2, bossKind(id, tier, mk), Math.min(L.plan.arena.x1 - 30, teamX + BOSS_IN));
       f.aggro = true;
       L.boss = f;
     }
@@ -25963,7 +26045,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var levelState = (S2) => S2.lvl && S2.lvl.data || null;
   var levelTeamX = (S2) => S2.scroll + LVL_TEAM;
   function levelScene(vh, seed, n, plan, team, tier = 1, run = null, grem = false) {
-    const base = lvlPace(tier);
+    const base = lvlPace(grem ? gremHardTier(tier) : tier);
     if (!plan) plan = levelPlan(seed, void 0, grem ? 0 : void 0, base, grem);
     const L = {
       plan,
@@ -25992,14 +26074,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       step: levelStep,
       data: L,
       hurt: levelHurt,
-      loot: (S3, f) => killLoot(f.k.boss ? "boss" : f.k.elite ? "elite" : "foe", S3.tier || 1, S3.rnd, f.k.gold).filter((it) => !L.grem || it.kind === "gold"),
+      loot: (S3, f) => killLoot(f.k.boss ? "boss" : f.k.elite ? "elite" : "foe", S3.tier || 1, S3.rnd, f.k.gold).filter((it) => !L.grem || it.kind === "gold").map((it) => L.grem ? gremGold(it) : it),
       fits: (_S, it) => !L.run || bagFits(L.run, it),
       take: (_S, it) => {
         if (L.run && bagAdd(L.run, it)) return false;
         L.bagV++;
         return true;
       },
-      kind: autoFoe,
+      kind: grem ? gremFoe : autoFoe,
       hardY: (S3, wx) => levelHardY(S3, plan, wx),
       lootCol,
       blockCell,
@@ -26229,7 +26311,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     S2.tier = tier;
     if (L.run) L.run.tier = tier;
     L.ups = (L.ups || 0) + 1;
-    L.base = lvlPace(tier);
+    L.base = lvlPace(gremHardTier(tier));
     const z0 = P2.arena.x1, want = Math.max(TITLE_ZLEN[0], DEV.autoLvlMin * 60 * LVL_SCROLL * L.base);
     let x = Math.max(z0, zp.z[zp.z.length - 1].x1);
     while (x - z0 < want) x = titleZoneAdd(zp, x).x1;
@@ -28200,10 +28282,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (gem) drawGem(ctx, x0 + w - 2, fy - 22 + 6.5, 2.2, col);
     ctx.restore();
   }
-  function drawHint(ctx, x, y, text, t) {
+  function drawHint(ctx, x, y, text, t, noKey = false) {
     ctx.save();
     ctx.font = "700 6px system-ui, sans-serif";
-    const tw = ctx.measureText(text).width, kr2 = 3.6, w = tw + kr2 * 2 + 10, h3 = 12;
+    const tw = ctx.measureText(text).width, kr2 = noKey ? -1.5 : 3.6, w = tw + kr2 * 2 + 10, h3 = 12;
     const l = x - w / 2, top = y - h3 + Math.sin(t * 3) * 0.6;
     ctx.fillStyle = "rgba(18,20,26,0.55)";
     ctx.strokeStyle = "#00ff3c";
@@ -28216,14 +28298,16 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const ky = top + h3 / 2;
     ctx.strokeStyle = "#ffffff";
     ctx.lineWidth = 0.5;
-    ctx.beginPath();
-    ctx.arc(l + 4 + kr2, ky, kr2, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.fillStyle = "#ffffff";
-    ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.font = "700 4.6px system-ui, sans-serif";
-    ctx.fillText("A", l + 4 + kr2, ky + 0.2);
+    if (!noKey) {
+      ctx.beginPath();
+      ctx.arc(l + 4 + kr2, ky, kr2, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = "#ffffff";
+      ctx.textAlign = "center";
+      ctx.font = "700 4.6px system-ui, sans-serif";
+      ctx.fillText("A", l + 4 + kr2, ky + 0.2);
+    }
     ctx.fillStyle = "#00ff3c";
     ctx.textAlign = "left";
     ctx.font = "700 6px system-ui, sans-serif";
@@ -29210,10 +29294,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     "fxSmSideLo",
     "fxSmSizeHi",
     "fxSmSizeLo",
+    "gremDark",
+    "gremGold",
     "gremGrow",
-    "gremP2",
-    "gremP3",
-    "gremP4",
+    "gremHard",
     "gremPickR",
     "gremPrice",
     "jeAimTolHi",
@@ -30017,8 +30101,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         ctx.fillRect(Math.round(h3.x - 1), Math.round(h3.y - 4), 2, 2);
       }
     }
-    const c = chestInRange(S2);
-    if (c && c.y != null) drawHint(ctx, c.x - S2.scroll, c.y - 28, "Tap A to open", S2.t);
+    const c = chestInRange(S2), G = S2.lvl && S2.lvl.data && S2.lvl.data.grem;
+    if (c && c.y != null) drawHint(ctx, c.x - S2.scroll, c.y - 28, G ? "Tap to open." : "Tap A to open", S2.t, !!G);
   }
   function levelBars(ctx, S2) {
     const L = levelState(S2), boss = L && L.boss;
@@ -31611,7 +31695,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     dc.setTransform(1, 0, 0, 1, 0, 0);
     dc.globalCompositeOperation = "source-over";
     dc.clearRect(0, 0, w, h3);
-    dc.fillStyle = "rgba(9,10,14," + DEV.fogDim + ")";
+    dc.fillStyle = "rgba(9,10,14," + DEV.fogDim * (S2.lvl && S2.lvl.data && S2.lvl.data.grem ? DEV.gremDark : 1) + ")";
     dc.fillRect(0, 0, w, h3);
     dc.globalCompositeOperation = "destination-out";
     dc.filter = "blur(1.5px)";
@@ -36280,67 +36364,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     );
   }
 
-  // src/auto/grem.js
-  var five3 = (v) => Math.max(5, Math.round(v / 5) * 5);
-  var gremPrice = (i) => five3(DEV.gremPrice * Math.pow(DEV.gremGrow, Math.max(0, i)));
-  function gremPaidAt(i) {
-    let s = 0;
-    for (let k = 0; k <= i; k++) s += gremPrice(k);
-    return s;
-  }
-  function gremUnlocked(gold, n) {
-    let k = 0;
-    while (k < n && gold >= gremPaidAt(k)) k++;
-    return k;
-  }
-  function gremFill(gold, i) {
-    const end = gremPaidAt(i), start = end - gremPrice(i);
-    return Math.max(0, Math.min(1, (gold - start) / Math.max(1, end - start)));
-  }
-  var gremTeam = (tier) => Math.min(4, 1 + [DEV.gremP2, DEV.gremP3, DEV.gremP4].filter((lv) => tier >= lv).length);
-  var gremTeamGun = (u, j) => u > 0 ? ((u - j) % u + u) % u : -1;
-  var GREM_KIT_KEY = "caverunner-grem-kit";
-  var gremKitNew = () => ({ exo: Object.fromEntries(EXO_CATS.map((c) => [c, Array(EXO_SLOTS).fill(0)])), perks: Array(PERK_SLOTS).fill(null) });
-  function gremKitClean(k) {
-    const out = gremKitNew();
-    if (!k || typeof k !== "object") return out;
-    for (const c of EXO_CATS) {
-      const a = k.exo && Array.isArray(k.exo[c]) ? k.exo[c] : [];
-      out.exo[c] = out.exo[c].map((_, i) => {
-        const t = Math.round(Number(a[i]) || 0);
-        return t >= 1 && t <= 5 ? t : 0;
-      });
-    }
-    const p = Array.isArray(k.perks) ? k.perks : [];
-    out.perks = out.perks.map((_, i) => typeof p[i] === "string" && PERKS[p[i]] && !PERKS[p[i]].stat ? p[i] : null);
-    return out;
-  }
-  var gremKitLoad = () => {
-    try {
-      return gremKitClean(JSON.parse(localStorage.getItem(GREM_KIT_KEY) || "null"));
-    } catch (_) {
-      return gremKitNew();
-    }
-  };
-  var gremKitSave = (k) => {
-    try {
-      localStorage.setItem(GREM_KIT_KEY, JSON.stringify(k));
-    } catch (_) {
-    }
-  };
-  function gremKitFit(pl, kit) {
-    for (const c of EXO_CATS) pl.exo[c] = kit.exo[c].map((t) => t ? exoMod(c, t) : null);
-    pl.perks = kit.perks.map((id) => id ? { kind: "perk", id, n: 1 } : null);
-  }
-  function gremRun(kit, rnd2 = Math.random) {
-    const pl = newPlayer(0);
-    pl.guns[0] = starterKit(rnd2).gun;
-    gremKitFit(pl, kit);
-    const run = { tier: 1, players: [pl], bag: Array(14).fill(null), seed: 1 + Math.floor(rnd2() * 1e6) };
-    mapsOf(run);
-    return run;
-  }
-
   // src/ui/auto/presetlib.js
   var tap = (fn) => (e) => {
     e.preventDefault();
@@ -36414,7 +36437,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         h("i", { className: "aplhandle", onPointerDown: (e) => grab(e, i) }, "⠿"),
         h("span", { className: "aplicon" }, h(GunIcon, { gun: p.gun })),
         h("b", { className: "aplname" }, p.name),
-        h("i", { className: "aplprice" }, gremPrice(i) + "g")
+        h("i", { className: "aplprice" }, gremPrice(gremGunAt(i, list.length)) + "g")
       ))) : h("p", { className: "prenone" }, "No presets yet — open a gun in the nav and tap 💾 on its panel."),
       drag && dp ? h(
         "div",
@@ -38529,6 +38552,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   };
   function GremScreen() {
     const [presets] = useState(loadPresets);
+    const [items] = useState(() => gremUnlocks(presets.length));
     const run = useRef(gremRun(gremKitLoad()));
     const [paused, setPaused] = useState(false);
     const pausedRef = useRef(false);
@@ -38545,6 +38569,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const guns = useRef(null);
     const [, setV] = useState(0);
     const unlocked = useRef(0);
+    const gunsOpen = () => gremOpen(unlocked.current, presets.length).guns;
     const cvs = useRef(null);
     const scene = useRef(null);
     const cam = useRef(null);
@@ -38562,7 +38587,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     };
     const dealOut = () => {
       for (let j = 1; j < run.current.players.length; j++) {
-        const k = gremTeamGun(unlocked.current, j);
+        const k = gremTeamGun(gunsOpen(), j);
         if (k >= 0) give(j, k);
       }
     };
@@ -38583,23 +38608,26 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         const g = bagCount(R, "gold");
         setGold(g);
         setLvl(R.tier);
-        const u = gremUnlocked(g, presets.length);
+        const u = gremUnlocked(g, items.length);
         if (u > unlocked.current) {
-          const was = unlocked.current;
+          const was = unlocked.current, g0 = gunsOpen();
           unlocked.current = u;
-          give(0, u - 1);
-          dealOut();
+          const gn = gunsOpen();
+          if (gn > g0) {
+            give(0, gn - 1);
+            dealOut();
+          }
           SFX.fx("open");
           setFresh((f) => [...f, ...Array.from({ length: u - was }, (_, k) => was + k)]);
-          const el = guns.current && guns.current.querySelector('[data-gun="' + (u - 1) + '"]');
+          const el = guns.current && guns.current.querySelector('[data-item="' + (u - 1) + '"]');
           if (el && el.scrollIntoView) el.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
         }
         const L = levelState(S2);
-        while (L && L.phase !== "arrive" && !L.failed && R.players.length < gremTeam(R.tier) && S2.runners.length < 4) {
+        while (L && L.phase !== "arrive" && !L.failed && R.players.length < gremOpen(unlocked.current, presets.length).team && S2.runners.length < 4) {
           const pl = newPlayer(R.players.length);
           pl.guns[0] = starterKit().gun;
           R.players.push(pl);
-          const k = gremTeamGun(unlocked.current, R.players.length - 1);
+          const k = gremTeamGun(gunsOpen(), R.players.length - 1);
           if (k >= 0) give(R.players.length - 1, k);
           healRun({ ...R, players: [pl] });
           if (!sceneAddRunner(S2)) {
@@ -38655,11 +38683,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             const k = w / 150;
             ctx.save();
             ctx.scale(k, k);
-            drawHint(ctx, w / 2 / k, hh2 * 0.3 / k, "Tap A to play again", S2.t);
+            drawHint(ctx, w / 2 / k, hh2 * 0.3 / k, "Tap to play again", S2.t, true);
             ctx.restore();
           }
         },
-        // everyone down and A pressed (the blast): a fresh Grem run, back to level 1, every preset locked again
+        // everyone down and the play area tapped (the blast): a fresh Grem run, back to level 1, every preset locked again
         next: (S2) => {
           if (!levelLost(S2)) return false;
           window.__AUTO_LEVEL = 0;
@@ -38683,14 +38711,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (C) C.lock = w;
       levelControl(S2, w, st);
     };
-    const pickGun = (i) => {
-      if (i >= unlocked.current) {
+    const pickItem = (k) => {
+      const it = items[k];
+      if (!it || k >= unlocked.current) {
         SFX.ui("tap");
         return;
       }
-      give(who, i);
-      SFX.fx("open");
-      setFresh((f) => f.filter((k) => k !== i));
+      if ("gun" in it) {
+        give(who, it.gun);
+        SFX.fx("open");
+      } else if (run.current.players[it.player]) pickWho(it.player);
+      setFresh((f) => f.filter((q) => q !== k));
     };
     const pickWho = (i) => {
       SFX.ui("tap");
@@ -38702,25 +38733,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
       setWho(i);
     };
-    const pressA = () => {
-      SFX.unlock();
-      SFX.ui("tap");
-      const S2 = scene.current;
-      if (S2 && (levelTeleportHome(S2) || chestOpen(S2))) SFX.fx("open");
-    };
-    const pressB = () => {
-      SFX.ui("tap");
-      const S2 = scene.current, C = cam.current;
-      if (S2 && S2.runners.some((r) => r.ctl)) {
-        if (C) C.lock = -1;
-        levelControl(S2, -1, null);
-        SFX.fx("close");
-      }
-    };
     const playTap = (e) => {
       if (e.target && e.target.closest && e.target.closest(".pausebtn")) return;
       const S2 = scene.current, C = cam.current, c = cvs.current;
       if (!S2 || !C || !c) return;
+      SFX.unlock();
+      if (levelTeleportHome(S2) || chestOpen(S2)) {
+        SFX.fx("open");
+        return;
+      }
       const r = c.getBoundingClientRect(), k = r.width / TITLE_VW, q = camAt(C, (e.clientX - r.left) / k, (e.clientY - r.top) / k);
       let best = null, bd = Infinity;
       for (const f of S2.foes) {
@@ -38750,15 +38771,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         } }, "⏸")
       ),
       h("div", { className: "ggold", "data-gold": gold }, h("span", { className: "ggicon" }, h(NuggetIcon, { kind: "gold" })), h("b", null, gold.toLocaleString())),
-      h(GremGuns, { presets, gold, sel: has[who] ?? -1, fresh: fresh2, pick: pickGun, box: guns }),
+      h(GremGuns, { presets, items, gold, sel: has[who] ?? -1, who, fresh: fresh2, pick: pickItem, box: guns }),
       h(GremHelms, { run: run.current, who, pick: pickWho }),
-      h(
-        "div",
-        { className: "abtns" },
-        h(PillStick, { onMove: steer }),
-        h("button", { className: "abtn ab", onPointerDown: tap2(pressB) }, "B"),
-        h("button", { className: "abtn aa", onPointerDown: tap2(pressA) }, "A")
-      ),
+      h("div", { className: "abtns gstick" }, h(PillStick, { onMove: steer })),
       flies.map((f) => h(FlyTile, { key: f.k, f, done: () => setFlies((fs) => fs.filter((q) => q.k !== f.k)) })),
       paused ? h(PauseMenu, { input, label: "Grem Mode · Level " + lvl, onNew: () => location.reload(), close: () => {
         SFX.fx("close");
@@ -38766,44 +38781,59 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       } }) : null
     );
   }
-  function GremGuns({ presets, gold, sel, fresh: fresh2, pick, box }) {
-    const u = gremUnlocked(gold, presets.length);
-    if (!presets.length) return h("div", { className: "gguns none" }, h("p", null, "No gun presets yet: Dev → Presets"));
-    return h("div", { className: "gguns", ref: box }, presets.map((p, i) => {
-      const f = i < u ? 1 : i === u ? gremFill(gold, i) : 0, nu = i < u && fresh2.includes(i);
+  function GremGuns({ presets, items, gold, sel, who, fresh: fresh2, pick, box }) {
+    const u = gremUnlocked(gold, items.length);
+    return h("div", { className: "gguns", ref: box }, items.map((it, k) => {
+      const f = k < u ? 1 : k === u ? gremFill(gold, k) : 0, nu = k < u && fresh2.includes(k);
+      const cls = "ggun" + (k < u ? " open" : k === u ? " next" : " locked") + (nu ? " fresh" : "");
+      const common = { key: k, "data-item": k, "data-fill": f.toFixed(3), style: { "--f": (f * 360).toFixed(1) + "deg" }, onClick: () => pick(k) };
+      const badge = nu ? h("i", { className: "gnew" }, "NEW") : null;
+      if ("player" in it) {
+        const col = TITLE_COLS[it.player % TITLE_COLS.length];
+        return h(
+          "button",
+          {
+            ...common,
+            className: cls + " gplayer" + (k < u && it.player === who ? " sel" : ""),
+            "data-unlock-player": it.player,
+            title: "Player " + (it.player + 1) + (k < u ? "" : " · " + gremPrice(k) + " gold")
+          },
+          h("span", { className: "gginner" }, h(HelmetIcon, { col, size: 44 })),
+          badge
+        );
+      }
+      const p = presets[it.gun];
       return h(
         "button",
         {
-          key: i,
-          className: "ggun" + (i < u ? " open" : i === u ? " next" : " locked") + (i === sel ? " sel" : "") + (nu ? " fresh" : ""),
-          "data-gun": i,
-          "data-fill": f.toFixed(3),
-          title: p.name + (i < u ? "" : " · " + gremPrice(i) + " gold"),
-          style: { "--f": (f * 360).toFixed(1) + "deg" },
-          onClick: () => pick(i)
+          ...common,
+          className: cls + (it.gun === sel ? " sel" : ""),
+          "data-gun": it.gun,
+          title: p.name + (k < u ? "" : " · " + gremPrice(k) + " gold")
         },
         h("span", { className: "gginner" }, h(GunIcon, { gun: p.gun })),
-        nu ? h("i", { className: "gnew" }, "NEW") : null
+        badge
       );
     }));
   }
   function GremHelms({ run, who, pick }) {
-    return h("div", { className: "ghelms" }, run.players.map((q, i) => {
-      const hp = hpFrac(q);
-      return h(
-        "button",
-        {
-          key: i,
-          className: "anavc on" + (i === who ? " sel" : ""),
-          "data-player": i,
-          onPointerDown: tap2(() => pick(i)),
-          style: { boxShadow: i === who ? void 0 : "0 0 10px " + q.col + "66", "--hp": (hp * 360).toFixed(1) + "deg", "--hc": q.col, "--fl": (0.12 + hp * 2.4).toFixed(2) + "s" }
-        },
-        h(HelmetIcon, { col: q.col, size: 35 }),
-        h("i", { className: "ahp" }),
-        hp < 0.25 ? h("i", { className: "ahp ahpf" }) : null
-      );
-    }));
+    const helm = (q, i) => h(
+      "button",
+      {
+        key: i,
+        className: "anavc on" + (i === who ? " sel" : ""),
+        "data-player": i,
+        onPointerDown: tap2(() => pick(i)),
+        style: { boxShadow: i === who ? void 0 : "0 0 10px " + q.col + "66" }
+      },
+      h(HelmetIcon, { col: q.col, size: 35 })
+    );
+    return h(
+      "div",
+      { className: "ghelms" },
+      h("div", { className: "ghl" }, run.players.slice(0, 2).map((q, i) => helm(q, i))),
+      h("div", { className: "ghr" }, run.players.slice(2).map((q, i) => helm(q, i + 2)))
+    );
   }
 
   // src/ui/title.js
