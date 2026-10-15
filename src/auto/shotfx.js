@@ -5,7 +5,7 @@
 // lights are game/render/autolooks.js. Particle kinds: 'glow' (an added speck that fades), 'fall' (the same,
 // falling), 'smoke' (a dark puff that swells), 'fire' (rises, white → orange → red).
 
-import { matchesTarget } from '../spells/discrim.js';
+import { matchesTarget, targetsOf } from '../spells/discrim.js';
 import { DEV } from '../dev/knobs.js';
 import { PH, PW } from '../core/consts.js';
 
@@ -267,19 +267,22 @@ export function holePull(s, foes, scroll, shots, dt, reach) {
 /** @param {import('../art/titlescene.js').TShot} s @param {{ x: number, y: number, ty: number, hp: number, k?: { id: string } }[]} foes @param {number} scroll @param {import('../art/titlescene.js').TShot[]} shots @param {number} dt @param {number} pull @param {Coin[]} [coins] @param {import('../art/titlescene.js').TLoot[]} [loot] @param {{ x: number, y: number, id: number, out?: boolean }[]} [runners] */
 export function vacPull(s, foes, scroll, shots, dt, pull, coins, loot, runners) {
   const reach = s.vac || 64, only = s.only || null;
+  // (owner, v1.0.88) every target it names, not just the first: Discriminates add up (a creature, then gold, then a green gem)
+  const kinds = new Set(targetsOf(only).map(t => t.kind));
   /** @param {number} d */
   const sp = d => pull * (0.35 + 0.65 * (1 - d / reach));
   // Discriminate (owner, v1.0.71): a White Hole carrying `only` pulls that and nothing else: one creature kind,
   // or gold nuggets (coins, world coords), or red / green crystal pickups (loot, world coords)
-  if (!only || only.kind === 'creature') for (const f of foes) {
+  if (!only || kinds.has('creature')) for (const f of foes) {
     if (!(f.hp > 0)) continue;
     if (only && !matchesTarget(only, { kind: 'creature', id: f.k ? f.k.id : '' })) continue;
     const dx = s.x - (f.x - scroll), dy = s.y - f.ty, d = Math.hypot(dx, dy) || 1;
     if (d < reach) { const m = Math.min(d, sp(d) * dt); f.x += dx / d * m; f.y += dy / d * m; f.ty += dy / d * m; }
   }
-  if (only && only.kind === 'object') {
+  if (only && kinds.has('object')) {
     /** @type {{ x: number, y: number, vx?: number, vy?: number }[]} */
-    const things = only.id === 'gold' ? (coins || []) : (loot || []).filter(g => g.it && g.it.kind === only.id);
+    const things = [...(matchesTarget(only, { kind: 'object', id: 'gold' }) ? coins || [] : []),
+      ...(loot || []).filter(g => g.it && matchesTarget(only, { kind: 'object', id: g.it.kind }))];
     for (const g of things) {
       const dx = s.x + scroll - g.x, dy = s.y - g.y, d = Math.hypot(dx, dy) || 1;
       if (d >= reach) continue;
@@ -288,8 +291,8 @@ export function vacPull(s, foes, scroll, shots, dt, pull, coins, loot, runners) 
     }
   }
   // Discriminate:Pn: player n's runner (id n - 1) drawn gently in, DEV.autoDiscPull units a second
-  if (only && only.kind === 'player') for (const r of runners || []) {
-    if (r.out || r.id !== Number(only.id) - 1) continue;
+  if (only && kinds.has('player')) for (const r of runners || []) {
+    if (r.out || !matchesTarget(only, { kind: 'player', id: String(r.id + 1) })) continue;
     const dx = s.x - (r.x + PW / 2), dy = s.y - (r.y + PH / 2), d = Math.hypot(dx, dy) || 1;
     if (d < reach) { const m = Math.min(d, DEV.autoDiscPull * dt); r.x += dx / d * m; r.y += dy / d * m; }
   }

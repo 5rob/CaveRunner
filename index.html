@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v1.0.87</title>
-<!-- VERSION = 'v1000087' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v1.0.88</title>
+<!-- VERSION = 'v1000088' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -1285,7 +1285,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v1.0.87';</script>
+<script>const VERSION = 'v1.0.88';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -12689,8 +12689,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   function vacPull(s, foes, scroll, shots, dt, pull, coins, loot, runners) {
     const reach2 = s.vac || 64, only = s.only || null;
+    const kinds = new Set(targetsOf(only).map((t) => t.kind));
     const sp = (d) => pull * (0.35 + 0.65 * (1 - d / reach2));
-    if (!only || only.kind === "creature") for (const f of foes) {
+    if (!only || kinds.has("creature")) for (const f of foes) {
       if (!(f.hp > 0)) continue;
       if (only && !matchesTarget(only, { kind: "creature", id: f.k ? f.k.id : "" })) continue;
       const dx = s.x - (f.x - scroll), dy = s.y - f.ty, d = Math.hypot(dx, dy) || 1;
@@ -12701,8 +12702,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         f.ty += dy / d * m;
       }
     }
-    if (only && only.kind === "object") {
-      const things = only.id === "gold" ? coins || [] : (loot || []).filter((g) => g.it && g.it.kind === only.id);
+    if (only && kinds.has("object")) {
+      const things = [
+        ...matchesTarget(only, { kind: "object", id: "gold" }) ? coins || [] : [],
+        ...(loot || []).filter((g) => g.it && matchesTarget(only, { kind: "object", id: g.it.kind }))
+      ];
       for (const g of things) {
         const dx = s.x + scroll - g.x, dy = s.y - g.y, d = Math.hypot(dx, dy) || 1;
         if (d >= reach2) continue;
@@ -12713,8 +12717,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         g.vy = 0;
       }
     }
-    if (only && only.kind === "player") for (const r of runners || []) {
-      if (r.out || r.id !== Number(only.id) - 1) continue;
+    if (only && kinds.has("player")) for (const r of runners || []) {
+      if (r.out || !matchesTarget(only, { kind: "player", id: String(r.id + 1) })) continue;
       const dx = s.x - (r.x + PW / 2), dy = s.y - (r.y + PH / 2), d = Math.hypot(dx, dy) || 1;
       if (d < reach2) {
         const m = Math.min(d, DEV.autoDiscPull * dt);
@@ -32418,7 +32422,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
 
   // src/version.js
-  var VERSION2 = "v1.0.87";
+  var VERSION2 = "v1.0.88";
 
   // src/art/zonelab.js
   var ZLAB_LEAD = 60;

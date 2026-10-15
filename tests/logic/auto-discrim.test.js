@@ -80,6 +80,16 @@ const run = (s, foes, coins, loot) => { for (let i = 0; i < 20; i++) G.vacPull(s
   check('Discriminate:rat pulls rats only', rat.x < 130 && jelly.x === 70, [rat.x, jelly.x]);
 }
 {
+  // (owner, v1.0.88) Discriminates add up: a creature first, then gold and green, pulls all three (it read only the first's kind)
+  const rat = foe('rotta'), jelly = Object.assign(foe('meduusa'), { x: 70 }), c = { x: 70, y: 50, amount: 1, t: 0 };
+  const green = { x: 100, y: 80, vx: 0, vy: 0, it: { kind: 'green' }, t: 0 }, red = { x: 130, y: 50, vx: 0, vy: 0, it: { kind: 'red' }, t: 0 };
+  let only = null;
+  for (const t of [{ kind: 'creature', id: 'rotta' }, { kind: 'object', id: 'gold' }, { kind: 'object', id: 'green' }]) only = G.addTarget(only, t);
+  run(hole(only), [rat, jelly], [c], [green, red]);
+  check('rat + gold + green: pulls the rat, the gold and the green', rat.x < 130 && c.x > 70 && green.y < 80, [rat.x, c.x, green.y]);
+  check('…not a jellyfish or a red', jelly.x === 70 && red.x === 130, [jelly.x, red.x]);
+}
+{
   const f = foe('rotta'), c = { x: 70, y: 50, amount: 1, t: 0 };
   run(hole(null), [f], [c], []);
   check('an unset White Hole pulls creatures as before, and not gold', f.x < 130 && c.x === 70, [f.x, c.x]);

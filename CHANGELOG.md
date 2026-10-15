@@ -5,6 +5,11 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.88 — CaveRunner Auto: a White Hole pulls every Discriminate's target (branch `autobattler`)
+Released 2026-10-15 on the branch.
+- Fix (owner's screenshot: a White Hole with Discriminates rat, gold and green gem never pulled gold): `auto/shotfx.js vacPull` chose what to pull by the first target's kind only (`only.kind`), so a creature first meant no gold or gems. It now checks every target (`targetsOf` / `matchesTarget`); the same for players. Suite auto-discrim.
+- Also (looked into, no change): Double Cast on a gun that already casts 2 fires 3; a Switch in front of Follow Me takes it as one of its turns.
+
 ## v1.0.87 — CaveRunner Auto: the gun panel's 💾 moved (branch `autobattler`)
 Released 2026-10-15 on the branch (owner: no approval needed).
 - Owner: the 💾 (dev mode: save the gun as a preset) sat over the stats' PER CAST line; it's now at the firing window's top right (`.agpsave` in style.css).
