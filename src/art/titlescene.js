@@ -1009,9 +1009,10 @@ function coalDeco(S, c, wx, Zn, cap, rcy, fy, tuns) {
   for (const { f, rail } of Zn.z === 'timber' ? tuns.map(t => ({ f: t.rail ? t.f : t.rf, rail: t.rail })) : [{ f: fy, rail: false }]) {
     const r = Math.ceil(f / TCELL - 0.5);   // the floor's top rock row
     if (r <= 8 || r >= S.rows || !SOLID[S.cells[base + r]] || SOLID[S.cells[base + r - 1]]) continue;
-    if (wx >= (S.gasNext ?? 0) && lowCorner(S, c, r)) {   // a gas pocket in a low corner, about DEV.coalGas a screen
-      (S.gas ||= []).push({ wx, y: r * TCELL, r: DEV.coalGasSize * (0.7 + 0.6 * h2(wx, 71)) });
-      S.gasNext = wx + TITLE_VW / Math.max(0.01, DEV.coalGas) * (0.4 + 1.2 * h2(wx, 73));
+    const lc = wx >= (S.gasNext ?? 0) ? lowCorner(S, c, r) : null;
+    if (lc) {   // a gas pocket in a low corner, about DEV.coalGas a screen
+      (S.gas ||= []).push({ wx: (lc.c + 0.5) * TCELL, y: lc.r * TCELL, r: DEV.coalGasSize * (0.7 + 0.6 * h2(wx, 71)) });
+      S.gasNext = wx + TITLE_VW / Math.max(0.01, DEV.coalGas) * (0.15 + 0.9 * h2(wx, 73));   // (a gap a little short of the mean: the next corner after it comes a little later)
     }
     const p = R(), y = r * TCELL;
     const cp = DEV.coalCarts * (rail ? 3 : 1);   // (carts mostly on the rails)
@@ -1029,12 +1030,17 @@ function coalDeco(S, c, wx, Zn, cap, rcy, fy, tuns) {
     }
   }
 }
-// a low corner at column c's floor (top rock row r): rock rises 3+ cells over it within 6 columns behind (a hollow's
-// side, a tunnel's dead end)
-/** @param {TitleScene} S @param {number} c @param {number} r */
+// a low corner by column c's floor (top rock row r), as { c, r } of the floor there: c's own floor when rock rises 3+ cells
+// over it within 6 columns behind; or, c's floor being a step's top, a floor 3+ cells lower within 6 columns behind (rock rising
+// on its right: judged once this column exists). A hollow's side, a tunnel's dead end
+/** @param {TitleScene} S @param {number} c @param {number} r @returns {{ c: number, r: number } | null} */
 function lowCorner(S, c, r) {
-  for (let k = 2; k <= 6; k++) { const b = ci(S, c - k, 0); if (SOLID[S.cells[b + r - 3]] && SOLID[S.cells[b + r - 5]]) return true; }
-  return false;
+  for (let k = 2; k <= 6; k++) { const b = ci(S, c - k, 0); if (SOLID[S.cells[b + r - 3]] && SOLID[S.cells[b + r - 5]]) return { c, r }; }
+  for (let k = 2; k <= 6; k++) {
+    const b = ci(S, c - k, 0);
+    for (let q = r; q < Math.min(S.rows, r + 14); q++) if (SOLID[S.cells[b + q]]) { if (q - r >= 3) return { c: c - k, r: q }; break; }
+  }
+  return null;
 }
 // (Coal Seams) a gas pocket goes off: a pale blue whoomph, a flash, a soft blast (no rock bitten) that hurts the creatures in it
 // (DEV.coalGasDmg), sets fire round it and sets off carts; its boom (sid 'gas') sets off pockets near it (stepGas)

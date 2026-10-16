@@ -11998,9 +11998,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     for (const { f, rail } of Zn.z === "timber" ? tuns.map((t) => ({ f: t.rail ? t.f : t.rf, rail: t.rail })) : [{ f: fy, rail: false }]) {
       const r = Math.ceil(f / TCELL - 0.5);
       if (r <= 8 || r >= S.rows || !SOLID[S.cells[base + r]] || SOLID[S.cells[base + r - 1]]) continue;
-      if (wx >= (S.gasNext ?? 0) && lowCorner(S, c, r)) {
-        (S.gas ||= []).push({ wx, y: r * TCELL, r: DEV.coalGasSize * (0.7 + 0.6 * h2(wx, 71)) });
-        S.gasNext = wx + TITLE_VW / Math.max(0.01, DEV.coalGas) * (0.4 + 1.2 * h2(wx, 73));
+      const lc = wx >= (S.gasNext ?? 0) ? lowCorner(S, c, r) : null;
+      if (lc) {
+        (S.gas ||= []).push({ wx: (lc.c + 0.5) * TCELL, y: lc.r * TCELL, r: DEV.coalGasSize * (0.7 + 0.6 * h2(wx, 71)) });
+        S.gasNext = wx + TITLE_VW / Math.max(0.01, DEV.coalGas) * (0.15 + 0.9 * h2(wx, 73));
       }
       const p = R(), y = r * TCELL;
       const cp = DEV.coalCarts * (rail ? 3 : 1);
@@ -12020,9 +12021,16 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function lowCorner(S, c, r) {
     for (let k = 2; k <= 6; k++) {
       const b = ci(S, c - k, 0);
-      if (SOLID[S.cells[b + r - 3]] && SOLID[S.cells[b + r - 5]]) return true;
+      if (SOLID[S.cells[b + r - 3]] && SOLID[S.cells[b + r - 5]]) return { c, r };
     }
-    return false;
+    for (let k = 2; k <= 6; k++) {
+      const b = ci(S, c - k, 0);
+      for (let q = r; q < Math.min(S.rows, r + 14); q++) if (SOLID[S.cells[b + q]]) {
+        if (q - r >= 3) return { c: c - k, r: q };
+        break;
+      }
+    }
+    return null;
   }
   function gasBoom(S, g) {
     if (g.gone) return;

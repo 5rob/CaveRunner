@@ -19,7 +19,22 @@ for (let i = 0; i < 3000 && S.scroll < L.plan.arena.x0 - 300; i++) {
   for (const g of S.gas || []) made.add(g);
 }
 const per = made.size / (dist / G.TITLE_VW);
-check('gas pockets in Coal Seams, about DEV.coalGas a screen', per > D.coalGas * 0.3 && per < D.coalGas * 2, { n: made.size, per: +per.toFixed(2) });
+check('gas pockets in Coal Seams, about DEV.coalGas a screen (within 25%)', Math.abs(per / D.coalGas - 1) < 0.25, { n: made.size, per: +per.toFixed(2), knob: D.coalGas });
+// the knob at 0.5 on another level: about that many
+{
+  const D0 = D.coalGas; D.coalGas = 0.5;
+  const r2 = G.newRun(4), S2 = G.levelScene(190, 41, 1, undefined, r2.players, 2, r2, true), L2 = G.levelState(S2);
+  S2.spawn = 1e9; S2.foes.length = 0;
+  const m2 = new Set(); let d2 = 0;
+  for (let i = 0; i < 3000 && S2.scroll < L2.plan.arena.x0 - 300; i++) {
+    S2.scroll += 3; d2 += 3; G.titleStep(S2, 1 / 60); S2.foes.length = 0;
+    for (const r of S2.runners) { r.x = 40; r.y = 10; r.out = true; }
+    for (const g of S2.gas || []) m2.add(g);
+  }
+  const p2 = m2.size / (d2 / G.TITLE_VW);
+  check('… and with the knob at 0.5 (within 40%: fewer of them)', Math.abs(p2 / 0.5 - 1) < 0.4, { n: m2.size, per: +p2.toFixed(2) });
+  D.coalGas = D0;
+}
 const g0 = [...made].find(g => g.wx > S.scroll && g.wx < S.scroll + G.TITLE_VW);
 if (g0) {
   const c = Math.floor(g0.wx / TC), r = Math.round(g0.y / TC);
