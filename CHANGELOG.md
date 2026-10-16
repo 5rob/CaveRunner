@@ -5,6 +5,14 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.103 — Boss under the ground fixed; target lock lost off screen; no wait at a tapped spot; elites' flames; the level's name (branch `autobattler`)
+Built 2026-10-16 (owner's notes); screenshots tests/build/autoshots/elite-fx.png (`node tools/eliteshots.js`), grem-hud-name.png (`node tests/run.js grem-tap`).
+- A boss could come in under the level's ground, out of reach, and the level waited on it for good. `auto/enemies.js unbury`: a creature whose middle is in rock or under the floor's line goes back onto the floor (half way up a cave lower than it is tall); `levelFoes` applies it to the boss in the arena and to the elites every frame. Suite `auto-unbury`.
+- Grem Mode: a tapped target that leaves the view is no longer everyone's target (GremScreen's `over`, by the camera).
+- Grem Mode: at a tapped spot he plays on at once (the idle wait is gone; `goalStep`).
+- Elites carry the old game's look: a tinted glow pulsing behind them and flames rising off their bodies (`titlescene.js stepEliteFx` = the old `stepEliteFire`, `S.eliteFx`; drawn in titledraw.js as the old `drawEliteFire`; Dev → Elites: flames).
+- Grem Mode's HUD names the level under its number (the old floor in view: Mossy Caves, Coal Seams, …).
+
 ## v1.0.102 — Grem Mode: a tapped spot is the autopilot's own goal (branch `autobattler`)
 Released 2026-10-16 (owner: "it should work just like the auto movement, but with a temporary position goal").
 - v1.0.101 steered him there with a pretend stick: no going round or sawing through rock. Now the tap sets `r.goal` (world x, y) on the runner (`auto/level.js levelWaypoint`); `art/titlescene.js goalStep` puts him in the air and `pickTarget` aims only at it (`goalAim`), so the autopilot's own flight takes him there: rock risen over, dipped under or sawn through as anywhere (a spot inside the rock: he saws to it). Within `GOAL_R` (8) he holds it for `autoCtlWait` s, then the goal is gone and he plays on; not there in `gremWayT` s, the same. Low on fuel he still lands to refill.

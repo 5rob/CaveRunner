@@ -29,13 +29,24 @@ fs.mkdirSync(OUT, { recursive: true });
   check('a tap on empty cave: a waypoint for player 1', !!way1 && way1.id === 0, way1);
   await page.waitForTimeout(250);
   await page.screenshot({ path: path.join(OUT, 'grem-waypoint.png') });
-  await page.locator('.aplay').dispatchEvent('pointerdown', { clientX: box.x + box.width * 0.3, clientY: box.y + box.height * 0.6 });
-  await page.waitForTimeout(150);
+  await page.locator('.aplay').dispatchEvent('pointerdown', { clientX: box.x + box.width * 0.9, clientY: box.y + box.height * 0.25 });
   const way2 = await page.evaluate(() => { const w = levelGoal(window.__gremScene); return w ? { x: w.x, y: w.y } : null; });
   check('a new tap moves it', !!way2 && !!way1 && (way2.x !== way1.x || way2.y !== way1.y), [way1, way2]);
   let gone = false;
   for (let i = 0; i < 60 && !gone; i++) { gone = await page.evaluate(() => !levelGoal(window.__gremScene)); if (!gone) await page.waitForTimeout(200); }
   check('he gets there, holds it, then plays on (the goal done)', gone);
+  // (v1.0.103) a tapped target that leaves the view loses the lock
+  const kept = await page.evaluate(() => { const S = window.__gremScene, f = titleFoeAt(S, enemyFor('rotta', 1), S.scroll + 120); f.hp = f.hpMax = 1e6; S.pick = f; return !!S.pick; });
+  await page.waitForTimeout(200);
+  const still = await page.evaluate(() => !!window.__gremScene.pick);
+  await page.evaluate(() => { const S = window.__gremScene; S.pick.x = S.scroll + TITLE_VW + 400; });
+  await page.waitForTimeout(250);
+  const lost = await page.evaluate(() => !window.__gremScene.pick);
+  check('a tapped target in view keeps the lock', kept && still);
+  check('… and loses it once it leaves the view', lost);
+  await page.evaluate(() => { const S = window.__gremScene; S.foes.length = 0; });
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: path.join(OUT, 'grem-hud-name.png'), clip: { x: 0, y: 0, width: 412, height: 140 } });
   await browser.close();
   console.log(fails ? fails + ' FAILED' : 'all passed');
   process.exit(fails ? 1 : 0);

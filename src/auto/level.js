@@ -206,14 +206,14 @@ export function levelControl(S, id, st) {
 const LEVEL_CTL_REST = { active: false, nx: 0, ny: 0, mag: 0 };
 // (Grem Mode, owner v1.0.101; v1.0.102: the autopilot's own goal, not a stick) a tap on the play area that isn't a chest or a
 // creature: player id heads for world (x, y) on the autopilot (titlescene.js r.goal, goalStep: he flies there going round or
-// sawing through rock as ever, holds it for the idle wait, then plays on); a new tap moves it; null x clears it (the stick took over)
+// sawing through rock as ever; there, he plays on at once: v1.0.103); a new tap moves it; null x clears it (the stick took over)
 /** @param {import('../art/titlescene.js').TitleScene} S @param {number} id @param {number | null} x @param {number} [y] */
 export function levelWaypoint(S, id, x, y = 0) {
   const L = levelState(S), r = S.runners.find(q => q.id === id);
   if (!L || !r) return;
   if (x == null) { r.goal = null; return; }
   if (r.out || r.hide || L.phase === 'arrive') return;
-  r.goal = { x, y, t: S.t, hold: -1 };
+  r.goal = { x, y, t: S.t };
   r.retarget = 0;
 }
 // the tapped spot a player is heading for or holding (null: none)

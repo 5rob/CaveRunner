@@ -7,8 +7,8 @@
 // jetFlame, drawGun with his gun's art), the shots in their game looks, fire, booms.
 
 import { LAMP_REACH, PW, PH, SIGHT } from '../../core/consts.js';
-import { hexArr } from '../../core/util.js';
-import { DEV, jcol, kru } from '../../dev/knobs.js';
+import { hexArr, hexRgb } from '../../core/util.js';
+import { DEV, jcol, kcol, kru } from '../../dev/knobs.js';
 import { plantGlowFill, plantWhite } from '../../creatures/jelly.js';
 import { THEMES } from '../../data/themes.js';
 import { drawEnemy } from '../../creatures/draw.js';
@@ -233,6 +233,15 @@ export function titleDraw(ctx, S, cw, ch, cam) {
     const sx = f.x - S.scroll;
     if (sx < -60 || sx > TITLE_VW + 60) continue;
     if (S.hub && S.hub.pv && f === S.hub.pv.foe) continue;   // the gun panel's target: the panel paints its hologram (auto/preview.js)
+    // (owner v1.0.103) an elite: a soft glow behind it in its tint, pulsing (the old game's drawEnemies; Dev → Elites)
+    if (f.k.elite) {
+      const u = f.k.eu || 0, a = Math.max(0, Math.min(1, kru('elGlow', u) * (1 + 0.45 * Math.sin(S.t * 4 + f.x)))), R = f.r + kru('elGlowR', u);
+      if (a > 0 && R > 0) {
+        const rgb = hexRgb(kcol('elTint', u)), g = ctx.createRadialGradient(sx, f.ty, 0, sx, f.ty, R);
+        g.addColorStop(0, 'rgba(' + rgb + ',' + a + ')'); g.addColorStop(0.45, 'rgba(' + rgb + ',' + (a * 0.55) + ')'); g.addColorStop(1, 'rgba(' + rgb + ',0)');
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(sx, f.ty, R, 0, Math.PI * 2); ctx.fill();
+      }
+    }
     const e = f.r * 3 + 20;
     pixelSprite(ctx, sx - e, f.ty - e, 2 * e, 2 * e + 30, 1, false, c => { c.translate(-S.scroll, 0); drawEnemy(c, f, S.t); });
     if (f.burn > 0) { ctx.save(); ctx.translate(-S.scroll, 0); crackleBody(ctx, f.x, f.ty, f.r * 0.85, TCELL, S.fireN); ctx.restore(); }   // on fire: the burning pixels' crackle over it
@@ -256,6 +265,21 @@ export function titleDraw(ctx, S, cw, ch, cam) {
   for (const r of S.runners) if (!r.hide) titleBeam(ctx, S, r, DK.vis[r.id]);
   if (S.hub) hubGlow(ctx, S);
   if (S.lvl) levelGlow(ctx, S);
+  // (owner v1.0.103) the elites' flames (stepEliteFx), as the old game's drawEliteFire: squares on the pixel grid, colour and
+  // opacity along Dev → Elites' gradient and ramp, added light over the dark
+  if (S.eliteFx && S.eliteFx.length) {
+    const cols = gradLut(DEV.elFxGrad), alpha = rampLut(DEV.elFxAlpha), px = DEV.runnerPx || 0;
+    for (const q of S.eliteFx) {
+      const x0 = q.x - S.scroll;
+      if (x0 < -10 || x0 > TITLE_VW + 10) continue;
+      const t = 1 - q.life / q.max, a = lutAt(alpha, t);
+      if (a <= 0.01) continue;
+      ctx.globalAlpha = a; ctx.fillStyle = lutAt(cols, t);
+      const s = px ? Math.max(px, Math.round((q.s || 1) / px) * px) : (q.s || 1), x = px ? Math.round(x0 / px) * px : x0, y = px ? Math.round(q.y / px) * px : q.y;
+      ctx.fillRect(x - s / 2, y - s / 2, s, s);
+    }
+    ctx.globalAlpha = 1;
+  }
   perkGlow(ctx, S);   // CaveRunner Auto's perks: the shield, the laser, the ghost's halo (perkdraw.js)
   shotLights(ctx, S.shots);   // the light the shots throw (the bubble's blue, pollen's glow)
   // the purple trajectory mods' glow round the shot (auto/traj.js trajLook, DEV.tr…Glow)

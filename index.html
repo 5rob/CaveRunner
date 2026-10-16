@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v1.0.102</title>
-<!-- VERSION = 'v1000102' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v1.0.103</title>
+<!-- VERSION = 'v1000103' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -1214,6 +1214,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   background:linear-gradient(#b8ffb0,#5ee05a 60%,#2fa83a);box-shadow:0 4px 0 #1d5a22,0 0 22px rgba(94,224,90,0.6)}
 .tgrem:active{transform:translateY(2px);box-shadow:0 2px 0 #1d5a22,0 0 18px rgba(94,224,90,0.6)}
 .grem .aplay{flex:1 1 0;min-height:0}
+.glvl small{display:block;margin-top:2px;font-size:11px;font-weight:800;letter-spacing:.05em;color:#d9cdf5}   /* (owner v1.0.103) the level's name under its number */
 .glvl{position:absolute;left:10px;top:8px;font:900 14px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.08em;color:#fff;text-shadow:0 0 4px #000,0 0 8px #000;pointer-events:none}
 .ggold{flex:none;display:flex;align-items:center;justify-content:center;gap:10px;height:46px}
 .ggicon{width:42px;height:42px;display:flex}
@@ -1306,7 +1307,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v1.0.102';</script>
+<script>const VERSION = 'v1.0.103';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -15404,6 +15405,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       separate(S2, dt);
     }
     stepFoes(S2, dt);
+    stepEliteFx(S2, dt);
     stepShots(S2, dt);
     stepFire(S2, dt);
     if (S2.parts.length < TITLE_PARTS - 40 && !S2.hub) {
@@ -15703,8 +15705,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function goalStep(S2, r, dt) {
     const g = r.goal;
     if (!g) return;
-    if (g.hold < 0 && Math.hypot(g.x - (S2.scroll + r.x + PW / 2), g.y - (r.y + PH / 2)) < GOAL_R) g.hold = DEV.autoCtlWait;
-    if (g.hold >= 0 ? (g.hold -= dt) <= 0 : S2.t - g.t > DEV.gremWayT) {
+    if (Math.hypot(g.x - (S2.scroll + r.x + PW / 2), g.y - (r.y + PH / 2)) < GOAL_R || S2.t - g.t > DEV.gremWayT) {
       r.goal = null;
       r.retarget = 0;
       return;
@@ -16601,6 +16602,47 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       e.x = nx;
       e.y = ny;
     }
+  }
+  var ELITE_FX_MAX = 700;
+  function stepEliteFx(S2, dt) {
+    if (dt <= 0) return;
+    const Q = S2.eliteFx || (S2.eliteFx = []);
+    for (const e of S2.foes) {
+      if (!e.k.elite) continue;
+      const vx = e.fxPx != null ? (e.x - e.fxPx) / dt : 0, vy = e.fxPy != null ? (e.ty - e.fxPy) / dt : 0;
+      e.fxPx = e.x;
+      e.fxPy = e.ty;
+      e.fxAcc = (e.fxAcc || 0) + kr("elFxRate") * dt;
+      for (; e.fxAcc >= 1; e.fxAcc--) {
+        const a = Math.random() * Math.PI * 2, rr2 = e.r * kr("elFxBody") * Math.sqrt(Math.random()), life = kr("elFxLife");
+        Q.push({
+          x: e.x + Math.cos(a) * rr2,
+          y: e.ty + Math.sin(a) * rr2,
+          vx: Math.max(-400, Math.min(400, vx)),
+          vy: Math.max(-400, Math.min(400, vy)),
+          life,
+          max: life,
+          rise: kr("elFxRise"),
+          wave: kr("elFxWave"),
+          hz: kr("elFxWaveHz"),
+          drag: kr("elFxDrag"),
+          s: kr("elFxSize"),
+          ph: Math.random() * 6.283,
+          age: 0
+        });
+      }
+    }
+    for (let i = Q.length - 1; i >= 0; i--) {
+      const q = Q[i];
+      q.age = (q.age || 0) + dt;
+      const k = Math.exp(-(q.drag || 0) * dt);
+      q.vx *= k;
+      q.vy *= k;
+      q.x += (q.vx + Math.sin(q.age * (q.hz || 0) * 6.283 + (q.ph || 0)) * (q.wave || 0)) * dt;
+      q.y += (q.vy - (q.rise || 0)) * dt;
+      if ((q.life -= dt) <= 0) Q.splice(i, 1);
+    }
+    if (Q.length > ELITE_FX_MAX) Q.splice(0, Q.length - ELITE_FX_MAX);
   }
   function classicAct(S2, e, hunting, goal, dist, dx, dy, CS, dt) {
     const R = S2.rnd, k = e.k;
@@ -24563,7 +24605,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     if (W.motes.length > 400) W.motes.splice(0, W.motes.length - 400);
   }
-  var ELITE_FX_MAX = 700;
+  var ELITE_FX_MAX2 = 700;
   function stepEliteFire(W, F2) {
     const { dt } = F2;
     if (dt <= 0) return;
@@ -24603,7 +24645,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       q.y += (q.vy - q.rise) * dt;
       if ((q.life -= dt) <= 0) W.eliteFx.splice(i, 1);
     }
-    if (W.eliteFx.length > ELITE_FX_MAX) W.eliteFx.splice(0, W.eliteFx.length - ELITE_FX_MAX);
+    if (W.eliteFx.length > ELITE_FX_MAX2) W.eliteFx.splice(0, W.eliteFx.length - ELITE_FX_MAX2);
   }
 
   // src/game/systems/guide.js
@@ -26105,6 +26147,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     S2.snd.push({ k: "land", x: r.x + PW / 2, y: r.y + PH, a: 200 });
   }
   var allFallen = (S2) => S2.runners.length > 0 && S2.runners.every((r) => r.out);
+  function unbury(S2, f) {
+    const fy = titleFloor(f.x, S2), cy = titleCeil(f.x, S2);
+    if (!(f.y > fy - f.r + 2 || titleSolid(S2, f.x - S2.scroll, f.y))) return;
+    const y = fy - cy > 2 * f.r + 2 ? fy - f.r - 1 : (fy + cy) / 2;
+    f.ty += y - f.y;
+    f.y = y;
+  }
   function levelFoes(S2, L, teamX) {
     if (L.phase === "arrive") return;
     const tier = S2.tier || 1, mk = L.grem ? gremFoe : autoFoe;
@@ -26121,6 +26170,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         e.alive = false;
         continue;
       }
+      unbury(S2, e.f);
       e.x = e.f.x;
     }
     if (L.phase === "arena" && !L.boss && !L.bossDead) {
@@ -26138,6 +26188,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     const B = L.boss;
     if (B && !L.bossDead) {
+      if (B.hp > 0 && B.x >= L.plan.arena.x0 && B.x <= L.plan.arena.x1) unbury(S2, B);
       if (B.hp <= 0) L.bossDead = true;
       else if (!S2.foes.includes(B)) {
         B.x = Math.min(L.plan.arena.x1 - 30, teamX + BOSS_IN);
@@ -26428,7 +26479,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       return;
     }
     if (r.out || r.hide || L.phase === "arrive") return;
-    r.goal = { x, y, t: S2.t, hold: -1 };
+    r.goal = { x, y, t: S2.t };
     r.retarget = 0;
   }
   var levelGoal = (S2) => {
@@ -29627,6 +29678,28 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     "caAggroLo",
     "elDmgHi",
     "elDmgLo",
+    "elFxAlpha",
+    "elFxBodyHi",
+    "elFxBodyLo",
+    "elFxDragHi",
+    "elFxDragLo",
+    "elFxGrad",
+    "elFxLifeHi",
+    "elFxLifeLo",
+    "elFxRateHi",
+    "elFxRateLo",
+    "elFxRiseHi",
+    "elFxRiseLo",
+    "elFxSizeHi",
+    "elFxSizeLo",
+    "elFxWaveHi",
+    "elFxWaveHzHi",
+    "elFxWaveHzLo",
+    "elFxWaveLo",
+    "elGlowHi",
+    "elGlowLo",
+    "elGlowRHi",
+    "elGlowRLo",
     "elHpHi",
     "elHpLo",
     "elScaleHi",
@@ -31560,6 +31633,19 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const sx2 = f.x - S2.scroll;
       if (sx2 < -60 || sx2 > TITLE_VW + 60) continue;
       if (S2.hub && S2.hub.pv && f === S2.hub.pv.foe) continue;
+      if (f.k.elite) {
+        const u = f.k.eu || 0, a = Math.max(0, Math.min(1, kru("elGlow", u) * (1 + 0.45 * Math.sin(S2.t * 4 + f.x)))), R = f.r + kru("elGlowR", u);
+        if (a > 0 && R > 0) {
+          const rgb = hexRgb(kcol("elTint", u)), g = ctx.createRadialGradient(sx2, f.ty, 0, sx2, f.ty, R);
+          g.addColorStop(0, "rgba(" + rgb + "," + a + ")");
+          g.addColorStop(0.45, "rgba(" + rgb + "," + a * 0.55 + ")");
+          g.addColorStop(1, "rgba(" + rgb + ",0)");
+          ctx.fillStyle = g;
+          ctx.beginPath();
+          ctx.arc(sx2, f.ty, R, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
       const e = f.r * 3 + 20;
       pixelSprite(ctx, sx2 - e, f.ty - e, 2 * e, 2 * e + 30, 1, false, (c) => {
         c.translate(-S2.scroll, 0);
@@ -31592,6 +31678,20 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     for (const r of S2.runners) if (!r.hide) titleBeam(ctx, S2, r, DK.vis[r.id]);
     if (S2.hub) hubGlow(ctx, S2);
     if (S2.lvl) levelGlow(ctx, S2);
+    if (S2.eliteFx && S2.eliteFx.length) {
+      const cols = gradLut(DEV.elFxGrad), alpha = rampLut(DEV.elFxAlpha), px = DEV.runnerPx || 0;
+      for (const q of S2.eliteFx) {
+        const x0 = q.x - S2.scroll;
+        if (x0 < -10 || x0 > TITLE_VW + 10) continue;
+        const t = 1 - q.life / q.max, a = lutAt(alpha, t);
+        if (a <= 0.01) continue;
+        ctx.globalAlpha = a;
+        ctx.fillStyle = lutAt(cols, t);
+        const s = px ? Math.max(px, Math.round((q.s || 1) / px) * px) : q.s || 1, x = px ? Math.round(x0 / px) * px : x0, y = px ? Math.round(q.y / px) * px : q.y;
+        ctx.fillRect(x - s / 2, y - s / 2, s, s);
+      }
+      ctx.globalAlpha = 1;
+    }
     perkGlow(ctx, S2);
     shotLights(ctx, S2.shots);
     for (const s of S2.shots) {
@@ -33302,7 +33402,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
 
   // src/version.js
-  var VERSION2 = "v1.0.102";
+  var VERSION2 = "v1.0.103";
 
   // src/art/zonelab.js
   var ZLAB_LEAD = 60;
@@ -39399,6 +39499,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const [boss, setBoss] = useState(noBoss);
     const [paused, setPaused] = useState(false);
     const pausedRef = useRef(false);
+    const [lvlName, setLvlName] = useState(floorName(1));
     const [devOn, setDevOn] = useState(devShown);
     const [devOpen, setDevOpen] = useState(false);
     pausedRef.current = paused || devOpen;
@@ -39447,6 +39548,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         const g = bagCount(R, "gold");
         setGold(g);
         setLvl(R.tier);
+        const lk = lookAt(S2, S2.scroll + TITLE_VW / 2);
+        setLvlName(lk ? lk.name : floorName(1));
         const u = gremUnlocked(g, items.current.length);
         if (u > unlocked.current) {
           const was = unlocked.current;
@@ -39526,7 +39629,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             }
             ctx.restore();
           }
-          if (f && f.hp > 0 && C) {
+          if (f && C) {
+            const k = w / TITLE_VW, p = camTo(C, f.x - S2.scroll, f.ty), m = f.r * C.z;
+            if (p.x < -m || p.x > TITLE_VW + m || p.y < -m || p.y > hh2 / k + m) S2.pick = null;
+          }
+          if (f && S2.pick && f.hp > 0 && C) {
             const k = w / TITLE_VW, p = camTo(C, f.x - S2.scroll, f.ty), r = (f.r + 5 + Math.sin(S2.t * 6) * 1.2) * C.z * k;
             ctx.save();
             ctx.strokeStyle = "rgba(255,50,50,0.55)";
@@ -39673,7 +39780,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         "div",
         { className: "aplay", onPointerDown: playTap },
         h("canvas", { ref: cvs, className: "aplaycvs" }),
-        h("div", { className: "glvl" }, "Level " + lvl),
+        h("div", { className: "glvl" }, "Level " + lvl, h("small", null, lvlName)),
         boss ? h(
           "div",
           { className: "abossbar gboss" },

@@ -1205,6 +1205,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   background:linear-gradient(#b8ffb0,#5ee05a 60%,#2fa83a);box-shadow:0 4px 0 #1d5a22,0 0 22px rgba(94,224,90,0.6)}
 .tgrem:active{transform:translateY(2px);box-shadow:0 2px 0 #1d5a22,0 0 18px rgba(94,224,90,0.6)}
 .grem .aplay{flex:1 1 0;min-height:0}
+.glvl small{display:block;margin-top:2px;font-size:11px;font-weight:800;letter-spacing:.05em;color:#d9cdf5}   /* (owner v1.0.103) the level's name under its number */
 .glvl{position:absolute;left:10px;top:8px;font:900 14px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.08em;color:#fff;text-shadow:0 0 4px #000,0 0 8px #000;pointer-events:none}
 .ggold{flex:none;display:flex;align-items:center;justify-content:center;gap:10px;height:46px}
 .ggicon{width:42px;height:42px;display:flex}

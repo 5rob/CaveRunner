@@ -159,7 +159,7 @@ const CLASSIC = { shoot: 1, turret: 1, chase: 1, bomb: 1 };
  *   ctl?: RunnerCtl | null, ctlWas?: boolean, cvx?: number, jetIn?: { nx: number, ny: number } | null, jx?: number, jy?: number, smokeAcc?: number, smokeN?: number, rag?: import('../world/ragdoll.js').Ragdoll | null, lamp?: boolean,
  *   hang?: TProp | WebLine | null, hangGo?: number, swing?: number, ctlIdle?: number, navT?: number, goal?: TGoal | null }} TRunner */
 // (goal: Grem Mode's tapped spot, owner v1.0.102: the autopilot heads there as it heads anywhere; goalStep)
-/** @typedef {{ x: number, y: number, t: number, hold: number }} TGoal */
+/** @typedef {{ x: number, y: number, t: number }} TGoal */
 /** a player steered by hand (CaveRunner Auto, feedback round 2: the selected player in a level): the pill stick's push
  * @typedef {{ active: boolean, nx: number, ny: number, mag: number }} RunnerCtl */
 // a fixed strip in place of the scrolling ring (CaveRunner Auto's hub, auto/hub.js): w columns, each cell's material from
@@ -191,7 +191,8 @@ const CLASSIC = { shoot: 1, turret: 1, chase: 1, bomb: 1 };
  *   webs: WebLine[], orbN?: number, orbs?: Record<number, OrbRig>, mush?: MushCloud[], orbHub?: { x: number, y: number, r: number }[], orbT?: number, cut: number, lineT: number, silk: { x: number, y: number, ax: number, ay: number, vx: number, vy: number, life: number }[],
  *   nav: { F: any, fx: number, fy: number, t: number }, fireAcc: number, fireN: number, burning: Set<number>, gotN: number, pops: number, lampsPopped: number, kitNames: Set<string>,
  *   digT: number, digs: number, digWhy: Record<string, number>, still?: boolean, zp: TitlePlan, snd: TSnd[], hub?: TitleHub, lvl?: TitleLevel, lab?: boolean, back?: (ctx: CanvasRenderingContext2D, S: TitleScene) => void, pace?: number, team?: RunPlayer[], blocked?: number, blockedKind?: string, huddle?: boolean, gunsOff?: boolean, dmgMul?: number, coinWait?: number, hgoal?: number, hgoalT?: number, fuelWait?: number, tier?: number, loot?: TLoot[],
- *   onTake?: (it: BagItem, x: number, y: number) => void, pick?: Enemy | null, looks?: TLook[] }} TitleScene */
+ *   onTake?: (it: BagItem, x: number, y: number) => void, pick?: Enemy | null, looks?: TLook[], eliteFx?: Particle[] }} TitleScene */
+// (eliteFx: the elites' flames, world coordinates: stepEliteFx, drawn by titledraw.js; owner v1.0.103)
 // (looks: a CaveRunner Auto level past the first plays as an old floor, auto/maps.js levelLook: its palette (titledraw.js), its
 // ambience and its creatures, each as likely, jellyfish only in the natural zones (titleKind); none: Mossy Caves and the zones'
 // own. In x order, each from its x0 on (Grem Mode: a new one past each boss's arena; the painter blends the seam, DEV.gremSeam*))
@@ -1425,6 +1426,7 @@ export function titleStep(S, dt) {
   if (S.spawn <= 0 && !S.hub && S.foes.length < sp.cap) { addFoe(S, undefined, sp.cap); S.spawn = sp.gap * (1 + R() * 1.5); }
   if (!S.still) { for (const r of S.runners) if (!r.out) stepRunner(S, r, dt); separate(S, dt); }
   stepFoes(S, dt);
+  stepEliteFx(S, dt);
   stepShots(S, dt);
   stepFire(S, dt);
   // the natural caves' ambience, as the level has it: water dripping from the roof, luminescent spores drifting
@@ -1616,8 +1618,8 @@ const boxRock = (S, x, y, feet = true) => {
 };
 // (Grem Mode, owner v1.0.102: "it should work just like the auto movement, but with a temporary position goal") a tapped spot
 // (r.goal, world x, y: auto/level.js levelWaypoint): he flies there on the autopilot (flyStep's thrust and steering, rock in his
-// way risen over, dipped under or sawn through as ever: pickTarget aims only at it). GOAL_R from it he's there: he holds it for
-// DEV.autoCtlWait s (the idle wait), then the goal's gone and he plays by himself again; not there in DEV.gremWayT s, the same
+// way risen over, dipped under or sawn through as ever: pickTarget aims only at it). GOAL_R from it he's there: the goal's gone
+// and he plays by himself again at once (v1.0.103: it held the spot for the idle wait first); not there in DEV.gremWayT s, the same
 /** @param {TitleScene} S @param {TRunner} r */
 function goalAim(S, r) {
   const g = r.goal;
@@ -1629,8 +1631,8 @@ const GOAL_R = 8;
 function goalStep(S, r, dt) {
   const g = r.goal;
   if (!g) return;
-  if (g.hold < 0 && Math.hypot(g.x - (S.scroll + r.x + PW / 2), g.y - (r.y + PH / 2)) < GOAL_R) g.hold = DEV.autoCtlWait;
-  if (g.hold >= 0 ? (g.hold -= dt) <= 0 : S.t - g.t > DEV.gremWayT) { r.goal = null; r.retarget = 0; return; }
+  // (owner v1.0.103: no wait) there, or not there in DEV.gremWayT s: the goal's gone and he plays on at once
+  if (Math.hypot(g.x - (S.scroll + r.x + PW / 2), g.y - (r.y + PH / 2)) < GOAL_R || S.t - g.t > DEV.gremWayT) { r.goal = null; r.retarget = 0; return; }
   // in the air for it (a run along the floor can't reach a height): off the floor as a flight starts, unless the tank's low
   if (r.mode === 'run' && !r.dig && !(fuelOn(S) && fuelOf(r) < FUEL_TAKEOFF)) { setMode(S, r, 'fly', 1); r.vy = -40; r.ground = false; r.burst = false; r.jet = false; }
   if (r.mode === 'fly' && !(fuelOn(S) && r.empty)) r.modeT = Math.max(r.modeT, 0.5);   // no landing on the way (dry: he lands to refill)
@@ -2372,6 +2374,37 @@ function keepOff(S, e, CS) {
     else continue;
     e.ty += ny - e.y; e.x = nx; e.y = ny;
   }
+}
+// (owner v1.0.103: "elites need their particle effects from the normal game") every elite gives off fire from its body, as the
+// old game's stepEliteFire (game/systems/particles.js; Dev → Elites: flames, every number rolled per speck): each speck starts
+// in its body with the elite's own speed, sheds it to drag, rises and swings side to side; its colour and opacity over its life
+// from the gradient and ramp (titledraw.js). World coordinates; at most ELITE_FX_MAX
+const ELITE_FX_MAX = 700;
+/** @param {TitleScene} S @param {number} dt */
+function stepEliteFx(S, dt) {
+  if (dt <= 0) return;
+  const Q = S.eliteFx || (S.eliteFx = []);
+  for (const e of S.foes) {
+    if (!e.k.elite) continue;
+    const vx = e.fxPx != null ? (e.x - e.fxPx) / dt : 0, vy = e.fxPy != null ? (e.ty - e.fxPy) / dt : 0;
+    e.fxPx = e.x; e.fxPy = e.ty;
+    e.fxAcc = (e.fxAcc || 0) + kr('elFxRate') * dt;
+    for (; e.fxAcc >= 1; e.fxAcc--) {
+      const a = Math.random() * Math.PI * 2, rr = e.r * kr('elFxBody') * Math.sqrt(Math.random()), life = kr('elFxLife');
+      Q.push({ x: e.x + Math.cos(a) * rr, y: e.ty + Math.sin(a) * rr, vx: Math.max(-400, Math.min(400, vx)), vy: Math.max(-400, Math.min(400, vy)),
+        life, max: life, rise: kr('elFxRise'), wave: kr('elFxWave'), hz: kr('elFxWaveHz'), drag: kr('elFxDrag'), s: kr('elFxSize'), ph: Math.random() * 6.283, age: 0 });
+    }
+  }
+  for (let i = Q.length - 1; i >= 0; i--) {
+    const q = Q[i];
+    q.age = (q.age || 0) + dt;
+    const k = Math.exp(-(q.drag || 0) * dt);
+    q.vx *= k; q.vy *= k;
+    q.x += (q.vx + Math.sin(q.age * (q.hz || 0) * 6.283 + (q.ph || 0)) * (q.wave || 0)) * dt;
+    q.y += (q.vy - (q.rise || 0)) * dt;
+    if ((q.life -= dt) <= 0) Q.splice(i, 1);
+  }
+  if (Q.length > ELITE_FX_MAX) Q.splice(0, Q.length - ELITE_FX_MAX);
 }
 // a classic creature's frame (game/creatures/classic.js classicMove, bombBurst, gunFire, as the old game): hunting (chasers and
 // bombers) it comes straight at him sliding along rock, else it patrols round home; it hovers (e.ty bobs); a bomber reaching him

@@ -24,13 +24,8 @@ G.levelWaypoint(S, 0, gx, gy);
 check('a tap: the goal set on the picked player, the view following him (levelLead)', !!goal() && goal().x === gx && G.levelLead(S) === r);
 const f1 = until(S, () => near(gx, gy), 400);
 check('he gets there on the autopilot (no stick)', f1 >= 0 && !G.ctlOn(r), [f1, Math.round(mid().x - gx), Math.round(mid().y - gy)]);
-// holds it for the idle wait, then plays on
-const wait = Math.round(D.autoCtlWait / dt);
-let held = 0;
-for (let i = 0; i < wait - 10; i++) { G.titleStep(S, dt); if (Math.hypot(mid().x - gx, mid().y - gy) < 16) held++; }
-check('… holds the spot through the idle wait (autoCtlWait)', !!goal() && held > (wait - 10) * 0.8, [held, wait - 10]);
-for (let i = 0; i < 20; i++) G.titleStep(S, dt);
-check('… then the goal is gone: he plays by himself again', !goal() && G.levelLead(S) === null);
+// (owner v1.0.103) there: no wait, the goal is gone and he plays by himself again at once
+check('… there: the goal is gone at once, he plays by himself again (no wait)', until(S, () => !goal(), 10) >= 0 && G.levelLead(S) === null);
 
 // up in the air; a new tap moves it
 const m2 = mid();

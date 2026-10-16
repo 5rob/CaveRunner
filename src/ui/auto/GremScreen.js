@@ -15,7 +15,8 @@
 // happen): "Tap to play again".
 
 import { SFX } from '../../audio/sfx.js';
-import { TITLE_COLS, TITLE_VW, camAt, camPack, camTo, titleCam } from '../../art/titlescene.js';
+import { TITLE_COLS, TITLE_VW, camAt, camPack, camTo, lookAt, titleCam } from '../../art/titlescene.js';
+import { floorName } from '../../auto/maps.js';
 /** @typedef {import('../../art/titlescene.js').TitleCam} TitleCam */
 /** @typedef {import('../../art/titlescene.js').TitleScene} TitleScene */
 import { DEAD, PW } from '../../core/consts.js';
@@ -53,6 +54,7 @@ export function GremScreen() {
   const [boss, setBoss] = useState(noBoss);
   const [paused, setPaused] = useState(false);
   const pausedRef = useRef(false);
+  const [lvlName, setLvlName] = useState(floorName(1));   // (owner v1.0.103) the level's name under its number
   // (owner, v1.0.100) the Dev panel as the normal game's: ⏸ held DEV_HOLD_MS toggles dev mode; on, a ⚙️ beside ⏸ opens it
   const [devOn, setDevOn] = useState(devShown);
   const [devOpen, setDevOpen] = useState(false);
@@ -108,6 +110,7 @@ export function GremScreen() {
       if (!S) return;
       const g = bagCount(R, 'gold');
       setGold(g); setLvl(R.tier);
+      const lk = lookAt(S, S.scroll + TITLE_VW / 2); setLvlName(lk ? lk.name : floorName(1));   // (owner v1.0.103) the old floor in view
       // gold paid off the next unlock(s): it glows on the row till it's used (owner v1.0.92: no auto-equip); a player joins (below)
       const u = gremUnlocked(g, items.current.length);
       if (u > unlocked.current) {
@@ -178,7 +181,12 @@ export function GremScreen() {
           }
           ctx.restore();
         }
-        if (f && f.hp > 0 && C) {
+        // (owner v1.0.103) a tapped target that has left the view: no longer everyone's target
+        if (f && C) {
+          const k = w / TITLE_VW, p = camTo(C, f.x - S.scroll, f.ty), m = f.r * C.z;
+          if (p.x < -m || p.x > TITLE_VW + m || p.y < -m || p.y > hh / k + m) S.pick = null;
+        }
+        if (f && S.pick && f.hp > 0 && C) {
           // the picked creature: a see-through red ring round it, breathing a little
           const k = w / TITLE_VW, p = camTo(C, f.x - S.scroll, f.ty), r = (f.r + 5 + Math.sin(S.t * 6) * 1.2) * C.z * k;
           ctx.save(); ctx.strokeStyle = 'rgba(255,50,50,0.55)'; ctx.lineWidth = 3;
@@ -276,7 +284,7 @@ export function GremScreen() {
   return h('div', { className: 'auto grem' },
     h('div', { className: 'aplay', onPointerDown: playTap },
       h('canvas', { ref: cvs, className: 'aplaycvs' }),
-      h('div', { className: 'glvl' }, 'Level ' + lvl),
+      h('div', { className: 'glvl' }, 'Level ' + lvl, h('small', null, lvlName)),
       boss ? h('div', { className: 'abossbar gboss' }, h('b', null, boss.name),
         h('div', { className: 'abosstrack' }, h('i', { style: { width: (100 * boss.hp / Math.max(1, boss.max)).toFixed(1) + '%' } }))) : null,
       devOn ? h('button', { className: 'adevbtn', title: 'Dev', onPointerDown: e => { e.preventDefault(); e.stopPropagation(); SFX.fx('open'); setDevOpen(true); } }, '⚙️') : null,

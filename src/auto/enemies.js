@@ -13,7 +13,7 @@ import { eliteOf, enemyFor } from '../data/creatures.js';
 import { deathFall } from './death.js';
 import { shieldSoak } from './perks.js';
 import { gremHardTier } from './grem.js';
-import { TCELL, TITLE_KINDS, TITLE_VW, lookAt, titleFoeAt, titleKind } from '../art/titlescene.js';
+import { TCELL, TITLE_KINDS, TITLE_VW, lookAt, titleCeil, titleFloor, titleFoeAt, titleKind, titleSolid } from '../art/titlescene.js';
 
 export const FALL_FLICKER = 0.6;      // (retired, feedback round 2: a fallen player is a ragdoll now, auto/death.js)
 const BOSS_IN = 90;                   // the boss comes in this far right of the team (world units)
@@ -78,6 +78,16 @@ export function levelFall(S, i) {
 /** @param {import('../art/titlescene.js').TitleScene} S */
 export const allFallen = S => S.runners.length > 0 && S.runners.every(r => r.out);
 
+// (owner v1.0.103: a boss came in under the ground, out of the team's reach, and the level waited on it for good) a big creature
+// whose middle is in rock or under the floor's line is put back on the floor (its size above it; under the roof if the cave is
+// lower than it is tall: half way)
+/** @param {import('../art/titlescene.js').TitleScene} S @param {Enemy} f */
+export function unbury(S, f) {
+  const fy = titleFloor(f.x, S), cy = titleCeil(f.x, S);
+  if (!(f.y > fy - f.r + 2 || titleSolid(S, f.x - S.scroll, f.y))) return;
+  const y = fy - cy > 2 * f.r + 2 ? fy - f.r - 1 : (fy + cy) / 2;
+  f.ty += y - f.y; f.y = y;
+}
 // One step of the level's enemies (levelStep calls it): the elites in and marked, the boss (the fallen: auto/death.js)
 /** @param {import('../art/titlescene.js').TitleScene} S @param {import('./level.js').LevelState} L @param {number} teamX the team's place (world x) */
 export function levelFoes(S, L, teamX) {
@@ -94,6 +104,7 @@ export function levelFoes(S, L, teamX) {
       continue;
     }
     if (e.f.hp <= 0 || !S.foes.includes(e.f)) { e.alive = false; continue; }
+    unbury(S, e.f);
     e.x = e.f.x;
   }
   // the boss: in when the team reaches the arena, hunting at once
@@ -107,6 +118,7 @@ export function levelFoes(S, L, teamX) {
   }
   const B = L.boss;
   if (B && !L.bossDead) {
+    if (B.hp > 0 && B.x >= L.plan.arena.x0 && B.x <= L.plan.arena.x1) unbury(S, B);   // (owner v1.0.103: one came in under the ground and the level stuck)
     if (B.hp <= 0) L.bossDead = true;
     else if (!S.foes.includes(B)) { B.x = Math.min(L.plan.arena.x1 - 30, teamX + BOSS_IN); B.y = B.ty = S.vh / 2; S.foes.push(B); }   // fell out of the scene: back in
   }
