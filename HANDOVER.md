@@ -5,9 +5,9 @@ release loop, testing), then the README of the `src/` folder you're working in.
 
 ## BRANCH `grem` (2026-10-16): CaveRunner Grem — Grem Mode only (the owner's focus)
 
-**Start here (fresh session on `grem`):** **v2.0.1 is released** (2026-10-17, owner OK'd the shots): Coal Seams build step 1
-(its own zones; Mossy's plants off, the old mine set on; CHANGELOG v2.0.1; art/README's Coal Seams note). Live check:
-`/CaveRunner/grem/version.txt` = `2000001 v2.0.1`. **Next: step 2, burnable coal seams** (a fourth fire fuel: world/fire.js and
+**Start here (fresh session on `grem`):** **v2.0.1 is pushed to `grem`** (2026-10-17, owner OK'd the shots; APK at `app-grem` built, but **Pages refuses `grem`**: "Branch grem is not allowed to deploy to github-pages due to environment protection rules" — every `grem` push so far; v2.0.0 went live only through a `main` push, whose run builds `grem/` too. **Waiting on the owner** to add `grem` in Settings → Environments → github-pages → Deployment branches, then re-run the latest `grem` run or push again): Coal Seams build step 1
+(its own zones; Mossy's plants off, the old mine set on; CHANGELOG v2.0.1; art/README's Coal Seams note). Live check once Pages allows it:
+`/CaveRunner/grem/version.txt` = `2000001 v2.0.1` (still `2000000 v2.0.0`). **Next: step 2, burnable coal seams** (a fourth fire fuel: world/fire.js and
 titlescene's FUEL table, a new TM material, patches + veins from seeded noise, burnt coal = ash = open tunnel; Dev knobs per the
 doc's table) with smouldering seams (idea 2); minecart rails (1) and coal piles/chutes (10) fit there too; gas pockets (3) later.
 Then the Cavern dressing, Bats (owner's boids spec), Glow worms (inchworm gait spec). Each step: phone screenshots
