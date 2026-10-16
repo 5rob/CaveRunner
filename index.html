@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v1.0.107</title>
-<!-- VERSION = 'v1000107' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v1.0.108</title>
+<!-- VERSION = 'v1000108' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -1307,7 +1307,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v1.0.107';</script>
+<script>const VERSION = 'v1.0.108';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -13264,7 +13264,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     syncTier(run);
   }
   var mapLabel = (run) => MAP_NAMES[run.map || 0] + " Lv " + mapsOf(run)[run.map || 0].level;
-  var levelFloor = (lv) => lv <= 1 ? 1 : 2 + (lv - 2) % (THEMES.length - 1);
+  var levelFloor = (lv) => 1 + (Math.max(1, lv) - 1) % THEMES.length;
   var floorName = (floor) => floor === 2 ? "Coal Seams" : MAP_NAMES[(floor - 1) % MAP_NAMES.length];
   var levelLook = (run, seed) => floorLook(levelFloor(mapsOf(run)[run.map || 0].level), seed);
   function floorLook(floor, seed) {
@@ -33421,7 +33421,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
 
   // src/version.js
-  var VERSION2 = "v1.0.107";
+  var VERSION2 = "v1.0.108";
 
   // src/art/zonelab.js
   var ZLAB_LEAD = 60;

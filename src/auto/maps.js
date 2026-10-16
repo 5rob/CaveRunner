@@ -102,10 +102,10 @@ export const mapLabel = run => MAP_NAMES[run.map || 0] + ' Lv ' + mapsOf(run)[ru
 
 // (owner, v1.0.97: the old game's themed floors back) which old floor a level plays as: level 1 is floor 1 (Mossy Caves,
 // today's level, untouched); from level 2 the old floors 2..12 in turn (Coal Seams, Frozen Deep, … Void Hollow), then round
-// again from floor 2. Each brings its palette (THEMES) and its creatures (data/creatures.js ROSTERS: floors 1-10 fixed, 11
+// again from Mossy Caves (owner v1.0.108: level 13 is floor 1 again; was Coal Seams). Each brings its palette (THEMES) and its creatures (data/creatures.js ROSTERS: floors 1-10 fixed, 11
 // and 12 rolled off the level's seed, as the old game did)
 /** @param {number} lv the active map's level @returns {number} the old floor (1..THEMES.length) */
-export const levelFloor = lv => (lv <= 1 ? 1 : 2 + (lv - 2) % (THEMES.length - 1));
+export const levelFloor = lv => 1 + (Math.max(1, lv) - 1) % THEMES.length;
 // an old floor's name, Title Case (floor 2 is the old game's Coal Seams: THEMES[1] was renamed Tombs for main's Level 2)
 /** @param {number} floor */
 export const floorName = floor => (floor === 2 ? 'Coal Seams' : MAP_NAMES[(floor - 1) % MAP_NAMES.length]);

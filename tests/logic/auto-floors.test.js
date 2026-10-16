@@ -12,7 +12,7 @@ const until = (S, done, cap) => { for (let i = 0; i < cap; i++) { if (done(S)) r
 
 // ---- which floor a level plays as ----
 check('level 1 is floor 1, level 2 floor 2 … level 12 floor 12', G.levelFloor(1) === 1 && G.levelFloor(2) === 2 && G.levelFloor(12) === 12);
-check('then round again from floor 2 (floor 1 only once)', G.levelFloor(13) === 2 && G.levelFloor(14) === 3 && G.levelFloor(24) === 2, [G.levelFloor(13), G.levelFloor(24)]);
+check('then round again from Mossy Caves (owner v1.0.108)', G.levelFloor(13) === 1 && G.levelFloor(14) === 2 && G.levelFloor(25) === 1, [G.levelFloor(13), G.levelFloor(14), G.levelFloor(25)]);
 check('floor 2 is the old Coal Seams', G.floorName(2) === 'Coal Seams' && G.floorName(1) === 'Mossy Caves' && G.floorName(3) === 'Frozen Deep');
 
 const run = G.newRun(4);
@@ -81,8 +81,10 @@ G.levelOnward(SG, LG);
 check('a level cleared: Frozen Deep from past the new arena', SG.looks.length === 3 && SG.looks[2].name === 'Frozen Deep' && SG.looks[2].x0 === LG.plan.arena.x1
   && LG.plan.arena.x1 > a1 && LG.name === 'Coal Seams', SG.looks.map(l => l.name));
 for (let i = 0; i < 10; i++) G.levelOnward(SG, LG);
-check('… round past Void Hollow to Coal Seams again (never Mossy Caves)', SG.looks[SG.looks.length - 1].name === 'Coal Seams'
-  && SG.looks.slice(1).every(l => l.name !== 'Mossy Caves'), SG.looks.map(l => l.name));
+check('… round past Void Hollow to Mossy Caves again (owner v1.0.108)', SG.looks[SG.looks.length - 1].name === 'Mossy Caves'
+  && SG.looks[SG.looks.length - 1].roster === null && SG.looks[SG.looks.length - 2].name === 'Void Hollow', SG.looks.map(l => l.name));
+G.levelOnward(SG, LG);
+check('… then Coal Seams', SG.looks[SG.looks.length - 1].name === 'Coal Seams');
 
 Object.assign(D, { autoLvlMin: keep.m, autoFoeElites: keep.e, autoFoeDmg: keep.d, autoLvlBossT: keep.b });
 console.log(fails ? fails + ' FAILED' : 'all ok');

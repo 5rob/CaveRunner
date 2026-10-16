@@ -5,6 +5,10 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.108 — After the last floor, back to Mossy Caves (branch `autobattler`)
+Released 2026-10-16 (owner).
+- The levels cycle all twelve floors: after Void Hollow (level 12) comes Mossy Caves again (level 13, today's level 1 look and creatures), then Coal Seams. Was: round again from Coal Seams (`auto/maps.js levelFloor`). Both modes.
+
 ## v1.0.107 — Grem Mode: a tapped spot reached sooner (branch `autobattler`)
 Released 2026-10-16 (owner: too strict; they fussed over the last 10 pixels).
 - A tapped spot counts as reached within `DEV.gremWayDone` (16 units, about his height; Dev → Grem Mode) of his middle, was 8 (`titlescene.js goalStep`, `GOAL_R` gone).
