@@ -6,7 +6,7 @@ Names are as they were at the time (before the refactor Game's state had loose n
 `W.mat`, and so on). Versions before v39: `git log`.
 
 ## v1.0.98 — Grem Mode: the next old floor each level cleared (branch `autobattler`)
-Built 2026-10-16 (owner asked); screenshots `node tools/gremseamshots.js`.
+Released 2026-10-16 on the branch (owner OK'd); screenshots `node tools/gremseamshots.js`.
 - Grem Mode's endless level moves on to the next of the old floors each time a boss falls: Mossy Caves, then Coal Seams, Frozen Deep … Void Hollow, then round from Coal Seams, each with its colours, ambience and creatures (no damage still). The new floor starts just past the boss's arena (`S.looks`, a look per stretch; `auto/level.js levelOnward` adds the next).
 - The seam is blended: over `gremSeamW` (160) world units the rock, moss, bricks and back wall fade from one floor's colours into the next's, the edge warped by slow noise (`gremSeamJag` 1) and lightly dithered, so it reads as the cave changing (Dev → Grem Mode).
 - Suite `auto-floors` covers Grem's looks.
