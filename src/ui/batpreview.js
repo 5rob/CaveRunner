@@ -2,6 +2,7 @@
 // knobs, a player walking across and back every few seconds to scare them. Reset bats / Scare all act on it too (BAT_CMD).
 
 import { BAT_LAB_H, BAT_LAB_W, batLab, batLabStep, drawBats } from '../creatures/bats.js';
+import { pixelSprite } from '../art/sprites.js';
 import { h, useEffect, useRef } from './h.js';
 
 export function BatPreview() {
@@ -30,7 +31,7 @@ export function BatPreview() {
       const px = L.px, fy = L.floor;
       ctx.fillStyle = '#d9d2c0'; ctx.fillRect(px - 2, fy - 9, 4, 5); ctx.fillStyle = '#6a8fd0'; ctx.fillRect(px - 2, fy - 4, 4, 4);
       ctx.fillStyle = '#20242c'; ctx.fillRect(px + (L.dir > 0 ? 0.5 : -1.5), fy - 8, 1, 1);
-      drawBats(ctx, L.B, 0, L.t, [{ x: px, y: fy - 6 }]);
+      drawBats(ctx, L.B, 0, L.t, [{ x: px, y: fy - 6 }], (x, y, e, paint) => pixelSprite(ctx, x - e, y - e, 2 * e, 2 * e, 1, false, paint));   // (the scene's pixel look)
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);

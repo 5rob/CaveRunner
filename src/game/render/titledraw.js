@@ -235,7 +235,8 @@ export function titleDraw(ctx, S, cw, ch, cam) {
     });
   }
   // (C4a) Coal Seams' bats, under the darkness
-  if (S.bats) drawBats(ctx, S.bats, S.scroll, S.t, S.runners.filter(r => !r.out).map(r => ({ x: S.scroll + r.x + PW / 2, y: r.y + PH / 2 })));
+  if (S.bats) drawBats(ctx, S.bats, S.scroll, S.t, S.runners.filter(r => !r.out).map(r => ({ x: S.scroll + r.x + PW / 2, y: r.y + PH / 2 })),
+    (x, y, e, paint) => pixelSprite(ctx, x - e, y - e, 2 * e, 2 * e, 1, false, paint));   // (the creatures' pixel look, a grid pinned to each)
   // (C5a) Coal Seams' glow worms, each in the creatures' pixel look on a grid pinned to it
   for (const w of S.worms || []) {
     const b = wormBox(w, S.scroll);
@@ -245,7 +246,7 @@ export function titleDraw(ctx, S, cw, ch, cam) {
   // pixel look (v0.0.170) on a grid pinned to it, as the players' is
   for (const f of S.foes) {
     const sx = f.x - S.scroll;
-    if (sx < -60 || sx > TITLE_VW + 60) continue;
+    if (sx < -60 || sx > TITLE_VW + 60 || f.bat) continue;   // (a bat's stand-in: drawBats draws it)
     if (S.hub && S.hub.pv && f === S.hub.pv.foe) continue;   // the gun panel's target: the panel paints its hologram (auto/preview.js)
     // (owner v1.0.103) an elite: a soft glow behind it in its tint, pulsing (the old game's drawEnemies; Dev → Elites)
     if (f.k.elite) {

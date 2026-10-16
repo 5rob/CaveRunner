@@ -153,6 +153,7 @@ interface CreatureKind {
 
 /** a creature in the level: makeLevel's enemies, then the enemy loop's own fields */
 interface Enemy {
+  bat?: boolean;   // (grem C4) a bat's stand-in among the foes, so guns aim at it and hit it (art/titlescene.js batsStep)
   x: number; y: number; ty: number; r: number; phase: number;
   wox?: number; woy?: number;   // a spider on a web line: the sag and bend it rides (game/creatures/spider.js)
   hp: number; hpMax: number; cd: number; flash: number;

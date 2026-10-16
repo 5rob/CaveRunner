@@ -8,7 +8,7 @@
 import { DEV } from '../dev/knobs.js';
 
 /** @typedef {{ x: number, y: number, x0: number, x1: number, y0: number, y1: number, n: number, hy: (number | undefined)[] }} BatRoost */
-/** @typedef {{ x: number, y: number, vx: number, vy: number, ro: BatRoost, slot: number, st: 'roost' | 'fly' | 'return', t: number, scared: boolean, wa: number, ph: number, bite: number, placed: boolean, gone?: boolean }} Bat */
+/** @typedef {{ x: number, y: number, vx: number, vy: number, ro: BatRoost, slot: number, st: 'roost' | 'fly' | 'return', t: number, scared: boolean, wa: number, ph: number, bite: number, placed: boolean, gone?: boolean, panic?: number, f?: any, hpSeen?: number }} Bat */
 /** @typedef {{ roosts: BatRoost[], list: Bat[] }} Bats */
 /** @typedef {(x: number, y: number) => boolean} BatSolid */
 
@@ -74,6 +74,7 @@ export function stepBats(B, dt, preds, solid, rnd, onBite) {
   if (BAT_CMD.scare) { BAT_CMD.scare = false; for (const b of B.list) if (b.st !== 'fly' || !b.scared) { if (b.st === 'fly') b.scared = true; else takeOff(b, rnd, true); } }
   const fly = B.list.filter(b => b.st === 'fly'), f = [0, 0];
   for (const b of B.list) {
+    if (b.gone) continue;
     // (first frame) into its slot; a slot with no rock over it (a gap, a wall) passes to the next one out
     if (!b.placed) {
       let p = slotPos(b.ro, b.slot, solid);
@@ -86,7 +87,8 @@ export function stepBats(B, dt, preds, solid, rnd, onBite) {
     let d = Infinity, pi = -1;
     for (let i = 0; i < preds.length; i++) { const q = Math.hypot(preds[i].x - b.x, preds[i].y - b.y); if (q < d) { d = q; pi = i; } }
     if (scareOn && d < sR) { if (b.st === 'fly') b.scared = true; else takeOff(b, rnd, true); }
-    if (b.scared && (d > sR * D.batClearMult || !scareOn)) b.scared = false;
+    if (b.panic > 0) { b.panic -= dt; b.scared = true; }   // (a roost hit: panicked a while, whoever is near)
+    else if (b.scared && (d > sR * D.batClearMult || !scareOn)) b.scared = false;
     if (b.st === 'roost') {   // 3. off on its own now and then
       if (rnd() < D.batTakeoff * dt) takeOff(b, rnd, false);
       continue;
@@ -155,6 +157,12 @@ export function stepBats(B, dt, preds, solid, rnd, onBite) {
   if (B.list.some(b => b.gone)) B.list = B.list.filter(b => !b.gone);
 }
 
+// (owner) a bat of the roost hurt or killed: the whole roost panics into scared flight for DEV.batPanic seconds
+/** @param {Bats} B @param {BatRoost} ro @param {() => number} rnd */
+export function panicRoost(B, ro, rnd) {
+  for (const b of B.list) if (b.ro === ro && !b.gone) { if (b.st !== 'fly') takeOff(b, rnd, true); b.scared = true; b.panic = DEV.batPanic; }
+}
+
 // the roosts far behind the view, and their bats, dropped
 /** @param {Bats} B @param {number} x0 */
 export function dropBats(B, x0) {
@@ -166,8 +174,10 @@ export function dropBats(B, x0) {
 
 // ---- drawing (world units, ctx already scaled; ox: the view's left edge) ----
 const BODY = '#4a3a4c', EDGE = '#6e5a70';   // (a dusky brown-purple: dark, but seen against the cave's black air)
-/** @param {CanvasRenderingContext2D} c @param {Bats} B @param {number} ox @param {number} t seconds @param {{ x: number, y: number }[]} [preds] */
-export function drawBats(c, B, ox, t, preds) {
+// wrap(x, y, half, paint): draws one bat's paint in a box half each way round (x, y) (the scene: pixelSprite, the creatures' pixel look)
+/** @param {CanvasRenderingContext2D} c @param {Bats} B @param {number} ox @param {number} t seconds @param {{ x: number, y: number }[]} [preds]
+ * @param {(x: number, y: number, half: number, paint: (q: CanvasRenderingContext2D) => void) => void} [wrap] */
+export function drawBats(c, B, ox, t, preds, wrap) {
   const dbg = DEV.batDebug > 0.5;
   if (dbg) {
     c.lineWidth = 0.4; c.strokeStyle = 'rgba(120,255,160,0.7)';
@@ -177,30 +187,35 @@ export function drawBats(c, B, ox, t, preds) {
   }
   for (const b of B.list) {
     const x = b.x - ox, y = b.y;
-    if (x < -10 || x > 240) continue;
-    const col = dbg && b.scared ? '#ff3b3b' : dbg && b.st === 'return' ? '#3b8bff' : BODY;
-    c.fillStyle = col;
-    if (b.st === 'roost') {   // folded, hanging head-down under the rock
-      c.beginPath(); c.moveTo(x - 0.9, y); c.lineTo(x + 0.9, y); c.lineTo(x + 1.1, y + 2.6); c.lineTo(x, y + 3.8); c.lineTo(x - 1.1, y + 2.6); c.closePath(); c.fill();
-      c.fillRect(x - 0.9, y + 3.6, 0.5, 0.7); c.fillRect(x + 0.4, y + 3.6, 0.5, 0.7);   // (the ears, at the bottom)
-      c.fillStyle = EDGE; c.fillRect(x - 0.15, y, 0.3, 0.5);   // (the feet on the rock)
-      continue;
-    }
-    // in flight: wings flapping fast
-    const fl = Math.sin(t * 28 + b.ph), s = b.vx < 0 ? -1 : 1;
-    c.beginPath();
-    for (const w of [-1, 1]) {
-      c.moveTo(x, y - 0.3);
-      c.lineTo(x + w * 2.2, y - 0.8 - fl * 1.6);
-      c.lineTo(x + w * 4.2, y - 0.2 - fl * 2.4);
-      c.lineTo(x + w * 3.2, y + 0.6 - fl * 0.8);
-      c.lineTo(x + w * 2.0, y + 0.3 - fl * 0.6);
-      c.lineTo(x, y + 0.6);
-    }
-    c.fill();
-    c.beginPath(); c.ellipse(x, y + 0.2, 1, 1.3, 0, 0, 6.29); c.fill();
-    c.fillRect(x + s * 0.4 - 0.25, y - 1.5, 0.5, 0.6); c.fillRect(x - s * 0.2 - 0.25, y - 1.5, 0.5, 0.6);   // (ears)
+    if (x < -10 || x > 240 || b.gone) continue;
+    const paint = (/** @type {CanvasRenderingContext2D} */ q) => { q.translate(x, y); q.scale(DEV.batSize, DEV.batSize); drawBat(q, b, t, dbg); };
+    if (wrap) wrap(x, y, 6 * DEV.batSize + 2, paint); else { c.save(); paint(c); c.restore(); }
   }
+}
+// one bat, at the origin, size 1 (drawBats places and sizes it: DEV.batSize)
+/** @param {CanvasRenderingContext2D} c @param {Bat} b @param {number} t @param {boolean} dbg */
+function drawBat(c, b, t, dbg) {
+  c.fillStyle = dbg && b.scared ? '#ff3b3b' : dbg && b.st === 'return' ? '#3b8bff' : BODY;
+  if (b.st === 'roost') {   // folded, hanging head-down under the rock
+    c.beginPath(); c.moveTo(-0.9, 0); c.lineTo(0.9, 0); c.lineTo(1.1, 2.6); c.lineTo(0, 3.8); c.lineTo(-1.1, 2.6); c.closePath(); c.fill();
+    c.fillRect(-0.9, 3.6, 0.5, 0.7); c.fillRect(0.4, 3.6, 0.5, 0.7);   // (the ears, at the bottom)
+    c.fillStyle = EDGE; c.fillRect(-0.15, 0, 0.3, 0.5);   // (the feet on the rock)
+    return;
+  }
+  // in flight: wings flapping fast
+  const fl = Math.sin(t * 28 + b.ph), s = b.vx < 0 ? -1 : 1;
+  c.beginPath();
+  for (const w of [-1, 1]) {
+    c.moveTo(0, -0.3);
+    c.lineTo(w * 2.2, -0.8 - fl * 1.6);
+    c.lineTo(w * 4.2, -0.2 - fl * 2.4);
+    c.lineTo(w * 3.2, 0.6 - fl * 0.8);
+    c.lineTo(w * 2.0, 0.3 - fl * 0.6);
+    c.lineTo(0, 0.6);
+  }
+  c.fill();
+  c.beginPath(); c.ellipse(0, 0.2, 1, 1.3, 0, 0, 6.29); c.fill();
+  c.fillRect(s * 0.4 - 0.25, -1.5, 0.5, 0.6); c.fillRect(-s * 0.2 - 0.25, -1.5, 0.5, 0.6);   // (ears)
 }
 
 // ---- the Dev preview's cave (ui/batpreview.js; the owner: "a cave of bats with a player walking past periodically") ----

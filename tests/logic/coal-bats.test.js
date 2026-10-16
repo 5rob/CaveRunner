@@ -98,5 +98,35 @@ check('… DevRow clamps only when a row has them', DP.includes('if (meta.min !=
   Object.assign(D, keep);
 }
 
+// (owner, round 3) they're enemies: a player shoots them; a hit bat panics its whole roost; a dead bat is gone
+{
+  const keep = { ...D };
+  D.batMaxSpeed = 2; D.batScare = 0; D.batTakeoff = 0; D.batHp = 3;
+  const run = G.newRun(3), pl = run.players[0];
+  const S = G.levelScene(200, 3, 1, undefined, run.players);
+  S.lvl.step = null; S.pace = 0; S.spawn = 1e9; S.still = false; S.foes.length = 0;
+  const r = S.runners[0]; r.hide = false;
+  const bx = S.scroll + r.x + 50, by = r.y + 2;
+  S.bats = G.newBats();
+  const A = G.addRoost(S.bats, bx, by, rnd), Bo = G.addRoost(S.bats, bx + 400, by, rnd);
+  for (const b of S.bats.list) { b.placed = true; b.st = 'fly'; b.t = 1e9; b.x = b.ro.x + (rnd() - 0.5) * 6; b.y = by + (rnd() - 0.5) * 6; A.y0 = Bo.y0 = by - 10; A.y1 = Bo.y1 = by + 10; }
+  const n0 = S.bats.list.length;
+  let t = 0, hit = null;
+  for (; t < 10 && S.bats.list.length === n0; t += 1 / 60) {
+    G.titleStep(S, 1 / 60);
+    if (!hit) hit = S.bats.list.find(b => b.f && b.f.hp < D.batHp && b.f.hp > 0) || null;
+    if (hit && !hit.checked) {
+      hit.checked = true; G.titleStep(S, 1 / 60);
+      check('a hit bat: its whole roost panics (scared flight)', S.bats.list.filter(b => b.ro === A).every(b => b.st === 'fly' && b.scared && b.panic > 0));
+      check("… the other roost doesn't", S.bats.list.filter(b => b.ro === Bo).every(b => !(b.panic > 0)));
+    }
+  }
+  check('the player shoots the bats (one hit, then one killed)', !!hit && S.bats.list.length < n0, { t: +t.toFixed(2), n: S.bats.list.length, n0 });
+  for (let i = 0; i < 3; i++) G.titleStep(S, 1 / 60);
+  check('… a dead bat removed: out of the flock and out of the foes', S.bats.list.every(b => !b.f || b.f.hp > 0) && S.foes.every(f => !f.bat || f.hp > 0));
+  check("… the bats were the guns' targets (stand-ins among the foes)", S.foes.some(f => f.bat));
+  Object.assign(D, keep);
+}
+
 console.log(fails ? `\n${fails} FAILED` : '\nall ok');
 process.exit(fails ? 1 : 0);

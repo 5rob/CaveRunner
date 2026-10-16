@@ -142,7 +142,7 @@ export function levelGlow(ctx, S) {
 export function levelBars(ctx, S) {
   const L = levelState(S), boss = L && L.boss;
   for (const f of S.foes) {
-    if (f === boss || !(f.hp > 0) || !(f.hpMax > 0)) continue;
+    if (f === boss || !(f.hp > 0) || !(f.hpMax > 0) || (f.bat && f.hp >= f.hpMax)) continue;   // (a bat: a bar only once hit)
     const x = f.x - S.scroll;
     if (x < -30 || x > TITLE_VW + 30) continue;
     const w = Math.max(10, Math.min(22, f.r * 2.4)), bx = Math.round(x - w / 2), by = Math.round(f.ty - f.r - 7);

@@ -1378,7 +1378,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     batClearMult: 1.6,
     batScare: 1,
     batDebug: 0,
-    batBite: 0
+    batBite: 0,
+    batSize: 1,
+    batHp: 3,
+    batPanic: 3
   });
   DEV_META.push(
     { k: "batRoosts", g: "bats", label: "Bat roosts: about this many a screen (under the roof, under boulders)", step: 0.1 },
@@ -1401,7 +1404,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "batClearMult", g: "bats", label: "Calm again past (× the scare reach)", step: 0.05 },
     { k: "batScare", g: "bats", label: "Players scare bats (1 on, 0 off)", step: 1 },
     { k: "batDebug", g: "bats", label: "Debug draw: areas, reaches; scared red, returning blue (1 on)", step: 1 },
-    { k: "batBite", g: "bats", label: "Bat bite damage (0: harmless)", step: 0.5 }
+    { k: "batBite", g: "bats", label: "Bat bite damage (0: harmless)", step: 0.5 },
+    { k: "batSize", g: "bats", label: "Bat size (× drawn and hit size)", step: 0.1 },
+    { k: "batHp", g: "bats", label: "Bat health (the players shoot them)", step: 0.5 },
+    { k: "batPanic", g: "bats", label: "A roost hit: its bats panic for (s)", step: 0.5 }
   );
   DEV_GROUPS.push(["bats", "Bats"]);
   Object.assign(DEV_DEFAULTS, {
@@ -7425,6 +7431,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     const fly = B.list.filter((b) => b.st === "fly"), f = [0, 0];
     for (const b of B.list) {
+      if (b.gone) continue;
       if (!b.placed) {
         let p = slotPos(b.ro, b.slot, solid);
         for (let k = 0; k < 20 && (isNaN(p.y) || solid(p.x, p.y + 0.5)); k++) p = slotPos(b.ro, b.slot = b.ro.n++, solid);
@@ -7450,7 +7457,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         if (b.st === "fly") b.scared = true;
         else takeOff(b, rnd2, true);
       }
-      if (b.scared && (d > sR * D.batClearMult || !scareOn)) b.scared = false;
+      if (b.panic > 0) {
+        b.panic -= dt;
+        b.scared = true;
+      } else if (b.scared && (d > sR * D.batClearMult || !scareOn)) b.scared = false;
       if (b.st === "roost") {
         if (rnd2() < D.batTakeoff * dt) takeOff(b, rnd2, false);
         continue;
@@ -7577,6 +7587,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     if (B.list.some((b) => b.gone)) B.list = B.list.filter((b) => !b.gone);
   }
+  function panicRoost(B, ro, rnd2) {
+    for (const b of B.list) if (b.ro === ro && !b.gone) {
+      if (b.st !== "fly") takeOff(b, rnd2, true);
+      b.scared = true;
+      b.panic = DEV.batPanic;
+    }
+  }
   function dropBats(B, x0) {
     if (!B.roosts.some((r) => r.x1 < x0)) return;
     B.roosts = B.roosts.filter((r) => r.x1 >= x0);
@@ -7584,7 +7601,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     B.list = B.list.filter((b) => keep.has(b.ro));
   }
   var BODY = "#4a3a4c", EDGE = "#6e5a70";
-  function drawBats(c, B, ox, t, preds) {
+  function drawBats(c, B, ox, t, preds, wrap) {
     const dbg = DEV.batDebug > 0.5;
     if (dbg) {
       c.lineWidth = 0.4;
@@ -7607,41 +7624,53 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     for (const b of B.list) {
       const x = b.x - ox, y = b.y;
-      if (x < -10 || x > 240) continue;
-      const col = dbg && b.scared ? "#ff3b3b" : dbg && b.st === "return" ? "#3b8bff" : BODY;
-      c.fillStyle = col;
-      if (b.st === "roost") {
-        c.beginPath();
-        c.moveTo(x - 0.9, y);
-        c.lineTo(x + 0.9, y);
-        c.lineTo(x + 1.1, y + 2.6);
-        c.lineTo(x, y + 3.8);
-        c.lineTo(x - 1.1, y + 2.6);
-        c.closePath();
-        c.fill();
-        c.fillRect(x - 0.9, y + 3.6, 0.5, 0.7);
-        c.fillRect(x + 0.4, y + 3.6, 0.5, 0.7);
-        c.fillStyle = EDGE;
-        c.fillRect(x - 0.15, y, 0.3, 0.5);
-        continue;
+      if (x < -10 || x > 240 || b.gone) continue;
+      const paint2 = (q) => {
+        q.translate(x, y);
+        q.scale(DEV.batSize, DEV.batSize);
+        drawBat(q, b, t, dbg);
+      };
+      if (wrap) wrap(x, y, 6 * DEV.batSize + 2, paint2);
+      else {
+        c.save();
+        paint2(c);
+        c.restore();
       }
-      const fl = Math.sin(t * 28 + b.ph), s = b.vx < 0 ? -1 : 1;
-      c.beginPath();
-      for (const w of [-1, 1]) {
-        c.moveTo(x, y - 0.3);
-        c.lineTo(x + w * 2.2, y - 0.8 - fl * 1.6);
-        c.lineTo(x + w * 4.2, y - 0.2 - fl * 2.4);
-        c.lineTo(x + w * 3.2, y + 0.6 - fl * 0.8);
-        c.lineTo(x + w * 2, y + 0.3 - fl * 0.6);
-        c.lineTo(x, y + 0.6);
-      }
-      c.fill();
-      c.beginPath();
-      c.ellipse(x, y + 0.2, 1, 1.3, 0, 0, 6.29);
-      c.fill();
-      c.fillRect(x + s * 0.4 - 0.25, y - 1.5, 0.5, 0.6);
-      c.fillRect(x - s * 0.2 - 0.25, y - 1.5, 0.5, 0.6);
     }
+  }
+  function drawBat(c, b, t, dbg) {
+    c.fillStyle = dbg && b.scared ? "#ff3b3b" : dbg && b.st === "return" ? "#3b8bff" : BODY;
+    if (b.st === "roost") {
+      c.beginPath();
+      c.moveTo(-0.9, 0);
+      c.lineTo(0.9, 0);
+      c.lineTo(1.1, 2.6);
+      c.lineTo(0, 3.8);
+      c.lineTo(-1.1, 2.6);
+      c.closePath();
+      c.fill();
+      c.fillRect(-0.9, 3.6, 0.5, 0.7);
+      c.fillRect(0.4, 3.6, 0.5, 0.7);
+      c.fillStyle = EDGE;
+      c.fillRect(-0.15, 0, 0.3, 0.5);
+      return;
+    }
+    const fl = Math.sin(t * 28 + b.ph), s = b.vx < 0 ? -1 : 1;
+    c.beginPath();
+    for (const w of [-1, 1]) {
+      c.moveTo(0, -0.3);
+      c.lineTo(w * 2.2, -0.8 - fl * 1.6);
+      c.lineTo(w * 4.2, -0.2 - fl * 2.4);
+      c.lineTo(w * 3.2, 0.6 - fl * 0.8);
+      c.lineTo(w * 2, 0.3 - fl * 0.6);
+      c.lineTo(0, 0.6);
+    }
+    c.fill();
+    c.beginPath();
+    c.ellipse(0, 0.2, 1, 1.3, 0, 0, 6.29);
+    c.fill();
+    c.fillRect(s * 0.4 - 0.25, -1.5, 0.5, 0.6);
+    c.fillRect(-s * 0.2 - 0.25, -1.5, 0.5, 0.6);
   }
   var BAT_LAB_W = 180, BAT_LAB_H = 100;
   function batLab() {
@@ -12792,9 +12821,31 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (!B) return;
     dropBats(B, Math.max(S.scroll - TITLE_BACK - 50, (S.gen - S.ncol) * TCELL + 40));
     const live = S.runners.filter((r) => !r.out), preds = live.map((r) => ({ x: S.scroll + r.x + PW / 2, y: r.y + PH / 2 }));
-    stepBats(B, dt, preds, (x, y) => !!SOLID[titleCell(S, Math.floor(x / TCELL), Math.floor(y / TCELL))], S.rnd, (i, d) => {
+    const R = S.rnd, inF = new Set(S.foes);
+    for (const b of B.list) {
+      if (b.gone || !b.placed) continue;
+      const f = b.f || (b.f = batFoe(S, b));
+      if (f.hp < (b.hpSeen ?? f.hp)) panicRoost(B, b.ro, R);
+      b.hpSeen = f.hp;
+      if (f.hp <= 0) b.gone = true;
+    }
+    stepBats(B, dt, preds, (x, y) => !!SOLID[titleCell(S, Math.floor(x / TCELL), Math.floor(y / TCELL))], R, (i, d) => {
       if (S.lvl && S.lvl.hurt) S.lvl.hurt(S, live[i].id, d);
     });
+    for (const b of B.list) {
+      const f = b.f;
+      if (!f) continue;
+      f.x = f.hx = b.x;
+      f.y = f.ty = f.hy = b.y + (b.st === "roost" ? 2 * DEV.batSize : 0);
+      f.r = 2 * DEV.batSize;
+      const sx = b.x - S.scroll;
+      if (!inF.has(f) && f.hp > 0 && sx > -40 && sx < TITLE_VW + 40) S.foes.push(f);
+    }
+  }
+  function batFoe(S, b) {
+    const base = S.lvl && S.lvl.kind ? S.lvl.kind("hamahakki", 1) : enemyFor("hamahakki", 1);
+    const k = { ...base, id: "bat", name: "Bat", act: "bat", kp: void 0, elite: false, boss: false, dmg: 0, r: 2, hp: DEV.batHp, gold: 1, col: { ...base.col, a: "#4a3a4c" } };
+    return { x: b.x, y: b.y, ty: b.y, r: 2 * DEV.batSize, phase: 0, hp: DEV.batHp, hpMax: DEV.batHp, cd: 1e9, flash: 0, lx: 0, ly: 1, hx: b.x, hy: b.y, tgt: null, rest: 0, k, touch: 1e9, charge: 0, bat: true };
   }
   var rockAt = (S) => (x, y) => !!SOLID[titleCell(S, Math.floor(x / TCELL), Math.floor(y / TCELL))];
   var wormRng = (seed) => {
@@ -13620,14 +13671,20 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function killFoe(S, f) {
     f.hp = 0;
     S.kills++;
-    const big = f.k.id !== "rotta", x = f.x - S.scroll, y = f.ty;
+    const big = f.k.id !== "rotta" && !f.bat, x = f.x - S.scroll, y = f.ty;
     snd(S, "die", x, y, f.k);
-    if (big) snd(S, "boom", x, y, f.r * 3);
-    S.booms.push({ x, y, r: f.r * (big ? 3 : 1.6), t: 0, max: 0.4 });
-    burst(S, x, y, big ? 22 : 8, "#ffd27a", 110, "fire", 0.55);
-    burst(S, x, y, 8, "#ffffff", 190, "spark", 0.3);
-    burst(S, x, y, big ? 6 : 2, "#3a3346", 30, "smoke", 1.3);
-    burst(S, x, y, 5, f.k.col.a, 90, "chunk", 0.9);
+    if (f.bat) {
+      burst(S, x, y, 5, "#8a7a90", 40, "smoke", 0.5);
+      burst(S, x, y, 4, "#ffffff", 90, "spark", 0.2);
+      if (S.parts.length < TITLE_PARTS) S.parts.push({ x, y, vx: (S.rnd() - 0.5) * 10, vy: 10, life: 3, max: 3, r: 1.2 * DEV.batSize, col: "#2a2230", kind: "lump" });
+    } else {
+      if (big) snd(S, "boom", x, y, f.r * 3);
+      S.booms.push({ x, y, r: f.r * (big ? 3 : 1.6), t: 0, max: 0.4 });
+      burst(S, x, y, big ? 22 : 8, "#ffd27a", 110, "fire", 0.55);
+      burst(S, x, y, 8, "#ffffff", 190, "spark", 0.3);
+      burst(S, x, y, big ? 6 : 2, "#3a3346", 30, "smoke", 1.3);
+      burst(S, x, y, 5, f.k.col.a, 90, "chunk", 0.9);
+    }
     if (big) {
       S.shake = Math.min(7, S.shake + 3);
       S.flash = Math.min(0.35, S.flash + 0.15);
@@ -13723,7 +13780,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     S.flash = Math.max(0, S.flash - dt * 1.6);
     S.spawn -= dt;
     const sp = S.lvl && S.lvl.spawn ? S.lvl.spawn(S) : { gap: 0.4, cap: TITLE_FOES - 10 };
-    if (S.spawn <= 0 && !S.hub && S.foes.length < sp.cap) {
+    if (S.spawn <= 0 && !S.hub && S.foes.filter((f) => !f.bat).length < sp.cap) {
       addFoe(S, void 0, sp.cap);
       S.spawn = sp.gap * (1 + R() * 1.5);
     }
@@ -14904,6 +14961,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function stepFoes(S, dt) {
     const R = S.rnd, CS = csolid(S), sees = 1 / DEV.zoom;
     for (const e of S.foes) {
+      if (e.bat) continue;
       const k = e.k, ru = nearestRunner(S, e.x - S.scroll, e.ty);
       const pcx = S.scroll + ru.x + PW / 2, pcy = ru.y + PH / 2, goal = { x: pcx, y: pcy };
       e.flash -= dt;
@@ -20664,7 +20722,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function levelBars(ctx, S) {
     const L = levelState(S), boss = L && L.boss;
     for (const f of S.foes) {
-      if (f === boss || !(f.hp > 0) || !(f.hpMax > 0)) continue;
+      if (f === boss || !(f.hp > 0) || !(f.hpMax > 0) || f.bat && f.hp >= f.hpMax) continue;
       const x = f.x - S.scroll;
       if (x < -30 || x > TITLE_VW + 30) continue;
       const w = Math.max(10, Math.min(22, f.r * 2.4)), bx = Math.round(x - w / 2), by = Math.round(f.ty - f.r - 7);
@@ -21722,14 +21780,21 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         c.globalAlpha = 1;
       });
     }
-    if (S.bats) drawBats(ctx, S.bats, S.scroll, S.t, S.runners.filter((r) => !r.out).map((r) => ({ x: S.scroll + r.x + PW / 2, y: r.y + PH / 2 })));
+    if (S.bats) drawBats(
+      ctx,
+      S.bats,
+      S.scroll,
+      S.t,
+      S.runners.filter((r) => !r.out).map((r) => ({ x: S.scroll + r.x + PW / 2, y: r.y + PH / 2 })),
+      (x, y, e, paint2) => pixelSprite(ctx, x - e, y - e, 2 * e, 2 * e, 1, false, paint2)
+    );
     for (const w of S.worms || []) {
       const b = wormBox(w, S.scroll);
       if (b.x + b.w > -10 && b.x < TITLE_VW + 10) pixelSprite(ctx, b.x, b.y, b.w, b.h, 1, false, (c) => drawGlowWorm(c, w, S.scroll));
     }
     for (const f of S.foes) {
       const sx2 = f.x - S.scroll;
-      if (sx2 < -60 || sx2 > TITLE_VW + 60) continue;
+      if (sx2 < -60 || sx2 > TITLE_VW + 60 || f.bat) continue;
       if (S.hub && S.hub.pv && f === S.hub.pv.foe) continue;
       if (f.k.elite) {
         const u = f.k.eu || 0, a = Math.max(0, Math.min(1, kru("elGlow", u) * (1 + 0.45 * Math.sin(S.t * 4 + f.x)))), R = f.r + kru("elGlowR", u);
@@ -24848,7 +24913,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         ctx.fillRect(px - 2, fy - 4, 4, 4);
         ctx.fillStyle = "#20242c";
         ctx.fillRect(px + (L.dir > 0 ? 0.5 : -1.5), fy - 8, 1, 1);
-        drawBats(ctx, L.B, 0, L.t, [{ x: px, y: fy - 6 }]);
+        drawBats(ctx, L.B, 0, L.t, [{ x: px, y: fy - 6 }], (x, y, e, paint2) => pixelSprite(ctx, x - e, y - e, 2 * e, 2 * e, 1, false, paint2));
       };
       raf = requestAnimationFrame(tick);
       return () => cancelAnimationFrame(raf);

@@ -17,7 +17,7 @@ import { DEV, carrotAt, kcol, kr, kru, spr } from '../dev/knobs.js';
 import { jellyPal, jellyStep } from '../creatures/jelly.js';
 import { ratSpread, ratStep } from '../creatures/rat.js';
 import { spiderStep } from '../creatures/spider.js';
-import { addRoost, dropBats, newBats, stepBats } from '../creatures/bats.js';
+import { addRoost, dropBats, newBats, panicRoost, stepBats } from '../creatures/bats.js';
 import { newWorm, stepWorm } from '../creatures/glowworm.js';
 import { roamStep } from '../creatures/common.js';
 import { FIRE_CATCH, FIRE_COLS, FIRE_KNOB, FIRE_TICK, FIRE_UPW, FLAMMABLE } from '../world/fire.js';
@@ -1123,7 +1123,29 @@ function batsStep(S, dt) {
   const B = S.bats; if (!B) return;
   dropBats(B, Math.max(S.scroll - TITLE_BACK - 50, (S.gen - S.ncol) * TCELL + 40));   // (and before the ring of columns reuses theirs)
   const live = S.runners.filter(r => !r.out), preds = live.map(r => ({ x: S.scroll + r.x + PW / 2, y: r.y + PH / 2 }));
-  stepBats(B, dt, preds, (x, y) => !!SOLID[titleCell(S, Math.floor(x / TCELL), Math.floor(y / TCELL))], S.rnd, (i, d) => { if (S.lvl && S.lvl.hurt) S.lvl.hurt(S, live[i].id, d); });
+  // (owner: they're enemies) each bat has a stand-in among the foes (f.bat) the guns aim at and hit; one hurt or killed panics its roost
+  const R = S.rnd, inF = new Set(S.foes);
+  for (const b of B.list) {
+    if (b.gone || !b.placed) continue;
+    const f = b.f || (b.f = batFoe(S, b));
+    if (f.hp < (b.hpSeen ?? f.hp)) panicRoost(B, b.ro, R);
+    b.hpSeen = f.hp;
+    if (f.hp <= 0) b.gone = true;
+  }
+  stepBats(B, dt, preds, (x, y) => !!SOLID[titleCell(S, Math.floor(x / TCELL), Math.floor(y / TCELL))], R, (i, d) => { if (S.lvl && S.lvl.hurt) S.lvl.hurt(S, live[i].id, d); });
+  for (const b of B.list) {
+    const f = b.f; if (!f) continue;
+    f.x = f.hx = b.x; f.y = f.ty = f.hy = b.y + (b.st === 'roost' ? 2 * DEV.batSize : 0); f.r = 2 * DEV.batSize;
+    const sx = b.x - S.scroll;
+    if (!inF.has(f) && f.hp > 0 && sx > -40 && sx < TITLE_VW + 40) S.foes.push(f);
+  }
+}
+// a bat's stand-in foe: a spider's kind made over (no brain: stepFoes skips it), DEV.batHp health, a nugget's worth of gold
+/** @param {TitleScene} S @param {import('../creatures/bats.js').Bat} b @returns {Enemy} */
+function batFoe(S, b) {
+  const base = S.lvl && S.lvl.kind ? S.lvl.kind('hamahakki', 1) : enemyFor('hamahakki', 1);
+  const k = { ...base, id: 'bat', name: 'Bat', act: 'bat', kp: undefined, elite: false, boss: false, dmg: 0, r: 2, hp: DEV.batHp, gold: 1, col: { ...base.col, a: '#4a3a4c' } };
+  return { x: b.x, y: b.y, ty: b.y, r: 2 * DEV.batSize, phase: 0, hp: DEV.batHp, hpMax: DEV.batHp, cd: 1e9, flash: 0, lx: 0, ly: 1, hx: b.x, hy: b.y, tgt: null, rest: 0, k, touch: 1e9, charge: 0, bat: true };
 }
 // the scene's rock at a world point
 /** @param {TitleScene} S @returns {(x: number, y: number) => boolean} */
@@ -1793,14 +1815,20 @@ function stepSway(S, dt) {
 function killFoe(S, f) {
   f.hp = 0;
   S.kills++;
-  const big = f.k.id !== 'rotta', x = f.x - S.scroll, y = f.ty;
+  const big = f.k.id !== 'rotta' && !f.bat, x = f.x - S.scroll, y = f.ty;
   snd(S, 'die', x, y, f.k);
+  if (f.bat) {   // (a bat: a small puff, and it drops, a little dark lump falling till it lands)
+    burst(S, x, y, 5, '#8a7a90', 40, 'smoke', 0.5);
+    burst(S, x, y, 4, '#ffffff', 90, 'spark', 0.2);
+    if (S.parts.length < TITLE_PARTS) S.parts.push({ x, y, vx: (S.rnd() - 0.5) * 10, vy: 10, life: 3, max: 3, r: 1.2 * DEV.batSize, col: '#2a2230', kind: 'lump' });
+  } else {
   if (big) snd(S, 'boom', x, y, f.r * 3);
   S.booms.push({ x, y, r: f.r * (big ? 3 : 1.6), t: 0, max: 0.4 });
   burst(S, x, y, big ? 22 : 8, '#ffd27a', 110, 'fire', 0.55);
   burst(S, x, y, 8, '#ffffff', 190, 'spark', 0.3);
   burst(S, x, y, big ? 6 : 2, '#3a3346', 30, 'smoke', 1.3);
   burst(S, x, y, 5, f.k.col.a, 90, 'chunk', 0.9);
+  }
   if (big) { S.shake = Math.min(7, S.shake + 3); S.flash = Math.min(0.35, S.flash + 0.15); }
   // its gold as the game drops it (systems/enemies.js damageEnemy): its kind's gold and up to 2 more,
   // split into big, medium and small nuggets (world/nuggets.js spillGold), thrown up out of it
@@ -1904,7 +1932,7 @@ export function titleStep(S, dt) {
   S.spawn -= dt;
   // (CaveRunner Auto's level: S.lvl.spawn sets the gap and how many at once, a trickle that builds: auto/level.js levelSpawn)
   const sp = S.lvl && S.lvl.spawn ? S.lvl.spawn(S) : { gap: 0.4, cap: TITLE_FOES - 10 };
-  if (S.spawn <= 0 && !S.hub && S.foes.length < sp.cap) { addFoe(S, undefined, sp.cap); S.spawn = sp.gap * (1 + R() * 1.5); }
+  if (S.spawn <= 0 && !S.hub && S.foes.filter(f => !f.bat).length < sp.cap) { addFoe(S, undefined, sp.cap); S.spawn = sp.gap * (1 + R() * 1.5); }
   if (!S.still) { for (const r of S.runners) if (!r.out) stepRunner(S, r, dt); separate(S, dt); }
   stepFoes(S, dt);
   batsStep(S, dt);
@@ -2829,6 +2857,7 @@ export function titleClearWebs(S, r, fire, rad) {
 function stepFoes(S, dt) {
   const R = S.rnd, CS = csolid(S), sees = 1 / DEV.zoom;
   for (const e of S.foes) {
+    if (e.bat) continue;   // (a bat's stand-in: creatures/bats.js moves it, batsStep)
     const k = e.k, ru = nearestRunner(S, e.x - S.scroll, e.ty);
     const pcx = S.scroll + ru.x + PW / 2, pcy = ru.y + PH / 2, goal = { x: pcx, y: pcy };
     e.flash -= dt; e.cd -= dt; e.touch -= dt;

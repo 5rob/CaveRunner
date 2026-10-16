@@ -49,6 +49,24 @@ require('../tests/build')();
     await save('g-dev-scare', 'the preview a moment later: the player walking under a roost, its bats scared into flight', cb ? { x: cb.x, y: cb.y, width: cb.width, height: cb.height } : undefined);
     await browser.close(); console.log(said.join(String.fromCharCode(10))); return;
   }
+  // (C4 round 3) the bats are targets: the level played on (darkness lifted for the shots) till the players have hit a bat on screen
+  if (ONLY === 'batshoot') {
+    await page.evaluate(() => { DEV.gremDark = 0; });
+    let box = null;
+    for (let i = 0; i < 600 && !box; i++) {
+      box = await page.evaluate(() => {
+        const S = window.__gremScene; if (!S) return null;
+        const f = S.foes.find(q => q.bat && q.hp > 0 && q.hp < q.hpMax && q.x - S.scroll > 30 && q.x - S.scroll < TITLE_VW - 30);
+        if (!f || !S.shots.length || !S.runners.some(r => !r.out)) return null;
+        const cv = document.querySelector('canvas'), b = cv.getBoundingClientRect(), k = b.width / TITLE_VW;
+        return { x: Math.max(b.left, b.left + (f.x - S.scroll) * k - 110), y: Math.max(b.top, b.top + f.ty * k - 110), width: 220, height: 220 };
+      });
+      if (!box) await page.waitForTimeout(100);
+    }
+    await save('h-shoot-lit', 'Coal Seams (darkness lifted): the players shooting at bats, a hit roost panicking' + (box ? '' : ' (no hit found in 60 s)'));
+    if (box) await save('i-shoot-close', 'close up: a hit bat (its bar shows once hit), bats in the pixel look', box);
+    await browser.close(); console.log(said.join(String.fromCharCode(10))); return;
+  }
   // (C1) a gas pocket on screen set off: the whoomph mid-flash, then just after, the fire round it (each also a close-up)
   for (let i = 0; ONLY !== 'stal' && ONLY !== 'ladder' && ONLY !== 'bats' && ONLY !== 'worm' && i < 400; i++) {
     const g = await page.evaluate(() => {
