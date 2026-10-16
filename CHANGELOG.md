@@ -5,6 +5,13 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v2.0.2 — Coal Seams, step 2: burnable coal seams (branch `grem`)
+2026-10-17 (owner OK'd the screenshots; design doc build step 2, idea 2 smouldering seams with it).
+- Coal through Coal Seams' rock: big patches and long winding veins (about a fifth of the rock), near-black with a blue sheen and glints; the same level always has the same seams. Solid like rock.
+- Coal is a fourth fire fuel: it catches slowly (0.2 × timber: the doc's 0.8 lit a screen of coal in ~4 s and filled the scene's 600 burning cells) and burns 4.5–13.5 s; a burnt coal cell is ash, open air, so a burnt seam leaves a tunnel. Plain rock never burns.
+- Smouldering seams: now and then a bare coal face is alight from the start.
+- Dev → Grem → Coal Seams: coal amount, patch size, veins, vein thickness, catch rate, smoulder, colours, glints; Fire: "Coal burns for".
+
 ## v2.0.1 — Coal Seams, step 1: its own zones and the old mine set (branch `grem`)
 2026-10-17 (owner OK'd the screenshots; design doc "Coal Seams", build step 1).
 - Level 2 (Coal Seams) plays only the Mines, the Digging zone and the Cavern (the spider zone's boulders), from its start on.

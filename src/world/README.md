@@ -1,5 +1,7 @@
 # world/ — layer 3: making a floor, seeing it, burning it
 
+**Coal (grem, v2.0.2):** `fire.js` has a fourth fuel kind, coal (`FIRE_CATCH[4]`, `FIRE_KNOB[4]` = 'fireCoal'), used by Grem's Coal Seams (art/titlescene.js `TM.COAL`).
+
 **grem branch (CaveRunner Grem, v2.0.0):** cut from this folder as unused by Grem Mode: `byDistance.js`, `dark.js`, `destroy.js`, `furnish.js`, `guide.js`, `holoflicker.js`, `loot.js`, `nests.js`, `strata.js`, `tomb.js`, `veins.js`, `zones.js`. Anything below that still names them describes `autobattler` / `main`, where they live on.
 
 All pure: the logic suites call these directly.

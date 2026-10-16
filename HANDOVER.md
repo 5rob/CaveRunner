@@ -5,12 +5,10 @@ release loop, testing), then the README of the `src/` folder you're working in.
 
 ## BRANCH `grem` (2026-10-16): CaveRunner Grem — Grem Mode only (the owner's focus)
 
-**Start here (fresh session on `grem`):** **v2.0.1 is pushed to `grem`** (2026-10-17, owner OK'd the shots; APK at `app-grem` built, but **Pages refuses `grem`**: "Branch grem is not allowed to deploy to github-pages due to environment protection rules" — every `grem` push so far; v2.0.0 went live only through a `main` push, whose run builds `grem/` too. **Waiting on the owner** to add `grem` in Settings → Environments → github-pages → Deployment branches, then re-run the latest `grem` run or push again): Coal Seams build step 1
+**Start here (fresh session on `grem`):** **v2.0.2 is pushed to `grem`** (2026-10-17, owner OK'd the shots: step 2, burnable coal + smouldering seams; v2.0.1 step 1; APK at `app-grem` built, but **Pages refuses `grem`**: "Branch grem is not allowed to deploy to github-pages due to environment protection rules" — every `grem` push so far; v2.0.0 went live only through a `main` push, whose run builds `grem/` too. **Waiting on the owner** to add `grem` in Settings → Environments → github-pages → Deployment branches, then re-run the latest `grem` run or push again): Coal Seams build step 1
 (its own zones; Mossy's plants off, the old mine set on; CHANGELOG v2.0.1; art/README's Coal Seams note). Live check once Pages allows it:
-`/CaveRunner/grem/version.txt` = `2000001 v2.0.1` (still `2000000 v2.0.0`). **Next: step 2, burnable coal seams** (a fourth fire fuel: world/fire.js and
-titlescene's FUEL table, a new TM material, patches + veins from seeded noise, burnt coal = ash = open tunnel; Dev knobs per the
-doc's table) with smouldering seams (idea 2); minecart rails (1) and coal piles/chutes (10) fit there too; gas pockets (3) later.
-Then the Cavern dressing, Bats (owner's boids spec), Glow worms (inchworm gait spec). Each step: phone screenshots
+`/CaveRunner/grem/version.txt` = `2000002 v2.0.2`. Step 2 (v2.0.2): coal seams (`TM.COAL`, art/README's Coal note), catch rate 0.2 × timber (the doc's 0.8 was far too fast; told
+the owner). **Next:** minecart rails (idea 1) and coal piles/chutes (10), gas pockets (3) later; then the Cavern dressing, Bats (owner's boids spec), Glow worms (inchworm gait spec). Each step: phone screenshots
 (`node tools/coalshots.js`, Grem started at level 2) → owner OK → bump, docs, push `grem`.
 The plan is the Claude Doc: read it with the docs tools (doc id `62f545c8-940a-4833-9ba9-ff20db771da5`, tab body node
 `64396f1a-182a`; last write rev 23) — never web-fetch it. Every open question is decided (its Decisions section, owner
