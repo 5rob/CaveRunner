@@ -33,7 +33,9 @@ import { GunIcon } from '../editor.js';
 import { PauseMenu } from '../pause.js';
 import { runScene } from '../scenecanvas.js';
 import { HelmetIcon, NuggetIcon } from './icons.js';
-import { FlyTile, PillStick } from './AutoScreen.js';
+import { DEV_PAGES, FlyTile, PillStick } from './AutoScreen.js';
+import { DevPanel } from '../devpanel.js';
+import { DEV_HOLD_MS, devShown, setDevShown } from '../devmode.js';
 import { h, useEffect, useRef, useState } from '../h.js';
 
 /** @param {() => void} fn @returns {(e: any) => void} */
@@ -51,7 +53,10 @@ export function GremScreen() {
   const [boss, setBoss] = useState(noBoss);
   const [paused, setPaused] = useState(false);
   const pausedRef = useRef(false);
-  pausedRef.current = paused;
+  // (owner, v1.0.100) the Dev panel as the normal game's: ⏸ held DEV_HOLD_MS toggles dev mode; on, a ⚙️ beside ⏸ opens it
+  const [devOn, setDevOn] = useState(devShown);
+  const [devOpen, setDevOpen] = useState(false);
+  pausedRef.current = paused || devOpen;
   const [gold, setGold] = useState(0);
   const [lvl, setLvl] = useState(1);
   /** @type {number[]} */
@@ -224,7 +229,7 @@ export function GremScreen() {
   // it (within DEV.gremPickR, its size added) becomes everyone's target
   /** @param {any} e */
   const playTap = e => {
-    if (e.target && e.target.closest && e.target.closest('.pausebtn')) return;
+    if (e.target && e.target.closest && e.target.closest('.pausebtn, .adevbtn')) return;
     const S = scene.current, C = cam.current, c = cvs.current;
     if (!S || !C || !c) return;
     SFX.unlock();
@@ -237,18 +242,33 @@ export function GremScreen() {
     }
     if (best && bd <= DEV.gremPickR) { S.pick = best; SFX.ui('tap'); }
   };
+  // ⏸: the pause menu at once; held on DEV_HOLD_MS (a let-go anywhere ends it) it also toggles dev mode (AutoScreen's pauseDown)
+  /** @param {any} e */
+  const pauseDown = e => {
+    e.preventDefault(); SFX.fx('open'); setPaused(true);
+    const id = e.pointerId;
+    const t = setTimeout(() => {
+      const v = !devShown(); setDevShown(v); setDevOn(v);
+      try { if (navigator.vibrate) navigator.vibrate(60); } catch (_) { /* no vibration */ }
+    }, DEV_HOLD_MS);
+    /** @param {any} ev */
+    const up = ev => { if (ev.pointerId !== id) return; clearTimeout(t); removeEventListener('pointerup', up); removeEventListener('pointercancel', up); };
+    addEventListener('pointerup', up); addEventListener('pointercancel', up);
+  };
   return h('div', { className: 'auto grem' },
     h('div', { className: 'aplay', onPointerDown: playTap },
       h('canvas', { ref: cvs, className: 'aplaycvs' }),
       h('div', { className: 'glvl' }, 'Level ' + lvl),
       boss ? h('div', { className: 'abossbar gboss' }, h('b', null, boss.name),
         h('div', { className: 'abosstrack' }, h('i', { style: { width: (100 * boss.hp / Math.max(1, boss.max)).toFixed(1) + '%' } }))) : null,
-      h('button', { className: 'pausebtn', title: 'Pause', onPointerDown: e => { e.preventDefault(); SFX.fx('open'); setPaused(true); } }, '⏸')),
+      devOn ? h('button', { className: 'adevbtn', title: 'Dev', onPointerDown: e => { e.preventDefault(); e.stopPropagation(); SFX.fx('open'); setDevOpen(true); } }, '⚙️') : null,
+      h('button', { className: 'pausebtn', title: 'Pause', onPointerDown: pauseDown }, '⏸')),
     h('div', { className: 'ggold', 'data-gold': gold }, h('span', { className: 'ggicon' }, h(NuggetIcon, { kind: 'gold' })), h('b', null, gold.toLocaleString())),
     h(GremGuns, { presets, items: items.current, gold, sel: has[who] ?? -1, who, fresh, pick: pickItem, box: guns }),
     h(GremHelms, { run: run.current, who, pick: pickWho }),
     h('div', { className: 'abtns gstick' }, h(PillStick, { onMove: steer })),
     flies.map(f => h(FlyTile, { key: f.k, f, done: () => setFlies(fs => fs.filter(q => q.k !== f.k)) })),
+    devOpen ? h(DevPanel, { input, refresh: () => {}, close: () => { SFX.fx('close'); setDevOpen(false); }, pages: DEV_PAGES }) : null,
     paused ? h(PauseMenu, { input, label: 'Grem Mode · Level ' + lvl, onNew: () => location.reload(), close: () => { SFX.fx('close'); setPaused(false); } }) : null);
 }
 

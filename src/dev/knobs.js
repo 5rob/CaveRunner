@@ -758,7 +758,7 @@ DEV_META.push(
   { k: 'autoGhostRange', g: 'autoperks', label: 'Angry Ghost: range (units)', min: 20, max: 400, step: 5 });
 DEV_GROUPS.push(['autoperks', 'Auto: perks']);
 // the level's enemies (auto/enemies.js, stage 6): how hard they hit, the elites, the boss
-Object.assign(DEV_DEFAULTS, { autoFoeGap0: 4, autoFoeGap1: 1.5, autoFoeCap0: 3, autoFoeCap1: 10, autoFoeDmg: 0.5, autoFoeElites: 2, autoBossSize: 4, autoBossHp: 12, autoBossDmg: 3, autoTierHp: 1.45, autoTierDmg: 1.15, autoOldDmg: 0.4, autoOldCd: 1.5 });
+Object.assign(DEV_DEFAULTS, { autoFoeGap0: 4, autoFoeGap1: 1.5, autoFoeCap0: 3, autoFoeCap1: 10, autoFoeDmg: 0.5, autoFoeElites: 2, autoBossSize: 4, autoBossHp: 12, autoBossDmg: 3, autoTierHp: 1.45, autoTierDmg: 1.15, autoOldDmg: 0.4, autoOldCd: 1.5, autoFoeKeep: 16 });
 DEV_META.push(
   { k: 'autoRoamT',   g: 'autofoes', label: 'Tall levels: the team picks a new height to roam at every … s', min: 1, max: 30, step: 0.5 },
   { k: 'autoRoamHi',  g: 'autofoes', label: '… the top third, at this chance', min: 0, max: 1, step: 0.05 },
@@ -774,6 +774,8 @@ DEV_META.push(
   { k: 'autoFoeCap1',   g: 'autofoes', label: '… easing to at most … by the boss', min: 0, max: 24, step: 1 },
   { k: 'autoFoeDmg',    g: 'autofoes', label: 'Creatures hurt the players (× their damage)', min: 0, max: 5, step: 0.05 },
   { k: 'autoFoeElites', g: 'autofoes', label: 'Elites a level', min: 0, max: 12, step: 1 },
+  // (owner, v1.0.100) a rat at a player's feet was inside his gun's reach: creatures keep off (their bites reach 4 further)
+  { k: 'autoFoeKeep',   g: 'autofoes', label: 'Creatures keep this far from a player (units past their size; 0 off)', min: 0, max: 40, step: 1 },
   { k: 'autoTierHp',    g: 'autofoes', label: 'Creatures’ health × this for each level past 1 (compounding; level 10 ≈ 28× at 1.45)', min: 1, max: 3, step: 0.05 },
   { k: 'autoTierDmg',   g: 'autofoes', label: 'Creatures’ bite × this for each level past 1 (compounding)', min: 1, max: 2, step: 0.01 },
   { k: 'autoBossSize',  g: 'autofoes', label: 'Boss size (× a normal one)', min: 1, max: 8, step: 0.25 },

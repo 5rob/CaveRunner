@@ -73,7 +73,7 @@ function openRun() {
 }
 
 // (Grem Mode) the Dev panel's own pages: Presets (the gun presets library) and Grem (player 1's kit)
-const DEV_PAGES = { presets: () => h(PresetLib), grem: () => h(GremKit) };
+export const DEV_PAGES = { presets: () => h(PresetLib), grem: () => h(GremKit) };
 
 // ⏸ → New run (confirmed): a fresh run replaces the save, and the page reloads to the title (▶ opens it)
 function freshRun() {

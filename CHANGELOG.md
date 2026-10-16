@@ -5,6 +5,11 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.100 — Creatures keep off the players; the Dev panel in Grem Mode (branch `autobattler`)
+Released 2026-10-16 (owner asked, both).
+- A rat at a player's feet couldn't be shot: a shot starts at the gun's tip, ~18 units out, so a creature nearer than that was behind it (and aimed down, the shot started in the floor). In a level every creature now keeps `DEV.autoFoeKeep` (16) units past its size from each player's middle (`art/titlescene.js keepOff`: pushed out sideways, so a walker stays on its floor, else straight away, else left be); its bite and a bomber's burst reach 4 further (`biteReach`), so they still hurt. Knob in Dev → Auto: enemies (0 = off). Suite `auto-keepoff`.
+- Grem Mode: ⏸ held 5 s toggles dev mode as in the normal game; a ⚙️ left of the big ⏸ opens the Dev panel (with its Presets and Grem pages). Suite `grem-dev` (browser).
+
 ## v1.0.99 — Grem Mode: no scroll bar under the gun row on a PC (branch `autobattler`)
 Released 2026-10-16 (owner asked: Chrome on the PC showed an awkward horizontal scroll bar).
 - `.gguns` hides its scroll bar (`scrollbar-width: none`, `::-webkit-scrollbar`); a mouse wheel scrolls the row sideways (`GremScreen.js wheelSideways`). Touch is unchanged.

@@ -71,6 +71,7 @@ export const AUTO_KNOBS = new Set([
   'autoFoeElites',
   'autoFoeGap0',
   'autoFoeGap1',
+  'autoFoeKeep',
   'autoFuelDrain',
   'autoFuelRegen',
   'autoGhostCd',

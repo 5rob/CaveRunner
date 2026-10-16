@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v1.0.99</title>
-<!-- VERSION = 'v1000099' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v1.0.100</title>
+<!-- VERSION = 'v1000100' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -1235,6 +1235,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 @keyframes gfresh{from{box-shadow:0 0 4px 0 rgba(255,220,90,0.35)}to{box-shadow:0 0 18px 6px rgba(255,236,140,0.95)}}
 /* (owner v1.0.92) the pause button twice the size; the boss bar under the level */
 .grem .pausebtn{width:76px;height:76px;font-size:34px;border-radius:14px}
+.grem .adevbtn{right:96px;width:56px;height:56px;font-size:26px;border-radius:12px}   /* (v1.0.100) left of Grem's big ⏸ */
 .gboss{position:absolute;left:10px;right:96px;top:30px;pointer-events:none}
 /* the players' helmets, between the guns and the stick: 1-2 left of the stick's dome, 3-4 right of it */
 .ghelms{flex:none;height:70px;display:grid;grid-template-columns:1fr 152px 1fr;align-items:center}
@@ -1302,7 +1303,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v1.0.99';</script>
+<script>const VERSION = 'v1.0.100';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -2346,7 +2347,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "autoGhostRange", g: "autoperks", label: "Angry Ghost: range (units)", min: 20, max: 400, step: 5 }
   );
   DEV_GROUPS.push(["autoperks", "Auto: perks"]);
-  Object.assign(DEV_DEFAULTS, { autoFoeGap0: 4, autoFoeGap1: 1.5, autoFoeCap0: 3, autoFoeCap1: 10, autoFoeDmg: 0.5, autoFoeElites: 2, autoBossSize: 4, autoBossHp: 12, autoBossDmg: 3, autoTierHp: 1.45, autoTierDmg: 1.15, autoOldDmg: 0.4, autoOldCd: 1.5 });
+  Object.assign(DEV_DEFAULTS, { autoFoeGap0: 4, autoFoeGap1: 1.5, autoFoeCap0: 3, autoFoeCap1: 10, autoFoeDmg: 0.5, autoFoeElites: 2, autoBossSize: 4, autoBossHp: 12, autoBossDmg: 3, autoTierHp: 1.45, autoTierDmg: 1.15, autoOldDmg: 0.4, autoOldCd: 1.5, autoFoeKeep: 16 });
   DEV_META.push(
     { k: "autoRoamT", g: "autofoes", label: "Tall levels: the team picks a new height to roam at every … s", min: 1, max: 30, step: 0.5 },
     { k: "autoRoamHi", g: "autofoes", label: "… the top third, at this chance", min: 0, max: 1, step: 0.05 },
@@ -2362,6 +2363,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "autoFoeCap1", g: "autofoes", label: "… easing to at most … by the boss", min: 0, max: 24, step: 1 },
     { k: "autoFoeDmg", g: "autofoes", label: "Creatures hurt the players (× their damage)", min: 0, max: 5, step: 0.05 },
     { k: "autoFoeElites", g: "autofoes", label: "Elites a level", min: 0, max: 12, step: 1 },
+    // (owner, v1.0.100) a rat at a player's feet was inside his gun's reach: creatures keep off (their bites reach 4 further)
+    { k: "autoFoeKeep", g: "autofoes", label: "Creatures keep this far from a player (units past their size; 0 off)", min: 0, max: 40, step: 1 },
     { k: "autoTierHp", g: "autofoes", label: "Creatures’ health × this for each level past 1 (compounding; level 10 ≈ 28× at 1.45)", min: 1, max: 3, step: 0.05 },
     { k: "autoTierDmg", g: "autofoes", label: "Creatures’ bite × this for each level past 1 (compounding)", min: 1, max: 2, step: 0.01 },
     { k: "autoBossSize", g: "autofoes", label: "Boss size (× a normal one)", min: 1, max: 8, step: 0.25 },
@@ -16498,8 +16501,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (CLASSIC[k.act]) {
         if (classicAct(S2, e, hunting, goal, dist, dx, dy, CS, dt)) continue;
       } else e.ty = e.y;
+      if (S2.lvl) keepOff(S2, e, CS);
       if (!hunting && R() < 0.07 * dt) snd(S2, "idle", e.x - S2.scroll, e.ty, k);
-      if (hunting && dist < e.r + 14 && e.touch <= 0) {
+      if (hunting && dist < biteReach(S2, e) && e.touch <= 0) {
         e.touch = k.kp ? kr(k.kp + "BiteCd", R) : 0.9;
         snd(S2, "bite", e.x - S2.scroll, e.ty, k);
         burst(S2, ru.x + PW / 2, ru.y + PH / 2, 4, "#ff6a5a", 50, "spark", 0.2);
@@ -16536,6 +16540,29 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
     }
     S2.silk = S2.silk.filter((b) => b.life > 0);
+  }
+  var BITE_PAST = 4;
+  var biteReach = (S2, e) => e.r + (S2.lvl ? Math.max(14, DEV.autoFoeKeep + BITE_PAST) : 14);
+  function keepOff(S2, e, CS) {
+    const keep = e.r + DEV.autoFoeKeep;
+    if (keep <= 0) return;
+    const free = (x, y) => !CS(Math.floor(x / CELL), Math.floor(y / CELL));
+    for (const r of S2.runners) {
+      if (r.out || r.hide) continue;
+      const cx = S2.scroll + r.x + PW / 2, cy = r.y + PH / 2, dx = e.x - cx, dy = e.y - cy, d = Math.hypot(dx, dy);
+      if (d >= keep) continue;
+      const side = dx === 0 ? e.lx > 0 ? -1 : 1 : Math.sign(dx);
+      const hx = cx + side * Math.sqrt(Math.max(0, keep * keep - dy * dy));
+      let nx = e.x, ny = e.y;
+      if (free(hx, e.y)) nx = hx;
+      else if (d > 0.01 && free(cx + dx / d * keep, cy + dy / d * keep)) {
+        nx = cx + dx / d * keep;
+        ny = cy + dy / d * keep;
+      } else continue;
+      e.ty += ny - e.y;
+      e.x = nx;
+      e.y = ny;
+    }
   }
   function classicAct(S2, e, hunting, goal, dist, dx, dy, CS, dt) {
     const R = S2.rnd, k = e.k;
@@ -16578,7 +16605,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         e.fuseT = 0.12 + dist / 400;
         snd(S2, "fuse", e.x - S2.scroll, e.ty, k);
       }
-      if (dist < e.r + 14) {
+      if (dist < biteReach(S2, e)) {
         burst(S2, e.x - S2.scroll, e.ty, 22, k.col.a, 90, "spark", 0.4);
         snd(S2, "boom", e.x - S2.scroll, e.ty, 10);
         const ru = nearestRunner(S2, e.x - S2.scroll, e.ty);
@@ -29398,6 +29425,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     "autoFoeElites",
     "autoFoeGap0",
     "autoFoeGap1",
+    "autoFoeKeep",
     "autoFuelDrain",
     "autoFuelRegen",
     "autoGhostCd",
@@ -33206,7 +33234,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
 
   // src/version.js
-  var VERSION2 = "v1.0.99";
+  var VERSION2 = "v1.0.100";
 
   // src/art/zonelab.js
   var ZLAB_LEAD = 60;
@@ -39303,7 +39331,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const [boss, setBoss] = useState(noBoss);
     const [paused, setPaused] = useState(false);
     const pausedRef = useRef(false);
-    pausedRef.current = paused;
+    const [devOn, setDevOn] = useState(devShown);
+    const [devOpen, setDevOpen] = useState(false);
+    pausedRef.current = paused || devOpen;
     const [gold, setGold] = useState(0);
     const [lvl, setLvl] = useState(1);
     const noHas = [-1];
@@ -39495,7 +39525,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       setWho(i);
     };
     const playTap = (e) => {
-      if (e.target && e.target.closest && e.target.closest(".pausebtn")) return;
+      if (e.target && e.target.closest && e.target.closest(".pausebtn, .adevbtn")) return;
       const S2 = scene.current, C = cam.current, c = cvs.current;
       if (!S2 || !C || !c) return;
       SFX.unlock();
@@ -39517,6 +39547,29 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         SFX.ui("tap");
       }
     };
+    const pauseDown = (e) => {
+      e.preventDefault();
+      SFX.fx("open");
+      setPaused(true);
+      const id = e.pointerId;
+      const t = setTimeout(() => {
+        const v = !devShown();
+        setDevShown(v);
+        setDevOn(v);
+        try {
+          if (navigator.vibrate) navigator.vibrate(60);
+        } catch (_) {
+        }
+      }, DEV_HOLD_MS);
+      const up = (ev) => {
+        if (ev.pointerId !== id) return;
+        clearTimeout(t);
+        removeEventListener("pointerup", up);
+        removeEventListener("pointercancel", up);
+      };
+      addEventListener("pointerup", up);
+      addEventListener("pointercancel", up);
+    };
     return h(
       "div",
       { className: "auto grem" },
@@ -39531,17 +39584,24 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           h("b", null, boss.name),
           h("div", { className: "abosstrack" }, h("i", { style: { width: (100 * boss.hp / Math.max(1, boss.max)).toFixed(1) + "%" } }))
         ) : null,
-        h("button", { className: "pausebtn", title: "Pause", onPointerDown: (e) => {
+        devOn ? h("button", { className: "adevbtn", title: "Dev", onPointerDown: (e) => {
           e.preventDefault();
+          e.stopPropagation();
           SFX.fx("open");
-          setPaused(true);
-        } }, "⏸")
+          setDevOpen(true);
+        } }, "⚙️") : null,
+        h("button", { className: "pausebtn", title: "Pause", onPointerDown: pauseDown }, "⏸")
       ),
       h("div", { className: "ggold", "data-gold": gold }, h("span", { className: "ggicon" }, h(NuggetIcon, { kind: "gold" })), h("b", null, gold.toLocaleString())),
       h(GremGuns, { presets, items: items.current, gold, sel: has[who] ?? -1, who, fresh: fresh2, pick: pickItem, box: guns }),
       h(GremHelms, { run: run.current, who, pick: pickWho }),
       h("div", { className: "abtns gstick" }, h(PillStick, { onMove: steer })),
       flies.map((f) => h(FlyTile, { key: f.k, f, done: () => setFlies((fs) => fs.filter((q) => q.k !== f.k)) })),
+      devOpen ? h(DevPanel, { input, refresh: () => {
+      }, close: () => {
+        SFX.fx("close");
+        setDevOpen(false);
+      }, pages: DEV_PAGES }) : null,
       paused ? h(PauseMenu, { input, label: "Grem Mode · Level " + lvl, onNew: () => location.reload(), close: () => {
         SFX.fx("close");
         setPaused(false);

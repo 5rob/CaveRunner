@@ -2291,9 +2291,10 @@ function stepFoes(S, dt) {
     else if (k.act === 'rat') ratAct(S, e, ru, hunting, CS, dt);
     if (CLASSIC[k.act]) { if (classicAct(S, e, hunting, goal, dist, dx, dy, CS, dt)) continue; }
     else e.ty = e.y;
+    if (S.lvl) keepOff(S, e, CS);   // (owner, v1.0.100) not inside a player's gun reach
     // a bite when it reaches him (he takes no harm here: a puff where it lands)
     if (!hunting && R() < 0.07 * dt) snd(S, 'idle', e.x - S.scroll, e.ty, k);
-    if (hunting && dist < e.r + 14 && e.touch <= 0) {
+    if (hunting && dist < biteReach(S, e) && e.touch <= 0) {
       e.touch = k.kp ? kr(k.kp + 'BiteCd', R) : 0.9; snd(S, 'bite', e.x - S.scroll, e.ty, k); burst(S, ru.x + PW / 2, ru.y + PH / 2, 4, '#ff6a5a', 50, 'spark', 0.2);
       if (S.lvl && S.lvl.hurt) S.lvl.hurt(S, ru.id, k.dmg * (CLASSIC[k.act] ? DEV.autoOldDmg : 1));   // CaveRunner Auto: it hurts (auto/enemies.js levelHurt; an old floor's creature × autoOldDmg)
     }
@@ -2319,6 +2320,32 @@ function stepFoes(S, dt) {
     }
   }
   S.silk = S.silk.filter(b => b.life > 0);
+}
+// (owner, v1.0.100: a rat at his feet was too close to shoot: a shot starts at the gun's tip, ~18 units out) in a level a
+// creature keeps DEV.autoFoeKeep units past its own size from every player's middle: pushed straight out sideways (a
+// walker stays on its floor), else straight away from him, else left where it is (rock both ways). Its bite (and a bomber's
+// burst) reaches BITE_PAST further, so it still hurts
+const BITE_PAST = 4;
+/** @param {TitleScene} S @param {Enemy} e @returns {number} the bite's reach from his middle */
+const biteReach = (S, e) => e.r + (S.lvl ? Math.max(14, DEV.autoFoeKeep + BITE_PAST) : 14);
+/** @param {TitleScene} S @param {Enemy} e @param {(cx: number, cy: number) => number} CS */
+function keepOff(S, e, CS) {
+  const keep = e.r + DEV.autoFoeKeep;
+  if (keep <= 0) return;
+  /** @param {number} x @param {number} y */
+  const free = (x, y) => !CS(Math.floor(x / CELL), Math.floor(y / CELL));
+  for (const r of S.runners) {
+    if (r.out || r.hide) continue;
+    const cx = S.scroll + r.x + PW / 2, cy = r.y + PH / 2, dx = e.x - cx, dy = e.y - cy, d = Math.hypot(dx, dy);
+    if (d >= keep) continue;
+    const side = dx === 0 ? (e.lx > 0 ? -1 : 1) : Math.sign(dx);
+    const hx = cx + side * Math.sqrt(Math.max(0, keep * keep - dy * dy));
+    let nx = e.x, ny = e.y;
+    if (free(hx, e.y)) nx = hx;
+    else if (d > 0.01 && free(cx + dx / d * keep, cy + dy / d * keep)) { nx = cx + dx / d * keep; ny = cy + dy / d * keep; }
+    else continue;
+    e.ty += ny - e.y; e.x = nx; e.y = ny;
+  }
 }
 // a classic creature's frame (game/creatures/classic.js classicMove, bombBurst, gunFire, as the old game): hunting (chasers and
 // bombers) it comes straight at him sliding along rock, else it patrols round home; it hovers (e.ty bobs); a bomber reaching him
@@ -2355,7 +2382,7 @@ function classicAct(S, e, hunting, goal, dist, dx, dy, CS, dt) {
   // a bomber: its fuse ticks closing in, and it bursts on reaching him (gone, no drop)
   if (k.act === 'bomb' && hunting) {
     if (dist < 160 && (e.fuseT = (e.fuseT || 0) - dt) <= 0) { e.fuseT = 0.12 + dist / 400; snd(S, 'fuse', e.x - S.scroll, e.ty, k); }
-    if (dist < e.r + 14) {
+    if (dist < biteReach(S, e)) {
       burst(S, e.x - S.scroll, e.ty, 22, k.col.a, 90, 'spark', 0.4);
       snd(S, 'boom', e.x - S.scroll, e.ty, 10);
       const ru = nearestRunner(S, e.x - S.scroll, e.ty);
