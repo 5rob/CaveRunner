@@ -1121,7 +1121,7 @@ function batCol(S, c, wx) {
 /** @param {TitleScene} S @param {number} dt */
 function batsStep(S, dt) {
   const B = S.bats; if (!B) return;
-  dropBats(B, S.scroll - TITLE_BACK - 50);
+  dropBats(B, Math.max(S.scroll - TITLE_BACK - 50, (S.gen - S.ncol) * TCELL + 40));   // (and before the ring of columns reuses theirs)
   const live = S.runners.filter(r => !r.out), preds = live.map(r => ({ x: S.scroll + r.x + PW / 2, y: r.y + PH / 2 }));
   stepBats(B, dt, preds, (x, y) => !!SOLID[titleCell(S, Math.floor(x / TCELL), Math.floor(y / TCELL))], S.rnd, (i, d) => { if (S.lvl && S.lvl.hurt) S.lvl.hurt(S, live[i].id, d); });
 }
