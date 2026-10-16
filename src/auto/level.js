@@ -10,7 +10,7 @@
 
 import { PH, PW } from '../core/consts.js';
 import { DEV } from '../dev/knobs.js';
-import { TITLE_BACK, TITLE_VW, TITLE_ZLEN, TITLE_ZONES, ctlOn, zapArc, titleClearWebs, titleRng, titleFloor, titlePlan, titleScene, titleSurf, titleZoneAdd } from '../art/titlescene.js';
+import { TITLE_BACK, TITLE_VW, TITLE_ZLEN, TITLE_ZONES, ctlOn, floorDeco, floorZones, zapArc, titleClearWebs, titleRng, titleFloor, titlePlan, titleScene, titleSurf, titleZoneAdd } from '../art/titlescene.js';
 import { PAD_HALF, padNext } from './hub.js';
 import { meterAdd, meterNew, meterSet, meterStep } from './meters.js';
 import { lvlPace, pilotEase, pilotPace } from './pilot.js';
@@ -35,6 +35,10 @@ const LVL_GO = 0.4;                   // the team sets off this long after the l
 const LVL_WALK = 40;                  // gathering on the exit pad: walk speed (world units / s)
 const GRAV = 260;                     // (titlescene.js GRAV)
 
+// (Grem Mode, Coal Seams) from world x0 on, the plan's zones are old floor n's own kinds and decoration set (titlescene.js kindsAt)
+/** @param {import('../art/titlescene.js').TitlePlan} P @param {number} x0 @param {number} n */
+export function floorFrom(P, x0, n) { (P.fk || (P.fk = [])).push({ x0, kinds: floorZones(n), deco: floorDeco(n) }); }
+
 // a flat zone (a pad or the arena): the menu's moss, no hills, no rubble or ledges
 /** @param {import('../art/titlescene.js').TitlePlan} P @param {number} x0 @param {number} x1 @param {number} co the roof's offset (- higher) @returns {import('../art/titlescene.js').TZone} */
 function flatZone(P, x0, x1, co) {
@@ -53,9 +57,11 @@ function flatZone(P, x0, x1, co) {
 // endless (Grem Mode, auto/grem.js): no sure wall (nothing blocks: the team digs as the title's runners do), and nothing
 // after the arena (no exit pad, no solid rock): the plan grows on with random zones (titlescene.js zoneIn), and levelOnward
 // adds the next stretch and arena when the boss is down
-/** @param {number} seed @param {number} [minutes] @param {number} [blocks] @param {number} [pace] normal pace (a level: lvlPace(tier)) @param {boolean} [endless] @returns {LevelPlan} */
-export function levelPlan(seed, minutes = DEV.autoLvlMin, blocks = DEV.autoBlockN, pace = DEV.autoLvlPace, endless = false) {
+// floor (Grem Mode, Coal Seams): the old floor its zones are (their kinds: titlescene.js floorZones); none: every kind
+/** @param {number} seed @param {number} [minutes] @param {number} [blocks] @param {number} [pace] normal pace (a level: lvlPace(tier)) @param {boolean} [endless] @param {number} [floor] @returns {LevelPlan} */
+export function levelPlan(seed, minutes = DEV.autoLvlMin, blocks = DEV.autoBlockN, pace = DEV.autoLvlPace, endless = false, floor = 0) {
   const P = titlePlan(seed, TITLE_ZONES);   // (a level: every zone kind, the spider zone too)
+  if (floor) floorFrom(P, -Infinity, floor);
   flatZone(P, -300, LVL_PAD, 0);
   const want = Math.max(TITLE_ZLEN[0], minutes * 60 * LVL_SCROLL * pace);
   let x = LVL_PAD;
@@ -156,11 +162,14 @@ export const levelTeamX = S => S.scroll + LVL_TEAM;
 /** @param {number} vh @param {number} seed @param {number} n @param {LevelPlan} [plan] (default levelPlan(seed)) @param {RunPlayer[]} [team] @param {number} [tier] @param {AutoRun | null} [run] @param {boolean} [grem] @returns {import('../art/titlescene.js').TitleScene} */
 export function levelScene(vh, seed, n, plan, team, tier = 1, run = null, grem = false) {
   const base = lvlPace(grem ? gremHardTier(tier) : tier);   // (owner, after v1.0.74) normal pace by level (Grem Mode: its gentler climb)
-  if (!plan) plan = levelPlan(seed, undefined, grem ? 0 : undefined, base, grem);
+  if (!plan) plan = levelPlan(seed, undefined, grem ? 0 : undefined, base, grem, grem ? levelFloor(tier) : 0);
   /** @type {LevelState} */
   const L = { plan, base, phase: 'arrive', arrived: [], zap: -99, goT: -1, arenaT: -1, bossDead: false, hold: 0, elites: [], chests: [], doneT: -1, meters: [], blocked: false,
     boss: null, failed: false, run, bagV: 0, grem, ups: 0 };
-  const S = titleScene(vh, seed, Math.min(vh * 0.24, 50), vh - Math.min(vh * 0.08, 20), { runners: n, level: { zp: plan.zp, step: levelStep, data: L, hurt: levelHurt,
+  // (owner, v1.0.98) Grem Mode: each level cleared, the next old floor (levelFloor(tier)): this stretch's and the next one's from past the arena
+  // (made before the scene, so its first columns are dressed as their floor: Coal Seams' decorations)
+  const looks = grem ? [Object.assign({ x0: -Infinity }, floorLook(levelFloor(tier), seed + tier)), Object.assign({ x0: plan.arena.x1 }, floorLook(levelFloor(tier + 1), seed + tier + 1))] : undefined;
+  const S = titleScene(vh, seed, Math.min(vh * 0.24, 50), vh - Math.min(vh * 0.08, 20), { looks, runners: n, level: { zp: plan.zp, step: levelStep, data: L, hurt: levelHurt,
     loot: (S, f) => killLoot(f.k.boss ? 'boss' : f.k.elite ? 'elite' : 'foe', S.tier || 1, S.rnd, f.k.gold).filter(it => !L.grem || it.kind === 'gold').map(it => (L.grem ? gremGold(it) : it)),
     fits: (_S, it) => !L.run || bagFits(L.run, it),
     take: (_S, it) => { if (L.run && bagAdd(L.run, it)) return false; L.bagV++; return true; },
@@ -168,8 +177,8 @@ export function levelScene(vh, seed, n, plan, team, tier = 1, run = null, grem =
   if (grem) { S.dmgMul = gremDmgMul(tier); S.coinWait = DEV.gremGoldWait; }   // (owner v1.0.92) the guns keep up; the gold bounces first
   // (owner, v1.0.97) past level 1 the level plays as one of the old game's floors: its palette and creatures (auto/maps.js levelLook)
   if (run && !grem) { const look = levelLook(run, seed); L.floor = look.floor; L.name = look.name; if (look.roster) S.looks = [Object.assign({ x0: -Infinity }, look)]; }
-  // (owner, v1.0.98) Grem Mode: each level cleared, the next old floor (levelFloor(tier)): this stretch's and the next one's from past the arena
-  if (grem) { S.looks = [Object.assign({ x0: -Infinity }, floorLook(levelFloor(tier), seed + tier)), Object.assign({ x0: plan.arena.x1 }, floorLook(levelFloor(tier + 1), seed + tier + 1))]; L.floor = levelFloor(tier); L.name = S.looks[0].name; }
+  if (S.looks && grem) { L.floor = levelFloor(tier); L.name = S.looks[0].name; }
+  if (grem) floorFrom(plan.zp, plan.arena.x1, levelFloor(tier + 1));   // (Coal Seams) the next floor's zones past the arena, as its look
   L.elites = elitePlan(plan, S.rnd);
   L.chests = chestPlan(plan);
   L.meters = S.runners.map(() => ({ dmg: meterNew(), hp: meterNew(), dealt: 0 }));
@@ -451,6 +460,7 @@ export function levelOnward(S, L) {
   S.gunsOff = false; S.huddle = false;
   // (owner, v1.0.98) the floor after this one starts past the new arena (this one's look began past the last: S.looks)
   if (S.looks) S.looks.push(Object.assign({ x0: a.x1 }, floorLook(levelFloor(tier + 1), P.seed + tier + 1)));
+  if (L.grem) floorFrom(zp, a.x1, levelFloor(tier + 1));
   L.floor = levelFloor(tier); L.name = floorName(L.floor);
   if (S.team) for (const pl of S.team) if (pl.alive !== false) pl.hp = playerStats(pl).maxHp;
 }

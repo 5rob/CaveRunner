@@ -314,6 +314,7 @@ interface Prop {
   id: string;                 // its DECOR entry
   k: string;                  // kind: 'climb', 'lamp', 'cover', 'drop', 'vent', …
   st: string;                 // style: 'vine', 'lantern', 'cart', …
+  rust?: number;              // (grem, Coal Seams) a rusted lantern: warmer, dimmer
   x: number; y: number; t: number; seed: number;
   l: number; t0: number; r: number; b: number;   // its box about x, y
   hang: number;

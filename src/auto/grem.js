@@ -127,7 +127,7 @@ export function gremRun(kit, rnd = Math.random) {
   pl.guns[0] = starterKit(rnd).gun;
   gremKitFit(pl, kit);
   /** @type {AutoRun} */
-  const run = { tier: 1, players: [pl], bag: Array(14).fill(null), seed: 1 + Math.floor(rnd() * 1e6) };
+  const run = { tier: Math.max(1, Math.round(DEV.gremStartLv || 1)), players: [pl], bag: Array(14).fill(null), seed: 1 + Math.floor(rnd() * 1e6) };
   mapsOf(run);
   return run;
 }

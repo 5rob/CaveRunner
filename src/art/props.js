@@ -5,6 +5,7 @@
 import { glowAt } from './sprites.js';
 import { mix } from '../core/util.js';
 import { swings, tent, vinePt } from '../world/sway.js';
+import { DEV } from '../dev/knobs.js';
 
 // ---- drawing the props ----
 /** @type {(c: ArrayLike<number>, a?: number) => string} */
@@ -182,16 +183,30 @@ export function drawProp(ctx, pr, time, T) {
         const sw = Math.sin(time * 1.3 + pr.seed * 30) * 0.06, bx = x + Math.sin(sw) * pr.len, by = y + Math.cos(sw) * pr.len;
         ctx.strokeStyle = '#5a5048'; ctx.lineWidth = 0.8; ctx.setLineDash([1.2, 0.8]);
         ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(bx, by); ctx.stroke(); ctx.setLineDash([]);
-        ctx.fillStyle = '#4a3a2a'; ctx.fillRect(bx - 3, by, 6, 1.5); ctx.fillRect(bx - 2.5, by + 7.5, 5, 1.5);
-        ctx.fillStyle = '#ffcc70'; ctx.fillRect(bx - 2, by + 1.5, 4, 6);
-        ctx.fillStyle = '#fff2c0'; ctx.fillRect(bx - 0.7, by + 3, 1.4, 3);
-        ctx.fillStyle = '#4a3a2a'; ctx.fillRect(bx - 2.6, by + 1.5, 0.8, 6); ctx.fillRect(bx + 1.8, by + 1.5, 0.8, 6);
+        // (rust: Coal Seams' rusted lantern, owner 2026-10-16: rust-brown iron, a dimmer orange glass)
+        const iron = pr.rust ? '#6b3a1e' : '#4a3a2a';
+        ctx.fillStyle = iron; ctx.fillRect(bx - 3, by, 6, 1.5); ctx.fillRect(bx - 2.5, by + 7.5, 5, 1.5);
+        ctx.fillStyle = pr.rust ? '#e0903c' : '#ffcc70'; ctx.fillRect(bx - 2, by + 1.5, 4, 6);
+        ctx.fillStyle = pr.rust ? '#ffd28a' : '#fff2c0'; ctx.fillRect(bx - 0.7, by + 3, 1.4, 3);
+        ctx.fillStyle = iron; ctx.fillRect(bx - 2.6, by + 1.5, 0.8, 6); ctx.fillRect(bx + 1.8, by + 1.5, 0.8, 6);
+        if (pr.rust) { ctx.fillStyle = '#8a4a26'; ctx.fillRect(bx - 1, by - 1, 2, 1); ctx.fillRect(bx + 0.6, by + 7.5, 1.2, 1.5); }
         break;
       }
       const s = -pr.side, lx = x + s * 5;
       ctx.strokeStyle = '#4a3e36'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, y - 5); ctx.lineTo(lx, y - 5); ctx.lineTo(lx, y - 3); ctx.stroke();
       ctx.fillStyle = '#5c4632'; ctx.fillRect(lx - 2.5, y - 3, 5, 7);
       ctx.fillStyle = '#ffcc70'; ctx.fillRect(lx - 1.5, y - 2, 3, 4.5);
+      break;
+    }
+    case 'bake': {
+      if (st === 'pickaxe') {                 // (Coal Seams) a pickaxe dropped on the floor: the handle lying across it, the iron head at one end
+        const s = pr.side;
+        ctx.strokeStyle = '#7a5434'; ctx.lineWidth = 1.2;
+        ctx.beginPath(); ctx.moveTo(x - 6 * s, y - 0.7); ctx.lineTo(x + 3 * s, y - 2.6); ctx.stroke();
+        ctx.strokeStyle = '#8e9098'; ctx.lineWidth = 1.3;
+        ctx.beginPath(); ctx.moveTo(x + 1.6 * s, y - 6.4); ctx.quadraticCurveTo(x + 2.4 * s, y - 2.6, x + 5.6 * s, y - 0.4); ctx.stroke();
+        ctx.fillStyle = '#c4c6cc'; ctx.fillRect(x + 1.2 * s - 0.5, y - 6.8, 1, 1);
+      }
       break;
     }
     case 'vent': {
@@ -321,7 +336,8 @@ export function propGlow(ctx, pr, time, T, pdist, torchR) {
     if (pr.st === 'cap') glowAt(ctx, x, y - 7, 30, 0.2 * f, rgbS(T.moss[1]));
     else if (pr.st === 'hanglamp') {
       const sw = Math.sin(time * 1.3 + pr.seed * 30) * 0.06, bx = x + Math.sin(sw) * pr.len, by = y + Math.cos(sw) * pr.len + 4.5;
-      glowAt(ctx, bx, by, 52, 0.17 * f, '255,160,70'); glowAt(ctx, bx, by, 9, 0.4 * f, '255,210,130');
+      const k = pr.rust ? DEV.coalLampLight : 1;
+      glowAt(ctx, bx, by, 52, 0.17 * f * k, pr.rust ? '255,130,45' : '255,160,70'); glowAt(ctx, bx, by, 9, 0.4 * f * k, pr.rust ? '255,190,110' : '255,210,130');
     }
     else { const lx = x - pr.side * 5; glowAt(ctx, lx, y, 46, 0.16 * f, '255,160,70'); glowAt(ctx, lx, y, 8, 0.4 * f, '255,210,130'); }
   } else if (pr.k === 'vent' && (pr.on || pr.warn)) {

@@ -437,7 +437,24 @@ DEV_META.push(
   { k: 'gremChestTapR', g: 'grem', label: 'A chest opens at a tap this near it, from any distance (units)', min: 5, max: 80, step: 1 },
   { k: 'gremSeamJag',  g: 'grem', label: '… its edge this ragged (0 a straight fade)', min: 0, max: 3, step: 0.05 },
   { k: 'gremPickR', g: 'grem', label: 'A tap picks the creature nearest it within (world units; the screen is 220 across)', min: 5, max: 220, step: 5 });
+// (2026-10-16) Grem Mode starts at this level (the Dev's way to look at a later floor: 2 is Coal Seams)
+Object.assign(DEV_DEFAULTS, { gremStartLv: 1 });
+DEV_META.push({ k: 'gremStartLv', g: 'grem', label: 'Start at level (2: Coal Seams; for a look at a later floor)', min: 1, max: 24, step: 1 });
 DEV_GROUPS.push(['grem', 'Grem Mode']);
+// Coal Seams (level 2, art/titlescene.js coalDeco): the old game's mine set in place of Mossy's plants. Supports: a timber
+// frame floor to roof through the natural zones; rusted lanterns off the roof, rock undersides and the frames; explosive
+// minecarts and pickaxes on the floors; soot falling in thin streams from the roof
+Object.assign(DEV_DEFAULTS, { coalSupports: 0.55, coalLamps: 0.05, coalCarts: 0.02, coalPicks: 0.05, coalSoot: 14, coalCartR: 18, coalCartDmg: 25, coalLampLight: 0.75 });
+DEV_META.push(
+  { k: 'coalSupports', g: 'coal', label: 'Timber supports: chance at each spot (one spot every 96 units)', min: 0, max: 1, step: 0.05 },
+  { k: 'coalLamps',    g: 'coal', label: 'Rusted lanterns: chance at each spot (every 10 units)', min: 0, max: 0.5, step: 0.005 },
+  { k: 'coalCarts',    g: 'coal', label: 'Explosive minecarts: chance at each spot on a flat floor (every 6 units)', min: 0, max: 0.3, step: 0.005 },
+  { k: 'coalPicks',    g: 'coal', label: 'Pickaxes: chance at each spot on a floor (every 6 units)', min: 0, max: 0.5, step: 0.005 },
+  { k: 'coalSoot',     g: 'coal', label: 'Soot falls: specks a second across the screen', min: 0, max: 80, step: 1 },
+  { k: 'coalCartR',    g: 'coal', label: 'A minecart’s blast: radius (world units)', min: 4, max: 60, step: 1 },
+  { k: 'coalCartDmg',  g: 'coal', label: 'A minecart’s blast: damage to creatures', min: 0, max: 200, step: 1 },
+  { k: 'coalLampLight', g: 'coal', label: 'Rusted lanterns: light (× a Mossy lantern’s)', min: 0, max: 1.5, step: 0.05 });
+DEV_GROUPS.push(['coal', 'Coal Seams']);
 // CaveRunner Auto's maps (auto/maps.js): the map machine's prices, and how much harder each map starts
 Object.assign(DEV_DEFAULTS, { autoMapPrice: 1000000, autoMapGrow: 1, autoMapStep: 5 });
 // CaveRunner Auto's level (auto/level.js, auto/pilot.js, stage 4a): its length and the team's pace
@@ -813,7 +830,7 @@ DEV_TABS.splice(DEV_TABS.length - 1, 0, ['traj', 'Trajectory', ['trajorbit', 'tr
 // (Dev → Zones) the level zones' preview (ui/zonesim.js) over their knobs
 DEV_TABS.splice(DEV_TABS.length - 1, 0, ['zones', 'Zones', ['autozones', 'autoorb', 'moss', 'webs', 'timber', 'paved', 'grove', 'winding', 'spider'].map(g => (g.startsWith('auto') ? g : 'zone_' + g))]);
 // (Grem Mode) the gun presets library and Grem's own page (ui/auto/presetlib.js, gremkit.js; DevPanel's pages)
-DEV_TABS.splice(DEV_TABS.length - 1, 0, ['presets', 'Presets', []], ['grem', 'Grem', ['grem']]);
+DEV_TABS.splice(DEV_TABS.length - 1, 0, ['presets', 'Presets', []], ['grem', 'Grem', ['grem', 'coal']]);
 DEV_TABS.splice(DEV_TABS.length - 1, 0, ['auto', 'Auto', ['autolevel', 'autoguns', 'autoperks', 'autofoes', 'autodeath', 'autoloot', 'autochests']]);
 export const DEV_KEY = 'caverunner-dev';
 /** @type {DevKnobs} */

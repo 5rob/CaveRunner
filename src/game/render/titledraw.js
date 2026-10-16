@@ -348,7 +348,7 @@ export function titleDraw(ctx, S, cw, ch, cam) {
     }
     const q = p.life / p.max;
     // spores fade in and out (the level's luminescent spores); drips are solid water
-    ctx.globalAlpha = p.kind === 'spore' ? Math.sin(Math.PI * q) * 0.8 : p.kind === 'drip' ? 0.8 : q;
+    ctx.globalAlpha = p.kind === 'spore' ? Math.sin(Math.PI * q) * 0.8 : p.kind === 'drip' ? 0.8 : p.kind === 'soot' ? 0.9 : q;
     ctx.fillStyle = p.kind === 'fire' ? (q > 0.6 ? '#fff0b0' : q > 0.3 ? '#ff9a2e' : '#c8301a') : p.col;
     const rr = p.kind === 'fire' ? p.r * (0.5 + q) : p.r;
     ctx.fillRect(p.x - rr / 2, p.y - rr / 2, rr, rr);
@@ -706,7 +706,8 @@ function titleDark(ctx, S) {
   // the lanterns (not fallen or popped), their own shadows
   for (const p of S.props) if (p.k === 'lamp' && !p.gone && !p.fall && p.x > -TITLE_LAMPR - 40 && p.x < TITLE_VW + TITLE_LAMPR + 40) {
     const ly = p.y + p.len + 3;
-    lc.save(); fan(p.x, ly, TITLE_LAMPR, 72); lc.clip(); pool(p.x, ly, TITLE_LAMPR, 0.95, 0.25); lc.restore();
+    const k = p.rust ? DEV.coalLampLight : 1;   // (Coal Seams' rusted lanterns: dimmer)
+    lc.save(); fan(p.x, ly, TITLE_LAMPR, 72); lc.clip(); pool(p.x, ly, TITLE_LAMPR * Math.min(1, 0.6 + 0.4 * k), 0.95 * Math.min(1, k), 0.25); lc.restore();
   }
   // fire (a few of its cells, as the game's glows sample it), burning creatures and plants, and the jellyfish
   if (S.fire.length) {

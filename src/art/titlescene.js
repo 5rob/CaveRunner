@@ -53,6 +53,14 @@ export const TITLE_ZLEN = [200, 360]; // a zone's length, the shortest and longe
 // the zones it travels through (floor 1's natural and built-up looks), in a random order (owner: no repeats)
 export const TITLE_ZONES = ['moss', 'webs', 'timber', 'paved', 'grove', 'winding', 'spider'];   // winding: v0.0.172 (owner); spider: after v1.0.74 (owner)
 export const TITLE_MENU_ZONES = TITLE_ZONES.filter(z => z !== 'spider');   // the title menu's (the spider zone is the levels' only)
+// (Coal Seams, owner 2026-10-16) an old floor's own zone set: floor 2 has the Mines (mine works), the Digging zone (winding caves) and
+// the Cavern (the spider zone's boulders); every other floor the levels' every kind. Its decoration set: 'coal' (Mossy's plants off,
+// the old game's mine set on: coalDeco), '' (Mossy Caves')
+export const COAL_ZONES = ['timber', 'winding', 'spider'];
+/** @param {number} floor */
+export const floorZones = floor => (floor === 2 ? COAL_ZONES : TITLE_ZONES);
+/** @param {number} floor */
+export const floorDeco = floor => (floor === 2 ? 'coal' : '');
 const ZMIX = 40;                      // the roof's and floor's shapes blend this far either side of a zone's border
 export const ZBLEND = 28;             // a zone's border frays this far (world units) each way, by noise
 export const TITLE_PACKY = 45;        // (Auto's tall level) a flyer's target at most this far up or down from the rest of the team
@@ -182,7 +190,8 @@ const CLASSIC = { shoot: 1, turret: 1, chase: 1, bomb: 1 };
 /** @typedef {{ k: string, st: string, ox: number, x: number, y: number, len: number, seed: number, side: number, burn: number, ac: number, ar: number, lit?: number, ch?: number, rot?: number, rv?: number, rp?: number[], rq?: number[], rs?: number,
  *   arc?: number[][], thick?: number, t?: number, span?: number, host?: TProp, gone?: boolean, u0?: number, u1?: number, alen?: number, u?: number,
  *   fall?: boolean, vy?: number, sw?: number, swv?: number, sj?: number, tl?: number[], tq?: number[], wx?: number, wy?: number, wvx?: number,
- *   wvy?: number, wu?: number, on?: TProp | null, drop?: boolean, links?: number }} TProp */
+ *   wvy?: number, wu?: number, on?: TProp | null, drop?: boolean, links?: number, rust?: number, fuse?: number }} TProp */
+// (rust: Coal Seams' rusted lantern; fuse: an explosive minecart's, s till it goes off)
 /** @typedef {{ c: number, r: number, t: number }} TFire */
 /** @typedef {{ t: number, vh: number, top: number, bot: number, seed: number, rnd: () => number, scroll: number, shake: number, spawn: number,
  *   kills: number, gold: number, got: number, runner: TRunner, runners: TRunner[], foes: Enemy[], shots: TShot[], parts: TPart[], coins: Coin[],
@@ -196,7 +205,7 @@ const CLASSIC = { shoot: 1, turret: 1, chase: 1, bomb: 1 };
 // (looks: a CaveRunner Auto level past the first plays as an old floor, auto/maps.js levelLook: its palette (titledraw.js), its
 // ambience and its creatures, each as likely, jellyfish only in the natural zones (titleKind); none: Mossy Caves and the zones'
 // own. In x order, each from its x0 on (Grem Mode: a new one past each boss's arena; the painter blends the seam, DEV.gremSeam*))
-/** @typedef {{ x0: number, theme: Theme, name: string, roster: string[] | null }} TLook */
+/** @typedef {{ x0: number, theme: Theme, name: string, roster: string[] | null, floor?: number }} TLook */
 // (pick: Grem Mode's tapped target, ui/auto/GremScreen.js: every player aims at it while it lives, titleAimPick)
 // a finite level in the scrolling ring (CaveRunner Auto, auto/level.js levelScene): zp its plan (made whole up front); step runs
 // after titleStep's own; data is the level's own state. S.pace (0..) scales the scroll (auto/pilot.js)
@@ -226,8 +235,9 @@ const CLASSIC = { shoot: 1, turret: 1, chase: 1, bomb: 1 };
 // `steps`: where the way through moves to another tunnel (at a hole)
 /** @typedef {{ n: number, ein: number, eout: number, lf: number, sh: number[], L: number[], Rx: number[], holes: { k: number, x: number, w: number }[],
  *   steps: { x: number, to: number }[] }} TMine */
-/** @typedef {{ R: () => number, z: TZone[], kinds: string[] }} TitlePlan */
-// (kinds: the zone kinds it picks from: the title's TITLE_MENU_ZONES, a level's all of TITLE_ZONES)
+/** @typedef {{ R: () => number, z: TZone[], kinds: string[], fk?: { x0: number, kinds: string[], deco: string }[] }} TitlePlan */
+// (kinds: the zone kinds it picks from: the title's TITLE_MENU_ZONES, a level's all of TITLE_ZONES; fk (Grem Mode, Coal Seams): from
+// each x0 on, an old floor's own kinds and decoration set instead (floorZones), the last one starting at or before a zone's x0)
 // (still: the players stand where they are, for a test of something they'd otherwise saw through or shoot)
 
 /** @param {number} seed @returns {() => number} a seeded random 0..1 (mulberry32) */
@@ -253,8 +263,8 @@ export function titlePlan(seed, kinds = TITLE_MENU_ZONES) {
 /** @param {TitlePlan} P @param {number} wx @returns {TZone} the zone at world x (the plan grown to it) */
 function zoneIn(P, wx) {
   const Z = P.z, R = P.R;
-  if (!Z.length) Z.push(mkZone(R, -300, [], P.kinds));
-  while (Z[Z.length - 1].x1 <= wx) Z.push(mkZone(R, Z[Z.length - 1].x1, Z, P.kinds));
+  if (!Z.length) Z.push(mkZone(R, -300, [], kindsAt(P, -300)));
+  while (Z[Z.length - 1].x1 <= wx) Z.push(mkZone(R, Z[Z.length - 1].x1, Z, kindsAt(P, Z[Z.length - 1].x1)));
   let lo = 0, hi = Z.length - 1;
   if (wx < Z[0].x0) return Z[0];
   while (lo < hi) { const m = (lo + hi + 1) >> 1; if (Z[m].x0 <= wx) lo = m; else hi = m - 1; }
@@ -262,10 +272,19 @@ function zoneIn(P, wx) {
 }
 // the plan's next zone from x0, by the same rules (CaveRunner Auto's finite level, auto/level.js)
 /** @param {TitlePlan} P @param {number} x0 @returns {TZone} */
-export const titleZoneAdd = (P, x0) => { const z = mkZone(P.R, x0, P.z, P.kinds); P.z.push(z); return z; };
-/** @param {() => number} R @param {number} x0 @param {TZone[]} Z the zones so far @param {string[]} kinds @returns {TZone} */
-function mkZone(R, x0, Z, kinds) {
-  const last = Z.slice(-2).map(q => q.z), can = kinds.filter(z => !last.includes(z));
+export const titleZoneAdd = (P, x0) => { const z = mkZone(P.R, x0, P.z, kindsAt(P, x0)); P.z.push(z); return z; };
+// the zone kinds (and decoration set) a zone starting at x0 picks from: the plan's own, or an old floor's (P.fk)
+/** @param {TitlePlan} P @param {number} x0 @returns {{ kinds: string[], deco: string }} */
+function kindsAt(P, x0) {
+  /** @type {{ kinds: string[], deco: string }} */
+  let k = { kinds: P.kinds, deco: '' };
+  for (const f of P.fk || []) if (f.x0 <= x0) k = f;
+  return k;
+}
+/** @param {() => number} R @param {number} x0 @param {TZone[]} Z the zones so far @param {{ kinds: string[], deco: string }} K the kinds it picks from, the decoration set @returns {TZone} */
+function mkZone(R, x0, Z, K) {
+  // (none of the last two; a set of three or fewer, Coal Seams': not the last one, so it isn't a fixed loop)
+  const kinds = K.kinds, last = Z.slice(kinds.length > 3 ? -2 : -1).map(q => q.z), can = kinds.filter(z => !last.includes(z));
   const z = can[Math.floor(R() * can.length)], len = (TITLE_ZLEN[0] + R() * (TITLE_ZLEN[1] - TITLE_ZLEN[0])) * zk(z, 'len');
   // (Dev → Zones) each kind's own knobs (zk) scale what's rolled: hills, how close they are, roof and floor up or down, density
   /** @type {TZone} */
@@ -277,9 +296,11 @@ function mkZone(R, x0, Z, kinds) {
   // draws stay as they were
   const v = titleRng((Math.floor(x0) * 53 + 11) >>> 0)();
   // (Dev → Zones) each zone kind may have each variant or not (zoneMay): the spider zone's vines look is its heavy vegetation
-  if (z === 'spider') Zn.sv = v < 0.4 ? 'rocks' : v < 0.7 ? (zoneMay(z, 'veg') ? 'vines' : 'rocks') : 'beams';
+  // (Coal Seams: no heavy vegetation, so the spider zone's vines look is its boulders)
+  const veg = K.deco !== 'coal';
+  if (z === 'spider') Zn.sv = v < 0.4 ? 'rocks' : v < 0.7 ? (veg && zoneMay(z, 'veg') ? 'vines' : 'rocks') : 'beams';
   if (z === 'spider') Zn.veg = Zn.sv === 'vines';
-  else if (zoneMay(z, 'veg') && titleRng((Math.floor(x0) * 71 + 5) >>> 0)() < DEV.autoVegChance) Zn.veg = true;
+  else if (veg && zoneMay(z, 'veg') && titleRng((Math.floor(x0) * 71 + 5) >>> 0)() < DEV.autoVegChance) Zn.veg = true;
   if (z !== 'spider' && zoneMay(z, 'spid') && v < DEV.autoSpiderMine) Zn.spid = true;
   return Zn;
 }
@@ -295,7 +316,7 @@ export const zoneMay = (z, v) => (v === 'spid' && z === 'spider') || !!DEV['zv_'
 // a zone of kind z with the variants vars, forced (Dev → Zones' preview, art/zonelab.js): the plan's next zone from x0
 /** @param {TitlePlan} P @param {number} x0 @param {string} z @param {{ veg?: boolean, spid?: boolean }} vars @returns {TZone} */
 export function titleZoneForce(P, x0, z, vars) {
-  const Zn = mkZone(P.R, x0, [], [z]);
+  const Zn = mkZone(P.R, x0, [], { kinds: [z], deco: '' });
   Zn.i = P.z.length;
   if (z === 'spider') { if (vars.veg) Zn.sv = 'vines'; else if (Zn.sv === 'vines') Zn.sv = 'rocks'; }
   Zn.veg = !!vars.veg; Zn.spid = z !== 'spider' && !!vars.spid;
@@ -589,6 +610,9 @@ function dirty(S, c0, c1, r0, r1) {
 function genCol(S, c) {
   const wx = c * TCELL, Zn = titleZoneSpan(wx, S), z = Zn.z, b = built(wx, S), R = S.rnd;
   const cy = titleCeil(wx, S), fy = titleFloor(wx, S), base = ci(S, c, 0);
+  // (Coal Seams, owner 2026-10-16) the old floor here has its own decoration set: none of Mossy's moss, grass, rubble, brick
+  // ledges or plants; timber supports through the natural zones (coalSupport), and the old game's mine set (coalDeco)
+  const coal = coalAt(S, wx), sup = coal && z !== 'timber' && !Zn.flat ? coalSupport(wx, S) : null;
   // the built-up layers' timber frames, as strata.js timberFrame makes them: two posts (lit on the
   // left), a cap beam two rows deep running a little past them, a knee brace inside each post's top,
   // a footing under each post
@@ -614,15 +638,15 @@ function genCol(S, c) {
   /** @param {number} y */
   const inHole = y => near.some(h => y >= bands[h.k + 1].f - 0.5 && y < bands[h.k].c + 0.5 && Math.abs(wx - h.x) < h.w / 2 + (titleNoise(y / 5, h.x) - 0.5) * 8);
   // moss patches on the floor (thicker moss, bright grass tufts on top), as decorate.js bakes them
-  const patch = titleNoise(wx / 14, 11) > 0.52, tuft = patch && h2(c, 5) < 0.4 ? (h2(c, 6) < 0.4 ? 2 : 1) : 0;
+  const patch = !coal && titleNoise(wx / 14, 11) > 0.52, tuft = patch && h2(c, 5) < 0.4 ? (h2(c, 6) < 0.4 ? 2 : 1) : 0;
   const mossDeep = 2 + (patch ? 1 + Math.floor(h2(c, 7) * 3) : 0);
   // rubble: a low mound of broken brick, moss over its top (decorate.js rubble), now and then on a floor
   const rk = Math.floor(wx / 60), rcx = rk * 60 + 10 + h2(rk, 1) * 40, rw = 6 + h2(rk, 2) * 6, rd = (wx - rcx) / rw;
-  const rub = !Zn.flat && z !== 'paved' && h2(rk, 3) < 0.45 && Math.abs(rd) < 1 ? (2 + h2(rk, 4) * 2.5) * (1 - rd * rd) : 0;
+  const rub = !coal && !Zn.flat && z !== 'paved' && h2(rk, 3) < 0.45 && Math.abs(rd) < 1 ? (2 + h2(rk, 4) * 2.5) * (1 - rd * rd) : 0;
   // a small brick ledge out in the air of a natural cave (the level's built ledges)
   const lk = Math.floor(wx / 90), lx0 = lk * 90 + 15 + h2(lk, 8) * 35, lw = 14 + h2(lk, 9) * 14;
   const lmid = lx0 + lw / 2, lc = titleCeil(lmid, S), lf = titleFloor(lmid, S), ly = lc + 14 + h2(lk, 10) * Math.max(0, lf - lc - 52);
-  const ledge = !Zn.flat && (z === 'moss' || z === 'grove' || z === 'webs' || z === 'spider') && built(lmid, S) === 0 && h2(lk, 11) < 0.5 && wx >= lx0 && wx < lx0 + lw && lf - lc > 60;
+  const ledge = !coal && !Zn.flat && (z === 'moss' || z === 'grove' || z === 'webs' || z === 'spider') && built(lmid, S) === 0 && h2(lk, 11) < 0.5 && wx >= lx0 && wx < lx0 + lw && lf - lc > 60;
   // a blocked zone (CaveRunner Auto, auto/blocked.js): its blockage over the open band (a mine's: its tunnels' stack)
   const bk0 = Zn.blk, bk = bk0 && S.lvl && S.lvl.blockCell ? S.lvl.blockCell : null;
   const by0 = M && bands.length ? bands[Math.min(M.n, bands.length) - 1].c - 14 : cy, by1 = M && bands.length ? bands[0].f + 3 : fy;
@@ -634,25 +658,20 @@ function genCol(S, c) {
     const t = tun.find(t => t.open && y >= t.rc && y < t.rf && inside(t, y));
     if (M && !t && y < cy && !inHole(y)) m = TM.ROCK;
     else if (M && t) {
-      if (t.frame && y >= t.c) {
-        const uc = t.uc, under = y - t.c, post = (uc >= 0 && uc < 4) || (uc >= FRAME_W - 4 && uc < FRAME_W);
-        if (uc >= -4 && uc < FRAME_W + 4 && under < 4) m = under < 2 ? TM.BEAM : TM.BEAMD;
-        else if (post) m = (uc < 2 || (uc >= FRAME_W - 4 && uc < FRAME_W - 2)) ? TM.BEAM : TM.BEAMD;
-        else if ((uc >= 4 && uc <= 12 && Math.abs(under - 4 - (12 - uc)) < 1) || (uc >= FRAME_W - 12 && uc < FRAME_W - 4 && Math.abs(under - 4 - (uc - (FRAME_W - 12))) < 1)) m = TM.BEAMD;
-        else if (y >= t.f - 2 && ((uc >= -1 && uc < 5) || (uc >= FRAME_W - 5 && uc < FRAME_W + 1))) m = TM.BEAMD;
-      }
+      if (t.frame && y >= t.c) m = frameCell(t.uc, y - t.c, t.f - y);
     } else if (M && inHole(y)) m = TM.AIR;
     else if (y < cy) m = TM.ROCK;
     else if (y >= fy) {
       m = TM.ROCK;
       if (zc === 'paved' && b > 0.3 && y < fy + 6) m = TM.BRICK;
-      else if (y < fy + mossDeep * TCELL) m = TM.MOSS;
-    } else if (z === 'spider' && spiderRock(wx, y, Zn, cy, fy)) m = spiderRock(wx, y - 2 * TCELL, Zn, cy, fy) ? TM.ROCK : TM.MOSS;   // (moss on their tops)
+      else if (!coal && y < fy + mossDeep * TCELL) m = TM.MOSS;
+    } else if (z === 'spider' && spiderRock(wx, y, Zn, cy, fy)) m = coal || spiderRock(wx, y - 2 * TCELL, Zn, cy, fy) ? TM.ROCK : TM.MOSS;   // (moss on their tops)
     else if (z === 'spider' && Zn.sv === 'beams' && spiderBeam(wx, y, Zn, cy, fy) >= 0) m = spiderBeam(wx, y, Zn, cy, fy);
     else if (ledge && y >= ly && y < ly + 4) m = TM.BRICK;
     else if (ledge && y >= ly - 2 && y < ly && tuft) m = TM.GRASS;
     if (m === TM.AIR && y >= fy - rub && y < fy) m = y < fy - rub + 2 && h2(c, r) < 0.7 ? TM.RUBM : TM.RUB;
     if (m === TM.AIR && y >= fy - tuft * TCELL && y < fy && zc !== 'paved') m = TM.GRASS;
+    if (sup && m === TM.AIR && y >= sup.top && y < fy) m = frameCell(sup.uc, y - sup.top, fy - y);
     if (z === 'winding' && TITLE_SOLID[m] && windAir(wx, y, Zn, S)) m = TM.AIR;
     // (Auto's tall level) another zone's look here: its open air opens too, over this column's floor (DEV.autoZoneOpen; off: it upset the autopilot, auto-level and auto-tall)
     if (TITLE_SOLID[m] && zoneOpenAt(wx, y, S, Zn, fy, Zc)) { m = TM.AIR; carved = true; }
@@ -660,13 +679,13 @@ function genCol(S, c) {
     S.cells[base + r] = m;
   }
   // where another zone opened the rock, the new floor gets its skin (moss; bricks in the brick works' look)
-  if (carved) for (let r = 0; r < S.rows - 1; r++) if (S.cells[base + r] === TM.AIR && S.cells[base + r + 1] === TM.ROCK) {
+  if (carved && !coal) for (let r = 0; r < S.rows - 1; r++) if (S.cells[base + r] === TM.AIR && S.cells[base + r + 1] === TM.ROCK) {
     const brick = titleZoneAt(wx, (r + 1.5) * TCELL, S) === 'paved';
     for (let k = 1; k <= 2 && r + k < S.rows && S.cells[base + r + k] === TM.ROCK; k++) S.cells[base + r + k] = brick ? TM.BRICK : TM.MOSS;
   }
   // a lantern hanging on its chain under each tunnel's roof: between the frames, and some inside them
   if (b > 0.95) for (const t of tun) if (t.open && inside(t, t.c + 4) && (Math.abs(t.v - (FRAME_W + FRAME_GAP) / 2) < 1 || Math.abs(t.v - FRAME_W / 2) < 1) && R() < 0.7)
-    lamp(S, c, wx, t.c + 10, 4 + R() * 8);
+    lamp(S, c, wx, t.c + 10, 4 + R() * 8, coal);
   // and down long chains from the brick works' high roof
   if (z === 'paved' && b > 0.9 && Math.abs(u - FRAME_GAP / 2) < 1 && R() < 0.8)
     lamp(S, c, wx, cy + 10, 14 + R() * 30);
@@ -715,6 +734,7 @@ function genCol(S, c) {
     L.sag = DEV.webSag * Math.abs(L.b0x - L.a0x) * (down ? 1 : 2.5);
     S.webs.push(L);
   }
+  if (coal) { coalDeco(S, c, wx, Zn, sup, rcy, fy, tun.filter(t => t.open && inside(t, t.rf - 3))); return; }
   // plants: vines, mycelium and roots under the roof, bouncy mushrooms on the floor
   // the grove: a curtain of long vines, every other column, some down near the floor (thick in its
   // middle, thinning to its ends)
@@ -785,15 +805,105 @@ function genCol(S, c) {
 
 // a lantern on its chain in column c, hung from whatever is right above (world) y0: straight up from there
 // to the first rock or timber, the roof's underside or a frame's cap beam, so the chain meets it
-/** @param {TitleScene} S @param {number} c @param {number} wx @param {number} y0 @param {number} len */
-function lamp(S, c, wx, y0, len) {
+// (rust: Coal Seams' rusted lantern, warmer and dimmer)
+/** @param {TitleScene} S @param {number} c @param {number} wx @param {number} y0 @param {number} len @param {boolean} [rust] */
+function lamp(S, c, wx, y0, len, rust = false) {
   const base = ci(S, c, 0);
   let r = Math.floor(y0 / TCELL);
   while (r > 0 && !HOLDS[S.cells[base + r]]) r--;
-  S.props.push({ k: 'lamp', st: 'hanglamp', ox: wx, x: 0, y: (r + 1) * TCELL, len, seed: S.rnd(), side: 1, burn: 0, ac: c, ar: r });
+  /** @type {TProp} */
+  const p = { k: 'lamp', st: 'hanglamp', ox: wx, x: 0, y: (r + 1) * TCELL, len, seed: S.rnd(), side: 1, burn: 0, ac: c, ar: r };
+  if (rust) p.rust = 1;
+  S.props.push(p);
 }
 // what a hanging thing can hang from: rock, and a frame's timber (it falls when that's burnt or blown away)
 const HOLDS = TITLE_SOLID.map((v, m) => (v || m === TM.BEAM || m === TM.BEAMD ? 1 : 0));
+
+// one cell of a timber frame, as strata.js timberFrame makes it: two posts (lit on the left), a cap beam two rows deep running a
+// little past them, a knee brace inside each post's top, a footing under each post. uc: the column's x from the left post's
+// left edge; under: how far under the cap's top; toFloor: how far over the floor (the mine works' frames, Coal Seams' supports)
+/** @param {number} uc @param {number} under @param {number} toFloor @returns {number} the material (TM.AIR: none here) */
+function frameCell(uc, under, toFloor) {
+  if (uc >= -4 && uc < FRAME_W + 4 && under < 4) return under < 2 ? TM.BEAM : TM.BEAMD;
+  if ((uc >= 0 && uc < 4) || (uc >= FRAME_W - 4 && uc < FRAME_W)) return (uc < 2 || (uc >= FRAME_W - 4 && uc < FRAME_W - 2)) ? TM.BEAM : TM.BEAMD;
+  if ((uc >= 4 && uc <= 12 && Math.abs(under - 4 - (12 - uc)) < 1) || (uc >= FRAME_W - 12 && uc < FRAME_W - 4 && Math.abs(under - 4 - (uc - (FRAME_W - 12))) < 1)) return TM.BEAMD;
+  if (toFloor <= 2 && ((uc >= -1 && uc < 5) || (uc >= FRAME_W - 5 && uc < FRAME_W + 1))) return TM.BEAMD;
+  return TM.AIR;
+}
+
+// (Coal Seams, owner 2026-10-16) does world x play as Coal Seams (its look's old floor: floorDeco)?
+/** @param {TitleScene} S @param {number} wx */
+export const coalAt = (S, wx) => { const L = lookAt(S, wx); return !!L && floorDeco(L.floor || 1) === 'coal'; };
+// a timber support (a mine frame, floor to roof) through Coal Seams' natural zones: one spot every SUP_GAP, DEV.coalSupports of
+// them with one, where the roof over its span is between SUP_H[0] and SUP_H[1] above the floor. Column wx's part of it: uc (as
+// frameCell's), top (the cap's top, world y), or null
+const SUP_GAP = 96, SUP_H = [18, 70];
+const SOOT_GAP = 30;                  // (Coal Seams) a soot fall's spot on the roof every this far (world units)
+/** @param {number} wx @param {TitleScene} S @returns {{ uc: number, top: number } | null} */
+function coalSupport(wx, S) {
+  const k = Math.floor(wx / SUP_GAP), fx = k * SUP_GAP + 8 + h2(k, 41) * (SUP_GAP - FRAME_W - 16), uc = wx - fx;
+  if (uc < -4 || uc >= FRAME_W + 4 || h2(k, 42) >= DEV.coalSupports) return null;
+  let top = -Infinity, bot = Infinity;
+  for (const x of [fx - 4, fx + FRAME_W / 2, fx + FRAME_W + 4]) { top = Math.max(top, titleRoof(x, S)); bot = Math.min(bot, titleFloor(x, S)); }
+  return bot - top >= SUP_H[0] && bot - top <= SUP_H[1] ? { uc, top } : null;
+}
+// Coal Seams' mine set in column c (the old game's floor 2 decorations): rusted lanterns hung off whatever rock or timber is over a
+// spot in the open (the roof, a boulder's underside) and under a support's cap now and then; explosive minecarts (the floor flat
+// under the whole cart) and pickaxes lying on the floors: a natural zone's, a mine's tunnels' (tuns: those open here)
+/** @param {TitleScene} S @param {number} c @param {number} wx @param {TZone} Zn @param {{ uc: number, top: number } | null} sup
+ * @param {number} rcy @param {number} fy @param {{ rf: number }[]} tuns */
+function coalDeco(S, c, wx, Zn, sup, rcy, fy, tuns) {
+  const R = S.rnd, base = ci(S, c, 0);
+  if (sup && Math.abs(sup.uc - FRAME_W / 2) < 1 && R() < 0.6) lamp(S, c, wx, sup.top + 6, 3 + R() * 5, true);
+  if (Zn.z !== 'timber' && !(c % 5) && R() < DEV.coalLamps) {
+    const y0 = rcy + 2 + R() * Math.max(0, fy - rcy - 40);
+    if (!HOLDS[S.cells[base + Math.floor(y0 / TCELL)]]) lamp(S, c, wx, y0, 4 + R() * 14, true);
+  }
+  if (c % 3) return;
+  for (const f of Zn.z === 'timber' ? tuns.map(t => t.rf) : [fy]) {
+    const r = Math.ceil(f / TCELL - 0.5);   // the floor's top rock row
+    if (r <= 8 || r >= S.rows || !SOLID[S.cells[base + r]] || SOLID[S.cells[base + r - 1]]) continue;
+    const p = R(), y = r * TCELL;
+    if (p < DEV.coalCarts) {
+      // the cart's 9 columns back from here (made: the ones ahead aren't yet) all floor at row r with open air over it
+      let flat = true;
+      for (let k = 0; k <= 8 && flat; k++) {
+        const b = ci(S, c - k, 0);
+        if (!SOLID[S.cells[b + r]]) flat = false;
+        for (let q = r - 7; q < r && flat; q++) if (SOLID[S.cells[b + q]]) flat = false;
+      }
+      if (flat) S.props.push({ k: 'barrel', st: 'cart', ox: (c - 3.5) * TCELL, x: 0, y, len: 0, seed: R(), side: 1, burn: 0, ac: c - 4, ar: r });
+    } else if (p < DEV.coalCarts + DEV.coalPicks) {
+      S.props.push({ k: 'bake', st: 'pickaxe', ox: wx + 1, x: 0, y, len: 0, seed: R(), side: R() < 0.5 ? 1 : -1, burn: 0, ac: c, ar: r });
+    }
+  }
+}
+// an explosive minecart's body (screen), where a shot or a blast finds it
+/** @param {TProp} p @param {number} x @param {number} y @param {number} r */
+const cartHit = (p, x, y, r) => x > p.x - 9 - r && x < p.x + 9 + r && y > p.y - 13 - r && y < p.y + r;
+const CART_FUSE = 0.12;               // a cart caught in another's blast goes off this long after (+ up to 0.15 s)
+// (Coal Seams) an explosive minecart goes off (a shot, a blast, fire beside it): a blast that bites the rock (DEV.coalCartR),
+// hurts the creatures in it (DEV.coalCartDmg) and sets fire round it; lanterns in it pop, carts near it go off after a moment
+/** @param {TitleScene} S @param {TProp} p */
+function cartBoom(S, p) {
+  if (p.gone) return;
+  p.gone = true;
+  const x = p.x, y = p.y - 6, r = DEV.coalCartR;
+  snd(S, 'boom', x, y, r * 2.4);
+  S.booms.push({ x, y, r: r * 1.6, t: 0, max: 0.5 });
+  burst(S, x, y, 18, '#ffb02e', 110, 'fire', 0.55);
+  burst(S, x, y, 6, '#3a3346', 30, 'smoke', 1.3);
+  burst(S, x, y, 8, '#6e4a32', 120, 'chunk', 0.9);
+  burst(S, x, y, 4, '#8c8f96', 120, 'chunk', 0.9);
+  S.shake = Math.min(7, S.shake + 3); S.flash = Math.min(0.35, S.flash + 0.12);
+  titleCarve(S, x, y, r);
+  titleIgnite(S, x, y, r + 5);
+  for (const g of S.foes) if (g.hp > 0 && Math.hypot(g.x - S.scroll - x, g.ty - y) < r + g.r) hitFoe(S, g, DEV.coalCartDmg, '#ffb02e');
+  for (const q of S.props) if (!q.gone && q !== p) {
+    if (q.k === 'lamp' && lampHit(q, x, y, r)) popLamp(S, q);
+    else if (q.k === 'barrel' && cartHit(q, x, y, r)) q.fuse = Math.min(q.fuse ?? 1, CART_FUSE + S.rnd() * 0.15);
+  }
+}
 
 // A gun for the title: a random skin, shot and 0–2 modifiers. The shot's numbers go through each modifier's
 // own f (spells/mods.js) as the game's cast does; double / triple fire that many of it at once. cd: the
@@ -839,7 +949,8 @@ function kitOf(shot, mods, art) {
 // opts.level: a finite plan in the scrolling ring (TitleLevel; auto/level.js levelScene)
 // opts.ncol: the ring's width in columns (Dev → Zones: wide enough to keep its whole strip as it pans back)
 // opts.team: the run's players (RunPlayer, CaveRunner Auto): each runner fires its player's active gun (art/scenegun.js) in place of the menu's kits
-/** @param {number} vh the view's height in world units @param {number} [seed] @param {number} [top] the action's band (world units) @param {number} [bot] @param {{ runners?: number, hub?: TitleHub, level?: TitleLevel, team?: RunPlayer[], tier?: number, ncol?: number }} [opts] @returns {TitleScene} */
+// opts.looks: the old floors' looks (S.looks), there before the first columns are made (Coal Seams' decorations go by them: coalAt)
+/** @param {number} vh the view's height in world units @param {number} [seed] @param {number} [top] the action's band (world units) @param {number} [bot] @param {{ runners?: number, hub?: TitleHub, level?: TitleLevel, team?: RunPlayer[], tier?: number, ncol?: number, looks?: TLook[] }} [opts] @returns {TitleScene} */
 export function titleScene(vh, seed = 7, top = vh * 0.3, bot = vh * 0.62, opts = {}) {
   const rnd = titleRng(seed), rows = Math.ceil(vh / TCELL) + 1, hub = opts.hub, ncol = hub ? hub.w : opts.ncol || Math.ceil((TITLE_VW + 50 + (opts.level ? AHEAD_LVL + TITLE_BACK : AHEAD)) / TCELL);
   /** @type {TitleScene} */
@@ -850,6 +961,7 @@ export function titleScene(vh, seed = 7, top = vh * 0.3, bot = vh * 0.62, opts =
   if (opts.level) { S.zp = opts.level.zp; S.lvl = opts.level; }
   if (opts.team) S.team = opts.team;
   if (opts.tier) S.tier = opts.tier;
+  if (opts.looks) S.looks = opts.looks;
   if (hub) {                            // a fixed strip: every column made now, nothing comes in
     S.hub = hub; S.still = true; S.gen = ncol;
     for (let c = 0; c < ncol; c++) for (let r = 0; r < rows; r++) S.cells[ci(S, c, r)] = hub.cell(c, r, rows);
@@ -1388,6 +1500,7 @@ function shotEnd(S, s) {
       if (ru && !ru.out && Math.hypot(ru.x + PW / 2 - s.x, ru.y + PH / 2 - s.y) < r + 8) S.lvl.hurt(S, ru.id, s.real ? s.dmg : 4);
     }
     for (const p of S.props) if (p.k === 'lamp' && !p.gone && lampHit(p, s.x, s.y, r)) popLamp(S, p);
+    for (const p of S.props) if (p.k === 'barrel' && !p.gone && cartHit(p, s.x, s.y, r)) p.fuse = Math.min(p.fuse ?? 1, CART_FUSE);
   } else if (s.pit) { titleCarve(S, s.x, s.y, s.pit * 0.7); snd(S, 'debris', s.x, s.y); }
   else if (!s.hitFoe) snd(S, 'rock', s.x, s.y);
   // fire reaches past a blast's charred rim, into the moss, timber and plants round it
@@ -1428,12 +1541,21 @@ export function titleStep(S, dt) {
   if (S.parts.length < TITLE_PARTS - 40 && !S.hub) {
     if (R() < dt * 3) {
       const x = R() * TITLE_VW, wx = x + S.scroll;
-      if (built(wx, S) === 0) S.parts.push({ x, y: titleCeil(wx, S) + 1.5, vx: 0, vy: 0, life: 4, max: 4, r: 1, col: '#7ab8ff', kind: 'drip' });
+      if (built(wx, S) === 0 && !coalAt(S, wx)) S.parts.push({ x, y: titleCeil(wx, S) + 1.5, vx: 0, vy: 0, life: 4, max: 4, r: 1, col: '#7ab8ff', kind: 'drip' });
     }
     if (R() < dt * 5) {
       const x = R() * TITLE_VW, wx = x + S.scroll, l = 5 + R() * 3;
-      if (built(wx, S) === 0) S.parts.push({ x, y: titleCeil(wx, S) + 10 + R() * (titleFloor(wx, S) - titleCeil(wx, S) - 20), vx: (R() - 0.5) * 8, vy: -2 - R() * 3,
+      if (built(wx, S) === 0 && !coalAt(S, wx)) S.parts.push({ x, y: titleCeil(wx, S) + 10 + R() * (titleFloor(wx, S) - titleCeil(wx, S) - 20), vx: (R() - 0.5) * 8, vy: -2 - R() * 3,
         life: l, max: l, r: 1.3, col: 'rgb(' + THEMES[0].moss[1].join(',') + ')', kind: 'spore' });
+    }
+    // (Coal Seams) soot falls: black dust trickling in a thin stream from spots on the roof (one spot in SOOT_GAP has one, by x)
+    // (only with Coal Seams in view: elsewhere the scene's random numbers run as they did)
+    if ((coalAt(S, S.scroll) || coalAt(S, S.scroll + TITLE_VW)) && R() < dt * DEV.coalSoot) {
+      const k0 = Math.floor(S.scroll / SOOT_GAP), k = k0 + Math.floor(R() * (TITLE_VW / SOOT_GAP + 1)), wx = (k + 0.2 + h2(k, 62) * 0.6) * SOOT_GAP;
+      if (h2(k, 61) < 0.45 && coalAt(S, wx)) {
+        const l = 6;
+        S.parts.push({ x: wx - S.scroll + (R() - 0.5) * 1.4, y: titleRoof(wx, S) + 1, vx: 0, vy: 4 + R() * 8, life: l, max: l, r: 0.6 + R() * 0.5, col: R() < 0.5 ? '#3c3c44' : '#5a5a64', kind: 'soot' });
+      }
     }
   }
   // particles
@@ -1468,6 +1590,11 @@ export function titleStep(S, dt) {
       if (sp > top) { p.vx *= top / sp; p.vy *= top / sp; }
       p.x += p.vx * dt; p.y += p.vy * dt;
       if (d < 2.5 || p.to.life <= 0) p.life = 0;
+      continue;
+    }
+    if (p.kind === 'soot') {            // (Coal Seams) falls slowly with the rock, gone where it lands
+      p.vy = Math.min(38, p.vy + 30 * dt); p.y += p.vy * dt; p.x -= sv(S) * dt;
+      if (titleSolid(S, p.x, p.y + 0.5)) p.life = 0;
       continue;
     }
     if (p.kind === 'spore') { p.x += (p.vx + Math.sin(S.t * 1.7 + p.max * 9) * 3 - sv(S)) * dt; p.y += p.vy * dt; continue; }
@@ -1507,6 +1634,17 @@ export function titleStep(S, dt) {
       continue;
     }
     if (p.burn && p.k !== 'climb') continue;
+    if (p.k === 'barrel') {             // (Coal Seams) an explosive minecart: a lit fuse goes off; fire beside it lights one; it falls when its floor goes
+      if (p.fuse != null && (p.fuse -= dt) <= 0) { cartBoom(S, p); continue; }
+      const near = p.x > -20 && p.x < TITLE_VW + 20;
+      if (p.fuse == null && near && S.fire.length && fireNear(S, p.ox, p.y - 4, 8)) p.fuse = 0.4 + S.rnd() * 0.5;
+      if (p.fall || (near && !SOLID[titleCell(S, p.ac, p.ar)])) {
+        p.fall = true; p.vy = (p.vy || 0) + GRAVITY * 0.5 * dt; p.y += p.vy * dt;
+        if (titleSolid(S, p.x, p.y + 0.5)) { p.fall = false; p.vy = 0; p.ar = Math.floor((p.y + 0.5) / TCELL); p.ac = Math.floor(p.ox / TCELL); p.y = p.ar * TCELL; }
+        if (p.y > S.vh + 20) p.gone = true;
+      }
+      continue;
+    }
     if (p.k === 'lamp') {
       if (p.fall) {
         p.vy = (p.vy || 0) + GRAVITY * 0.5 * dt; p.y += p.vy * dt;
@@ -2706,8 +2844,8 @@ function stepShots(S, dt) {
       else if (titleSolid(S, s.x, s.y)) { s.life = 0; burst(S, s.x, s.y, 4, s.col, 40, 'spark', 0.3); snd(S, 'fizzle', s.x, s.y); }
       continue;
     }
-    for (const p of S.props) if (p.k === 'lamp' && !p.gone && lampHit(p, s.x, s.y, s.size)) {
-      popLamp(S, p);
+    for (const p of S.props) if ((p.k === 'lamp' || p.k === 'barrel') && !p.gone && (p.k === 'lamp' ? lampHit : cartHit)(p, s.x, s.y, s.size)) {
+      if (p.k === 'lamp') popLamp(S, p); else cartBoom(S, p);
       if (!s.pierce) { s.life = 0; burst(S, s.x, s.y, 3, s.col, 50, 'spark', 0.2); }
     }
     if (s.life <= 0) { if (s.manaB) manaBurst(S, s); continue; }   // (a Mana Burst goes off however it ended)
