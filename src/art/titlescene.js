@@ -33,7 +33,7 @@ import { rustleStep } from '../audio/recipes.js';
 import { pixText, pixWidth } from './pixfont.js';
 import { GUN_HELD, gunMuzzle } from './sprites.js';
 import { GUN_ART } from './gunart.js';
-import { timberFallen, timberRng, timberSet } from './timber.js';
+import { timberFallen, timberRng, timberSet, timberSlant } from './timber.js';
 import { VIG_HP, VIG_TICK, gunPull, gunTick, perkDmg, planShots, shotsOf } from './scenegun.js';
 import { playerStats } from '../auto/run.js';
 import { hasTraj, trajAim, trajHome, trajLook, trajStep } from '../auto/traj.js';
@@ -984,7 +984,7 @@ function natCol(S, c) {
   return a;
 }
 /** @param {TitleScene} S @param {number} wx */
-const natOk = (S, wx) => { const Z = titleZoneSpan(wx, S); return Z.z !== 'timber' && !Z.flat && !Z.blk && !(Z.z === 'spider' && Z.sv === 'beams') && coalAt(S, wx); };
+const natOk = (S, wx) => { const Z = titleZoneSpan(wx, S); return Z.z !== 'timber' && !Z.flat && !Z.blk && Z.z !== 'spider' && coalAt(S, wx); };   // (the Cavern: its own, cavPlan)
 // plan one lane up to TIM_AHEAD past column c: n its number, [from, to) its columns, solid its rock, rowOf a row in the open
 // over its floor at a column (-1: none), gallery (a mine tunnel's run), skip (no set over these columns)
 /** @param {TitleScene} S @param {number} n @param {number} c @param {number} from @param {number} to @param {(c: number, r: number) => boolean} solid
@@ -1012,6 +1012,54 @@ function timberPlan(S, n, c, from, to, solid, rowOf, gallery, skip) {
     L.x = x + wd + gap;
   }
 }
+// (Coal Seams, C3) the Cavern's timber and ladders, planned ahead as timberPlan: lane -1 timber sets (about DEV.coalCavSup a
+// screen, DEV.coalCavBroken of them with a snapped post, DEV.coalCavLean of them a lone prop leaning up to the rock instead), on
+// the floor or a boulder's top, up to the roof or a boulder's underside; lane -2 ladders (about DEV.coalLadders a screen, leaning
+// up to DEV.coalLadLean): from the floor up to a boulder, or from a boulder's top up to the rock over it. Measured off natCol
+// (the stalactites and stalagmites in it), so they stand in the room those leave
+/** @param {TitleScene} S @param {number} c */
+function cavPlan(S, c) {
+  const P = S.tim || (S.tim = {}), rows = S.rows, sd = (/** @type {number} */ r) => r < 0 || r >= rows;
+  const solid = (/** @type {number} */ cc, /** @type {number} */ r) => sd(r) || !!natCol(S, cc)[r];
+  /** @param {number} wx */
+  const ok = wx => { const Z = titleZoneSpan(wx, S); return Z.z === 'spider' && !Z.flat && !Z.blk && Math.min(wx - Z.x0, Z.x1 - wx) > 30 && coalAt(S, wx); };
+  /** the open runs of column x: [first open row, the rock row under it, is that rock a boulder's top, is the rock over it a boulder's] @param {number} x */
+  const runs = x => {
+    const a = natCol(S, x), wx = x * TCELL, cr = titleCeil(wx, S) / TCELL + 1, fr = titleFloor(wx, S) / TCELL - 1, out = [];
+    for (let r = 1; r < rows; r++) if (!a[r] && a[r - 1]) {
+      let e = r; while (e < rows && !a[e]) e++;
+      if (e < rows) out.push({ t: r, b: e, onB: e < fr, unB: r - 1 > cr });
+      r = e;
+    }
+    return out;
+  };
+  const o = { L: TM.BEAM, D: TM.BEAMD, minH: 9, maxH: Math.round(DEV.coalSupMaxH / TCELL), gapMax: 8, rot: DEV.coalSupRot, broken: DEV.coalCavBroken };
+  const scr = TITLE_VW / TCELL;
+  for (const n of [-1, -2]) {
+    const L = P[n] || (P[n] = { x: c, sets: [] }), per = n === -1 ? DEV.coalCavSup : DEV.coalLadders;
+    L.sets = L.sets.filter(t => t.c1 * TCELL > S.scroll - 60);
+    for (let i = 0; i < 200 && L.x < c + TIM_AHEAD; i++) {
+      const x = L.x, R = timberRng(h2(x * 3 + n, 611 + (S.seed % 997)));
+      if (per <= 0 || !ok(x * TCELL)) { L.x = x + 4; continue; }
+      const top = Math.round((n === -1 ? DEV.coalSupMaxH : DEV.coalLadMaxH) / TCELL);
+      const ru = runs(x).filter(q => q.b - q.t >= (n === -1 ? 9 : 12) && q.b - q.t <= top + 6 && (n === -1 || q.onB || q.unB));
+      const q = ru.length ? ru[Math.floor(R() * ru.length)] : null;
+      /** @type {import('./timber.js').TSet | null} */
+      let T = null;
+      if (q && n === -1 && R() >= DEV.coalCavLean) {
+        const wd = Math.round(kru('coalSupW', R()) / TCELL);
+        if (ok((x + wd) * TCELL)) T = timberSet(solid, x, x + wd, q.b - 4, R, o);
+      }
+      if (q && !T) {
+        const lad = n === -2, lean = lad ? (R() * 2 - 1) * DEV.coalLadLean : (0.25 + 0.35 * R()) * (R() < 0.5 ? 1 : -1);
+        T = timberSlant(solid, x, q.b - 1, lean, lad ? 5 : 2, lad ? 12 : 9, Math.round((lad ? DEV.coalLadMaxH : DEV.coalSupMaxH) / TCELL), o);
+      }
+      if (!T) { L.x = x + 2; continue; }
+      L.sets.push(T);
+      L.x = Math.max(T.c1 + 4, x + Math.round(scr / per * (0.3 + 1.4 * R())));
+    }
+  }
+}
 // the timber over column c: its cells (row → material) from every lane's sets, and a set's cap row if c is its middle
 /** @param {TitleScene} S @param {number} c @param {TMine | undefined} M @param {{ c: number, f: number }[]} bands
  * @returns {{ cells: Map<number, number>, lamp: number | null }} */
@@ -1037,6 +1085,7 @@ function timberCol(S, c, M, bands) {
         && a * TCELL < h.x + h.w / 2 + (h2(Math.floor(h.x), 88 + h.k) < DEV.coalChutes ? 46 : 8));
     });
   });
+  if (DEV.coalCavSup > 0 || DEV.coalLadders > 0) cavPlan(S, c);
   /** @type {Map<number, number>} */
   const cells = new Map();
   let lamp = null;

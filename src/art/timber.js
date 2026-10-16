@@ -121,3 +121,31 @@ export function timberFallen(solid, x0, len, y, o) {
   }
   return T;
 }
+
+// (Coal Seams, C3) a lean-to: from a foot at column x, row y (open, rock under it), up along a slant (lean: columns across per
+// row up, ±) till it meets rock; w columns wide (2: a prop, lit on its left; 5: a ladder's two rails and rungs every 3 rows).
+// Not between rows hMin and hMax long, its foot not on rock, or run into rock on the way: null. Pure
+/** @param {(c: number, r: number) => boolean} solid @param {number} x @param {number} y @param {number} lean @param {number} w
+ * @param {number} hMin @param {number} hMax @param {{ L: number, D: number }} o @returns {TSet | null} */
+export function timberSlant(solid, x, y, lean, w, hMin, hMax, o) {
+  const ladder = w > 2;
+  if (!solid(x, y + 1) || !solid(x + w - 1, y + 1) || solid(x, y) || solid(x + w - 1, y)) return null;
+  /** @type {TSet} */
+  const T = { c0: x, c1: x, cols: new Map(), mid: -1, cap: 0 };
+  for (let k = 0; k <= hMax; k++) {
+    const r = y - k, xl = x + Math.round(k * lean);
+    let hit = false;
+    for (let d = 0; d < w; d++) if (solid(xl + d, r)) hit = true;
+    if (hit) {
+      if (k < hMin) return null;
+      if (!ladder && !solid(xl, r) && !solid(xl + 1, r)) return null;   // (a prop: its head against the rock)
+      return T;
+    }
+    T.c0 = Math.min(T.c0, xl); T.c1 = Math.max(T.c1, xl + w - 1);
+    if (ladder) {
+      put(T, xl, r, o.L); put(T, xl + w - 1, r, o.D);
+      if (k % 3 === 2) for (let d = 1; d < w - 1; d++) put(T, xl + d, r, o.D);
+    } else { put(T, xl, r, o.L); put(T, xl + 1, r, o.D); }
+  }
+  return null;
+}

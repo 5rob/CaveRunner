@@ -509,6 +509,15 @@ DEV_META.push(
 rangeKnobs('coal', [
   ['coalStalLen', 'Stalactites: length (units)', 0, 120, 1, 14, 50],
   ['coalMiteLen', 'Stalagmites: length (units)', 0, 80, 1, 8, 26]]);
+// (C3) the Cavern's ladders and timber (art/titlescene.js cavPlan, art/timber.js timberSlant): background wood, burns as timber
+Object.assign(DEV_DEFAULTS, { coalLadders: 1.5, coalLadLean: 0.2, coalLadMaxH: 70, coalCavSup: 3, coalCavBroken: 0.3, coalCavLean: 0.25 });
+DEV_META.push(
+  { k: 'coalLadders',   g: 'coal', label: 'Cavern ladders: about this many a screen (floor to boulder, boulder to rock above)', min: 0, max: 8, step: 0.1 },
+  { k: 'coalLadLean',   g: 'coal', label: 'Cavern ladders: most lean (across per step up; 0 straight)', min: 0, max: 0.6, step: 0.05 },
+  { k: 'coalLadMaxH',   g: 'coal', label: 'Cavern ladders: tallest (units)', min: 16, max: 200, step: 2 },
+  { k: 'coalCavSup',    g: 'coal', label: 'Cavern timber: about this many supports a screen (floor and boulders)', min: 0, max: 12, step: 0.1 },
+  { k: 'coalCavBroken', g: 'coal', label: 'Cavern timber: share with a snapped post', min: 0, max: 1, step: 0.05 },
+  { k: 'coalCavLean',   g: 'coal', label: 'Cavern timber: share that are a lone prop leaning up to the rock', min: 0, max: 1, step: 0.05 });
 DEV_GROUPS.push(['coal', 'Coal Seams']);
 // CaveRunner Auto's maps (auto/maps.js): the map machine's prices, and how much harder each map starts
 Object.assign(DEV_DEFAULTS, { autoMapPrice: 1000000, autoMapGrow: 1, autoMapStep: 5 });

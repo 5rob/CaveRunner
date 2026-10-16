@@ -27,7 +27,7 @@ require('../tests/build')();
   const save = async (n, what, clip) => { await page.screenshot({ path: path.join(OUT, PRE + '-' + n + '.png'), clip }); said.push(`${PRE}-${n}.png  ${what}`); };
   const zone = () => page.evaluate(() => { const S = window.__gremScene; return S ? titleZoneSpan(S.scroll + 110, S).z : '?'; });
   // (C1) a gas pocket on screen set off: the whoomph mid-flash, then just after, the fire round it (each also a close-up)
-  for (let i = 0; ONLY !== 'stal' && i < 400; i++) {
+  for (let i = 0; ONLY !== 'stal' && ONLY !== 'ladder' && i < 400; i++) {
     const g = await page.evaluate(() => {
       const S = window.__gremScene, cv = document.querySelector('canvas');
       const g = S && cv && (S.gas || []).find(q => !q.gone && q.wx - S.scroll > 70 && q.wx - S.scroll < 150);
@@ -85,6 +85,41 @@ require('../tests/build')();
     await save('t-stal-lit', 'the same screen, darkness lifted (for the shot only)');
     await save('r-stal-roof', 'close up (darkness lifted): a cluster hanging off the roof', box.up);
     await save('s-stal-floor', 'close up (darkness lifted): a cluster on the floor', box.dn);
+    await browser.close(); console.log(said.join(String.fromCharCode(10))); return;
+  }
+  // (C3) the Cavern's ladders and timber: the view held where the most of them are on screen, then close-ups of a ladder and of
+  // timber under a boulder
+  if (ONLY === 'ladder') {
+    await page.evaluate(() => { DEV.autoLvlPace = 4; });
+    let best = { n: 0, at: 0 };
+    for (let i = 0; i < 1500; i++) {
+      const q = await page.evaluate(() => {
+        const S = window.__gremScene; if (!S || !S.tim) return { n: 0, done: false };
+        const L = levelState(S), on = (/** @type {any} */ T) => T.c0 * TCELL > S.scroll + 10 && T.c1 * TCELL < S.scroll + TITLE_VW - 10;
+        const lad = (S.tim[-2] ? S.tim[-2].sets : []).filter(on).length, tim = (S.tim[-1] ? S.tim[-1].sets : []).filter(on).length;
+        return { n: lad * 2 + tim, lad, at: S.scroll, done: S.scroll > L.plan.arena.x0 - 300 };
+      });
+      if (q.lad > 0 && q.n >= 5) { best = q; break; }
+      if (q.done) break;
+      await page.waitForTimeout(60);
+    }
+    const box = await page.evaluate(() => {
+      const S = window.__gremScene, cv = document.querySelector('canvas'), b = cv.getBoundingClientRect(), k = b.width / TITLE_VW;
+      S.lvl.step = null; S.pace = 0; console.log('at', S.scroll, titleZoneSpan(S.scroll + 100, S).z);
+      const on = (/** @type {any} */ T) => T.c0 * TCELL > S.scroll + 10 && T.c1 * TCELL < S.scroll + TITLE_VW - 10;
+      const mid = (/** @type {any} */ T) => { let y0 = 1e9, y1 = 0; for (const col of T.cols.values()) for (const r of col.keys()) { y0 = Math.min(y0, r); y1 = Math.max(y1, r); } return { x: (T.c0 + T.c1) / 2 * TCELL - S.scroll, y: (y0 + y1) / 2 * TCELL }; };
+      const lad = (S.tim[-2] ? S.tim[-2].sets : []).find(on), tims = (S.tim[-1] ? S.tim[-1].sets : []).filter(on);
+      const under = tims.find(T => T.mid > 0 && T.cap * TCELL > titleCeil(T.mid * TCELL, S) + 6) || tims[0];
+      const clip = (/** @type {{ x: number, y: number }} */ q) => ({ x: Math.max(b.left, b.left + q.x * k - 100), y: Math.max(b.top, b.top + q.y * k - 100), width: 200, height: 200 });
+      return { lad: lad ? clip(mid(lad)) : null, tim: under ? clip(mid(under)) : null };
+    });
+    await page.waitForTimeout(300);
+    await save('a-lad', 'the Cavern on Coal Seams: ladders and timber (as played, dark)');
+    await page.evaluate(() => { DEV.gremDark = 0; });
+    await page.waitForTimeout(200);
+    await save('b-lad-lit', 'the same screen, darkness lifted (for the shot only)');
+    if (box.lad) await save('c-ladder', 'close up (darkness lifted): a ladder', box.lad);
+    if (box.tim) await save('d-cavtim', 'close up (darkness lifted): Cavern timber (under a boulder where one is on screen)', box.tim);
     await browser.close(); console.log(said.join(String.fromCharCode(10))); return;
   }
   if (ONLY === 'gas') { await browser.close(); console.log(said.join('\n')); return; }

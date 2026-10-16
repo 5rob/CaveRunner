@@ -50,6 +50,8 @@ const foeAt = (/** @type {number} */ x) => { const f = G.titleFoeAt(S, G.autoFoe
 const A = { wx, y, r: 10 };
 S.gas = [A];
 const foe = foeAt(wx + 4);
+// (a bit of timber to light: the floor here was bare rock once the Cavern got its own timber, C3)
+for (let k = 1; k <= 3; k++) S.cells[(((Math.floor(wx / TC) % S.ncol) + S.ncol) % S.ncol) * S.rows + r - k] = G.TM.BEAM;
 G.titleIgnite(S, wx - S.scroll, y - 3, 4, 1);
 for (let i = 0; i < 30 && !A.gone; i++) G.titleStep(S, 1 / 60);
 check('fire reaching a pocket sets it off', !!A.gone);
