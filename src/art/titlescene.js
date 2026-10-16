@@ -159,7 +159,7 @@ const CLASSIC = { shoot: 1, turret: 1, chase: 1, bomb: 1 };
  *   ctl?: RunnerCtl | null, ctlWas?: boolean, cvx?: number, jetIn?: { nx: number, ny: number } | null, jx?: number, jy?: number, smokeAcc?: number, smokeN?: number, rag?: import('../world/ragdoll.js').Ragdoll | null, lamp?: boolean,
  *   hang?: TProp | WebLine | null, hangGo?: number, swing?: number, ctlIdle?: number, navT?: number, goal?: TGoal | null }} TRunner */
 // (goal: Grem Mode's tapped spot, owner v1.0.102: the autopilot heads there as it heads anywhere; goalStep)
-/** @typedef {{ x: number, y: number, t: number }} TGoal */
+/** @typedef {{ x: number, y: number, t: number, pick?: boolean }} TGoal */   // (pick: chasing Grem's tapped target, auto/level.js pickChase)
 /** a player steered by hand (CaveRunner Auto, feedback round 2: the selected player in a level): the pill stick's push
  * @typedef {{ active: boolean, nx: number, ny: number, mag: number }} RunnerCtl */
 // a fixed strip in place of the scrolling ring (CaveRunner Auto's hub, auto/hub.js): w columns, each cell's material from

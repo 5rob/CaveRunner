@@ -216,9 +216,24 @@ export function levelWaypoint(S, id, x, y = 0) {
   r.goal = { x, y, t: S.t };
   r.retarget = 0;
 }
-// the tapped spot a player is heading for or holding (null: none)
+// (Grem Mode, owner v1.0.105: "tapped targets only aim the guns; it needs to make them travel that way and clear blockages")
+// a tapped target (S.pick, everyone's aim): every player not steered by hand heads for it on the autopilot, as for a tapped spot
+// (r.goal: round or through rock), to PICK_GAP past its edge on his own side (in sight and in reach), the goal kept fresh each
+// frame while it lives; it dead or let go, those goals go and they play by themselves again
+const PICK_GAP = 28;
 /** @param {import('../art/titlescene.js').TitleScene} S */
-export const levelGoal = S => { const r = S.runners.find(q => q.goal && !q.out); return r && r.goal ? { id: r.id, x: r.goal.x, y: r.goal.y, t: r.goal.t } : null; };
+function pickChase(S) {
+  const f = S.pick, live = !!f && f.hp > 0 && S.foes.includes(f);
+  for (const r of S.runners) {
+    if (r.goal && r.goal.pick && !live) { r.goal = null; r.retarget = 0; }
+    if (!f || !live || r.out || r.hide || ctlOn(r) || (r.goal && !r.goal.pick)) continue;
+    const side = S.scroll + r.x + PW / 2 <= f.x ? -1 : 1;
+    r.goal = { x: f.x + side * (f.r + PICK_GAP), y: f.ty, t: S.t, pick: true };
+  }
+}
+// the tapped spot a player is heading for or holding (null: none; a target's chase isn't one: its ring is the target's)
+/** @param {import('../art/titlescene.js').TitleScene} S */
+export const levelGoal = S => { const r = S.runners.find(q => q.goal && !q.goal.pick && !q.out); return r && r.goal ? { id: r.id, x: r.goal.x, y: r.goal.y, t: r.goal.t } : null; };
 // has every player fallen (stage 6: home to the hub, the tier unchanged: run.js levelFailed)?
 /** @param {import('../art/titlescene.js').TitleScene} S */
 export function levelLost(S) {
@@ -311,6 +326,7 @@ export function levelStep(S, dt) {
   if (L.phase === 'exit') { deathRags(S, dt); exitStep(S, L, dt); return; }   // (owner v1.0.74) the pops at the exit: not a death
   if (deathStep(S, L, dt)) return;  // everyone down (auto/death.js): the slow stop, Tap A, the blast, home
   chestsStep(S);
+  if (L.grem) pickChase(S);
   const P = L.plan;
   if (L.phase === 'arrive') {
     const fy = titleFloor(P.padX, S);

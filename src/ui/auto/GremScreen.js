@@ -261,9 +261,10 @@ export function GremScreen() {
       const d = Math.hypot(f.x - S.scroll - q.x, f.ty - q.y) - f.r;
       if (f.hp > 0 && d < bd) { bd = d; best = f; }
     }
-    if (best && bd <= DEV.gremPickR) { S.pick = best; SFX.ui('tap'); return; }
+    if (best && bd <= DEV.gremPickR) { S.pick = best; levelWaypoint(S, whoRef.current, null); SFX.ui('tap'); return; }   // (v1.0.105) everyone goes after it (level.js pickChase)
     const w = whoRef.current, ru = S.runners.find(u => u.id === w);
     if (!ru || ru.out || ru.hide) return;
+    S.pick = null;   // (v1.0.105) a tapped spot ends the chase
     levelWaypoint(S, w, q.x + S.scroll, q.y);
     C.lock = w;
     SFX.ui('tap');

@@ -5,6 +5,10 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.105 — Grem Mode: the team goes after a tapped target (branch `autobattler`)
+Released 2026-10-16 (owner: "tapped targets only aim the guns; it needs to make them travel that way and clear blockages to eliminate them").
+- `auto/level.js pickChase` (in levelStep, Grem only): while a tapped target (`S.pick`) lives, every player not steered by hand gets an autopilot goal (`r.goal`, `pick: true`) `PICK_GAP` (28) past its edge on his own side, renewed every frame: he flies there going round or sawing through rock as for a tapped spot, and his gun's on it. It dead or let go (off the view), the goals go. A tapped spot ends the chase; a tapped creature cancels the picked player's spot. The view centres the goal (`roamStep`). Suite `grem-chase`.
+
 ## v1.0.104 — Grem Mode's bosses on screen every level; the Disc drawn twice its size (branch `autobattler`)
 Released 2026-10-16 (owner's notes, OK'd); screenshot tests/build/autoshots/disc-x2.png (`node tools/discshots.js`).
 - Grem Mode: from level 2 on the boss was made off screen right and never slid in (`levelOnward` didn't reset `L.introDone`); jellies, spiders and chasers hunted their way in, but the old floors' shooters and turrets stayed out there. `levelOnward` now resets the entrance, so every boss slides in under its title. Suite `grem-boss` (failed on v1.0.103: x 247 of 220).

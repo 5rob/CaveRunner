@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v1.0.104</title>
-<!-- VERSION = 'v1000104' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v1.0.105</title>
+<!-- VERSION = 'v1000105' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -1307,7 +1307,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v1.0.104';</script>
+<script>const VERSION = 'v1.0.105';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -26482,8 +26482,21 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     r.goal = { x, y, t: S2.t };
     r.retarget = 0;
   }
+  var PICK_GAP = 28;
+  function pickChase(S2) {
+    const f = S2.pick, live = !!f && f.hp > 0 && S2.foes.includes(f);
+    for (const r of S2.runners) {
+      if (r.goal && r.goal.pick && !live) {
+        r.goal = null;
+        r.retarget = 0;
+      }
+      if (!f || !live || r.out || r.hide || ctlOn(r) || r.goal && !r.goal.pick) continue;
+      const side = S2.scroll + r.x + PW / 2 <= f.x ? -1 : 1;
+      r.goal = { x: f.x + side * (f.r + PICK_GAP), y: f.ty, t: S2.t, pick: true };
+    }
+  }
   var levelGoal = (S2) => {
-    const r = S2.runners.find((q) => q.goal && !q.out);
+    const r = S2.runners.find((q) => q.goal && !q.goal.pick && !q.out);
     return r && r.goal ? { id: r.id, x: r.goal.x, y: r.goal.y, t: r.goal.t } : null;
   };
   function levelLost(S2) {
@@ -26566,6 +26579,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     if (deathStep(S2, L, dt)) return;
     chestsStep(S2);
+    if (L.grem) pickChase(S2);
     const P2 = L.plan;
     if (L.phase === "arrive") {
       const fy = titleFloor(P2.padX, S2);
@@ -33405,7 +33419,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
 
   // src/version.js
-  var VERSION2 = "v1.0.104";
+  var VERSION2 = "v1.0.105";
 
   // src/art/zonelab.js
   var ZLAB_LEAD = 60;
@@ -39744,11 +39758,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
       if (best && bd <= DEV.gremPickR) {
         S2.pick = best;
+        levelWaypoint(S2, whoRef.current, null);
         SFX.ui("tap");
         return;
       }
       const w = whoRef.current, ru = S2.runners.find((u) => u.id === w);
       if (!ru || ru.out || ru.hide) return;
+      S2.pick = null;
       levelWaypoint(S2, w, q.x + S2.scroll, q.y);
       C.lock = w;
       SFX.ui("tap");
