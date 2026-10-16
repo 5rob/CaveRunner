@@ -100,8 +100,22 @@ export function chestInRange(S) {
 
 // A pressed in a level: open the chest in range (the lid pops, its contents spill); false if there's none
 /** @param {import('../art/titlescene.js').TitleScene} S @returns {boolean} */
-export function chestOpen(S) {
-  const c = chestInRange(S);
+// (Grem Mode, owner v1.0.101: a chest on screen opens at a tap, however far the team is) the shut chest nearest world (x, y)
+// within r (its middle: a little over its floor), or null
+/** @param {import('../art/titlescene.js').TitleScene} S @param {number} x @param {number} y @param {number} r @returns {LevelChest | null} */
+export function chestAt(S, x, y, r) {
+  let best = null, bd = r;
+  for (const c of chestsOf(S)) {
+    if (c.open) continue;
+    const cy = (c.y == null ? titleFloor(c.x, S) : c.y) - 6, d = Math.hypot(c.x - x, cy - y);
+    if (d <= bd) { bd = d; best = c; }
+  }
+  return best;
+}
+// open a chest: the one given (chestAt), else one in a player's reach
+/** @param {import('../art/titlescene.js').TitleScene} S @param {LevelChest | null} [pick] */
+export function chestOpen(S, pick) {
+  const c = pick || chestInRange(S);
   if (!c) return false;
   c.open = true; c.openT = S.t;
   c.items = chestRoll(S.rnd, S.tier || 1, !!(S.lvl && S.lvl.data && S.lvl.data.grem));

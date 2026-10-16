@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v1.0.100</title>
-<!-- VERSION = 'v1000100' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v1.0.101</title>
+<!-- VERSION = 'v1000101' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -1228,7 +1228,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .ggun.sel{background:#fff;box-shadow:0 0 14px rgba(255,255,255,0.8)}
 .ggun.next{box-shadow:0 0 10px rgba(255,201,60,0.35)}
 .gginner{width:100%;height:100%;border-radius:9px;background:#1d1531;display:flex;align-items:center;justify-content:center;overflow:hidden}
-.gginner .gicon{width:84%;height:auto}
+.gginner .gicon{width:84%;height:auto;margin-bottom:10px}
+/* (owner v1.0.101) each gun's name, small, along the tile's bottom */
+.gginner{position:relative}
+.ggname{position:absolute;left:3px;right:3px;bottom:3px;font:700 9px/1.1 system-ui,sans-serif;color:#f2ecff;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 2px #000;pointer-events:none}
 .ggun.locked .gginner,.ggun.next .gginner{filter:grayscale(1) brightness(.55)}
 /* (owner v1.0.92) a fresh one (not used yet): a glow pulsing behind it (no NEW badge) */
 .ggun.fresh{animation:gfresh .8s ease-in-out infinite alternate}
@@ -1303,7 +1306,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v1.0.100';</script>
+<script>const VERSION = 'v1.0.101';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -2179,7 +2182,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "autoHubDemoNear", g: "autohub", label: "A crystal machine plays its demo with you this near (world units; the old shop’s 100)", min: 20, max: 240, step: 5 }
   );
   DEV_GROUPS.push(["autohub", "Auto: hub"]);
-  Object.assign(DEV_DEFAULTS, { gremPrice: 100, gremGrow: 1.5, gremHard: 0.25, gremGold: 2, gremDark: 0.85, gremPickR: 40, gremChestSize: 2, gremChestGlow: 1, gremBossT: 3.2, gremGoT: 1.6, gremDmgScale: 1, gremGoldWait: 0.6, gremSeamW: 160, gremSeamJag: 1 });
+  Object.assign(DEV_DEFAULTS, { gremPrice: 100, gremGrow: 1.5, gremHard: 0.25, gremGold: 2, gremDark: 0.85, gremPickR: 40, gremChestSize: 2, gremChestGlow: 1, gremBossT: 3.2, gremGoT: 1.6, gremDmgScale: 1, gremGoldWait: 0.6, gremSeamW: 160, gremSeamJag: 1, gremWayT: 8, gremChestTapR: 30 });
   DEV_META.push(
     { k: "gremPrice", g: "grem", label: "The first unlock costs (gold)", min: 5, max: 1e4, step: 5 },
     { k: "gremGrow", g: "grem", label: "Each unlock after it costs × this more", min: 1, max: 4, step: 0.05 },
@@ -2194,6 +2197,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "gremGoldWait", g: "grem", label: "Gold bounces this long before it flies to you (s)", min: 0, max: 3, step: 0.05 },
     // (owner, v1.0.98) each level cleared, the next old floor: the colours blend over a seam past the boss's arena
     { k: "gremSeamW", g: "grem", label: "Floor change: the colours blend over this much cave (units)", min: 4, max: 600, step: 4 },
+    // (owner, v1.0.101) a tap that isn't a chest or a creature: the picked player heads there (then stands till the idle wait, Auto: player's autoCtlWait)
+    { k: "gremWayT", g: "grem", label: "A tapped spot: given up after this long if not reached (s)", min: 1, max: 30, step: 0.5 },
+    { k: "gremChestTapR", g: "grem", label: "A chest opens at a tap this near it, from any distance (units)", min: 5, max: 80, step: 1 },
     { k: "gremSeamJag", g: "grem", label: "… its edge this ragged (0 a straight fade)", min: 0, max: 3, step: 0.05 },
     { k: "gremPickR", g: "grem", label: "A tap picks the creature nearest it within (world units; the screen is 220 across)", min: 5, max: 220, step: 5 }
   );
@@ -25505,8 +25511,20 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     return best;
   }
-  function chestOpen(S2) {
-    const c = chestInRange(S2);
+  function chestAt(S2, x, y, r) {
+    let best = null, bd = r;
+    for (const c of chestsOf(S2)) {
+      if (c.open) continue;
+      const cy = (c.y == null ? titleFloor(c.x, S2) : c.y) - 6, d = Math.hypot(c.x - x, cy - y);
+      if (d <= bd) {
+        bd = d;
+        best = c;
+      }
+    }
+    return best;
+  }
+  function chestOpen(S2, pick) {
+    const c = pick || chestInRange(S2);
     if (!c) return false;
     c.open = true;
     c.openT = S2.t;
@@ -26370,6 +26388,30 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
   }
   var LEVEL_CTL_REST = { active: false, nx: 0, ny: 0, mag: 0 };
+  function levelWaypoint(S2, id, x, y = 0) {
+    const L = levelState(S2);
+    if (!L) return;
+    L.way = x == null ? null : { id, x, y, t: S2.t };
+  }
+  var WAY_X = 5, WAY_Y = 16, WAY_SLOW = 30;
+  function wayStep(S2, L) {
+    const w = L.way;
+    if (!w) return;
+    const r = S2.runners.find((q) => q.id === w.id);
+    if (!r || r.out || r.hide || L.phase === "arrive") {
+      L.way = null;
+      return;
+    }
+    const dx = w.x - (S2.scroll + r.x + PW / 2), dy = w.y - (r.y + PH / 2), d = Math.hypot(dx, dy);
+    const there = Math.abs(dx) < WAY_X && (Math.abs(dy) < WAY_Y || r.ground && dy > 0);
+    if (there || S2.t - w.t > DEV.gremWayT) {
+      L.way = null;
+      levelControl(S2, w.id, LEVEL_CTL_REST);
+      return;
+    }
+    const flat2 = dy > -10 && r.ground, ny = flat2 ? 0 : dy / (d || 1), nx = flat2 ? Math.sign(dx) : dx / (d || 1), n = Math.hypot(nx, ny) || 1;
+    levelControl(S2, w.id, { active: true, nx: nx / n, ny: ny / n, mag: Math.min(1, 0.45 + d / WAY_SLOW) });
+  }
   function levelLost(S2) {
     const L = levelState(S2);
     return !!L && L.failed;
@@ -26450,6 +26492,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     if (deathStep(S2, L, dt)) return;
     chestsStep(S2);
+    wayStep(S2, L);
     const P2 = L.plan;
     if (L.phase === "arrive") {
       const fy = titleFloor(P2.padX, S2);
@@ -29617,6 +29660,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     "gremBossT",
     "gremChestGlow",
     "gremChestSize",
+    "gremChestTapR",
     "gremDark",
     "gremDmgScale",
     "gremGoT",
@@ -29628,6 +29672,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     "gremPrice",
     "gremSeamJag",
     "gremSeamW",
+    "gremWayT",
     "jeAimTolHi",
     "jeAimTolLo",
     "jeBounceHi",
@@ -30330,7 +30375,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 
   // src/game/render/leveldraw.js
   var chestK = (S2) => S2.lvl && S2.lvl.data && S2.lvl.data.grem ? DEV.gremChestSize : 1;
-  function chestAt(ctx, S2, x, y, age) {
+  function chestAt2(ctx, S2, x, y, age) {
     const k = chestK(S2);
     if (k === 1) {
       drawChest(ctx, x, y, age);
@@ -30347,7 +30392,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const L = levelState(S2);
     if (L) for (const c of L.chests) {
       const x = c.x - S2.scroll;
-      if (x > -20 && x < TITLE_VW + 20 && c.y != null) chestAt(ctx, S2, x, c.y, c.open ? S2.t - (c.openT || 0) : -1);
+      if (x > -20 && x < TITLE_VW + 20 && c.y != null) chestAt2(ctx, S2, x, c.y, c.open ? S2.t - (c.openT || 0) : -1);
     }
     levelRags(ctx, S2);
   }
@@ -30461,7 +30506,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       ctx.save();
       ctx.globalCompositeOperation = "source-over";
       ctx.globalAlpha = 1;
-      chestAt(ctx, S2, x, q.y, -1);
+      chestAt2(ctx, S2, x, q.y, -1);
       ctx.restore();
     }
     const c = chestInRange(S2), G = S2.lvl && S2.lvl.data && S2.lvl.data.grem;
@@ -33234,7 +33279,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
 
   // src/version.js
-  var VERSION2 = "v1.0.100";
+  var VERSION2 = "v1.0.101";
 
   // src/art/zonelab.js
   var ZLAB_LEAD = 60;
@@ -39468,6 +39513,22 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             ctx.stroke();
             ctx.restore();
           }
+          const L = levelState(S2), wy = L && L.way;
+          if (wy && C) {
+            const k = w / TITLE_VW, p = camTo(C, wy.x - S2.scroll, wy.y), a2 = (S2.t - wy.t) * 1.6 % 1, col = TITLE_COLS[wy.id % TITLE_COLS.length];
+            ctx.save();
+            ctx.strokeStyle = col;
+            ctx.lineWidth = 2.5;
+            ctx.globalAlpha = 0.85;
+            ctx.beginPath();
+            ctx.arc(p.x * k, p.y * k, 5 * C.z * k, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.globalAlpha = 0.7 * (1 - a2);
+            ctx.beginPath();
+            ctx.arc(p.x * k, p.y * k, (5 + 12 * (1 - a2)) * C.z * k, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+          }
           if (levelDeathPrompt(S2)) {
             const k = w / 150;
             ctx.save();
@@ -39498,6 +39559,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const S2 = scene.current, C = cam.current, w = whoRef.current, r = S2 && S2.runners.find((q) => q.id === w);
       if (!S2 || !S2.lvl || !r || r.out) return;
       levelHold(S2, 0);
+      if (st.active && st.mag > DEAD) levelWaypoint(S2, w, null);
       if (!(st.active && st.mag > DEAD) && !r.ctl) return;
       if (C) C.lock = w;
       levelControl(S2, w, st);
@@ -39529,11 +39591,16 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const S2 = scene.current, C = cam.current, c = cvs.current;
       if (!S2 || !C || !c) return;
       SFX.unlock();
-      if (levelTeleportHome(S2) || chestOpen(S2)) {
+      if (levelTeleportHome(S2)) {
         SFX.fx("open");
         return;
       }
       const r = c.getBoundingClientRect(), k = r.width / TITLE_VW, q = camAt(C, (e.clientX - r.left) / k, (e.clientY - r.top) / k);
+      const ch2 = chestAt(S2, q.x + S2.scroll, q.y, DEV.gremChestTapR);
+      if (chestOpen(S2, ch2)) {
+        SFX.fx("open");
+        return;
+      }
       let best = null, bd = Infinity;
       for (const f of S2.foes) {
         const d = Math.hypot(f.x - S2.scroll - q.x, f.ty - q.y) - f.r;
@@ -39545,7 +39612,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (best && bd <= DEV.gremPickR) {
         S2.pick = best;
         SFX.ui("tap");
+        return;
       }
+      const w = whoRef.current, ru = S2.runners.find((u) => u.id === w);
+      if (!ru || ru.out || ru.hide) return;
+      levelWaypoint(S2, w, q.x + S2.scroll, q.y);
+      C.lock = w;
+      SFX.ui("tap");
     };
     const pauseDown = (e) => {
       e.preventDefault();
@@ -39639,7 +39712,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           "data-gun": it.gun,
           title: p.name + (k < u ? "" : " · " + gremPrice(k) + " gold")
         },
-        h("span", { className: "gginner" }, h(GunIcon, { gun: p.gun }))
+        h("span", { className: "gginner" }, h(GunIcon, { gun: p.gun }), h("span", { className: "ggname" }, p.name))
       );
     }));
   }

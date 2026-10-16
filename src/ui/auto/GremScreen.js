@@ -22,8 +22,8 @@ import { DEAD, PW } from '../../core/consts.js';
 import { DEV } from '../../dev/knobs.js';
 import { clearedText } from '../../art/cleared.js';
 import { drawHint } from '../../game/render/hubdraw.js';
-import { chestOpen } from '../../auto/chests.js';
-import { levelClearedAge, levelControl, levelDeathPrompt, levelHold, levelLead, levelLost, levelScene, levelState, levelTeleportHome, levelTitle } from '../../auto/level.js';
+import { chestAt, chestOpen } from '../../auto/chests.js';
+import { levelClearedAge, levelControl, levelDeathPrompt, levelHold, levelLead, levelLost, levelScene, levelState, levelTeleportHome, levelTitle, levelWaypoint } from '../../auto/level.js';
 import { levelBoss } from '../../auto/enemies.js';
 import { bagCount, healRun, newPlayer, starterKit } from '../../auto/run.js';
 import { gremFill, gremKitLoad, gremOpen, gremPrice, gremRun, gremTeamGun, gremUnlocked, gremUnlocks } from '../../auto/grem.js';
@@ -184,6 +184,15 @@ export function GremScreen() {
           ctx.save(); ctx.strokeStyle = 'rgba(255,50,50,0.55)'; ctx.lineWidth = 3;
           ctx.beginPath(); ctx.arc(p.x * k, p.y * k, r, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
         }
+        // (v1.0.101) the tapped spot the picked player is heading for: a ring in his colour, shrinking in and again
+        const L = levelState(S), wy = L && L.way;
+        if (wy && C) {
+          const k = w / TITLE_VW, p = camTo(C, wy.x - S.scroll, wy.y), a = ((S.t - wy.t) * 1.6) % 1, col = TITLE_COLS[wy.id % TITLE_COLS.length];
+          ctx.save(); ctx.strokeStyle = col; ctx.lineWidth = 2.5;
+          ctx.globalAlpha = 0.85; ctx.beginPath(); ctx.arc(p.x * k, p.y * k, 5 * C.z * k, 0, Math.PI * 2); ctx.stroke();
+          ctx.globalAlpha = 0.7 * (1 - a); ctx.beginPath(); ctx.arc(p.x * k, p.y * k, (5 + 12 * (1 - a)) * C.z * k, 0, Math.PI * 2); ctx.stroke();
+          ctx.restore();
+        }
         if (levelDeathPrompt(S)) { const k = w / 150; ctx.save(); ctx.scale(k, k); drawHint(ctx, w / 2 / k, hh * 0.3 / k, 'Tap to play again', S.t, true); ctx.restore(); }
       },
       // everyone down and the play area tapped (the blast): a fresh Grem run, back to level 1, every preset locked again
@@ -204,6 +213,7 @@ export function GremScreen() {
     const S = scene.current, C = cam.current, w = whoRef.current, r = S && S.runners.find(q => q.id === w);
     if (!S || !S.lvl || !r || r.out) return;
     levelHold(S, 0);
+    if (st.active && st.mag > DEAD) levelWaypoint(S, w, null);   // (v1.0.101) the stick takes over from a tapped spot
     if (!(st.active && st.mag > DEAD) && !r.ctl) return;
     if (C) C.lock = w;
     levelControl(S, w, st);
@@ -225,22 +235,30 @@ export function GremScreen() {
     if (S && S.runners.some(r => r.ctl)) { if (C) C.lock = -1; levelControl(S, -1, null); }
     setWho(i);
   };
-  // a tap on the play area (no A in Grem, owner v1.0.90): a chest in reach opens ("Tap to open."); else the creature nearest
-  // it (within DEV.gremPickR, its size added) becomes everyone's target
+  // a tap on the play area (no A in Grem, owner v1.0.90): a chest at the tap opens, from any distance (v1.0.101: DEV.gremChestTapR),
+  // else one in reach ("Tap to open."); else the creature nearest it (within DEV.gremPickR, its size added) becomes everyone's
+  // target; else (v1.0.101) the picked player heads for the spot (levelWaypoint), the camera on him
   /** @param {any} e */
   const playTap = e => {
     if (e.target && e.target.closest && e.target.closest('.pausebtn, .adevbtn')) return;
     const S = scene.current, C = cam.current, c = cvs.current;
     if (!S || !C || !c) return;
     SFX.unlock();
-    if (levelTeleportHome(S) || chestOpen(S)) { SFX.fx('open'); return; }
+    if (levelTeleportHome(S)) { SFX.fx('open'); return; }
     const r = c.getBoundingClientRect(), k = r.width / TITLE_VW, q = camAt(C, (e.clientX - r.left) / k, (e.clientY - r.top) / k);
+    const ch = chestAt(S, q.x + S.scroll, q.y, DEV.gremChestTapR);
+    if (chestOpen(S, ch)) { SFX.fx('open'); return; }
     let best = null, bd = Infinity;
     for (const f of S.foes) {
       const d = Math.hypot(f.x - S.scroll - q.x, f.ty - q.y) - f.r;
       if (f.hp > 0 && d < bd) { bd = d; best = f; }
     }
-    if (best && bd <= DEV.gremPickR) { S.pick = best; SFX.ui('tap'); }
+    if (best && bd <= DEV.gremPickR) { S.pick = best; SFX.ui('tap'); return; }
+    const w = whoRef.current, ru = S.runners.find(u => u.id === w);
+    if (!ru || ru.out || ru.hide) return;
+    levelWaypoint(S, w, q.x + S.scroll, q.y);
+    C.lock = w;
+    SFX.ui('tap');
   };
   // ⏸: the pause menu at once; held on DEV_HOLD_MS (a let-go anywhere ends it) it also toggles dev mode (AutoScreen's pauseDown)
   /** @param {any} e */
@@ -296,7 +314,7 @@ function GremGuns({ presets, items, gold, sel, who, fresh, pick, box }) {
     const p = presets[it.gun];
     return h('button', { ...common, className: cls + (it.gun === sel ? ' sel' : ''), 'data-gun': it.gun,
       title: p.name + (k < u ? '' : ' · ' + gremPrice(k) + ' gold') },
-      h('span', { className: 'gginner' }, h(GunIcon, { gun: p.gun })));
+      h('span', { className: 'gginner' }, h(GunIcon, { gun: p.gun }), h('span', { className: 'ggname' }, p.name)));   // (v1.0.101) its name, small
   }));
 }
 

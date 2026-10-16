@@ -134,7 +134,7 @@ export function levelFree(S, L, r) {
  *   elites: import('./enemies.js').LevelFoe[], chests: import('./chests.js').LevelChest[], doneT: number, meters: PlayerMeters[], blocked: boolean,
  *   boss: Enemy | null, failed: boolean, run?: AutoRun | null, bagV: number, blockKind?: string, webK?: number, webT?: number, lootT?: number, clearT?: number, popT?: number[], nukeT?: number, gatherT?: number, padGone?: boolean,
  *   deadT?: number, pace0?: number, base?: number, lastI?: number, tpT?: number, boomed?: boolean, far?: number,
- *   floor?: number, name?: string, introT?: number, bossFrom?: number, bossTo?: number, introDone?: boolean, joins?: { i: number, x: number, fy: number, t: number, done?: boolean }[] }} LevelState */
+ *   floor?: number, name?: string, way?: { id: number, x: number, y: number, t: number } | null, introT?: number, bossFrom?: number, bossTo?: number, introDone?: boolean, joins?: { i: number, x: number, fy: number, t: number, done?: boolean }[] }} LevelState */
 // (Grem Mode, owner v1.0.92: introT when the boss began coming in from bossFrom to bossTo (world x) under its title; joins: players
 // teleporting in mid-level, the pad's charge then the flash where they land)
 // (far: the furthest the scroll got, world units: manual mode roams back at most DEV.autoRoamBack screens behind it)
@@ -204,6 +204,30 @@ export function levelControl(S, id, st) {
 }
 /** @type {import('../art/titlescene.js').RunnerCtl} */
 const LEVEL_CTL_REST = { active: false, nx: 0, ny: 0, mag: 0 };
+// (Grem Mode, owner v1.0.101) a tap on the play area that isn't a chest or a creature: player id heads for world (x, y) (L.way),
+// steered as by the stick (levelControl, every frame: wayStep); a new tap moves it, null clears it (the stick took over)
+/** @param {import('../art/titlescene.js').TitleScene} S @param {number} id @param {number | null} x @param {number} [y] */
+export function levelWaypoint(S, id, x, y = 0) {
+  const L = levelState(S);
+  if (!L) return;
+  L.way = x == null ? null : { id, x, y, t: S.t };
+}
+// WAY_X / WAY_Y: close enough (his middle to the point); there (or given up after DEV.gremWayT s) the stick is let go, so he
+// stands till DEV.autoCtlWait s pass with no input and the autopilot takes him back (titlescene.js ctlOn). The push: straight at
+// it, slowing in the last WAY_SLOW units; a point at his height or below while he stands: a walk (a stick pushed down would saw)
+const WAY_X = 5, WAY_Y = 16, WAY_SLOW = 30;
+/** @param {import('../art/titlescene.js').TitleScene} S @param {LevelState} L */
+function wayStep(S, L) {
+  const w = L.way;
+  if (!w) return;
+  const r = S.runners.find(q => q.id === w.id);
+  if (!r || r.out || r.hide || L.phase === 'arrive') { L.way = null; return; }
+  const dx = w.x - (S.scroll + r.x + PW / 2), dy = w.y - (r.y + PH / 2), d = Math.hypot(dx, dy);
+  const there = Math.abs(dx) < WAY_X && (Math.abs(dy) < WAY_Y || (r.ground && dy > 0));
+  if (there || S.t - w.t > DEV.gremWayT) { L.way = null; levelControl(S, w.id, LEVEL_CTL_REST); return; }
+  const flat = dy > -10 && r.ground, ny = flat ? 0 : dy / (d || 1), nx = flat ? Math.sign(dx) : dx / (d || 1), n = Math.hypot(nx, ny) || 1;
+  levelControl(S, w.id, { active: true, nx: nx / n, ny: ny / n, mag: Math.min(1, 0.45 + d / WAY_SLOW) });
+}
 // has every player fallen (stage 6: home to the hub, the tier unchanged: run.js levelFailed)?
 /** @param {import('../art/titlescene.js').TitleScene} S */
 export function levelLost(S) {
@@ -296,6 +320,7 @@ export function levelStep(S, dt) {
   if (L.phase === 'exit') { deathRags(S, dt); exitStep(S, L, dt); return; }   // (owner v1.0.74) the pops at the exit: not a death
   if (deathStep(S, L, dt)) return;  // everyone down (auto/death.js): the slow stop, Tap A, the blast, home
   chestsStep(S);
+  wayStep(S, L);
   const P = L.plan;
   if (L.phase === 'arrive') {
     const fy = titleFloor(P.padX, S);
