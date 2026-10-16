@@ -13,7 +13,7 @@ shots. Agent reports: at most 10 lines. Briefs give the facts so agents don't re
 ## Where things are
 
 - **Spec:** the Claude Doc "CaveRunner: Coal Seams", doc id `62f545c8-940a-4833-9ba9-ff20db771da5`, tab body node
-  `64396f1a-182a`, last write **rev 26**. Read it with the docs tools only (load the docs skill first; never web-fetch).
+  `64396f1a-182a`, last write **rev 28**. Read it with the docs tools only (load the docs skill first; never web-fetch).
   Sections: Cavern zone, Creatures (Bats: the owner's boids spec and Dev table; Glow worms: inchworm/FABRIK spec, behaviour,
   look, Dev list), Ten decoration ideas (3 = Gas pockets), Screenshots (newest first), Decisions (nothing open).
   Its HTML review copy: https://claude.ai/artifact/BZCnJDP93NEcB1fd99JPXM (stale since rev 23: republish at the end, C7).
@@ -96,5 +96,5 @@ Rules:
 ## Status
 
 - [x] v2.0.1 step 1 · v2.0.2 coal · v2.0.3 rails, heaps, chutes, timber
-- [x] C1 Gas pockets (v2.0.4) · [x] C2 Stalactites/stalagmites (v2.0.5) · [ ] C3 Ladders + Cavern timber · [ ] C4 Bats · [ ] C5 Glow worms ·
+- [x] C1 Gas pockets (v2.0.4) · [x] C2 Stalactites/stalagmites (v2.0.5) · [x] C3 Ladders + Cavern timber (v2.0.6) · [x] C4 Bats (v2.0.6) · [ ] C5 Glow worms ·
   [ ] C6 Light check · [ ] C7 Wrap

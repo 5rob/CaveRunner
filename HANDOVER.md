@@ -5,15 +5,15 @@ release loop, testing), then the README of the `src/` folder you're working in.
 
 ## BRANCH `grem` (2026-10-16): CaveRunner Grem — Grem Mode only (the owner's focus)
 
-**Start here (fresh session on `grem`):** **v2.0.5 is pushed to `grem`** (2026-10-17, owner OK'd: C2 stalactites/stalagmites, CHANGELOG v2.0.5; v2.0.4 C1 gas pockets; next C3). Known failing before C1 (checked on b411cb9): logic `auto-zonelab`, `modtable`, `orbweb`. v2.0.3 (owner OK'd the shots: minecart rails, coal heaps and chutes (ideas 1, 10), and the timber rebuilt as the old game's measured sets (`art/timber.js`, owner: "too copy and paste"); v2.0.2 step 2, burnable coal + smouldering seams; v2.0.1 step 1. The owner allowed `grem` in Settings → Environments → github-pages on 2026-10-17, so `grem` pushes deploy Pages now): Coal Seams build step 1
+**Start here (fresh session on `grem`):** **v2.0.6 is pushed to `grem`** (2026-10-17, owner OK'd: C3 ladders + Cavern timber and C4 bats, CHANGELOG v2.0.6; v2.0.5 C2 stalactites; v2.0.4 C1 gas pockets; next C5 glow worms, its spec copied for agents from doc rev 27). Known failing before C1 (checked on b411cb9): logic `auto-zonelab`, `modtable`, `orbweb`. v2.0.3 (owner OK'd the shots: minecart rails, coal heaps and chutes (ideas 1, 10), and the timber rebuilt as the old game's measured sets (`art/timber.js`, owner: "too copy and paste"); v2.0.2 step 2, burnable coal + smouldering seams; v2.0.1 step 1. The owner allowed `grem` in Settings → Environments → github-pages on 2026-10-17, so `grem` pushes deploy Pages now): Coal Seams build step 1
 (its own zones; Mossy's plants off, the old mine set on; CHANGELOG v2.0.1; art/README's Coal Seams note). Live check:
-`/CaveRunner/grem/version.txt` = `2000005 v2.0.5`. Step 2 (v2.0.2): coal seams (`TM.COAL`, art/README's Coal note), catch rate 0.2 × timber (the doc's 0.8 was far too fast; told
+`/CaveRunner/grem/version.txt` = `2000006 v2.0.6`. Step 2 (v2.0.2): coal seams (`TM.COAL`, art/README's Coal note), catch rate 0.2 × timber (the doc's 0.8 was far too fast; told
 the owner). **Next: the rest of Coal Seams is run by a project-manager session from `COALSEAMS.md`** (chunks C1 gas pockets,
 C2 stalactites/stalagmites, C3 ladders + Cavern timber, C4 bats, C5 glow worms, C6 light check, C7 wrap; the agent brief,
 check-ins, release steps, keep-it-short rule; tick its Status as chunks ship). Each step: phone screenshots
 (`node tools/coalshots.js`, `tools/timbershots.js`, Grem started at level 2) → owner OK → bump, docs, push `grem`.
 The plan is the Claude Doc: read it with the docs tools (doc id `62f545c8-940a-4833-9ba9-ff20db771da5`, tab body node
-`64396f1a-182a`; last write rev 26) — never web-fetch it. Every open question is decided (its Decisions section, owner
+`64396f1a-182a`; last write rev 28) — never web-fetch it. Every open question is decided (its Decisions section, owner
 2026-10-16): ideas 1, 2, 3, 10 picked; spider webs stay; burnt coal → open; ladders background, stalactites solid; bats harmless
 (Dev bite 0), glow worms ≈ spider health/strike, their blast hurts the team at half (Dev); Digging zone = `winding`, Cavern =
 `spider`; only light: lanterns and glow worms. Its HTML review copy https://claude.ai/artifact/BZCnJDP93NEcB1fd99JPXM (republish

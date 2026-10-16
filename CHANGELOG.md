@@ -5,6 +5,12 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v2.0.6 — Coal Seams: ladders, Cavern timber, bats (branch `grem`)
+2026-10-17 (owner OK'd the screenshots; chunks C3 and C4).
+- Ladders in the Cavern: two rails and rungs, upright or a little leaning, floor to boulder or rock top to rock above; background timber (pass through, burn). Dev `coalLadders`, `coalLadLean`, `coalLadMaxH`.
+- Cavern timber: supports on floors and boulder tops, some broken, some lone props leaning to the rock (full sets rarely fit). Dev `coalCavSup`, `coalCavBroken`, `coalCavLean`. Suite `coal-ladder`.
+- Bats (`creatures/bats.js`, the owner's boids spec): roosts under downward-facing rock, slots filling outwards, Roost / Fly / Return, flocking, players scare them; harmless (bite 0). Dev → Grem → Bats: every spec knob, `batRoosts` (1.5 a screen), toggles, buttons Reset bats / Scare all bats (Grem's panel). Coal Seams' roster is spiders only now (bats are scene life, not foes; jellyfish and drones out). Suite `coal-bats`.
+
 ## v2.0.5 — Coal Seams: stalactites and stalagmites (branch `grem`)
 2026-10-17 (owner OK'd the screenshots, asked for them really long in big caves; chunk C2).
 - In the Cavern on Coal Seams: solid rock points hang off the roof and boulder undersides and rise off floors and boulder tops, in clusters of mixed lengths, a lighter tip (`TM.ROCKL`, 25). They replace the Cavern's old spikes.
