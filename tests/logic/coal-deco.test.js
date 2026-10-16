@@ -7,6 +7,7 @@ let fails = 0;
 const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FAIL'} ${n}${x !== undefined ? ' -> ' + JSON.stringify(x) : ''}`); };
 const D = G.DEV, TM = G.TM, TC = G.TCELL;
 D.autoFoeDmg = 0;
+D.coalSpill = 5;   // (plenty of lumps: the walk passes few chutes)
 
 // a Grem level started at level 2: Coal Seams from the start pad on
 const run = G.newRun(9);

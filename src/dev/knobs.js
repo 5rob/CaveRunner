@@ -442,12 +442,11 @@ DEV_META.push(
 Object.assign(DEV_DEFAULTS, { gremStartLv: 1 });
 DEV_META.push({ k: 'gremStartLv', g: 'grem', label: 'Start at level (2: Coal Seams; for a look at a later floor)', min: 1, max: 24, step: 1 });
 DEV_GROUPS.push(['grem', 'Grem Mode']);
-// Coal Seams (level 2, art/titlescene.js coalDeco): the old game's mine set in place of Mossy's plants. Supports: a timber
-// frame floor to roof through the natural zones; rusted lanterns off the roof, rock undersides and the frames; explosive
+// Coal Seams (level 2, art/titlescene.js coalDeco): the old game's mine set in place of Mossy's plants. Timber: further down
+// (the sets, art/timber.js); rusted lanterns off the roof, rock undersides and the frames; explosive
 // minecarts and pickaxes on the floors; soot falling in thin streams from the roof
-Object.assign(DEV_DEFAULTS, { coalSupports: 0.55, coalLamps: 0.05, coalCarts: 0.02, coalPicks: 0.05, coalSoot: 14, coalCartR: 18, coalCartDmg: 25, coalLampLight: 0.75 });
+Object.assign(DEV_DEFAULTS, { coalLamps: 0.05, coalCarts: 0.02, coalPicks: 0.05, coalSoot: 14, coalCartR: 18, coalCartDmg: 25, coalLampLight: 0.75 });
 DEV_META.push(
-  { k: 'coalSupports', g: 'coal', label: 'Timber supports: chance at each spot (one spot every 96 units)', min: 0, max: 1, step: 0.05 },
   { k: 'coalLamps',    g: 'coal', label: 'Rusted lanterns: chance at each spot (every 10 units)', min: 0, max: 0.5, step: 0.005 },
   { k: 'coalCarts',    g: 'coal', label: 'Explosive minecarts: chance at each spot on a flat floor (every 6 units)', min: 0, max: 0.3, step: 0.005 },
   { k: 'coalPicks',    g: 'coal', label: 'Pickaxes: chance at each spot on a floor (every 6 units)', min: 0, max: 0.5, step: 0.005 },
@@ -468,6 +467,18 @@ DEV_META.push(
   { k: 'coalSmoulder', g: 'coal', label: 'Smouldering seams: chance a bare coal face is alight from the start', min: 0, max: 0.2, step: 0.002 });
 colourKnobs('coal', [['coalCol', 'Coal colours (dark, light)', '#101014', '#232838', 'c'], ['coalGlint', 'Coal glints (blue sheen)', '#5d6a86', '#a9bce0', 'g']]);
 Object.assign(DEV_DEFAULTS, { coalGlints: 0.05 });
+// (2026-10-17, owner: the supports looked copy and paste) the timber, as the old game's (art/timber.js): sets measured off the
+// rock, in propped patches side by side; outside them a tunnel's sparse half-rotted run and the odd lone set in the open cave
+Object.assign(DEV_DEFAULTS, { coalSupports: 0.4, coalSupLone: 0.15, coalSupSparse: 0.5, coalSupRot: 0.5, coalSupBroken: 0.15, coalSupFallen: 0.3, coalSupMaxH: 80 });
+rangeKnobs('coal', [['coalSupW', 'Timber sets: width (units)', 16, 80, 1, 24, 44], ['coalSupGap', 'Timber sets: gap between them in a patch (units)', 0, 60, 1, 4, 18]]);
+DEV_META.push(
+  { k: 'coalSupports',  g: 'coal', label: 'Timber: share of the slice in propped patches (sets side by side)', min: 0, max: 1, step: 0.05 },
+  { k: 'coalSupLone',   g: 'coal', label: 'Timber: a lone set in the open cave outside patches (chance every 60 units)', min: 0, max: 1, step: 0.05 },
+  { k: 'coalSupSparse', g: 'coal', label: 'Timber: a tunnel’s bays rotted away outside patches', min: 0, max: 1, step: 0.05 },
+  { k: 'coalSupRot',    g: 'coal', label: 'Timber: chance a post has a rotten patch', min: 0, max: 1, step: 0.05 },
+  { k: 'coalSupBroken', g: 'coal', label: 'Timber: chance a set has a snapped post', min: 0, max: 1, step: 0.05 },
+  { k: 'coalSupFallen', g: 'coal', label: 'Timber: a fallen prop on the floor where a set isn’t', min: 0, max: 1, step: 0.05 },
+  { k: 'coalSupMaxH',   g: 'coal', label: 'Timber: tallest post (units)', min: 20, max: 200, step: 2 });
 // (ideas 1, 10) minecart rails along the Mines' tunnel floors (carts × 3 as likely on them); heaps of loose coal against tunnel
 // ends; wooden chutes down the holes between tunnels, spilling a lump of coal now and then
 Object.assign(DEV_DEFAULTS, { coalRails: 0.6, coalPiles: 0.5, coalChutes: 0.6, coalSpill: 0.5 });

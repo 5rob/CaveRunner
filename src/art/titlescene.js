@@ -33,6 +33,7 @@ import { rustleStep } from '../audio/recipes.js';
 import { pixText, pixWidth } from './pixfont.js';
 import { GUN_HELD, gunMuzzle } from './sprites.js';
 import { GUN_ART } from './gunart.js';
+import { timberFallen, timberRng, timberSet } from './timber.js';
 import { VIG_HP, VIG_TICK, gunPull, gunTick, perkDmg, planShots, shotsOf } from './scenegun.js';
 import { playerStats } from '../auto/run.js';
 import { hasTraj, trajAim, trajHome, trajLook, trajStep } from '../auto/traj.js';
@@ -199,7 +200,7 @@ const CLASSIC = { shoot: 1, turret: 1, chase: 1, bomb: 1 };
 /** @typedef {{ t: number, vh: number, top: number, bot: number, seed: number, rnd: () => number, scroll: number, shake: number, spawn: number,
  *   kills: number, gold: number, got: number, runner: TRunner, runners: TRunner[], foes: Enemy[], shots: TShot[], parts: TPart[], coins: Coin[],
  *   booms: TBoom[], zaps: TZap[], flash: number, rows: number, ncol: number, cells: Uint8Array, gen: number, props: TProp[],
- *   fire: TFire[], lightLater?: number[][], chutes?: { x: number, y: number, s: number }[], dirty: number[][], dirtyAll: boolean, carved: number, burnt: number, swaps: number, groundT: number, flyT: number, kinds: Record<string, number>,
+ *   fire: TFire[], lightLater?: number[][], tim?: Record<number, { x: number, sets: import('./timber.js').TSet[] }>, timCol?: Map<number, Uint8Array>, chutes?: { x: number, y: number, s: number }[], dirty: number[][], dirtyAll: boolean, carved: number, burnt: number, swaps: number, groundT: number, flyT: number, kinds: Record<string, number>,
  *   webs: WebLine[], orbN?: number, orbs?: Record<number, OrbRig>, mush?: MushCloud[], orbHub?: { x: number, y: number, r: number }[], orbT?: number, cut: number, lineT: number, silk: { x: number, y: number, ax: number, ay: number, vx: number, vy: number, life: number }[],
  *   nav: { F: any, fx: number, fy: number, t: number }, fireAcc: number, fireN: number, burning: Set<number>, gotN: number, pops: number, lampsPopped: number, kitNames: Set<string>,
  *   digT: number, digs: number, digWhy: Record<string, number>, still?: boolean, zp: TitlePlan, snd: TSnd[], hub?: TitleHub, lvl?: TitleLevel, lab?: boolean, back?: (ctx: CanvasRenderingContext2D, S: TitleScene) => void, pace?: number, team?: RunPlayer[], blocked?: number, blockedKind?: string, huddle?: boolean, gunsOff?: boolean, dmgMul?: number, coinWait?: number, hgoal?: number, hgoalT?: number, fuelWait?: number, tier?: number, loot?: TLoot[],
@@ -614,8 +615,8 @@ function genCol(S, c) {
   const wx = c * TCELL, Zn = titleZoneSpan(wx, S), z = Zn.z, b = built(wx, S), R = S.rnd;
   const cy = titleCeil(wx, S), fy = titleFloor(wx, S), base = ci(S, c, 0);
   // (Coal Seams, owner 2026-10-16) the old floor here has its own decoration set: none of Mossy's moss, grass, rubble, brick
-  // ledges or plants; timber supports through the natural zones (coalSupport), and the old game's mine set (coalDeco)
-  const coal = coalAt(S, wx), sup = coal && z !== 'timber' && !Zn.flat ? coalSupport(wx, S) : null, seam = coal && !Zn.flat;
+  // ledges or plants; the timber sets (timberCol, art/timber.js), and the old game's mine set (coalDeco)
+  const coal = coalAt(S, wx), seam = coal && !Zn.flat;
   // the built-up layers' timber frames, as strata.js timberFrame makes them: two posts (lit on the
   // left), a cap beam two rows deep running a little past them, a knee brace inside each post's top,
   // a footing under each post
@@ -632,12 +633,12 @@ function genCol(S, c) {
     const open = !!M && wx > M.L[k] - 14 && wx < M.Rx[k] + 14;
     // (Coal Seams) minecart rails along stretches of a tunnel's floor (the floor flat under them), heaps of loose coal against
     // its walled ends (DEV.coalRails, coalPiles)
-    const rail = coal && open && titleNoise(wx / 90 + k * 3.7 + 11, 210 + k * 9) > 1 - DEV.coalRails;
+    const rail = coal && open && railOn(wx, k);
     let pile = 0;
     if (coal && M) for (const [e, d] of [[0, wx - M.L[k]], [1, M.Rx[k] - wx]]) if (d < PILE_W && h2(Math.floor(e ? M.Rx[k] : M.L[k]) + k * 7, 77 + e) < DEV.coalPiles)
       pile = Math.max(pile, PILE_H * (0.6 + 0.4 * h2(k, 78 + e)) * Math.pow(1 - Math.max(0, d) / PILE_W, 1.4) + (titleNoise(wx / 3, 79 + k) - 0.5) * 2);
     return { c: q.c, f: q.f, rc: q.c - up, rf: q.f + dn, k, open, uc, v, rail, pile,
-      frame: open && !!M && uc < FRAME_W + 4 && built(fx0, S) > 0.95 && built(fx1, S) > 0.95 && fx0 > M.L[k] + 12 && fx1 < M.Rx[k] - 12 };
+      frame: !coal && open && !!M && uc < FRAME_W + 4 && built(fx0, S) > 0.95 && built(fx1, S) > 0.95 && fx0 > M.L[k] + 12 && fx1 < M.Rx[k] - 12 };
   });
   /** @param {{ k: number }} t @param {number} y the end walls, crooked */
   const inside = (t, y) => !!M && wx > M.L[t.k] + (titleNoise(y / 9, 71 + t.k * 3) - 0.5) * 18 + (titleNoise(y / 3, 73 + t.k * 3) - 0.5) * 6
@@ -648,6 +649,7 @@ function genCol(S, c) {
   const inHole = y => near.some(h => y >= bands[h.k + 1].f - 0.5 && y < bands[h.k].c + 0.5 && Math.abs(wx - h.x) < h.w / 2 + (titleNoise(y / 5, h.x) - 0.5) * 8);
   // (Coal Seams) wooden chutes down some of the holes: from the tunnel above, across the hole, into the one below (chuteOf)
   const chutes = coal && M ? M.holes.map(h => chuteOf(h, bands, wx)).filter(q => !!q) : [];
+  const tc = coal && !Zn.flat && !Zn.blk ? timberCol(S, c, M, bands) : null;
   // moss patches on the floor (thicker moss, bright grass tufts on top), as decorate.js bakes them
   const patch = !coal && titleNoise(wx / 14, 11) > 0.52, tuft = patch && h2(c, 5) < 0.4 ? (h2(c, 6) < 0.4 ? 2 : 1) : 0;
   const mossDeep = 2 + (patch ? 1 + Math.floor(h2(c, 7) * 3) : 0);
@@ -686,10 +688,10 @@ function genCol(S, c) {
     else if (ledge && y >= ly - 2 && y < ly && tuft) m = TM.GRASS;
     if (m === TM.AIR && y >= fy - rub && y < fy) m = y < fy - rub + 2 && h2(c, r) < 0.7 ? TM.RUBM : TM.RUB;
     if (m === TM.AIR && y >= fy - tuft * TCELL && y < fy && zc !== 'paved') m = TM.GRASS;
-    if (sup && m === TM.AIR && y >= sup.top && y < fy) m = frameCell(sup.uc, y - sup.top, fy - y);
     if (z === 'winding' && TITLE_SOLID[m] && windAir(wx, y, Zn, S)) m = TM.AIR;
     // (Auto's tall level) another zone's look here: its open air opens too, over this column's floor (DEV.autoZoneOpen; off: it upset the autopilot, auto-level and auto-tall)
     if (TITLE_SOLID[m] && zoneOpenAt(wx, y, S, Zn, fy, Zc)) { m = TM.AIR; carved = true; }
+    if (tc && (m === TM.AIR || m === TM.RAIL) && tc.cells.has(r)) m = tc.cells.get(r) || m;   // (the timber: in front of a rail)
     if (m === TM.AIR) for (const q of chutes) if (y >= q.y - 1 && y < q.y + 5) m = y < q.y + 1 ? TM.BEAMD : TM.BEAM;   // (the trough's inside, its boards under it)
     if (seam && m === TM.ROCK && coalCell(S, wx, y)) m = TM.COAL;
     if (bk) m = bk(bk0, wx, y, by0, by1, m);
@@ -755,7 +757,7 @@ function genCol(S, c) {
     S.webs.push(L);
   }
   if (coal && M) for (const h of M.holes) { const q = chuteOf(h, bands, wx); if (q && q.end) (S.chutes || (S.chutes = [])).push({ x: wx, y: q.y - 1.5, s: q.s }); }
-  if (coal) { coalDeco(S, c, wx, Zn, sup, rcy, fy, tun.filter(t => t.open && inside(t, t.rf - 3))); return; }
+  if (coal) { coalDeco(S, c, wx, Zn, tc && tc.lamp, rcy, fy, tun.filter(t => t.open && inside(t, t.rf - 3))); return; }
   // plants: vines, mycelium and roots under the roof, bouncy mushrooms on the floor
   // the grove: a curtain of long vines, every other column, some down near the floor (thick in its
   // middle, thinning to its ends)
@@ -855,10 +857,6 @@ function frameCell(uc, under, toFloor) {
 // (Coal Seams, owner 2026-10-16) does world x play as Coal Seams (its look's old floor: floorDeco)?
 /** @param {TitleScene} S @param {number} wx */
 export const coalAt = (S, wx) => { const L = lookAt(S, wx); return !!L && floorDeco(L.floor || 1) === 'coal'; };
-// a timber support (a mine frame, floor to roof) through Coal Seams' natural zones: one spot every SUP_GAP, DEV.coalSupports of
-// them with one, where the roof over its span is between SUP_H[0] and SUP_H[1] above the floor. Column wx's part of it: uc (as
-// frameCell's), top (the cap's top, world y), or null
-const SUP_GAP = 96, SUP_H = [18, 70];
 const PILE_W = 22, PILE_H = 9;
 const CHUTE_W = 40, CHUTE_D = 24;   // (Coal Seams) a coal chute's run and drop (world units)        // (Coal Seams) a heap of coal against a tunnel's end: this far out from the wall, up to this high
 // (Coal Seams) the wooden chute down hole h (if it has one: DEV.coalChutes of them), at column wx: from the tunnel above's floor at
@@ -898,22 +896,109 @@ export function coalCell(S, wx, y) {
   return false;
 }
 const SOOT_GAP = 30;                  // (Coal Seams) a soot fall's spot on the roof every this far (world units)
-/** @param {number} wx @param {TitleScene} S @returns {{ uc: number, top: number } | null} */
-function coalSupport(wx, S) {
-  const k = Math.floor(wx / SUP_GAP), fx = k * SUP_GAP + 8 + h2(k, 41) * (SUP_GAP - FRAME_W - 16), uc = wx - fx;
-  if (uc < -4 || uc >= FRAME_W + 4 || h2(k, 42) >= DEV.coalSupports) return null;
-  let top = -Infinity, bot = Infinity;
-  for (const x of [fx - 4, fx + FRAME_W / 2, fx + FRAME_W + 4]) { top = Math.max(top, titleRoof(x, S)); bot = Math.min(bot, titleFloor(x, S)); }
-  return bot - top >= SUP_H[0] && bot - top <= SUP_H[1] ? { uc, top } : null;
+// (Coal Seams) is there a rail along tunnel k's floor at wx (DEV.coalRails of them)?
+/** @param {number} wx @param {number} k */
+const railOn = (wx, k) => titleNoise(wx / 90 + k * 3.7 + 11, 210 + k * 9) > 1 - DEV.coalRails;
+
+// (Coal Seams, owner 2026-10-17: "too copy and paste") the timber: sets measured off the rock (art/timber.js, the old game's
+// timberFrame), planned a little ahead of the columns being made, lane by lane: the natural zones' floor (lane 0) and each mine
+// tunnel. As the old game's timberWorks: in propped patches (DEV.coalSupports of the slice) sets stand side by side, every bay;
+// outside them a tunnel keeps a sparse, half-rotted run (coalSupSparse of its bays gone, a fallen prop lying in some) and the
+// natural cave the odd lone set (coalSupLone)
+const TIM_AHEAD = 48;                 // columns planned ahead of the one being made
+/** @param {TitleScene} S @param {number} wx */
+const timPatch = (S, wx) => { const a = wx / 340 + (S.seed % 997) * 1.7; return titleNoise(a, 333) * 0.7 + titleNoise(a * 2.4 + 5, 335) * 0.3 > coalQ(DEV.coalSupports); };
+// a natural column's rock (as genCol carves it: roof, floor, the Cavern's boulders, the Digging zone's pockets), cached
+/** @param {TitleScene} S @param {number} c @returns {Uint8Array} */
+function natCol(S, c) {
+  const C = S.timCol || (S.timCol = new Map());
+  let a = C.get(c);
+  if (a) return a;
+  const wx = c * TCELL, Zn = titleZoneSpan(wx, S), cy = titleCeil(wx, S), fy = titleFloor(wx, S);
+  a = new Uint8Array(S.rows);
+  for (let r = 0; r < S.rows; r++) {
+    const y = (r + 0.5) * TCELL;
+    let s = y < cy || y >= fy || (Zn.z === 'spider' && spiderRock(wx, y, Zn, cy, fy));
+    if (s && Zn.z === 'winding' && windAir(wx, y, Zn, S)) s = false;
+    a[r] = s ? 1 : 0;
+  }
+  if (C.size > 500) C.delete(C.keys().next().value);
+  C.set(c, a);
+  return a;
+}
+/** @param {TitleScene} S @param {number} wx */
+const natOk = (S, wx) => { const Z = titleZoneSpan(wx, S); return Z.z !== 'timber' && !Z.flat && !Z.blk && !(Z.z === 'spider' && Z.sv === 'beams') && coalAt(S, wx); };
+// plan one lane up to TIM_AHEAD past column c: n its number, [from, to) its columns, solid its rock, rowOf a row in the open
+// over its floor at a column (-1: none), gallery (a mine tunnel's run), skip (no set over these columns)
+/** @param {TitleScene} S @param {number} n @param {number} c @param {number} from @param {number} to @param {(c: number, r: number) => boolean} solid
+ * @param {(c: number) => number} rowOf @param {boolean} gallery @param {(a: number, b: number) => boolean} skip */
+function timberPlan(S, n, c, from, to, solid, rowOf, gallery, skip) {
+  const P = S.tim || (S.tim = {}), L = P[n] || (P[n] = { x: Math.max(from, c), sets: [] });
+  L.sets = L.sets.filter(t => t.c1 * TCELL > S.scroll - 60);   // (kept till they scroll off: the shots find them)
+  const o = { L: TM.BEAM, D: TM.BEAMD, minH: 9, maxH: Math.round(DEV.coalSupMaxH / TCELL), gapMax: 8, rot: DEV.coalSupRot, broken: DEV.coalSupBroken };
+  for (let i = 0; i < 400 && L.x < Math.min(to, c + TIM_AHEAD); i++) {
+    const x = L.x, R = timberRng(h2(x + n * 7919, 501 + (S.seed % 997))), patch = timPatch(S, x * TCELL);
+    const wd = Math.round(kru('coalSupW', R()) / TCELL), gap = Math.round(kru('coalSupGap', R()) / TCELL), y = rowOf(x + (wd >> 1));
+    const fits = () => y >= 0 && x + wd + 3 < to && !skip(x - 3, x + wd + 3) ? timberSet(solid, x, x + wd, y, R, o) : null;
+    const fallen = () => {
+      const len = 8 + Math.floor(R() * 8), F = R() < DEV.coalSupFallen && y >= 0 && x + len < to && !skip(x, x + len) ? timberFallen(solid, x, len, y, o) : null;
+      if (F) L.sets.push(F);
+    };
+    if (!patch && !gallery) {                         // the natural cave outside a patch: the odd lone set
+      const T = R() < DEV.coalSupLone ? fits() : null;
+      if (T) L.sets.push(T); else fallen();
+      L.x = x + 30; continue;
+    }
+    const T = fits();
+    if (!T) { L.x = x + 1; continue; }
+    if (patch || R() >= DEV.coalSupSparse) L.sets.push(T); else fallen();
+    L.x = x + wd + gap;
+  }
+}
+// the timber over column c: its cells (row → material) from every lane's sets, and a set's cap row if c is its middle
+/** @param {TitleScene} S @param {number} c @param {TMine | undefined} M @param {{ c: number, f: number }[]} bands
+ * @returns {{ cells: Map<number, number>, lamp: number | null }} */
+function timberCol(S, c, M, bands) {
+  const rows = S.rows, sd = (/** @type {number} */ r) => r < 0 || r >= rows;
+  // the natural zones' floor
+  timberPlan(S, 0, c, -Infinity, Infinity, (cc, r) => sd(r) || !!natCol(S, cc)[r], cc => {
+    const r = Math.floor(titleFloor(cc * TCELL, S) / TCELL) - 4;
+    return r > 0 && r < rows && !natCol(S, cc)[r] ? r : -1;
+  }, false, (a, b) => !natOk(S, a * TCELL) || !natOk(S, b * TCELL) || !natOk(S, (a + b) / 2 * TCELL));
+  // each mine tunnel: its hewn roof and floor; none by a hole between tunnels (or its chute), clear of the walled ends
+  if (M) bands.forEach((q, k) => {
+    const n = 1 + (M.L[0] | 0) * 8 + k;
+    /** @param {number} cc @param {number} r */
+    const solid = (cc, r) => {
+      const x = cc * TCELL, y = (r + 0.5) * TCELL, d = dig(x, k);
+      const up = Math.min(d.up, k < bands.length - 1 ? M.sh[k] - dig(x, k + 1).dn - 4 : 99);
+      return sd(r) || y < q.c - up || y >= (railOn(x, k) ? q.f : q.f + d.dn);
+    };
+    timberPlan(S, n, c, Math.ceil((M.L[k] + 24) / TCELL), Math.floor((M.Rx[k] - 24) / TCELL), solid, () => Math.floor(q.f / TCELL) - 4, true, (a, b) => {
+      if (built(a * TCELL, S) < 0.95 || built(b * TCELL, S) < 0.95) return true;
+      return M.holes.some(h => (h.k === k || h.k + 1 === k) && h.k + 1 < bands.length && b * TCELL > h.x - h.w / 2 - (h2(Math.floor(h.x), 88 + h.k) < DEV.coalChutes ? 46 : 8)
+        && a * TCELL < h.x + h.w / 2 + (h2(Math.floor(h.x), 88 + h.k) < DEV.coalChutes ? 46 : 8));
+    });
+  });
+  /** @type {Map<number, number>} */
+  const cells = new Map();
+  let lamp = null;
+  for (const L of Object.values(S.tim || {})) for (const T of L.sets) {
+    if (c < T.c0 || c > T.c1) continue;
+    const col = T.cols.get(c);
+    if (col) for (const [r, m] of col) if (!cells.has(r)) cells.set(r, m);
+    if (T.mid === c) lamp = T.cap;
+  }
+  return { cells, lamp };
 }
 // Coal Seams' mine set in column c (the old game's floor 2 decorations): rusted lanterns hung off whatever rock or timber is over a
 // spot in the open (the roof, a boulder's underside) and under a support's cap now and then; explosive minecarts (the floor flat
 // under the whole cart) and pickaxes lying on the floors: a natural zone's, a mine's tunnels' (tuns: those open here)
-/** @param {TitleScene} S @param {number} c @param {number} wx @param {TZone} Zn @param {{ uc: number, top: number } | null} sup
+/** @param {TitleScene} S @param {number} c @param {number} wx @param {TZone} Zn @param {number | null | undefined} cap a timber set's cap row, at its middle column
  * @param {number} rcy @param {number} fy @param {{ rf: number, f: number, rail: boolean }[]} tuns */
-function coalDeco(S, c, wx, Zn, sup, rcy, fy, tuns) {
+function coalDeco(S, c, wx, Zn, cap, rcy, fy, tuns) {
   const R = S.rnd, base = ci(S, c, 0);
-  if (sup && Math.abs(sup.uc - FRAME_W / 2) < 1 && R() < 0.6) lamp(S, c, wx, sup.top + 6, 3 + R() * 5, true);
+  if (cap != null && R() < 0.5) lamp(S, c, wx, (cap + 2.5) * TCELL, 3 + R() * 5, true);
   if (Zn.z !== 'timber' && !(c % 5) && R() < DEV.coalLamps) {
     const y0 = rcy + 2 + R() * Math.max(0, fy - rcy - 40);
     if (!HOLDS[S.cells[base + Math.floor(y0 / TCELL)]]) lamp(S, c, wx, y0, 4 + R() * 14, true);

@@ -45,6 +45,7 @@ export * from './art/sign.js';
 export * from './art/ramps.js';
 export * from './art/gunart.js';
 export * from './art/titlescene.js';
+export * from './art/timber.js';
 export * from './art/gremtitle.js';
 export * from './art/firelab.js';
 export * from './art/zonelab.js';

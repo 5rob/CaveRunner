@@ -1285,9 +1285,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   Object.assign(DEV_DEFAULTS, { gremStartLv: 1 });
   DEV_META.push({ k: "gremStartLv", g: "grem", label: "Start at level (2: Coal Seams; for a look at a later floor)", min: 1, max: 24, step: 1 });
   DEV_GROUPS.push(["grem", "Grem Mode"]);
-  Object.assign(DEV_DEFAULTS, { coalSupports: 0.55, coalLamps: 0.05, coalCarts: 0.02, coalPicks: 0.05, coalSoot: 14, coalCartR: 18, coalCartDmg: 25, coalLampLight: 0.75 });
+  Object.assign(DEV_DEFAULTS, { coalLamps: 0.05, coalCarts: 0.02, coalPicks: 0.05, coalSoot: 14, coalCartR: 18, coalCartDmg: 25, coalLampLight: 0.75 });
   DEV_META.push(
-    { k: "coalSupports", g: "coal", label: "Timber supports: chance at each spot (one spot every 96 units)", min: 0, max: 1, step: 0.05 },
     { k: "coalLamps", g: "coal", label: "Rusted lanterns: chance at each spot (every 10 units)", min: 0, max: 0.5, step: 5e-3 },
     { k: "coalCarts", g: "coal", label: "Explosive minecarts: chance at each spot on a flat floor (every 6 units)", min: 0, max: 0.3, step: 5e-3 },
     { k: "coalPicks", g: "coal", label: "Pickaxes: chance at each spot on a floor (every 6 units)", min: 0, max: 0.5, step: 5e-3 },
@@ -1307,6 +1306,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   );
   colourKnobs("coal", [["coalCol", "Coal colours (dark, light)", "#101014", "#232838", "c"], ["coalGlint", "Coal glints (blue sheen)", "#5d6a86", "#a9bce0", "g"]]);
   Object.assign(DEV_DEFAULTS, { coalGlints: 0.05 });
+  Object.assign(DEV_DEFAULTS, { coalSupports: 0.4, coalSupLone: 0.15, coalSupSparse: 0.5, coalSupRot: 0.5, coalSupBroken: 0.15, coalSupFallen: 0.3, coalSupMaxH: 80 });
+  rangeKnobs("coal", [["coalSupW", "Timber sets: width (units)", 16, 80, 1, 24, 44], ["coalSupGap", "Timber sets: gap between them in a patch (units)", 0, 60, 1, 4, 18]]);
+  DEV_META.push(
+    { k: "coalSupports", g: "coal", label: "Timber: share of the slice in propped patches (sets side by side)", min: 0, max: 1, step: 0.05 },
+    { k: "coalSupLone", g: "coal", label: "Timber: a lone set in the open cave outside patches (chance every 60 units)", min: 0, max: 1, step: 0.05 },
+    { k: "coalSupSparse", g: "coal", label: "Timber: a tunnel’s bays rotted away outside patches", min: 0, max: 1, step: 0.05 },
+    { k: "coalSupRot", g: "coal", label: "Timber: chance a post has a rotten patch", min: 0, max: 1, step: 0.05 },
+    { k: "coalSupBroken", g: "coal", label: "Timber: chance a set has a snapped post", min: 0, max: 1, step: 0.05 },
+    { k: "coalSupFallen", g: "coal", label: "Timber: a fallen prop on the floor where a set isn’t", min: 0, max: 1, step: 0.05 },
+    { k: "coalSupMaxH", g: "coal", label: "Timber: tallest post (units)", min: 20, max: 200, step: 2 }
+  );
   Object.assign(DEV_DEFAULTS, { coalRails: 0.6, coalPiles: 0.5, coalChutes: 0.6, coalSpill: 0.5 });
   DEV_META.push(
     { k: "coalRails", g: "coal", label: "Minecart rails: share of the Mines’ tunnel floors", min: 0, max: 1, step: 0.05 },
@@ -9475,6 +9485,109 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var CRYSTAL_PAL = ["#2a0306", "#6e0a12", "#a3162a", "#ffffff"], CRYSTAL_R = 11;
   var GREEN_PAL = ["#03240c", "#0b6a26", "#1fae46", "#ffffff"];
 
+  // src/art/timber.js
+  function timberRng(seed) {
+    let a = (Math.floor(seed * 4294967296) ^ 2654435769) >>> 0;
+    return () => {
+      a = a + 1831565813 >>> 0;
+      let t = a;
+      t = Math.imul(t ^ t >>> 15, t | 1);
+      t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+  var put = (T2, c, r, m) => {
+    let col = T2.cols.get(c);
+    if (!col) T2.cols.set(c, col = /* @__PURE__ */ new Map());
+    col.set(r, m);
+  };
+  function timberSet(solid, xa, xb, y, R, o) {
+    const down = (x) => {
+      let k = y;
+      while (k < y + 80 && !solid(x, k + 1)) k++;
+      return solid(x, k + 1) ? k + 1 : -1;
+    };
+    const up = (x) => {
+      let k = y;
+      while (k > y - 80 && !solid(x, k - 1)) k--;
+      return solid(x, k - 1) ? k - 1 : -1;
+    };
+    if (xb - xa < 8 || solid(xa, y) || solid(xb, y)) return null;
+    const fa = down(xa), fa2 = down(xa + 1), fb = down(xb), fb2 = down(xb - 1);
+    const ca = up(xa), ca2 = up(xa + 1), cb = up(xb), cb2 = up(xb - 1);
+    if ([fa, fa2, fb, fb2, ca, ca2, cb, cb2].some((v) => v < 0)) return null;
+    if (Math.abs(fa - fa2) > 1 || Math.abs(fb - fb2) > 1) return null;
+    if (o.fy != null && (Math.abs(fa - o.fy) > 3 || Math.abs(fb - o.fy) > 3)) return null;
+    const topA = Math.max(ca, ca2) + 1, topB = Math.max(cb, cb2) + 1;
+    const botA = Math.min(fa, fa2), botB = Math.min(fb, fb2);
+    const hA = botA - topA, hB = botB - topB;
+    if (Math.min(hA, hB) < o.minH || Math.max(hA, hB) > o.maxH) return null;
+    const capY = (x) => Math.round(topA + (topB - topA) * (Math.max(xa, Math.min(xb, x)) - xa) / (xb - xa));
+    const roof = [];
+    let loose = 0;
+    for (let x = xa; x <= xb; x++) {
+      if (solid(x, y)) return null;
+      const r = up(x);
+      if (r < 0) return null;
+      const gap = capY(x) - (r + 1);
+      if (gap < -2 || gap > o.gapMax) return null;
+      if (gap > 3) loose++;
+      roof.push(r);
+    }
+    if (loose > (xb - xa + 1) * 0.3) return null;
+    const T2 = { c0: xa - 3, c1: xb + 3, cols: /* @__PURE__ */ new Map(), mid: Math.round((xa + xb) / 2), cap: capY((xa + xb) / 2) };
+    const { L, D } = o;
+    for (let x = xa; x <= xb; x++) for (let yy = roof[x - xa] + 1; yy < capY(x); yy++) put(T2, x, yy, D);
+    const ohA = 1 + Math.floor(R() * 3), ohB = 1 + Math.floor(R() * 3);
+    for (let x = xa - ohA; x <= xb + ohB; x++) {
+      const cy = capY(x);
+      put(T2, x, cy, L);
+      put(T2, x, cy + 1, D);
+    }
+    const snap = R() < o.broken ? R() < 0.5 ? 0 : 1 : -1;
+    [[xa, topA, botA], [xb - 1, topB, botB]].forEach(([px, top, bot], i) => {
+      const rot = R() < o.rot ? top + 4 + Math.floor(R() * Math.max(1, bot - top - 8)) : -99;
+      const brk = i === snap ? top + 3 + Math.floor(R() * Math.max(1, bot - top - 8)) : -99;
+      for (let yy = top + 2; yy < bot; yy++) {
+        if (Math.abs(yy - brk) < 2) continue;
+        const kink = brk > 0 && yy < brk ? i ? -1 : 1 : 0;
+        const dk = Math.abs(yy - rot) < 2;
+        put(T2, px + kink, yy, dk ? D : L);
+        put(T2, px + 1 + kink, yy, D);
+      }
+      if (R() < 0.75) for (let dx = -1; dx <= 2; dx++) put(T2, px + dx, bot - 1, D);
+    });
+    const h3 = Math.min(hA, hB), kb = R(), kl = 3 + Math.floor(R() * 4);
+    if (h3 >= 12) for (let k = 0; k <= kl; k++) {
+      if (kb < 0.7 && snap !== 0) put(T2, xa + 2 + k, capY(xa + 2 + k) + 2 + (kl - k), D);
+      if ((kb < 0.45 || kb >= 0.7 && kb < 0.85) && snap !== 1) put(T2, xb - 2 - k, capY(xb - 2 - k) + 2 + (kl - k), D);
+    }
+    if (h3 >= 22 && snap < 0) {
+      const tie = R();
+      if (tie < 0.35) {
+        const lr = R() < 0.5, x0 = xa + 2, x1 = xb - 1, y0 = lr ? botA - 2 : capY(xa) + 2, y1 = lr ? capY(xb) + 2 : botB - 2;
+        for (let x = x0; x < x1; x++) put(T2, x, Math.round(y0 + (y1 - y0) * (x - x0) / (x1 - x0)), D);
+      } else if (tie < 0.6) {
+        const ty = Math.round((capY(xa) + botA) / 2 + (R() - 0.5) * 4);
+        for (let x = xa + 2; x < xb - 1; x++) put(T2, x, ty, D);
+      }
+    }
+    return T2;
+  }
+  function timberFallen(solid, x0, len, y, o) {
+    const T2 = { c0: x0, c1: x0 + len, cols: /* @__PURE__ */ new Map(), mid: -1, cap: 0 };
+    let last = -1;
+    for (let k = 0; k < len; k++) {
+      let r = y;
+      while (r < y + 12 && !solid(x0 + k, r + 1)) r++;
+      if (!solid(x0 + k, r + 1) || solid(x0 + k, r) || last >= 0 && Math.abs(r - last) > 1) return null;
+      last = r;
+      put(T2, x0 + k, r, o.D);
+      if (k > 1 && k < len - 2) put(T2, x0 + k, r - 1, o.L);
+    }
+    return T2;
+  }
+
   // src/data/perks.js
   var PERKS = {
     eye: {
@@ -11492,7 +11605,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function genCol(S, c) {
     const wx = c * TCELL, Zn = titleZoneSpan(wx, S), z = Zn.z, b = built(wx, S), R = S.rnd;
     const cy = titleCeil(wx, S), fy = titleFloor(wx, S), base = ci(S, c, 0);
-    const coal = coalAt(S, wx), sup = coal && z !== "timber" && !Zn.flat ? coalSupport(wx, S) : null, seam = coal && !Zn.flat;
+    const coal = coalAt(S, wx), seam = coal && !Zn.flat;
     const u = (wx % FRAME_GAP + FRAME_GAP) % FRAME_GAP;
     const M = z === "timber" ? Zn.mine : void 0, bands = M ? mineBands(M, S) : [];
     const tun = bands.map((q, k) => {
@@ -11500,7 +11613,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const fx0 = wx - uc - 4, fx1 = wx - uc + FRAME_W + 4;
       const dn = dig(wx, k).dn, up = Math.min(dig(wx, k).up, k < bands.length - 1 ? M.sh[k] - dig(wx, k + 1).dn - 4 : 99);
       const open = !!M && wx > M.L[k] - 14 && wx < M.Rx[k] + 14;
-      const rail = coal && open && titleNoise(wx / 90 + k * 3.7 + 11, 210 + k * 9) > 1 - DEV.coalRails;
+      const rail = coal && open && railOn(wx, k);
       let pile = 0;
       if (coal && M) {
         for (const [e, d] of [[0, wx - M.L[k]], [1, M.Rx[k] - wx]]) if (d < PILE_W && h2(Math.floor(e ? M.Rx[k] : M.L[k]) + k * 7, 77 + e) < DEV.coalPiles)
@@ -11517,13 +11630,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         v,
         rail,
         pile,
-        frame: open && !!M && uc < FRAME_W + 4 && built(fx0, S) > 0.95 && built(fx1, S) > 0.95 && fx0 > M.L[k] + 12 && fx1 < M.Rx[k] - 12
+        frame: !coal && open && !!M && uc < FRAME_W + 4 && built(fx0, S) > 0.95 && built(fx1, S) > 0.95 && fx0 > M.L[k] + 12 && fx1 < M.Rx[k] - 12
       };
     });
     const inside = (t, y) => !!M && wx > M.L[t.k] + (titleNoise(y / 9, 71 + t.k * 3) - 0.5) * 18 + (titleNoise(y / 3, 73 + t.k * 3) - 0.5) * 6 && wx < M.Rx[t.k] + (titleNoise(y / 9, 79 + t.k * 3) - 0.5) * 18 + (titleNoise(y / 3, 83 + t.k * 3) - 0.5) * 6;
     const near = M ? M.holes.filter((h3) => h3.k + 1 < bands.length && Math.abs(wx - h3.x) < h3.w / 2 + 4) : [];
     const inHole = (y) => near.some((h3) => y >= bands[h3.k + 1].f - 0.5 && y < bands[h3.k].c + 0.5 && Math.abs(wx - h3.x) < h3.w / 2 + (titleNoise(y / 5, h3.x) - 0.5) * 8);
     const chutes = coal && M ? M.holes.map((h3) => chuteOf(h3, bands, wx)).filter((q) => !!q) : [];
+    const tc = coal && !Zn.flat && !Zn.blk ? timberCol(S, c, M, bands) : null;
     const patch = !coal && titleNoise(wx / 14, 11) > 0.52, tuft = patch && h2(c, 5) < 0.4 ? h2(c, 6) < 0.4 ? 2 : 1 : 0;
     const mossDeep = 2 + (patch ? 1 + Math.floor(h2(c, 7) * 3) : 0);
     const rk = Math.floor(wx / 60), rcx = rk * 60 + 10 + h2(rk, 1) * 40, rw = 6 + h2(rk, 2) * 6, rd = (wx - rcx) / rw;
@@ -11558,12 +11672,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       else if (ledge && y >= ly - 2 && y < ly && tuft) m = TM.GRASS;
       if (m === TM.AIR && y >= fy - rub && y < fy) m = y < fy - rub + 2 && h2(c, r) < 0.7 ? TM.RUBM : TM.RUB;
       if (m === TM.AIR && y >= fy - tuft * TCELL && y < fy && zc !== "paved") m = TM.GRASS;
-      if (sup && m === TM.AIR && y >= sup.top && y < fy) m = frameCell(sup.uc, y - sup.top, fy - y);
       if (z === "winding" && TITLE_SOLID[m] && windAir(wx, y, Zn, S)) m = TM.AIR;
       if (TITLE_SOLID[m] && zoneOpenAt(wx, y, S, Zn, fy, Zc)) {
         m = TM.AIR;
         carved = true;
       }
+      if (tc && (m === TM.AIR || m === TM.RAIL) && tc.cells.has(r)) m = tc.cells.get(r) || m;
       if (m === TM.AIR) {
         for (const q of chutes) if (y >= q.y - 1 && y < q.y + 5) m = y < q.y + 1 ? TM.BEAMD : TM.BEAM;
       }
@@ -11627,7 +11741,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (q && q.end) (S.chutes || (S.chutes = [])).push({ x: wx, y: q.y - 1.5, s: q.s });
     }
     if (coal) {
-      coalDeco(S, c, wx, Zn, sup, rcy, fy, tun.filter((t) => t.open && inside(t, t.rf - 3)));
+      coalDeco(S, c, wx, Zn, tc && tc.lamp, rcy, fy, tun.filter((t) => t.open && inside(t, t.rf - 3)));
       return;
     }
     const nat = 1 - b, grove = zr === "grove";
@@ -11748,7 +11862,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const L = lookAt(S, wx);
     return !!L && floorDeco(L.floor || 1) === "coal";
   };
-  var SUP_GAP = 96, SUP_H = [18, 70];
   var PILE_W = 22, PILE_H = 9;
   var CHUTE_W = 40, CHUTE_D = 24;
   function chuteOf(h3, bands, wx) {
@@ -11781,19 +11894,94 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return false;
   }
   var SOOT_GAP = 30;
-  function coalSupport(wx, S) {
-    const k = Math.floor(wx / SUP_GAP), fx = k * SUP_GAP + 8 + h2(k, 41) * (SUP_GAP - FRAME_W - 16), uc = wx - fx;
-    if (uc < -4 || uc >= FRAME_W + 4 || h2(k, 42) >= DEV.coalSupports) return null;
-    let top = -Infinity, bot = Infinity;
-    for (const x of [fx - 4, fx + FRAME_W / 2, fx + FRAME_W + 4]) {
-      top = Math.max(top, titleRoof(x, S));
-      bot = Math.min(bot, titleFloor(x, S));
+  var railOn = (wx, k) => titleNoise(wx / 90 + k * 3.7 + 11, 210 + k * 9) > 1 - DEV.coalRails;
+  var TIM_AHEAD = 48;
+  var timPatch = (S, wx) => {
+    const a = wx / 340 + S.seed % 997 * 1.7;
+    return titleNoise(a, 333) * 0.7 + titleNoise(a * 2.4 + 5, 335) * 0.3 > coalQ(DEV.coalSupports);
+  };
+  function natCol(S, c) {
+    const C = S.timCol || (S.timCol = /* @__PURE__ */ new Map());
+    let a = C.get(c);
+    if (a) return a;
+    const wx = c * TCELL, Zn = titleZoneSpan(wx, S), cy = titleCeil(wx, S), fy = titleFloor(wx, S);
+    a = new Uint8Array(S.rows);
+    for (let r = 0; r < S.rows; r++) {
+      const y = (r + 0.5) * TCELL;
+      let s = y < cy || y >= fy || Zn.z === "spider" && spiderRock(wx, y, Zn, cy, fy);
+      if (s && Zn.z === "winding" && windAir(wx, y, Zn, S)) s = false;
+      a[r] = s ? 1 : 0;
     }
-    return bot - top >= SUP_H[0] && bot - top <= SUP_H[1] ? { uc, top } : null;
+    if (C.size > 500) C.delete(C.keys().next().value);
+    C.set(c, a);
+    return a;
   }
-  function coalDeco(S, c, wx, Zn, sup, rcy, fy, tuns) {
+  var natOk = (S, wx) => {
+    const Z = titleZoneSpan(wx, S);
+    return Z.z !== "timber" && !Z.flat && !Z.blk && !(Z.z === "spider" && Z.sv === "beams") && coalAt(S, wx);
+  };
+  function timberPlan(S, n, c, from, to, solid, rowOf, gallery, skip) {
+    const P2 = S.tim || (S.tim = {}), L = P2[n] || (P2[n] = { x: Math.max(from, c), sets: [] });
+    L.sets = L.sets.filter((t) => t.c1 * TCELL > S.scroll - 60);
+    const o = { L: TM.BEAM, D: TM.BEAMD, minH: 9, maxH: Math.round(DEV.coalSupMaxH / TCELL), gapMax: 8, rot: DEV.coalSupRot, broken: DEV.coalSupBroken };
+    for (let i = 0; i < 400 && L.x < Math.min(to, c + TIM_AHEAD); i++) {
+      const x = L.x, R = timberRng(h2(x + n * 7919, 501 + S.seed % 997)), patch = timPatch(S, x * TCELL);
+      const wd = Math.round(kru("coalSupW", R()) / TCELL), gap = Math.round(kru("coalSupGap", R()) / TCELL), y = rowOf(x + (wd >> 1));
+      const fits = () => y >= 0 && x + wd + 3 < to && !skip(x - 3, x + wd + 3) ? timberSet(solid, x, x + wd, y, R, o) : null;
+      const fallen = () => {
+        const len = 8 + Math.floor(R() * 8), F = R() < DEV.coalSupFallen && y >= 0 && x + len < to && !skip(x, x + len) ? timberFallen(solid, x, len, y, o) : null;
+        if (F) L.sets.push(F);
+      };
+      if (!patch && !gallery) {
+        const T3 = R() < DEV.coalSupLone ? fits() : null;
+        if (T3) L.sets.push(T3);
+        else fallen();
+        L.x = x + 30;
+        continue;
+      }
+      const T2 = fits();
+      if (!T2) {
+        L.x = x + 1;
+        continue;
+      }
+      if (patch || R() >= DEV.coalSupSparse) L.sets.push(T2);
+      else fallen();
+      L.x = x + wd + gap;
+    }
+  }
+  function timberCol(S, c, M, bands) {
+    const rows = S.rows, sd = (r) => r < 0 || r >= rows;
+    timberPlan(S, 0, c, -Infinity, Infinity, (cc, r) => sd(r) || !!natCol(S, cc)[r], (cc) => {
+      const r = Math.floor(titleFloor(cc * TCELL, S) / TCELL) - 4;
+      return r > 0 && r < rows && !natCol(S, cc)[r] ? r : -1;
+    }, false, (a, b) => !natOk(S, a * TCELL) || !natOk(S, b * TCELL) || !natOk(S, (a + b) / 2 * TCELL));
+    if (M) bands.forEach((q, k) => {
+      const n = 1 + (M.L[0] | 0) * 8 + k;
+      const solid = (cc, r) => {
+        const x = cc * TCELL, y = (r + 0.5) * TCELL, d = dig(x, k);
+        const up = Math.min(d.up, k < bands.length - 1 ? M.sh[k] - dig(x, k + 1).dn - 4 : 99);
+        return sd(r) || y < q.c - up || y >= (railOn(x, k) ? q.f : q.f + d.dn);
+      };
+      timberPlan(S, n, c, Math.ceil((M.L[k] + 24) / TCELL), Math.floor((M.Rx[k] - 24) / TCELL), solid, () => Math.floor(q.f / TCELL) - 4, true, (a, b) => {
+        if (built(a * TCELL, S) < 0.95 || built(b * TCELL, S) < 0.95) return true;
+        return M.holes.some((h3) => (h3.k === k || h3.k + 1 === k) && h3.k + 1 < bands.length && b * TCELL > h3.x - h3.w / 2 - (h2(Math.floor(h3.x), 88 + h3.k) < DEV.coalChutes ? 46 : 8) && a * TCELL < h3.x + h3.w / 2 + (h2(Math.floor(h3.x), 88 + h3.k) < DEV.coalChutes ? 46 : 8));
+      });
+    });
+    const cells = /* @__PURE__ */ new Map();
+    let lamp2 = null;
+    for (const L of Object.values(S.tim || {})) for (const T2 of L.sets) {
+      if (c < T2.c0 || c > T2.c1) continue;
+      const col = T2.cols.get(c);
+      if (col) {
+        for (const [r, m] of col) if (!cells.has(r)) cells.set(r, m);
+      }
+      if (T2.mid === c) lamp2 = T2.cap;
+    }
+    return { cells, lamp: lamp2 };
+  }
+  function coalDeco(S, c, wx, Zn, cap, rcy, fy, tuns) {
     const R = S.rnd, base = ci(S, c, 0);
-    if (sup && Math.abs(sup.uc - FRAME_W / 2) < 1 && R() < 0.6) lamp(S, c, wx, sup.top + 6, 3 + R() * 5, true);
+    if (cap != null && R() < 0.5) lamp(S, c, wx, (cap + 2.5) * TCELL, 3 + R() * 5, true);
     if (Zn.z !== "timber" && !(c % 5) && R() < DEV.coalLamps) {
       const y0 = rcy + 2 + R() * Math.max(0, fy - rcy - 40);
       if (!HOLDS[S.cells[base + Math.floor(y0 / TCELL)]]) lamp(S, c, wx, y0, 4 + R() * 14, true);
@@ -22830,7 +23018,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       setPick(-1);
       changed();
     };
-    const put = (id) => {
+    const put2 = (id) => {
       const s = pick >= 0 ? pick : draft.slots.indexOf(null);
       if (s < 0) {
         setFlash("No empty slot: pick one to replace");
@@ -22967,8 +23155,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         "div",
         { className: "apledgrid" },
         h(ModGrid, {
-          onMod: put,
-          onTap: put,
+          onMod: put2,
+          onTap: put2,
           onDrag: (e, id) => dragMod(e, id, -1),
           note: "Drag a mod (its middle) onto a slot, or tap one to put it in the picked slot (no slot picked: the first empty one). Drag a slot’s mod onto another slot to swap them, or down here to throw it away."
         })
