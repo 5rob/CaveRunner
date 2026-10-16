@@ -25,17 +25,17 @@ fs.mkdirSync(OUT, { recursive: true });
   const box = await page.locator('.aplaycvs').boundingBox();
   await page.locator('.aplay').dispatchEvent('pointerdown', { clientX: box.x + box.width * 0.62, clientY: box.y + box.height * 0.45 });
   await page.waitForTimeout(150);
-  const way1 = await page.evaluate(() => { const w = window.__gremScene.lvl.data.way; return w ? { x: w.x, y: w.y, id: w.id } : null; });
+  const way1 = await page.evaluate(() => { const w = levelGoal(window.__gremScene); return w ? { x: w.x, y: w.y, id: w.id } : null; });
   check('a tap on empty cave: a waypoint for player 1', !!way1 && way1.id === 0, way1);
   await page.waitForTimeout(250);
   await page.screenshot({ path: path.join(OUT, 'grem-waypoint.png') });
   await page.locator('.aplay').dispatchEvent('pointerdown', { clientX: box.x + box.width * 0.3, clientY: box.y + box.height * 0.6 });
   await page.waitForTimeout(150);
-  const way2 = await page.evaluate(() => { const w = window.__gremScene.lvl.data.way; return w ? { x: w.x, y: w.y } : null; });
+  const way2 = await page.evaluate(() => { const w = levelGoal(window.__gremScene); return w ? { x: w.x, y: w.y } : null; });
   check('a new tap moves it', !!way2 && !!way1 && (way2.x !== way1.x || way2.y !== way1.y), [way1, way2]);
   let gone = false;
-  for (let i = 0; i < 50 && !gone; i++) { gone = await page.evaluate(() => !window.__gremScene.lvl.data.way); if (!gone) await page.waitForTimeout(200); }
-  check('he gets there (the waypoint done)', gone);
+  for (let i = 0; i < 60 && !gone; i++) { gone = await page.evaluate(() => !levelGoal(window.__gremScene)); if (!gone) await page.waitForTimeout(200); }
+  check('he gets there, holds it, then plays on (the goal done)', gone);
   await browser.close();
   console.log(fails ? fails + ' FAILED' : 'all passed');
   process.exit(fails ? 1 : 0);

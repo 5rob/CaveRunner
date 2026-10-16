@@ -23,7 +23,7 @@ import { DEV } from '../../dev/knobs.js';
 import { clearedText } from '../../art/cleared.js';
 import { drawHint } from '../../game/render/hubdraw.js';
 import { chestAt, chestOpen } from '../../auto/chests.js';
-import { levelClearedAge, levelControl, levelDeathPrompt, levelHold, levelLead, levelLost, levelScene, levelState, levelTeleportHome, levelTitle, levelWaypoint } from '../../auto/level.js';
+import { levelClearedAge, levelControl, levelDeathPrompt, levelHold, levelLead, levelLost, levelScene, levelState, levelTeleportHome, levelTitle, levelWaypoint, levelGoal } from '../../auto/level.js';
 import { levelBoss } from '../../auto/enemies.js';
 import { bagCount, healRun, newPlayer, starterKit } from '../../auto/run.js';
 import { gremFill, gremKitLoad, gremOpen, gremPrice, gremRun, gremTeamGun, gremUnlocked, gremUnlocks } from '../../auto/grem.js';
@@ -185,7 +185,7 @@ export function GremScreen() {
           ctx.beginPath(); ctx.arc(p.x * k, p.y * k, r, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
         }
         // (v1.0.101) the tapped spot the picked player is heading for: a ring in his colour, shrinking in and again
-        const L = levelState(S), wy = L && L.way;
+        const wy = levelGoal(S);
         if (wy && C) {
           const k = w / TITLE_VW, p = camTo(C, wy.x - S.scroll, wy.y), a = ((S.t - wy.t) * 1.6) % 1, col = TITLE_COLS[wy.id % TITLE_COLS.length];
           ctx.save(); ctx.strokeStyle = col; ctx.lineWidth = 2.5;

@@ -157,7 +157,9 @@ const CLASSIC = { shoot: 1, turret: 1, chase: 1, bomb: 1 };
  *   nav: { F: any, fx: number, fy: number, t: number }, stepT?: number, sawS?: number, rst?: { t?: number }, rub?: string, rubWas?: boolean,
  *   hide?: boolean, out?: boolean, outT?: number, stand?: boolean, dealt?: number, shieldT?: number, fuel?: number, empty?: boolean, jetSt?: { cut: number, onT: number, start: boolean, gap?: number }, sputN?: number, dry?: boolean, shieldHit?: number, ghost?: { x: number, y: number, cd: number, fired: number } | null, clr?: { p: number, g: number } | null, clrT?: number,
  *   ctl?: RunnerCtl | null, ctlWas?: boolean, cvx?: number, jetIn?: { nx: number, ny: number } | null, jx?: number, jy?: number, smokeAcc?: number, smokeN?: number, rag?: import('../world/ragdoll.js').Ragdoll | null, lamp?: boolean,
- *   hang?: TProp | WebLine | null, hangGo?: number, swing?: number, ctlIdle?: number, navT?: number }} TRunner */
+ *   hang?: TProp | WebLine | null, hangGo?: number, swing?: number, ctlIdle?: number, navT?: number, goal?: TGoal | null }} TRunner */
+// (goal: Grem Mode's tapped spot, owner v1.0.102: the autopilot heads there as it heads anywhere; goalStep)
+/** @typedef {{ x: number, y: number, t: number, hold: number }} TGoal */
 /** a player steered by hand (CaveRunner Auto, feedback round 2: the selected player in a level): the pill stick's push
  * @typedef {{ active: boolean, nx: number, ny: number, mag: number }} RunnerCtl */
 // a fixed strip in place of the scrolling ring (CaveRunner Auto's hub, auto/hub.js): w columns, each cell's material from
@@ -1612,6 +1614,28 @@ const boxRock = (S, x, y, feet = true) => {
   for (let i = 0; i <= 2; i++) for (let j = 0; j <= (feet ? 4 : 3); j++) if (titleSolid(S, x + 1 + (PW - 2) * i / 2, y + 1 + (PH - 2) * j / 4)) return true;
   return false;
 };
+// (Grem Mode, owner v1.0.102: "it should work just like the auto movement, but with a temporary position goal") a tapped spot
+// (r.goal, world x, y: auto/level.js levelWaypoint): he flies there on the autopilot (flyStep's thrust and steering, rock in his
+// way risen over, dipped under or sawn through as ever: pickTarget aims only at it). GOAL_R from it he's there: he holds it for
+// DEV.autoCtlWait s (the idle wait), then the goal's gone and he plays by himself again; not there in DEV.gremWayT s, the same
+/** @param {TitleScene} S @param {TRunner} r */
+function goalAim(S, r) {
+  const g = r.goal;
+  if (!g) return;
+  r.tx = Math.max(8, Math.min(TITLE_VW - PW - 8, g.x - S.scroll - PW / 2)); r.ty = g.y - PH / 2; r.retarget = 0.25;
+}
+const GOAL_R = 8;
+/** @param {TitleScene} S @param {TRunner} r @param {number} dt */
+function goalStep(S, r, dt) {
+  const g = r.goal;
+  if (!g) return;
+  if (g.hold < 0 && Math.hypot(g.x - (S.scroll + r.x + PW / 2), g.y - (r.y + PH / 2)) < GOAL_R) g.hold = DEV.autoCtlWait;
+  if (g.hold >= 0 ? (g.hold -= dt) <= 0 : S.t - g.t > DEV.gremWayT) { r.goal = null; r.retarget = 0; return; }
+  // in the air for it (a run along the floor can't reach a height): off the floor as a flight starts, unless the tank's low
+  if (r.mode === 'run' && !r.dig && !(fuelOn(S) && fuelOf(r) < FUEL_TAKEOFF)) { setMode(S, r, 'fly', 1); r.vy = -40; r.ground = false; r.burst = false; r.jet = false; }
+  if (r.mode === 'fly' && !(fuelOn(S) && r.empty)) r.modeT = Math.max(r.modeT, 0.5);   // no landing on the way (dry: he lands to refill)
+  goalAim(S, r);
+}
 // how long a player runs, and flies, before switching (each its own roll: owner, v0.0.166)
 /** @param {() => number} R */
 const runTime = R => 1.2 + R() * 5.5;
@@ -1621,6 +1645,7 @@ const flyTime = R => 1.5 + R() * 5;
 // floor or up into the roof (it saws its way there: tunnels)
 /** @param {TitleScene} S @param {TRunner} r */
 function pickTarget(S, r) {
+  if (r.goal) { goalAim(S, r); return; }   // (v1.0.102) a tapped spot: there, nowhere else
   const R = S.rnd;
   r.tx = 18 + R() * (TITLE_VW * 0.5);
   const twx = r.tx + PW / 2 + S.scroll + 20, c = titleCeil(twx, S), f = titleFloor(twx, S), roll = R();
@@ -1772,11 +1797,12 @@ function stepRunnerMove(S, r, dt) {
   if (r.ctlWas && !on) { r.cvx = 0; r.retarget = 0; if (!r.ground) { r.mode = 'fly'; r.modeT = 0; } }
   r.ctlWas = on;
   if (!on || r.dig) r.hang = null;
+  if (r.goal && !on) goalStep(S, r, dt);
   if (r.dig) digStep(S, r, dt);
   else if (on && r.ctl) ctlStep(S, r, r.ctl, dt);
   else if (r.mode === 'run') runStep(S, r, dt);
   else flyStep(S, r, dt);
-  r.x = Math.max(8, Math.min(r.ctl ? TITLE_VW - PW - 8 : TITLE_VW * 0.62, r.x));   // (one steered by hand: the whole screen)
+  r.x = Math.max(8, Math.min(r.ctl || r.goal ? TITLE_VW - PW - 8 : TITLE_VW * 0.62, r.x));   // (one steered by hand, or heading for a tapped spot: the whole screen)
   // (Auto's tall level) never below the play area's bottom edge: a player sawing down there went out of the level
   r.y = Math.max(S.top - 40, Math.min(S.bot + 10, S.lvl && S.bot - S.top > MINE_TALL ? S.vh - PH - 1 : Infinity, r.y));
   if (fuelOn(S)) {
@@ -1998,7 +2024,7 @@ function digStep(S, r, dt) {
   S.digT += dt; r.dig += dt;
   if (ctlOn(r)) { ctlDig(S, r, r.ctl, dt); return; }
   if (r.mode === 'fly' && (r.retarget <= 0 || Math.hypot(r.tx - r.x, r.ty - r.y) < 6)) pickTarget(S, r);
-  if (r.dig > 6 && r.mode === 'fly') {                   // long enough underground: up to the open air
+  if (r.dig > 6 && r.mode === 'fly' && !r.goal) {        // long enough underground: up to the open air (not while a tapped spot's in there)
     const twx = r.x + PW / 2 + S.scroll, c = titleCeil(twx, S), f = titleFloor(twx, S);
     r.ty = c + (f - c) * 0.4; r.tx = r.x;
   }

@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v1.0.101</title>
-<!-- VERSION = 'v1000101' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v1.0.102</title>
+<!-- VERSION = 'v1000102' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -1306,7 +1306,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v1.0.101';</script>
+<script>const VERSION = 'v1.0.102';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -15692,9 +15692,40 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     for (let i = 0; i <= 2; i++) for (let j = 0; j <= (feet ? 4 : 3); j++) if (titleSolid(S2, x + 1 + (PW - 2) * i / 2, y + 1 + (PH - 2) * j / 4)) return true;
     return false;
   };
+  function goalAim(S2, r) {
+    const g = r.goal;
+    if (!g) return;
+    r.tx = Math.max(8, Math.min(TITLE_VW - PW - 8, g.x - S2.scroll - PW / 2));
+    r.ty = g.y - PH / 2;
+    r.retarget = 0.25;
+  }
+  var GOAL_R = 8;
+  function goalStep(S2, r, dt) {
+    const g = r.goal;
+    if (!g) return;
+    if (g.hold < 0 && Math.hypot(g.x - (S2.scroll + r.x + PW / 2), g.y - (r.y + PH / 2)) < GOAL_R) g.hold = DEV.autoCtlWait;
+    if (g.hold >= 0 ? (g.hold -= dt) <= 0 : S2.t - g.t > DEV.gremWayT) {
+      r.goal = null;
+      r.retarget = 0;
+      return;
+    }
+    if (r.mode === "run" && !r.dig && !(fuelOn(S2) && fuelOf(r) < FUEL_TAKEOFF)) {
+      setMode(S2, r, "fly", 1);
+      r.vy = -40;
+      r.ground = false;
+      r.burst = false;
+      r.jet = false;
+    }
+    if (r.mode === "fly" && !(fuelOn(S2) && r.empty)) r.modeT = Math.max(r.modeT, 0.5);
+    goalAim(S2, r);
+  }
   var runTime = (R) => 1.2 + R() * 5.5;
   var flyTime = (R) => 1.5 + R() * 5;
   function pickTarget(S2, r) {
+    if (r.goal) {
+      goalAim(S2, r);
+      return;
+    }
     const R = S2.rnd;
     r.tx = 18 + R() * (TITLE_VW * 0.5);
     const twx = r.tx + PW / 2 + S2.scroll + 20, c = titleCeil(twx, S2), f = titleFloor(twx, S2), roll = R();
@@ -15866,11 +15897,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     r.ctlWas = on;
     if (!on || r.dig) r.hang = null;
+    if (r.goal && !on) goalStep(S2, r, dt);
     if (r.dig) digStep(S2, r, dt);
     else if (on && r.ctl) ctlStep(S2, r, r.ctl, dt);
     else if (r.mode === "run") runStep(S2, r, dt);
     else flyStep(S2, r, dt);
-    r.x = Math.max(8, Math.min(r.ctl ? TITLE_VW - PW - 8 : TITLE_VW * 0.62, r.x));
+    r.x = Math.max(8, Math.min(r.ctl || r.goal ? TITLE_VW - PW - 8 : TITLE_VW * 0.62, r.x));
     r.y = Math.max(S2.top - 40, Math.min(S2.bot + 10, S2.lvl && S2.bot - S2.top > MINE_TALL ? S2.vh - PH - 1 : Infinity, r.y));
     if (fuelOn(S2)) {
       const P2 = tankOf(S2, r);
@@ -16149,7 +16181,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       return;
     }
     if (r.mode === "fly" && (r.retarget <= 0 || Math.hypot(r.tx - r.x, r.ty - r.y) < 6)) pickTarget(S2, r);
-    if (r.dig > 6 && r.mode === "fly") {
+    if (r.dig > 6 && r.mode === "fly" && !r.goal) {
       const twx = r.x + PW / 2 + S2.scroll, c = titleCeil(twx, S2), f = titleFloor(twx, S2);
       r.ty = c + (f - c) * 0.4;
       r.tx = r.x;
@@ -26389,29 +26421,20 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   var LEVEL_CTL_REST = { active: false, nx: 0, ny: 0, mag: 0 };
   function levelWaypoint(S2, id, x, y = 0) {
-    const L = levelState(S2);
-    if (!L) return;
-    L.way = x == null ? null : { id, x, y, t: S2.t };
-  }
-  var WAY_X = 5, WAY_Y = 16, WAY_SLOW = 30;
-  function wayStep(S2, L) {
-    const w = L.way;
-    if (!w) return;
-    const r = S2.runners.find((q) => q.id === w.id);
-    if (!r || r.out || r.hide || L.phase === "arrive") {
-      L.way = null;
+    const L = levelState(S2), r = S2.runners.find((q) => q.id === id);
+    if (!L || !r) return;
+    if (x == null) {
+      r.goal = null;
       return;
     }
-    const dx = w.x - (S2.scroll + r.x + PW / 2), dy = w.y - (r.y + PH / 2), d = Math.hypot(dx, dy);
-    const there = Math.abs(dx) < WAY_X && (Math.abs(dy) < WAY_Y || r.ground && dy > 0);
-    if (there || S2.t - w.t > DEV.gremWayT) {
-      L.way = null;
-      levelControl(S2, w.id, LEVEL_CTL_REST);
-      return;
-    }
-    const flat2 = dy > -10 && r.ground, ny = flat2 ? 0 : dy / (d || 1), nx = flat2 ? Math.sign(dx) : dx / (d || 1), n = Math.hypot(nx, ny) || 1;
-    levelControl(S2, w.id, { active: true, nx: nx / n, ny: ny / n, mag: Math.min(1, 0.45 + d / WAY_SLOW) });
+    if (r.out || r.hide || L.phase === "arrive") return;
+    r.goal = { x, y, t: S2.t, hold: -1 };
+    r.retarget = 0;
   }
+  var levelGoal = (S2) => {
+    const r = S2.runners.find((q) => q.goal && !q.out);
+    return r && r.goal ? { id: r.id, x: r.goal.x, y: r.goal.y, t: r.goal.t } : null;
+  };
   function levelLost(S2) {
     const L = levelState(S2);
     return !!L && L.failed;
@@ -26492,7 +26515,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     if (deathStep(S2, L, dt)) return;
     chestsStep(S2);
-    wayStep(S2, L);
     const P2 = L.plan;
     if (L.phase === "arrive") {
       const fy = titleFloor(P2.padX, S2);
@@ -26595,12 +26617,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const want = L.webK * pilotPace({ base: L.base, x: levelTeamX(S2), stopX: stop, elites: L.elites, chests: L.chests, hold: L.hold, blocked: L.blocked || S2.fuelWait != null && S2.t - S2.fuelWait < 0.3 });
     S2.pace = pilotEase(S2.pace || 0, want, dt, L.base);
   }
-  var levelLead = (S2) => S2.runners.find((r) => ctlOn(r) && !r.out) || null;
+  var levelLead = (S2) => S2.runners.find((r) => (ctlOn(r) || !!r.goal) && !r.out) || null;
   var levelPicked = (S2) => S2.runners.find((r) => !!r.ctl && !r.out) || null;
   var roamPace = (off) => DEV.autoRoamCam * off / LVL_SCROLL;
   var roamMin = (L) => (L.far ?? 0) - Math.min(DEV.autoRoamBack * TITLE_VW, TITLE_BACK - 50);
   function roamStep2(S2, L, lead) {
-    S2.pace = roamPace(lead.x + PW / 2 - TITLE_VW / 2);
+    const at = lead.goal && !ctlOn(lead) ? lead.goal.x - S2.scroll : lead.x + PW / 2;
+    S2.pace = roamPace(at - TITLE_VW / 2);
     if (S2.scroll <= roamMin(L) + 0.01 && S2.pace < 0) S2.pace = 0;
     roamFollow(S2, lead);
   }
@@ -33279,7 +33302,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
 
   // src/version.js
-  var VERSION2 = "v1.0.101";
+  var VERSION2 = "v1.0.102";
 
   // src/art/zonelab.js
   var ZLAB_LEAD = 60;
@@ -39513,7 +39536,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             ctx.stroke();
             ctx.restore();
           }
-          const L = levelState(S2), wy = L && L.way;
+          const wy = levelGoal(S2);
           if (wy && C) {
             const k = w / TITLE_VW, p = camTo(C, wy.x - S2.scroll, wy.y), a2 = (S2.t - wy.t) * 1.6 % 1, col = TITLE_COLS[wy.id % TITLE_COLS.length];
             ctx.save();

@@ -134,7 +134,7 @@ export function levelFree(S, L, r) {
  *   elites: import('./enemies.js').LevelFoe[], chests: import('./chests.js').LevelChest[], doneT: number, meters: PlayerMeters[], blocked: boolean,
  *   boss: Enemy | null, failed: boolean, run?: AutoRun | null, bagV: number, blockKind?: string, webK?: number, webT?: number, lootT?: number, clearT?: number, popT?: number[], nukeT?: number, gatherT?: number, padGone?: boolean,
  *   deadT?: number, pace0?: number, base?: number, lastI?: number, tpT?: number, boomed?: boolean, far?: number,
- *   floor?: number, name?: string, way?: { id: number, x: number, y: number, t: number } | null, introT?: number, bossFrom?: number, bossTo?: number, introDone?: boolean, joins?: { i: number, x: number, fy: number, t: number, done?: boolean }[] }} LevelState */
+ *   floor?: number, name?: string, introT?: number, bossFrom?: number, bossTo?: number, introDone?: boolean, joins?: { i: number, x: number, fy: number, t: number, done?: boolean }[] }} LevelState */
 // (Grem Mode, owner v1.0.92: introT when the boss began coming in from bossFrom to bossTo (world x) under its title; joins: players
 // teleporting in mid-level, the pad's charge then the flash where they land)
 // (far: the furthest the scroll got, world units: manual mode roams back at most DEV.autoRoamBack screens behind it)
@@ -204,30 +204,21 @@ export function levelControl(S, id, st) {
 }
 /** @type {import('../art/titlescene.js').RunnerCtl} */
 const LEVEL_CTL_REST = { active: false, nx: 0, ny: 0, mag: 0 };
-// (Grem Mode, owner v1.0.101) a tap on the play area that isn't a chest or a creature: player id heads for world (x, y) (L.way),
-// steered as by the stick (levelControl, every frame: wayStep); a new tap moves it, null clears it (the stick took over)
+// (Grem Mode, owner v1.0.101; v1.0.102: the autopilot's own goal, not a stick) a tap on the play area that isn't a chest or a
+// creature: player id heads for world (x, y) on the autopilot (titlescene.js r.goal, goalStep: he flies there going round or
+// sawing through rock as ever, holds it for the idle wait, then plays on); a new tap moves it; null x clears it (the stick took over)
 /** @param {import('../art/titlescene.js').TitleScene} S @param {number} id @param {number | null} x @param {number} [y] */
 export function levelWaypoint(S, id, x, y = 0) {
-  const L = levelState(S);
-  if (!L) return;
-  L.way = x == null ? null : { id, x, y, t: S.t };
+  const L = levelState(S), r = S.runners.find(q => q.id === id);
+  if (!L || !r) return;
+  if (x == null) { r.goal = null; return; }
+  if (r.out || r.hide || L.phase === 'arrive') return;
+  r.goal = { x, y, t: S.t, hold: -1 };
+  r.retarget = 0;
 }
-// WAY_X / WAY_Y: close enough (his middle to the point); there (or given up after DEV.gremWayT s) the stick is let go, so he
-// stands till DEV.autoCtlWait s pass with no input and the autopilot takes him back (titlescene.js ctlOn). The push: straight at
-// it, slowing in the last WAY_SLOW units; a point at his height or below while he stands: a walk (a stick pushed down would saw)
-const WAY_X = 5, WAY_Y = 16, WAY_SLOW = 30;
-/** @param {import('../art/titlescene.js').TitleScene} S @param {LevelState} L */
-function wayStep(S, L) {
-  const w = L.way;
-  if (!w) return;
-  const r = S.runners.find(q => q.id === w.id);
-  if (!r || r.out || r.hide || L.phase === 'arrive') { L.way = null; return; }
-  const dx = w.x - (S.scroll + r.x + PW / 2), dy = w.y - (r.y + PH / 2), d = Math.hypot(dx, dy);
-  const there = Math.abs(dx) < WAY_X && (Math.abs(dy) < WAY_Y || (r.ground && dy > 0));
-  if (there || S.t - w.t > DEV.gremWayT) { L.way = null; levelControl(S, w.id, LEVEL_CTL_REST); return; }
-  const flat = dy > -10 && r.ground, ny = flat ? 0 : dy / (d || 1), nx = flat ? Math.sign(dx) : dx / (d || 1), n = Math.hypot(nx, ny) || 1;
-  levelControl(S, w.id, { active: true, nx: nx / n, ny: ny / n, mag: Math.min(1, 0.45 + d / WAY_SLOW) });
-}
+// the tapped spot a player is heading for or holding (null: none)
+/** @param {import('../art/titlescene.js').TitleScene} S */
+export const levelGoal = S => { const r = S.runners.find(q => q.goal && !q.out); return r && r.goal ? { id: r.id, x: r.goal.x, y: r.goal.y, t: r.goal.t } : null; };
 // has every player fallen (stage 6: home to the hub, the tier unchanged: run.js levelFailed)?
 /** @param {import('../art/titlescene.js').TitleScene} S */
 export function levelLost(S) {
@@ -320,7 +311,6 @@ export function levelStep(S, dt) {
   if (L.phase === 'exit') { deathRags(S, dt); exitStep(S, L, dt); return; }   // (owner v1.0.74) the pops at the exit: not a death
   if (deathStep(S, L, dt)) return;  // everyone down (auto/death.js): the slow stop, Tap A, the blast, home
   chestsStep(S);
-  wayStep(S, L);
   const P = L.plan;
   if (L.phase === 'arrive') {
     const fy = titleFloor(P.padX, S);
@@ -387,7 +377,8 @@ export function levelStep(S, dt) {
 // the steered player (none: null)
 /** @param {import('../art/titlescene.js').TitleScene} S */
 // (bug round 2, semi-automatic) only while the stick is pushed: let go, the level's own pace again (eased) and he plays by himself
-export const levelLead = S => S.runners.find(r => ctlOn(r) && !r.out) || null;
+// (v1.0.102) or heading for a tapped spot (r.goal): the view follows him too, the others behind him
+export const levelLead = S => S.runners.find(r => (ctlOn(r) || !!r.goal) && !r.out) || null;
 // the picked player (manual mode; the nav's crosshair), steered or not (none: null)
 /** @param {import('../art/titlescene.js').TitleScene} S */
 export const levelPicked = S => S.runners.find(r => !!r.ctl && !r.out) || null;
@@ -400,7 +391,10 @@ export const roamPace = off => DEV.autoRoamCam * off / LVL_SCROLL;
 export const roamMin = L => (L.far ?? 0) - Math.min(DEV.autoRoamBack * TITLE_VW, TITLE_BACK - 50);
 /** @param {import('../art/titlescene.js').TitleScene} S @param {LevelState} L @param {import('../art/titlescene.js').TRunner} lead */
 function roamStep(S, L, lead) {
-  S.pace = roamPace(lead.x + PW / 2 - TITLE_VW / 2);
+  // (v1.0.102) one heading for a tapped spot: the view centres the spot (still once it's there: he flies to a point that holds
+  // still on screen; following him instead, the two chased each other past it)
+  const at = lead.goal && !ctlOn(lead) ? lead.goal.x - S.scroll : lead.x + PW / 2;
+  S.pace = roamPace(at - TITLE_VW / 2);
   if (S.scroll <= roamMin(L) + 0.01 && S.pace < 0) S.pace = 0;
   roamFollow(S, lead);
 }

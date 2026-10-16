@@ -1,6 +1,6 @@
-// Grem Mode taps (owner, v1.0.101; src/auto/level.js levelWaypoint / wayStep, src/auto/chests.js chestAt): a tap that isn't
-// a chest or a creature sends the picked player to that spot (steered as by the stick); a new tap moves it; once there he
-// stands, and after DEV.autoCtlWait s with no input the autopilot has him again. A chest opens at a tap on it from any
+// Grem Mode taps (owner, v1.0.101/102; src/auto/level.js levelWaypoint, art/titlescene.js goalStep, src/auto/chests.js chestAt): a
+// tap that isn't a chest or a creature gives the picked player a goal the autopilot heads for (round or through rock as ever); a
+// new tap moves it; there he holds it DEV.autoCtlWait s, then plays by himself again. A chest opens at a tap on it from any
 // distance. Every loop has a frame cap.
 const G = require('../load');
 let fails = 0;
@@ -15,35 +15,46 @@ const S = G.levelScene(190, 51, run.players.length, undefined, run.players, 1, r
 until(S, () => L.phase === 'run', 600);
 const r = S.runners[0], mid = () => ({ x: S.scroll + r.x + G.PW / 2, y: r.y + G.PH / 2 });
 
-// a spot ahead, on the floor (as a tap on the ground)
-const m0 = mid(), gx = m0.x + 70, gy = G.titleFloor(gx, S) - 4;
-G.levelWaypoint(S, 0, gx, gy);
-check('a tap: the waypoint set for the picked player', L.way && L.way.id === 0 && L.way.x === gx);
-const f1 = until(S, () => !L.way, 400);
-const m1 = mid();
-check('he gets there (on his own, steered)', f1 >= 0 && Math.abs(m1.x - gx) < 8, [f1, Math.round(m1.x - gx)]);
-check('there: he stands (his stick let go)', !!r.ctl && !r.ctl.active && G.ctlOn(r));
-// waits: not handed back before the idle wait, then the autopilot
-const wait = Math.round(D.autoCtlWait / dt);
-for (let i = 0; i < wait - 10; i++) G.titleStep(S, dt);
-check('… still waiting just before the idle wait (autoCtlWait) is up', G.ctlOn(r), r.ctlIdle);
-for (let i = 0; i < 20; i++) G.titleStep(S, dt);
-check('… then the autopilot has him back', !G.ctlOn(r), r.ctlIdle);
+const goal = () => r.goal;
+const near = (gx, gy) => Math.hypot(mid().x - gx, mid().y - gy) < 9;
 
-// up in the air: he jets there; a new tap moves the spot
+// a spot ahead, on the floor (as a tap on the ground): the autopilot flies him there
+const m0 = mid(), gx = m0.x + 70, gy = G.titleFloor(gx, S) - G.PH / 2 - 2;
+G.levelWaypoint(S, 0, gx, gy);
+check('a tap: the goal set on the picked player, the view following him (levelLead)', !!goal() && goal().x === gx && G.levelLead(S) === r);
+const f1 = until(S, () => near(gx, gy), 400);
+check('he gets there on the autopilot (no stick)', f1 >= 0 && !G.ctlOn(r), [f1, Math.round(mid().x - gx), Math.round(mid().y - gy)]);
+// holds it for the idle wait, then plays on
+const wait = Math.round(D.autoCtlWait / dt);
+let held = 0;
+for (let i = 0; i < wait - 10; i++) { G.titleStep(S, dt); if (Math.hypot(mid().x - gx, mid().y - gy) < 16) held++; }
+check('… holds the spot through the idle wait (autoCtlWait)', !!goal() && held > (wait - 10) * 0.8, [held, wait - 10]);
+for (let i = 0; i < 20; i++) G.titleStep(S, dt);
+check('… then the goal is gone: he plays by himself again', !goal() && G.levelLead(S) === null);
+
+// up in the air; a new tap moves it
 const m2 = mid();
 G.levelWaypoint(S, 0, m2.x + 40, m2.y - 40);
 for (let i = 0; i < 10; i++) G.titleStep(S, dt);
 const m3 = mid(), tx = m3.x + 30, ty = Math.max(S.top + 30, m3.y - 30);
 G.levelWaypoint(S, 0, tx, ty);
-check('a new tap moves the waypoint', L.way.x === tx && L.way.y === ty);
-const f2 = until(S, () => !L.way, 400), m4 = mid();
-check('he gets to the new one (jetting up to it)', f2 >= 0 && Math.abs(m4.x - tx) < 8 && Math.abs(m4.y - ty) < 18, [f2, Math.round(m4.x - tx), Math.round(m4.y - ty)]);
+check('a new tap moves the goal', goal().x === tx && goal().y === ty);
+check('he gets to the new one (flying up to it)', until(S, () => near(tx, ty), 400) >= 0, [Math.round(mid().x - tx), Math.round(mid().y - ty)]);
+G.levelWaypoint(S, 0, null);
+check('null clears it (the stick took over)', !goal());
 
-// a spot in the rock under the floor: he stops over it (as near as he gets), never later than DEV.gremWayT
-G.levelWaypoint(S, 0, mid().x + 40, S.vh + 200);
-const f3 = until(S, () => !L.way, Math.round((D.gremWayT + 2) / dt));
-check('a spot in the rock below: he stops over it, the waypoint let go (by gremWayT at the latest)', f3 >= 0 && f3 <= Math.round(D.gremWayT / dt) + 2, f3);
+// a spot inside the rock under the floor: he saws down into it (as the autopilot saws anywhere it's going)
+const m5 = mid(), rx = m5.x + 30, ry = G.titleFloor(rx, S) + 14;
+G.levelWaypoint(S, 0, rx, ry);
+let sawed = false;
+const f5 = until(S, s => { if (r.dig) sawed = true; return near(rx, ry); }, Math.round(D.gremWayT / dt));
+check('a spot in the rock: he saws his way to it', sawed && f5 >= 0, [sawed, f5, Math.round(mid().x - rx), Math.round(mid().y - ry)]);
+G.levelWaypoint(S, 0, null);
+
+// one he can never get to (over the level): let go after gremWayT
+G.levelWaypoint(S, 0, mid().x + 20, S.top - 400);   // (over the top of the level: never reachable)
+const f6 = until(S, () => !goal(), Math.round((D.gremWayT + 2) / dt));
+check('out of reach: let go after gremWayT', f6 >= Math.round(D.gremWayT / dt) - 2 && f6 <= Math.round(D.gremWayT / dt) + 2, f6);
 
 // a chest far ahead opens at a tap on it
 const ch = L.chests.find(c => !c.open && c.x > mid().x + 100);
