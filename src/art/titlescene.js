@@ -505,9 +505,10 @@ export function spiderRock(wx, y, Z, cy, fy, bare) {
 // stalagmites (rising off the floor and the boulders' tops, shorter and blunter), in clusters of mixed lengths. One point
 // per slot along x (10 units stalactites, 13 stalagmites), there by DEV.coal{Stal,Mite}Dense where a noise field is over
 // DEV.coal{Stal,Mite}Clus (the bare gaps between clusters), its length in DEV.coal{Stal,Mite}Len{Lo,Hi} (shorter at a
-// cluster's edge). At column wx: [this column's length, the point's whole length] (0s: none). Pure
-/** @param {number} wx @param {boolean} up a stalagmite @param {number} ph the zone's phase */
-export function stalLen(wx, up, ph) {
+// cluster's edge) × g (the open space it faces over DEV.coalStalRoom: a big cave, big points). At column wx: [this
+// column's length, the point's whole length] (0s: none). Pure
+/** @param {number} wx @param {boolean} up a stalagmite @param {number} ph the zone's phase @param {number} [g] */
+export function stalLen(wx, up, ph, g = 1) {
   const sp = up ? 13 : 10, s = up ? 41 : 47, k0 = Math.floor(wx / sp);
   const dense = up ? DEV.coalMiteDense : DEV.coalStalDense, clus = up ? DEV.coalMiteClus : DEV.coalStalClus;
   const lo = up ? DEV.coalMiteLenLo : DEV.coalStalLenLo, hi = up ? DEV.coalMiteLenHi : DEV.coalStalLenHi;
@@ -516,8 +517,8 @@ export function stalLen(wx, up, ph) {
     const sx = k * sp + sp / 2 + (h2(k, s + 1) - 0.5) * sp * 0.6;
     const cl = titleNoise(sx / 70 + ph, s);
     if (cl <= clus || h2(k, s + 3) >= dense) continue;
-    const L = (lo + (hi - lo) * h2(k, s + 2)) * Math.min(1, (cl - clus) / 0.1);
-    const w = up ? 3 + L * 0.42 : 2 + L * 0.2, d = Math.abs(wx - sx) / w;
+    const L = (lo + (hi - lo) * h2(k, s + 2)) * Math.min(1, (cl - clus) / 0.1) * g;
+    const w = up ? 3 + L * 0.36 : 2 + L * 0.16, d = Math.abs(wx - sx) / w;
     if (d >= 1) continue;
     const h = up ? L * (1 - Math.pow(d, 1.6)) : L * Math.pow(1 - d, 1.3);   // (tapering to a point; a stalagmite blunter)
     if (h > best) { best = h; whole = L; }
@@ -525,26 +526,25 @@ export function stalLen(wx, up, ph) {
   return [best, whole];
 }
 // a Coal Seams Cavern column's rock: 0 air, 1 rock (roof, floor, boulders), 2 a point's rock, 3 a point's lighter tip.
-// Each point is cut to a share of the air past its edge (40% stalactites, 30% stalagmites), so none seals a way through. Pure
+// Each point grows with the air past its edge, cut to a share of it (DEV.coalStalCap, coalMiteCap), so none seals a way through. Pure
 /** @param {number} wx @param {TZone} Z @param {number} cy @param {number} fy @param {number} rows */
 export function stalCol(wx, Z, cy, fy, rows) {
   const a = new Uint8Array(rows);
   for (let r = 0; r < rows; r++) { const y = (r + 0.5) * TCELL; a[r] = y < cy || y >= fy || spiderRock(wx, y, Z, cy, fy, true) ? 1 : 0; }
   if (Math.min(wx - Z.x0, Z.x1 - wx) < 24) return a;
-  const dn = stalLen(wx, false, Z.ph[0]), upL = stalLen(wx, true, Z.ph[1]);
-  if (!dn[0] && !upL[0]) return a;
   const b = a.slice();
   for (let r = 0; r < rows; ) {
     if (b[r]) { r++; continue; }
     let e = r;
     while (e < rows && !b[e]) e++;   // air rows r..e-1, rock (or the column's end) past each end
-    const room = (e - r) * TCELL, y0 = r * TCELL, y1 = e * TCELL;
+    const room = (e - r) * TCELL, y0 = r * TCELL, y1 = e * TCELL, g = Math.max(0.4, room / DEV.coalStalRoom);
+    const dn = stalLen(wx, false, Z.ph[0], g), upL = stalLen(wx, true, Z.ph[1], g);
     if (r > 0 && dn[0] > 0) {
-      const h = Math.min(dn[0], room * 0.4), tip = Math.max(2, dn[1] * 0.3);
+      const h = Math.min(dn[0], room * DEV.coalStalCap), tip = Math.max(2, dn[1] * 0.3);
       for (let q = r; q < e && (q + 0.5) * TCELL < y0 + h; q++) a[q] = (q + 0.5) * TCELL - y0 > Math.min(h, dn[1]) - tip && h > dn[1] - tip ? 3 : 2;
     }
     if (e < rows && upL[0] > 0) {
-      const h = Math.min(upL[0], room * 0.3), tip = Math.max(2, upL[1] * 0.25);
+      const h = Math.min(upL[0], room * DEV.coalMiteCap), tip = Math.max(2, upL[1] * 0.25);
       for (let q = e - 1; q >= r && (q + 0.5) * TCELL > y1 - h; q--) if (!a[q]) a[q] = y1 - (q + 0.5) * TCELL > h - tip && h > upL[1] - tip ? 3 : 2;
     }
     r = e;

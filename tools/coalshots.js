@@ -51,7 +51,13 @@ require('../tests/build')();
   // (C2) the Cavern's stalactites and stalagmites: the view held on the Cavern, then close-ups of a roof and a floor cluster
   if (ONLY === 'stal') {
     await page.evaluate(() => { DEV.autoLvlPace = 4; });
-    for (let i = 0; i < 3000; i++) {
+    // the tallest stretch of Cavern on the level: the view held there
+    const tx = await page.evaluate(() => { const S = window.__gremScene, L = levelState(S); let b = [0, 0]; for (let x = S.scroll; x < L.plan.arena.x0 - 200; x += 10) if (titleZoneSpan(x, S).z === 'spider' && titleZoneSpan(x - 90, S).z === 'spider' && titleZoneSpan(x + 90, S).z === 'spider' && coalAt(S, x)) { const h = titleFloor(x, S) - titleCeil(x, S); if (h > b[1]) b = [x, h]; } return b[0]; });
+    for (let i = 0; tx && i < 3000; i++) {
+      if (await page.evaluate(x => window.__gremScene.scroll + TITLE_VW / 2 >= x, tx)) break;
+      await page.waitForTimeout(100);
+    }
+    for (let i = 0; !tx && i < 3000; i++) {
       const on = await page.evaluate(() => { const S = window.__gremScene; return !!S && titleZoneSpan(S.scroll + 40, S).z === 'spider' && titleZoneSpan(S.scroll + TITLE_VW - 40, S).z === 'spider' && coalAt(S, S.scroll + 100) && titleCeil(S.scroll + 100, S) > 30; });
       if (on) break;
       await page.waitForTimeout(100);
@@ -76,6 +82,7 @@ require('../tests/build')();
     await save('q-stal', 'the Cavern on Coal Seams: stalactites off the roof and the boulders, stalagmites on the floor');
     await page.evaluate(() => { DEV.gremDark = 0; });   // (the close-ups: the darkness lifted)
     await page.waitForTimeout(200);
+    await save('t-stal-lit', 'the same screen, darkness lifted (for the shot only)');
     await save('r-stal-roof', 'close up (darkness lifted): a cluster hanging off the roof', box.up);
     await save('s-stal-floor', 'close up (darkness lifted): a cluster on the floor', box.dn);
     await browser.close(); console.log(said.join(String.fromCharCode(10))); return;
