@@ -5,6 +5,14 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v2.0.3 — Coal Seams: minecart rails, coal heaps and chutes, real timber (branch `grem`)
+2026-10-17 (owner OK'd the screenshots; design doc ideas 1 and 10, and the owner's "the supports look too copy and paste").
+- Minecart rails on wooden sleepers along about 60% of the Mines' tunnel floors (the floor flat under them); minecarts 3 × as likely on them.
+- Heaps of loose coal against about half the tunnel ends (real coal: it burns).
+- Wooden coal chutes down about 60% of the holes between tunnels, dropping a lump of coal now and then (they burn).
+- The timber, as the old game's (v85 timberFrame / timberWorks, `art/timber.js`): each set measured off the rock where it stands (posts on level floor, the cap along the roof's slope, wedges packed to the roof; refused where it won't fit), each its own width, overhang, braces (knee braces, a diagonal, a tie), rotten patches, the odd snapped post. Propped patches with sets side by side; outside them a tunnel's sparse half-rotted run, lone sets in the open cave, fallen props on the floors.
+- Dev → Grem → Coal Seams: rails share, heap chance, chute chance, lumps a second; timber: patch share, set width and gap (ranges), lone sets, rotted bays, rot, snapped posts, fallen props, tallest post.
+
 ## v2.0.2 — Coal Seams, step 2: burnable coal seams (branch `grem`)
 2026-10-17 (owner OK'd the screenshots; design doc build step 2, idea 2 smouldering seams with it).
 - Coal through Coal Seams' rock: big patches and long winding veins (about a fifth of the rock), near-black with a blue sheen and glints; the same level always has the same seams. Solid like rock.
