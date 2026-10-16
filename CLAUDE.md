@@ -7,6 +7,12 @@ tools/build.js` (esbuild) bundles `src/main.js` with `src/shell.html` and `src/s
 commit it with the `src/` change. The module refactor is done (`REFACTOR.md`: decisions D1–D21, and
 **Found along the way**, the to-do it left). History: `CHANGELOG.md`. Where things stand: `HANDOVER.md`.
 
+**This checkout may be the `grem` branch (CaveRunner Grem, v2.0.0+: Grem Mode only, the owner's focus).** `git branch`
+says. On `grem` the old game and CaveRunner Auto's run screen are cut (HANDOVER's `grem` section has the list): the game is
+`art/titlescene.js` (the scene) + `auto/` (level, enemies, chests, grem) + `game/render/` (titledraw, leveldraw) +
+`ui/auto/GremScreen.js`; a few rows below (`makeLevel`, `Game`, `replay/`, `__lvl`, the sandbox) describe
+`autobattler` / `main` only. Releases on `grem` push to `grem` (version line below).
+
 ## How the owner likes to work
 
 **Talk briefly.** Short, concise replies. Minimal technical jargon unless they ask about
@@ -131,7 +137,7 @@ code changes. `assets/index.html` is git-ignored. Don't change `LOCAL_URL`'s hos
 | `creatures/` | 4 | creature brains and sprites; **how to add a creature** |
 | `art/`, `audio/`, `save/`, `replay/` | 4 | sprites and props; sound; autosave; death replay (pure part) |
 | `auto/` | 4 | CaveRunner Auto (branch `autobattler`): the run model (`run.js`), its one save (`save.js`) |
-| `game/` | 5 | `Game`, `W`/`G`/`F`, the test hook; `systems/` (step's parts), `render/` (draw's parts), `creatures/` (`ACTS`) |
+| `game/` | 5 | `Game`, `W`/`G`/`F`, the test hook; `systems/` (step's parts), `render/` (draw's parts), `creatures/` (`ACTS`). On `grem`: only `render/` (titledraw, leveldraw, autolooks, looks, hubdraw…) and `systems/` shops + shotlooks |
 | `ui/` | 6 | React: `App`, HUD sticks, cards, the Bag, the Dev panel, GunSwap, Witness |
 
 **Layer rule:** a module imports only from its own layer or layers above it (lower numbers), never
@@ -194,6 +200,10 @@ position exactly, then measure (`decor.test.js`'s mushroom and minecart are the 
 (`sandbox({ roof: true })`) → an option in `testhook.js`. Generated levels only for generation
 (tunnels, palettes, rosters, decoration, fresh-floor fog, the `smoke` run). Flaky because of the cave?
 Move it into the sandbox; don't loosen it.
+**On `grem` (no `__lvl`, no `testhook.js`):** the sandbox is a level scene in a logic suite: `G.levelScene(200, seed, n,
+undefined, G.newRun(seed).players)`, then `S.lvl.step = null; S.pace = 0; S.spawn = 1e9; S.props.length = 0; S.foes.length = 0;
+S.still = false` and place what you test (`auto-hang`, `auto-guns` are the pattern); step it with `G.titleStep(S, 1 / 60)`.
+A browser suite reaches the running Grem scene as `window.__gremScene` (with `window.__TEST_TITLE = true`).
 
 **Measure, don't assert.** Prove it (flood-fill the cave, count buried bullets, screenshot the card);
 when a test disagrees with you, check which is wrong — it's been both. **Known flakes** (timing or

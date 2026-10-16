@@ -5,6 +5,16 @@ release loop, testing), then the README of the `src/` folder you're working in.
 
 ## BRANCH `grem` (2026-10-16): CaveRunner Grem — Grem Mode only (the owner's focus)
 
+**Start here (fresh session on `grem`):** v2.0.0 is **live** (2026-10-16, owner OK'd the screenshots): `/CaveRunner/grem/version.txt`
+shows `2000000 v2.0.0`, the app is at release `app-grem`. Nothing waiting on the owner. **Next: Coal Seams** (still planning;
+nothing built). The plan is the Claude Doc (below): read it with the docs tools (doc id `62f545c8-940a-4833-9ba9-ff20db771da5`,
+tab body node `64396f1a-182a`, prose; last write rev 20) — never web-fetch it. Its "Decisions and open questions" section holds
+what's open (which of the 10 decoration ideas, do spider webs stay, burnt coal open or scorched, ladders/stalactites solid or
+background, bat/glow worm damage); one doc comment asks to confirm the zones. The owner answers in chat or the doc; record
+answers in the doc, republish the HTML copy (`Artifact` publish to https://claude.ai/artifact/BZCnJDP93NEcB1fd99JPXM; the
+page's source is that artifact: `read` it first in a new session). Build order once agreed: decorations off/on → coal (a
+fourth fire fuel, world/fire.js) → Cavern dressing → Bats → Glow worms, each shown as phone screenshots before release.
+
 Forked from `autobattler` at v1.0.109 (owner: "git branch a Grem Mode only version and just work on that, so we can properly
 archive out the regular mode legacy content and bloated dev menu"). **v2.0.0** is the fork. `autobattler` and `main` keep
 everything; nothing there changed except the shared CI file.
