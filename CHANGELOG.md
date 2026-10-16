@@ -6,7 +6,7 @@ Names are as they were at the time (before the refactor Game's state had loose n
 `W.mat`, and so on). Versions before v39: `git log`.
 
 ## v1.0.101 — Grem Mode: tap a spot to send the player there; tap a chest to open it from anywhere; gun names on the unlocks (branch `autobattler`)
-Built 2026-10-16 (owner asked); screenshots tests/build/autoshots/grem-waypoint.png (`node tests/run.js grem-tap`), grem-b-play.png (node tools/gremshots.js).
+Released 2026-10-16 (owner asked, OK'd the shots); screenshots tests/build/autoshots/grem-waypoint.png (`node tests/run.js grem-tap`), grem-b-play.png (node tools/gremshots.js).
 - A tap on the play area that isn't a chest or a creature sends the picked player to that spot (`auto/level.js levelWaypoint`, `L.way`; `wayStep` pushes his stick toward it every frame: walking when it's at his height or below, jetting up to it). A new tap moves it; the stick cancels it. There (or given up after `DEV.gremWayT`, 8 s) he stands, and after the usual idle wait (`autoCtlWait`) the autopilot has him again. A ring in his colour marks the spot (GremScreen's `over`).
 - A chest opens at a tap on it from any distance (`auto/chests.js chestAt`, within `DEV.gremChestTapR` 30 units of the tap; `chestOpen(S, chest)`). The old rule stays too: with a chest in reach, the first tap opens it.
 - The unlock row shows each gun's name in small text under its picture (`.ggname`).
