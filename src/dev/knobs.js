@@ -587,6 +587,27 @@ DEV_META.push(
   { k: 'glowBlastDmg',  g: 'glow', label: 'Killed: blast damage', min: 0, max: 60, step: 0.5 },
   { k: 'glowHole',      g: 'glow', label: 'Killed: hole blasted in the rock (radius)', min: 0, max: 40, step: 0.5 },
   { k: 'glowTeam',      g: 'glow', label: 'Killed: the team takes this share of the blast damage', min: 0, max: 1, step: 0.05 });
+// (C5c) their look: the glow behind each, the green light they cast, the effects layer drifting across them
+Object.assign(DEV_DEFAULTS, { glowSize: 14, glowGlow: 0.55, glowFlicker: 0.25, glowLightR: 34, glowLight: 0.7, glowTint: 0.22,
+  glowFx: 0.55, glowFxR: 40, glowFxSizeC: 26, glowFxSizeA: 9, glowFxSpdC: 0.35, glowFxSpdA: 2.2, glowFxSharpC: 1, glowFxSharpA: 2.6 });
+DEV_META.push(
+  { k: 'glowSize',      g: 'glow', label: 'Look: glow behind it, size (units)', min: 0, max: 60, step: 0.5 },
+  { k: 'glowGlow',      g: 'glow', label: 'Look: glow behind it, brightness', min: 0, max: 1, step: 0.01 },
+  { k: 'glowFlicker',   g: 'glow', label: 'Look: flicker (each its own pattern)', min: 0, max: 1, step: 0.01 },
+  { k: 'glowLightR',    g: 'glow', label: 'Light: radius (lights the dark like a lantern)', min: 0, max: 120, step: 1 },
+  { k: 'glowLight',     g: 'glow', label: 'Light: strength', min: 0, max: 1, step: 0.01 },
+  { k: 'glowTint',      g: 'glow', label: 'Light: colour tint over it', min: 0, max: 1, step: 0.01 },
+  { k: 'glowFx',        g: 'glow', label: 'Effects layer: strength', min: 0, max: 2, step: 0.01 },
+  { k: 'glowFxR',       g: 'glow', label: 'Effects layer: reach round each worm (units)', min: 0, max: 150, step: 1 },
+  { k: 'glowFxSizeC',   g: 'glow', label: 'Effects layer: noise scale, calm (units)', min: 1, max: 100, step: 0.5 },
+  { k: 'glowFxSizeA',   g: 'glow', label: 'Effects layer: noise scale, agro (units)', min: 1, max: 100, step: 0.5 },
+  { k: 'glowFxSpdC',    g: 'glow', label: 'Effects layer: noise speed, calm', min: 0, max: 10, step: 0.05 },
+  { k: 'glowFxSpdA',    g: 'glow', label: 'Effects layer: noise speed, agro', min: 0, max: 10, step: 0.05 },
+  { k: 'glowFxSharpC',  g: 'glow', label: 'Effects layer: sharpness, calm (1 smooth)', min: 0.2, max: 6, step: 0.05 },
+  { k: 'glowFxSharpA',  g: 'glow', label: 'Effects layer: sharpness, agro (1 smooth)', min: 0.2, max: 6, step: 0.05 });
+colourKnobs('glow', [
+  ['glowColCalm', 'Glow colour, calm (A bright, B deep)', '#8aff4a', '#127a1c', 'calm'],
+  ['glowColAgro', 'Glow colour, agro (A bright, B deep)', '#ffb02e', '#a3360c', 'agro']]);
 DEV_GROUPS.push(['glow', 'Glow worms']);
 // CaveRunner Auto's maps (auto/maps.js): the map machine's prices, and how much harder each map starts
 Object.assign(DEV_DEFAULTS, { autoMapPrice: 1000000, autoMapGrow: 1, autoMapStep: 5 });

@@ -9,7 +9,9 @@
 // liftR·A·|sin θ|. A gripping foot is never moved. The body: FABRIK over six joints (five equal bones) pinned footLen out
 // from each foot, started from a circular arc of the body's length bulging away from the rock, so close feet make an Ω.
 
-import { DEV } from '../dev/knobs.js';
+import { hexArr } from '../core/util.js';
+import { DEV, kcol } from '../dev/knobs.js';
+import { twinkle } from './jelly.js';
 
 /** @typedef {{ x: number, y: number, nx: number, ny: number }} WormFoot */
 /** @typedef {{ r: WormFoot, f: WormFoot, rl: { x: number, y: number }, fl: { x: number, y: number }, th: number, dir: number, pts: { x: number, y: number }[], ph: number,
@@ -205,7 +207,7 @@ function pull(P, i, j, b) {
 }
 
 // ---- drawing (world units, ctx already scaled; ox: the view's left edge) ----
-const BODY = '#e6ffd8', EDGE = '#2fd23a';   // (stage a's plain placeholder: white-green, a green outline; the glow comes in stage b)
+const BODY = '#eeffe2', EDGE = '#1eff1e';   // (stage a's plain placeholder: white-green, a green outline; the glow comes in stage b)
 // the body's centre line, sampled smooth: the lifted rear foot, the six joints, the lifted front foot (quadratics through the
 // joints' midpoints), every point with s, its share of the way along
 /** @param {GlowWorm} w @param {number} ox @returns {{ x: number, y: number, s: number }[]} */
@@ -231,13 +233,13 @@ export function drawGlowWorm(c, w, ox) {
   const Q = wormLine(w, ox), W = DEV.glowW, tp = DEV.glowTaper, hp = tp + (1 - tp) * w.ag;   // (stood up: the head end as fat as the middle)
   /** @param {number} s */
   const th = s => { const t0 = s > 0.5 ? hp : tp; return W * (t0 + (1 - t0) * Math.sin(Math.PI * s)); };
-  for (const { col, add } of [{ col: EDGE, add: 1 }, { col: BODY, add: 0 }]) {
+  for (const { col, add } of [{ col: EDGE, add: 0.3 }, { col: BODY, add: -0.9 }]) {
     c.fillStyle = col;
     for (let i = 0; i < Q.length; i++) {
-      const p = Q[i], r = (th(p.s) + add) / 2;
+      const p = Q[i], r = Math.max(0.15, (th(p.s) + add) / 2);
       c.beginPath(); c.arc(p.x, p.y, r, 0, 6.29); c.fill();
       if (i) {   // (the gap between samples filled: a quad from the last disc to this one)
-        const q = Q[i - 1], rq = (th(q.s) + add) / 2, dx = p.x - q.x, dy = p.y - q.y, l = Math.hypot(dx, dy) || 1, nx = -dy / l, ny = dx / l;
+        const q = Q[i - 1], rq = Math.max(0.15, (th(q.s) + add) / 2), dx = p.x - q.x, dy = p.y - q.y, l = Math.hypot(dx, dy) || 1, nx = -dy / l, ny = dx / l;
         c.beginPath(); c.moveTo(q.x + nx * rq, q.y + ny * rq); c.lineTo(p.x + nx * r, p.y + ny * r); c.lineTo(p.x - nx * r, p.y - ny * r); c.lineTo(q.x - nx * rq, q.y - ny * rq); c.fill();
       }
     }
@@ -264,4 +266,59 @@ export function drawGlowFace(c, w, ox, t) {
   c.beginPath(); c.arc(x - w.ux * H * 0.15, y - w.uy * H * 0.15, H * 0.36 * (1 + 0.4 * Math.sin(t * DEV.glowMouthSpd + w.ph)), 0, 6.29); c.fill();
   c.fillStyle = '#000';
   for (const sd of [-1, 1]) { c.beginPath(); c.arc(x + w.ux * H * 0.5 + qx * sd * H * 0.38, y + w.uy * H * 0.5 + qy * sd * H * 0.38, H * 0.16, 0, 6.29); c.fill(); }
+}
+
+// ---- the look (C5c): the glow behind each worm, its light, and the effects layer drifting across them ----
+// a worm's flicker at time t: 1 less up to DEV.glowFlicker, in its own pattern (its phase)
+/** @param {GlowWorm} w @param {number} t */
+export function wormFlicker(w, t) {
+  const n = 0.5 + 0.25 * Math.sin(t * 7.3 + w.ph * 3) + 0.15 * Math.sin(t * 13.1 + w.ph * 7) + 0.1 * Math.sin(t * 23.7 + w.ph);
+  return 1 - DEV.glowFlicker * Math.max(0, Math.min(1, n));
+}
+// its glow colour at u (0 bright, 1 deep), calm → agro by how far it has stood up
+/** @param {GlowWorm} w @param {number} u @returns {number[]} */
+export function wormCol(w, u) {
+  const a = hexArr(kcol('glowColCalm', u)), b = hexArr(kcol('glowColAgro', u));
+  return a.map((v, i) => Math.round(v + (b[i] - v) * w.ag));
+}
+// the glow behind a worm (added light): bright → deep → nothing over DEV.glowSize, flickering
+/** @param {CanvasRenderingContext2D} c @param {GlowWorm} w @param {number} ox @param {number} t */
+export function drawWormGlow(c, w, ox, t) {
+  const m = w.pts[2], m2 = w.pts[3], x = (m.x + m2.x) / 2 - ox, y = (m.y + m2.y) / 2, R = DEV.glowSize, a = DEV.glowGlow * wormFlicker(w, t);
+  if (R <= 0 || a <= 0) return;
+  const b = wormCol(w, 0), d = wormCol(w, 1), g = c.createRadialGradient(x, y, 0, x, y, R);
+  g.addColorStop(0, 'rgba(' + b + ',' + a + ')'); g.addColorStop(0.35, 'rgba(' + d + ',' + (a * 0.55) + ')'); g.addColorStop(1, 'rgba(' + d + ',0)');
+  c.fillStyle = g; c.fillRect(x - R, y - R, R * 2, R * 2);
+}
+// the effects layer (the Mossy Caves vine and jellyfish glow overlay's twinkle): a wide soft glow round every worm in reach,
+// cut by a noise pattern drifting through the world, so light seems to pass between them. Calm: slow and smooth; agro (by
+// w.ag): its own colour (orange), a finer pattern, faster, sharper. out: RGBA, W × H cells of px world units from (ox, oy)
+/** @param {Uint8ClampedArray} out @param {number} W @param {number} H @param {{ ox: number, oy: number, px: number, t: number, worms: GlowWorm[] }} o */
+export function wormFxFill(out, W, H, o) {
+  const D = DEV, R = D.glowFxR;
+  if (R <= 0 || D.glowFx <= 0) return false;
+  const L = o.worms.map(w => {
+    const m = w.pts[2], k = w.ag;
+    return { x: m.x, y: m.y, c: wormCol(w, 0.3), f: wormFlicker(w, o.t), size: D.glowFxSizeC + (D.glowFxSizeA - D.glowFxSizeC) * k,
+      sp: D.glowFxSpdC + (D.glowFxSpdA - D.glowFxSpdC) * k, sh: D.glowFxSharpC + (D.glowFxSharpA - D.glowFxSharpC) * k };
+  });
+  let any = false;
+  for (let y = 0; y < H; y++) {
+    const wy = o.oy + (y + 0.5) * o.px;
+    for (let x = 0; x < W; x++) {
+      const wx = o.ox + (x + 0.5) * o.px;
+      let r = 0, g = 0, b = 0;
+      for (const q of L) {
+        const d = Math.hypot(wx - q.x, wy - q.y);
+        if (d >= R) continue;
+        const fall = (1 - d / R) * (1 - d / R), v = Math.max(0, Math.min(1, (twinkle(wx, wy, o.t * q.sp, q.size) - 0.5) * q.sh + 0.5));
+        const k = fall * v * q.f * D.glowFx;
+        r += q.c[0] * k; g += q.c[1] * k; b += q.c[2] * k;
+      }
+      if (r + g + b < 1) continue;
+      const i = (y * W + x) * 4;
+      out[i] = r; out[i + 1] = g; out[i + 2] = b; out[i + 3] = 255; any = true;
+    }
+  }
+  return any;
 }

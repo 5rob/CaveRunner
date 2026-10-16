@@ -1478,6 +1478,42 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "glowHole", g: "glow", label: "Killed: hole blasted in the rock (radius)", min: 0, max: 40, step: 0.5 },
     { k: "glowTeam", g: "glow", label: "Killed: the team takes this share of the blast damage", min: 0, max: 1, step: 0.05 }
   );
+  Object.assign(DEV_DEFAULTS, {
+    glowSize: 14,
+    glowGlow: 0.55,
+    glowFlicker: 0.25,
+    glowLightR: 34,
+    glowLight: 0.7,
+    glowTint: 0.22,
+    glowFx: 0.55,
+    glowFxR: 40,
+    glowFxSizeC: 26,
+    glowFxSizeA: 9,
+    glowFxSpdC: 0.35,
+    glowFxSpdA: 2.2,
+    glowFxSharpC: 1,
+    glowFxSharpA: 2.6
+  });
+  DEV_META.push(
+    { k: "glowSize", g: "glow", label: "Look: glow behind it, size (units)", min: 0, max: 60, step: 0.5 },
+    { k: "glowGlow", g: "glow", label: "Look: glow behind it, brightness", min: 0, max: 1, step: 0.01 },
+    { k: "glowFlicker", g: "glow", label: "Look: flicker (each its own pattern)", min: 0, max: 1, step: 0.01 },
+    { k: "glowLightR", g: "glow", label: "Light: radius (lights the dark like a lantern)", min: 0, max: 120, step: 1 },
+    { k: "glowLight", g: "glow", label: "Light: strength", min: 0, max: 1, step: 0.01 },
+    { k: "glowTint", g: "glow", label: "Light: colour tint over it", min: 0, max: 1, step: 0.01 },
+    { k: "glowFx", g: "glow", label: "Effects layer: strength", min: 0, max: 2, step: 0.01 },
+    { k: "glowFxR", g: "glow", label: "Effects layer: reach round each worm (units)", min: 0, max: 150, step: 1 },
+    { k: "glowFxSizeC", g: "glow", label: "Effects layer: noise scale, calm (units)", min: 1, max: 100, step: 0.5 },
+    { k: "glowFxSizeA", g: "glow", label: "Effects layer: noise scale, agro (units)", min: 1, max: 100, step: 0.5 },
+    { k: "glowFxSpdC", g: "glow", label: "Effects layer: noise speed, calm", min: 0, max: 10, step: 0.05 },
+    { k: "glowFxSpdA", g: "glow", label: "Effects layer: noise speed, agro", min: 0, max: 10, step: 0.05 },
+    { k: "glowFxSharpC", g: "glow", label: "Effects layer: sharpness, calm (1 smooth)", min: 0.2, max: 6, step: 0.05 },
+    { k: "glowFxSharpA", g: "glow", label: "Effects layer: sharpness, agro (1 smooth)", min: 0.2, max: 6, step: 0.05 }
+  );
+  colourKnobs("glow", [
+    ["glowColCalm", "Glow colour, calm (A bright, B deep)", "#8aff4a", "#127a1c", "calm"],
+    ["glowColAgro", "Glow colour, agro (A bright, B deep)", "#ffb02e", "#a3360c", "agro"]
+  ]);
   DEV_GROUPS.push(["glow", "Glow worms"]);
   Object.assign(DEV_DEFAULTS, { autoMapPrice: 1e6, autoMapGrow: 1, autoMapStep: 5 });
   Object.assign(DEV_DEFAULTS, {
@@ -7953,7 +7989,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const dx = P2[i].x - P2[j].x, dy = P2[i].y - P2[j].y, l = Math.hypot(dx, dy) || 1e-6;
     P2[i] = { x: P2[j].x + dx / l * b, y: P2[j].y + dy / l * b };
   }
-  var BODY2 = "#e6ffd8", EDGE2 = "#2fd23a";
+  var BODY2 = "#eeffe2", EDGE2 = "#1eff1e";
   function wormLine(w, ox) {
     const P2 = [w.rl, ...w.pts, w.fl].map((p) => ({ x: p.x - ox, y: p.y })), out2 = [{ x: P2[0].x, y: P2[0].y }];
     const quad = (a2, b, e) => {
@@ -7983,15 +8019,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const t0 = s > 0.5 ? hp : tp;
       return W * (t0 + (1 - t0) * Math.sin(Math.PI * s));
     };
-    for (const { col, add } of [{ col: EDGE2, add: 1 }, { col: BODY2, add: 0 }]) {
+    for (const { col, add } of [{ col: EDGE2, add: 0.3 }, { col: BODY2, add: -0.9 }]) {
       c.fillStyle = col;
       for (let i = 0; i < Q.length; i++) {
-        const p = Q[i], r = (th(p.s) + add) / 2;
+        const p = Q[i], r = Math.max(0.15, (th(p.s) + add) / 2);
         c.beginPath();
         c.arc(p.x, p.y, r, 0, 6.29);
         c.fill();
         if (i) {
-          const q = Q[i - 1], rq = (th(q.s) + add) / 2, dx = p.x - q.x, dy = p.y - q.y, l = Math.hypot(dx, dy) || 1, nx = -dy / l, ny = dx / l;
+          const q = Q[i - 1], rq = Math.max(0.15, (th(q.s) + add) / 2), dx = p.x - q.x, dy = p.y - q.y, l = Math.hypot(dx, dy) || 1, nx = -dy / l, ny = dx / l;
           c.beginPath();
           c.moveTo(q.x + nx * rq, q.y + ny * rq);
           c.lineTo(p.x + nx * r, p.y + ny * r);
@@ -8034,6 +8070,65 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       c.arc(x + w.ux * H * 0.5 + qx * sd * H * 0.38, y + w.uy * H * 0.5 + qy * sd * H * 0.38, H * 0.16, 0, 6.29);
       c.fill();
     }
+  }
+  function wormFlicker(w, t) {
+    const n = 0.5 + 0.25 * Math.sin(t * 7.3 + w.ph * 3) + 0.15 * Math.sin(t * 13.1 + w.ph * 7) + 0.1 * Math.sin(t * 23.7 + w.ph);
+    return 1 - DEV.glowFlicker * Math.max(0, Math.min(1, n));
+  }
+  function wormCol(w, u) {
+    const a = hexArr(kcol("glowColCalm", u)), b = hexArr(kcol("glowColAgro", u));
+    return a.map((v, i) => Math.round(v + (b[i] - v) * w.ag));
+  }
+  function drawWormGlow(c, w, ox, t) {
+    const m = w.pts[2], m2 = w.pts[3], x = (m.x + m2.x) / 2 - ox, y = (m.y + m2.y) / 2, R = DEV.glowSize, a = DEV.glowGlow * wormFlicker(w, t);
+    if (R <= 0 || a <= 0) return;
+    const b = wormCol(w, 0), d = wormCol(w, 1), g = c.createRadialGradient(x, y, 0, x, y, R);
+    g.addColorStop(0, "rgba(" + b + "," + a + ")");
+    g.addColorStop(0.35, "rgba(" + d + "," + a * 0.55 + ")");
+    g.addColorStop(1, "rgba(" + d + ",0)");
+    c.fillStyle = g;
+    c.fillRect(x - R, y - R, R * 2, R * 2);
+  }
+  function wormFxFill(out2, W, H, o) {
+    const D = DEV, R = D.glowFxR;
+    if (R <= 0 || D.glowFx <= 0) return false;
+    const L = o.worms.map((w) => {
+      const m = w.pts[2], k = w.ag;
+      return {
+        x: m.x,
+        y: m.y,
+        c: wormCol(w, 0.3),
+        f: wormFlicker(w, o.t),
+        size: D.glowFxSizeC + (D.glowFxSizeA - D.glowFxSizeC) * k,
+        sp: D.glowFxSpdC + (D.glowFxSpdA - D.glowFxSpdC) * k,
+        sh: D.glowFxSharpC + (D.glowFxSharpA - D.glowFxSharpC) * k
+      };
+    });
+    let any = false;
+    for (let y = 0; y < H; y++) {
+      const wy = o.oy + (y + 0.5) * o.px;
+      for (let x = 0; x < W; x++) {
+        const wx = o.ox + (x + 0.5) * o.px;
+        let r = 0, g = 0, b = 0;
+        for (const q of L) {
+          const d = Math.hypot(wx - q.x, wy - q.y);
+          if (d >= R) continue;
+          const fall = (1 - d / R) * (1 - d / R), v = Math.max(0, Math.min(1, (twinkle(wx, wy, o.t * q.sp, q.size) - 0.5) * q.sh + 0.5));
+          const k = fall * v * q.f * D.glowFx;
+          r += q.c[0] * k;
+          g += q.c[1] * k;
+          b += q.c[2] * k;
+        }
+        if (r + g + b < 1) continue;
+        const i = (y * W + x) * 4;
+        out2[i] = r;
+        out2[i + 1] = g;
+        out2[i + 2] = b;
+        out2[i + 3] = 255;
+        any = true;
+      }
+    }
+    return any;
   }
 
   // src/world/fire.js
@@ -12620,7 +12715,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (q && q.end) (S.chutes || (S.chutes = [])).push({ x: wx, y: q.y - 1.5, s: q.s });
     }
     if (coal) batCol(S, c, wx);
-    if (coal) wormCol(S, c, wx);
+    if (coal) wormCol2(S, c, wx);
     if (coal) {
       coalDeco(S, c, wx, Zn, tc && tc.lamp, rcy, fy, tun.filter((t) => t.open && inside(t, t.rf - 3)));
       return;
@@ -12961,7 +13056,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     let q = (Math.floor(seed * 7919) % 2147483646 + 2147483646) % 2147483646 + 1;
     return () => (q = q * 16807 % 2147483647) / 2147483647;
   };
-  function wormCol(S, c, wx) {
+  function wormCol2(S, c, wx) {
     if (DEV.glowPerScreen <= 0 || wx < (S.wormNext ?? TITLE_VW * 0.4)) return;
     const R = S.wormRnd ||= wormRng(S.seed), base = ci(S, c, 0), cand = [];
     for (let r = 2; r < S.rows - 2; r++) {
@@ -22009,6 +22104,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     });
     ctx.globalCompositeOperation = "lighter";
     for (const f of S.foes) if (f.je && f.x - S.scroll > -40 && f.x - S.scroll < TITLE_VW + 40) titlePlantGlow(ctx, S, f);
+    if (S.worms && S.worms.length) wormLook(ctx, S);
     for (const r of S.runners) if (!r.hide) titleBeam(ctx, S, r, DK.vis[r.id]);
     if (S.hub) hubGlow(ctx, S);
     if (S.lvl) levelGlow(ctx, S);
@@ -22421,6 +22517,34 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ctx.drawImage(gc, 0, 0, w, h3, ox, oy, w * TCELL, h3 * TCELL);
     ctx.imageSmoothingEnabled = sm;
   }
+  var WG = { c: null, x: null };
+  function wormLook(ctx, S) {
+    const near = (S.worms || []).filter((w2) => w2.r.x - S.scroll > -80 && w2.r.x - S.scroll < TITLE_VW + 80);
+    if (!near.length) return;
+    const w = Math.ceil((TITLE_VW + 80) / TCELL), h3 = Math.ceil(S.vh / TCELL), ox = Math.floor((S.scroll - 40) / TCELL) * TCELL;
+    if (!WG.c) {
+      WG.c = document.createElement("canvas");
+      WG.x = WG.c.getContext("2d");
+    }
+    const c = WG.c, x = WG.x;
+    if (!x) return;
+    if (c.width !== w || c.height !== h3) {
+      c.width = w;
+      c.height = h3;
+    }
+    const im = new ImageData(w, h3);
+    if (wormFxFill(im.data, w, h3, { ox, oy: 0, px: TCELL, t: S.t, worms: near })) {
+      x.putImageData(im, 0, 0);
+      const sm = ctx.imageSmoothingEnabled;
+      ctx.imageSmoothingEnabled = true;
+      ctx.drawImage(c, 0, 0, w, h3, ox - S.scroll, 0, w * TCELL, h3 * TCELL);
+      ctx.imageSmoothingEnabled = sm;
+    }
+    for (const q of near) {
+      if (DEV.glowTint > 0) glowAt(ctx, q.pts[2].x - S.scroll, q.pts[2].y, DEV.glowLightR, DEV.glowTint * wormFlicker(q, S.t), String(wormCol(q, 0.3)));
+      drawWormGlow(ctx, q, S.scroll, S.t);
+    }
+  }
   var DK = { L: null, D: null, vis: [] };
   var TITLE_EDGE = 6;
   var TITLE_LAMPR = 60;
@@ -22556,6 +22680,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       fan(p.x, ly, TITLE_LAMPR, 72);
       lc.clip();
       pool(p.x, ly, TITLE_LAMPR * Math.min(1, 0.6 + 0.4 * k), 0.95 * Math.min(1, k), 0.25);
+      lc.restore();
+    }
+    for (const w2 of S.worms || []) {
+      const x = w2.pts[2].x - S.scroll, y = w2.pts[2].y, R2 = DEV.glowLightR;
+      if (R2 <= 0 || x < -R2 - 20 || x > TITLE_VW + R2 + 20) continue;
+      lc.save();
+      fan(x, y, R2, 48);
+      lc.clip();
+      pool(x, y, R2, DEV.glowLight * wormFlicker(w2, S.t), 0.15);
       lc.restore();
     }
     for (const o of S.booms) if (o.sid === "gas" || o.sid === "worm") pool(o.x, o.y, o.r * 2.2, 0.95 * (1 - o.t / o.max), 0.3);

@@ -13,7 +13,7 @@ import { plantGlowFill, plantWhite } from '../../creatures/jelly.js';
 import { THEMES } from '../../data/themes.js';
 import { drawEnemy } from '../../creatures/draw.js';
 import { drawBats } from '../../creatures/bats.js';
-import { drawGlowFace, drawGlowWorm, wormBox } from '../../creatures/glowworm.js';
+import { drawGlowFace, drawGlowWorm, drawWormGlow, wormBox, wormCol, wormFlicker, wormFxFill } from '../../creatures/glowworm.js';
 import { coinR } from '../../world/nuggets.js';
 import { FIRE_COLS } from '../../world/fire.js';
 import { vinePt } from '../../world/sway.js';
@@ -278,6 +278,7 @@ export function titleDraw(ctx, S, cw, ch, cam) {
   ctx.globalCompositeOperation = 'lighter';
   // each jellyfish's green glow on the plants and moss round it, as the game's (systems/plantglow.js, plantGlowFill)
   for (const f of S.foes) if (f.je && f.x - S.scroll > -40 && f.x - S.scroll < TITLE_VW + 40) titlePlantGlow(ctx, S, f);
+  if (S.worms && S.worms.length) wormLook(ctx, S);
   for (const r of S.runners) if (!r.hide) titleBeam(ctx, S, r, DK.vis[r.id]);
   if (S.hub) hubGlow(ctx, S);
   if (S.lvl) levelGlow(ctx, S);
@@ -593,6 +594,32 @@ function titlePlantGlow(ctx, S, e) {
   ctx.imageSmoothingEnabled = sm;
 }
 
+// (C5c) the glow worms' added light over the dark: the effects layer (wormFxFill, at the terrain's grid, smoothed up), the
+// tint over each one's lit patch (green; orange in agro), and the glow behind each
+/** @type {{ c: HTMLCanvasElement | null, x: CanvasRenderingContext2D | null }} */
+const WG = { c: null, x: null };
+/** @param {CanvasRenderingContext2D} ctx @param {import('../../art/titlescene.js').TitleScene} S */
+function wormLook(ctx, S) {
+  const near = (S.worms || []).filter(w => w.r.x - S.scroll > -80 && w.r.x - S.scroll < TITLE_VW + 80);
+  if (!near.length) return;
+  const w = Math.ceil((TITLE_VW + 80) / TCELL), h = Math.ceil(S.vh / TCELL), ox = Math.floor((S.scroll - 40) / TCELL) * TCELL;
+  if (!WG.c) { WG.c = document.createElement('canvas'); WG.x = WG.c.getContext('2d'); }
+  const c = WG.c, x = WG.x;
+  if (!x) return;
+  if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
+  const im = new ImageData(w, h);
+  if (wormFxFill(im.data, w, h, { ox, oy: 0, px: TCELL, t: S.t, worms: near })) {
+    x.putImageData(im, 0, 0);
+    const sm = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(c, 0, 0, w, h, ox - S.scroll, 0, w * TCELL, h * TCELL);
+    ctx.imageSmoothingEnabled = sm;
+  }
+  for (const q of near) {
+    if (DEV.glowTint > 0) glowAt(ctx, q.pts[2].x - S.scroll, q.pts[2].y, DEV.glowLightR, DEV.glowTint * wormFlicker(q, S.t), String(wormCol(q, 0.3)));
+    drawWormGlow(ctx, q, S.scroll, S.t);
+  }
+}
+
 // The game's dark (owner, v0.0.171): the cave at the game's outside-the-torchlight darkness (DEV.fogDim) and lights
 // cutting it, each only as far as it can see (visPoly: the rock throws shadows), as render/light.js lights the game:
 // every player's gun light (a cone out along the gun, soft at its sides, DEV.beamDeg wide and the game's reach, and
@@ -724,6 +751,12 @@ function titleDark(ctx, S) {
     const ly = p.y + p.len + 3;
     const k = p.rust ? DEV.coalLampLight : 1;   // (Coal Seams' rusted lanterns: dimmer)
     lc.save(); fan(p.x, ly, TITLE_LAMPR, 72); lc.clip(); pool(p.x, ly, TITLE_LAMPR * Math.min(1, 0.6 + 0.4 * k), 0.95 * Math.min(1, k), 0.25); lc.restore();
+  }
+  // (C5c) the glow worms: each lights its patch like a lantern (its own shadows), flickering
+  for (const w of S.worms || []) {
+    const x = w.pts[2].x - S.scroll, y = w.pts[2].y, R = DEV.glowLightR;
+    if (R <= 0 || x < -R - 20 || x > TITLE_VW + R + 20) continue;
+    lc.save(); fan(x, y, R, 48); lc.clip(); pool(x, y, R, DEV.glowLight * wormFlicker(w, S.t), 0.15); lc.restore();
   }
   // (Coal Seams) a gas whoomph lights the cave round it for a moment
   for (const o of S.booms) if (o.sid === 'gas' || o.sid === 'worm') pool(o.x, o.y, o.r * 2.2, 0.95 * (1 - o.t / o.max), 0.3);

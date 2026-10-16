@@ -1,6 +1,6 @@
 // Screenshots for the owner (Coal Seams, grem branch): Grem Mode started at level 2 (Dev "Start at level"), phone size, a few
 // moments along the level, and close-ups of its decorations.
-//   node tools/coalshots.js [outdir] [prefix] [gas|stal|ladder|bats|worm|wormb]   (default tests/build/autoshots, coal; one of those: its shots only)
+//   node tools/coalshots.js [outdir] [prefix] [gas|stal|ladder|bats|worm|wormb|wormc]   (default tests/build/autoshots, coal; one of those: its shots only)
 const { launch } = require('../tests/chromium');
 const path = require('path');
 const fs = require('fs');
@@ -68,7 +68,7 @@ require('../tests/build')();
     await browser.close(); console.log(said.join(String.fromCharCode(10))); return;
   }
   // (C1) a gas pocket on screen set off: the whoomph mid-flash, then just after, the fire round it (each also a close-up)
-  for (let i = 0; ONLY !== 'stal' && ONLY !== 'ladder' && ONLY !== 'bats' && ONLY !== 'worm' && ONLY !== 'wormb' && i < 400; i++) {
+  for (let i = 0; ONLY !== 'stal' && ONLY !== 'ladder' && ONLY !== 'bats' && ONLY !== 'worm' && ONLY !== 'wormb' && ONLY !== 'wormc' && i < 400; i++) {
     const g = await page.evaluate(() => {
       const S = window.__gremScene, cv = document.querySelector('canvas');
       const g = S && cv && (S.gas || []).find(q => !q.gone && q.wx - S.scroll > 70 && q.wx - S.scroll < 150);
@@ -199,7 +199,7 @@ require('../tests/build')();
   }
   // (C5a) the glow worms: the view held on a worm on a floor; close-ups (darkness lifted) at four points of its gait, then one
   // on a wall or the roof
-  if (ONLY === 'worm' || ONLY === 'wormb') {
+  if (ONLY === 'worm' || ONLY === 'wormb' || ONLY === 'wormc') {
     await page.evaluate(() => { DEV.autoLvlPace = 3; DEV.glowPerScreen = 2; DEV.glowAmbient = 4; });   // (the worms are off by default till the owner OKs them)
     const find = (/** @type {string} */ k) => page.evaluate(k => {
       const S = window.__gremScene; if (!S || !S.worms) return false;
@@ -222,6 +222,21 @@ require('../tests/build')();
     };
     for (let i = 0; i < 2000 && !(await find('floor')); i++) await page.waitForTimeout(60);
     // (C5b) its behaviour: a player near (agro: stood up, facing him), nearer (a strike), then it's killed (the green blast)
+    // (C5c) the look, in the normal dark: the worms lighting their patch, a close-up calm, then agro (a player off to the side)
+    if (ONLY === 'wormc') {
+      const box = () => page.evaluate(() => {
+        const S = window.__gremScene, w = window.__worm, cv = document.querySelector('canvas'), b = cv.getBoundingClientRect(), k = b.width / TITLE_VW;
+        return { x: Math.max(b.left, b.left + (w.r.x - S.scroll) * k - 80), y: Math.max(b.top, b.top + w.r.y * k - 90), width: 160, height: 140 };
+      });
+      await page.evaluate(() => { const S = window.__gremScene; S.still = true; DEV.autoFoeDmg = 0; for (const r of S.runners) { r.out = true; r.x = -300; } });
+      await page.waitForTimeout(800);
+      await save('n-dark', 'as played (normal dark): the glow worms lighting their patch green');
+      await save('o-calm', 'close up (normal dark): a calm worm: its glow, light, and the effects layer drifting slowly', await box());
+      await page.evaluate(() => { const S = window.__gremScene, w = window.__worm, ru = S.runners[0]; ru.out = false; ru.x = w.r.x + 40 - S.scroll - PW / 2; ru.y = w.r.y - 22 - PH / 2; });
+      await page.waitForTimeout(700);
+      await save('p-agro', 'close up (normal dark): in agro (a player off to the side): the glow turned orange, the pattern faster and finer', await box());
+      await browser.close(); console.log(said.join(String.fromCharCode(10))); return;
+    }
     if (ONLY === 'wormb') {
       const put = (/** @type {number} */ dx, /** @type {number} */ dy) => page.evaluate(([dx, dy]) => {
         const S = window.__gremScene, w = window.__worm, ru = S.runners[0];
