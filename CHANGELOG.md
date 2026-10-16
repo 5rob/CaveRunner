@@ -5,6 +5,12 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.98 — Grem Mode: the next old floor each level cleared (branch `autobattler`)
+Built 2026-10-16 (owner asked); screenshots `node tools/gremseamshots.js`.
+- Grem Mode's endless level moves on to the next of the old floors each time a boss falls: Mossy Caves, then Coal Seams, Frozen Deep … Void Hollow, then round from Coal Seams, each with its colours, ambience and creatures (no damage still). The new floor starts just past the boss's arena (`S.looks`, a look per stretch; `auto/level.js levelOnward` adds the next).
+- The seam is blended: over `gremSeamW` (160) world units the rock, moss, bricks and back wall fade from one floor's colours into the next's, the edge warped by slow noise (`gremSeamJag` 1) and lightly dithered, so it reads as the cave changing (Dev → Grem Mode).
+- Suite `auto-floors` covers Grem's looks.
+
 ## v1.0.97 — CaveRunner Auto: the old game's themed floors as levels 2+ (branch `autobattler`)
 Released 2026-10-16 on the branch; owner OK'd the screenshots (`node tools/floorshots.js`).
 - Level 1 is unchanged (checked: the same run, frame for frame, with the randomness pinned). From level 2 the levels cycle the old game's floors 2..12 as they were before main's custom Level 2 (the Tombs): Coal Seams, Frozen Deep, Ember Halls, Fungal Grotto, Salt Flats, Amethyst Vein, Rustworks, Bone Garden, Drowned Halls, Ash Wastes, Void Hollow, then round again from Coal Seams (`auto/maps.js levelFloor`, by the active map's level; a wipe still sends it back to level 1).

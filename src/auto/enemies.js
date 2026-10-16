@@ -13,7 +13,7 @@ import { eliteOf, enemyFor } from '../data/creatures.js';
 import { deathFall } from './death.js';
 import { shieldSoak } from './perks.js';
 import { gremHardTier } from './grem.js';
-import { TCELL, TITLE_KINDS, TITLE_VW, titleFoeAt, titleKind } from '../art/titlescene.js';
+import { TCELL, TITLE_KINDS, TITLE_VW, lookAt, titleFoeAt, titleKind } from '../art/titlescene.js';
 
 export const FALL_FLICKER = 0.6;      // (retired, feedback round 2: a fallen player is a ragdoll now, auto/death.js)
 const BOSS_IN = 90;                   // the boss comes in this far right of the team (world units)
@@ -98,7 +98,7 @@ export function levelFoes(S, L, teamX) {
   }
   // the boss: in when the team reaches the arena, hunting at once
   if (L.phase === 'arena' && !L.boss && !L.bossDead) {
-    const ks = S.roster && S.roster.length ? S.roster : TITLE_KINDS, id = ks[Math.floor(S.rnd() * ks.length)];   // (v1.0.97) an old floor's: one of its roster
+    const look = lookAt(S, L.plan.arena.mid), ks = look && look.roster && look.roster.length ? look.roster : TITLE_KINDS, id = ks[Math.floor(S.rnd() * ks.length)];   // (v1.0.97) an old floor's: one of its roster
     const f = titleFoeAt(S, bossKind(id, tier, mk), Math.min(L.plan.arena.x1 - 30, teamX + BOSS_IN));
     f.aggro = true;
     L.boss = f;

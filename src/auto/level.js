@@ -22,7 +22,7 @@ import { gremDmgMul, gremGold, gremHardTier } from './grem.js';
 import { bagFits, killLoot, lootCol } from './loot.js';
 import { bagAdd, playerStats } from './run.js';
 import { chestPlan, chestsStep } from './chests.js';
-import { levelLook } from './maps.js';
+import { floorLook, floorName, levelFloor, levelLook } from './maps.js';
 import { CLEARED_N, clearedLand } from '../art/cleared.js';
 
 export const LVL_SCROLL = 34;         // the menu's scroll (world units / s at pace 1: titlescene.js SCROLL)
@@ -165,9 +165,11 @@ export function levelScene(vh, seed, n, plan, team, tier = 1, run = null, grem =
     fits: (_S, it) => !L.run || bagFits(L.run, it),
     take: (_S, it) => { if (L.run && bagAdd(L.run, it)) return false; L.bagV++; return true; },
     kind: grem ? gremFoe : autoFoe, hardY: (S, wx) => levelHardY(S, plan, wx), lootCol, blockCell, blockCol, blockKind, free: (S, r) => levelFree(S, L, r), fuel: (_S, r) => (team && team[r.id] ? playerStats(team[r.id]) : null), spawn: S => levelSpawn(S, L) }, team, tier });
-  if (grem) { S.dmgMul = gremDmgMul(tier); S.coinWait = DEV.gremGoldWait; }
+  if (grem) { S.dmgMul = gremDmgMul(tier); S.coinWait = DEV.gremGoldWait; }   // (owner v1.0.92) the guns keep up; the gold bounces first
   // (owner, v1.0.97) past level 1 the level plays as one of the old game's floors: its palette and creatures (auto/maps.js levelLook)
-  if (run && !grem) { const look = levelLook(run, seed); L.floor = look.floor; L.name = look.name; if (look.roster) { S.theme = look.theme; S.roster = look.roster; } }   // (owner v1.0.92) the guns keep up; the gold bounces first
+  if (run && !grem) { const look = levelLook(run, seed); L.floor = look.floor; L.name = look.name; if (look.roster) S.looks = [Object.assign({ x0: -Infinity }, look)]; }
+  // (owner, v1.0.98) Grem Mode: each level cleared, the next old floor (levelFloor(tier)): this stretch's and the next one's from past the arena
+  if (grem) { S.looks = [Object.assign({ x0: -Infinity }, floorLook(levelFloor(tier), seed + tier)), Object.assign({ x0: plan.arena.x1 }, floorLook(levelFloor(tier + 1), seed + tier + 1))]; L.floor = levelFloor(tier); L.name = S.looks[0].name; }
   L.elites = elitePlan(plan, S.rnd);
   L.chests = chestPlan(plan);
   L.meters = S.runners.map(() => ({ dmg: meterNew(), hp: meterNew(), dealt: 0 }));
@@ -420,6 +422,9 @@ export function levelOnward(S, L) {
   L.chests = chestPlan(P);
   L.phase = 'run'; L.bossDead = false; L.boss = null; L.arenaT = -1;
   S.gunsOff = false; S.huddle = false;
+  // (owner, v1.0.98) the floor after this one starts past the new arena (this one's look began past the last: S.looks)
+  if (S.looks) S.looks.push(Object.assign({ x0: a.x1 }, floorLook(levelFloor(tier + 1), P.seed + tier + 1)));
+  L.floor = levelFloor(tier); L.name = floorName(L.floor);
   if (S.team) for (const pl of S.team) if (pl.alive !== false) pl.hp = playerStats(pl).maxHp;
 }
 // the words' thuds, a frame

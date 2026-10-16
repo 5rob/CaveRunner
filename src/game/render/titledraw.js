@@ -20,7 +20,7 @@ import { gradLut, lutAt, rampLut } from '../../art/ramps.js';
 import { drawProp, propGlow } from '../../art/props.js';
 import { gunArtId } from '../../art/gunart.js';
 import { CRYSTAL_PAL, CRYSTAL_R, GREEN_PAL, GUN_HELD, gunMuzzle, drawGun, drawNugget, glowAt, drawRunner, jetFlame, pixelHeld, pixelSoft, pixelSprite } from '../../art/sprites.js';
-import { LEAFY, autoOn, TCELL, TITLE_SOLID, TITLE_VW, TM, titleNoise, titleSolid, titleSolidCell, titleWebAt, titleFlameDir, titleNozzle } from '../../art/titlescene.js';
+import { LEAFY, autoOn, lookAt, TCELL, TITLE_SOLID, TITLE_VW, TM, titleNoise, titleSolid, titleSolidCell, titleWebAt, titleFlameDir, titleNozzle } from '../../art/titlescene.js';
 import { visPoly } from '../../world/vision.js';
 import { drawBolt, drawLook } from './looks.js';
 import { hubBack, hubGlow, hubLight } from './hubdraw.js';
@@ -34,7 +34,7 @@ import { drawBoom, drawGlowShot, drawMushroom, drawSolidShot, shotLights } from 
 // a pickup drawn as its bag tile: this many world units across
 export const LOOT_TILE = 13;
 
-let T = THEMES[0];                                     // Mossy caves; a level past the first: its old floor's palette (S.theme, set per draw)
+let T = THEMES[0];                                     // Mossy caves; else the old floor's palette in view (S.looks: titleDraw sets it, the painter per cell, themeAt)
 /** @type {WeakMap<object, { cv: HTMLCanvasElement, cx: CanvasRenderingContext2D, img: ImageData, painted: number, white?: number, whiteT?: number }>} */
 const CACHE = new WeakMap();
 
@@ -89,6 +89,41 @@ function cellRGB(m, c, r, up) {
   return mixc(T.bg, T.bg2, Math.min(1, t * 1.3), shade).map(v => v + (h - 0.5) * 4);
 }
 
+// (owner, v1.0.98) the palette for cell (c, r): its old floor's (S.looks), and near where the next floor starts (Grem Mode: past
+// each boss's arena) a blend of the two over DEV.gremSeamW world units, its edge warped by slow noise (gremSeamJag) and
+// dithered a little, so the rock turns from one floor into the next rather than at a line. Blends are cached in 32 steps
+/** @type {Map<string, any>} */
+const BLEND = new Map();
+/** @param {any} A @param {any} B @param {number} t 0..1 @returns {Theme} */
+function blendTheme(A, B, t) {
+  const q = Math.round(t * 32), key = A.name + '|' + B.name + '|' + q;
+  /** @type {any} */
+  let M = BLEND.get(key);
+  if (!M) {
+    const k = q / 32;
+    /** @param {any} x @param {any} y @returns {any} */
+    const mx = (x, y) => (Array.isArray(x) ? x.map((v, i) => mx(v, y[i])) : typeof x === 'number' ? x + (y - x) * k : x);
+    M = {};
+    for (const f of Object.keys(A)) M[f] = mx(A[f], B[f]);
+    BLEND.set(key, M);
+  }
+  return M;
+}
+/** @param {import('../../art/titlescene.js').TitleScene} S @param {number} c @param {number} r @returns {Theme} */
+function themeAt(S, c, r) {
+  const wx = (c + 0.5) * TCELL, here = lookAt(S, wx), base = here ? here.theme : THEMES[0];
+  if (!S.looks || S.looks.length < 2) return base;
+  const W = Math.max(1, DEV.gremSeamW), J = DEV.gremSeamJag, reach = W * (0.5 + J * 0.5) + 2;
+  for (let i = 1; i < S.looks.length; i++) {
+    const b = S.looks[i];
+    if (Math.abs(wx - b.x0) > reach) continue;
+    const u = (wx - b.x0) / W + (fbm(c / 14 + 50, r / 14 + 90) - 0.5) * J + (hash(c, r) - 0.5) * 0.12;
+    const t = Math.max(0, Math.min(1, u + 0.5)), s = t * t * (3 - 2 * t);
+    return blendTheme(S.looks[i - 1].theme, b.theme, s);
+  }
+  return base;
+}
+
 /** @param {import('../../art/titlescene.js').TitleScene} S */
 function terrain(S) {
   let C = CACHE.get(S);
@@ -104,10 +139,12 @@ function terrain(S) {
   const paint = (c, r) => {
     const x = ((c % N) + N) % N, col = x * S.rows, m = S.cells[col + r];
     const up = r > 1 && (!TITLE_SOLID[S.cells[col + r - 1]] || !TITLE_SOLID[S.cells[col + r - 2]]);
+    T = themeAt(S, c, r);
     const [cr, cg, cb] = cellRGB(m, c, r, up), o = (r * N + x) * 4;
     D[o] = cr; D[o + 1] = cg; D[o + 2] = cb; D[o + 3] = S.back && m === TM.AIR ? 0 : 255;   // (a backdrop: S.back shows through the open air)
   };
   let ch = false;
+  const T0 = T;   // (paint sets the palette per cell: the frame's own back after)
   if (S.dirtyAll) { C.painted = S.gen - N; S.dirtyAll = false; S.dirty.length = 0; }
   C.painted = Math.max(C.painted, S.gen - N);
   for (; C.painted < S.gen; C.painted++) { for (let r = 0; r < S.rows; r++) paint(C.painted, r); ch = true; }
@@ -116,6 +153,7 @@ function terrain(S) {
     ch = true;
   }
   S.dirty.length = 0;
+  T = T0;
   if (ch) C.cx.putImageData(C.img, 0, 0);
   return C.cv;
 }
@@ -123,7 +161,8 @@ function terrain(S) {
 // cam: the title's camera (art/titlescene.js titleCam: pinch zoom, pan, following a player), none: the whole screen
 /** @param {CanvasRenderingContext2D} ctx @param {import('../../art/titlescene.js').TitleScene} S @param {number} cw css width @param {number} ch css height @param {import('../../art/titlescene.js').TitleCam} [cam] */
 export function titleDraw(ctx, S, cw, ch, cam) {
-  T = S.theme || THEMES[0];
+  const lk = lookAt(S, S.scroll + TITLE_VW / 2);   // (v1.0.97) the old floor in view (Mossy Caves without)
+  T = lk ? lk.theme : THEMES[0];
   const k = cw / TITLE_VW;
   ctx.fillStyle = 'rgb(' + T.bg.join(',') + ')'; ctx.fillRect(0, 0, cw, ch);
   ctx.save();

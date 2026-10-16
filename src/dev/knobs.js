@@ -612,7 +612,7 @@ DEV_META.push(
   { k: 'autoHubDemoNear', g: 'autohub', label: 'A crystal machine plays its demo with you this near (world units; the old shop’s 100)', min: 20, max: 240, step: 5 });
 DEV_GROUPS.push(['autohub', 'Auto: hub']);
 // Grem Mode (auto/grem.js): the unlocks' prices (each dearer than the last), how fast the creatures toughen, the gold, the dark
-Object.assign(DEV_DEFAULTS, { gremPrice: 100, gremGrow: 1.5, gremHard: 0.25, gremGold: 2, gremDark: 0.85, gremPickR: 40, gremChestSize: 2, gremChestGlow: 1, gremBossT: 3.2, gremGoT: 1.6, gremDmgScale: 1, gremGoldWait: 0.6 });
+Object.assign(DEV_DEFAULTS, { gremPrice: 100, gremGrow: 1.5, gremHard: 0.25, gremGold: 2, gremDark: 0.85, gremPickR: 40, gremChestSize: 2, gremChestGlow: 1, gremBossT: 3.2, gremGoT: 1.6, gremDmgScale: 1, gremGoldWait: 0.6, gremSeamW: 160, gremSeamJag: 1 });
 DEV_META.push(
   { k: 'gremPrice', g: 'grem', label: 'The first unlock costs (gold)', min: 5, max: 10000, step: 5 },
   { k: 'gremGrow',  g: 'grem', label: 'Each unlock after it costs × this more', min: 1, max: 4, step: 0.05 },
@@ -625,6 +625,9 @@ DEV_META.push(
   { k: 'gremGoT', g: 'grem', label: 'GO! shows for (s)', min: 0.5, max: 5, step: 0.1 },
   { k: 'gremDmgScale', g: 'grem', label: 'Guns grow with the level: share of the creatures’ health growth (1 all, 0 none)', min: 0, max: 2, step: 0.05 },
   { k: 'gremGoldWait', g: 'grem', label: 'Gold bounces this long before it flies to you (s)', min: 0, max: 3, step: 0.05 },
+  // (owner, v1.0.98) each level cleared, the next old floor: the colours blend over a seam past the boss's arena
+  { k: 'gremSeamW',    g: 'grem', label: 'Floor change: the colours blend over this much cave (units)', min: 4, max: 600, step: 4 },
+  { k: 'gremSeamJag',  g: 'grem', label: '… its edge this ragged (0 a straight fade)', min: 0, max: 3, step: 0.05 },
   { k: 'gremPickR', g: 'grem', label: 'A tap picks the creature nearest it within (world units; the screen is 220 across)', min: 5, max: 220, step: 5 });
 DEV_GROUPS.push(['grem', 'Grem Mode']);
 // CaveRunner Auto's maps (auto/maps.js): the map machine's prices, and how much harder each map starts

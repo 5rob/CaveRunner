@@ -8,7 +8,7 @@ import { Music } from '../audio/music.js';
 import { musicPick } from '../audio/songs.js';
 import { levelState } from '../auto/level.js';
 import { SFX } from '../audio/sfx.js';
-import { TCELL, TITLE_VW } from '../art/titlescene.js';
+import { TCELL, TITLE_VW, lookAt } from '../art/titlescene.js';
 import { PH, PW } from '../core/consts.js';
 import { THEMES } from '../data/themes.js';
 
@@ -29,7 +29,7 @@ export function titleSound(S, C, L, dt) {
   if (!SFX.ready) return;
   SFX.ear(0, 0);
   SFX.tick();
-  const amb = (S.theme || THEMES[0]).name;     // (v1.0.97) an old floor's own ambience (auto/maps.js levelLook)
+  const lk = lookAt(S, S.scroll + TITLE_VW / 2), amb = (lk ? lk.theme : THEMES[0]).name;     // (v1.0.97) an old floor's own ambience (auto/maps.js levelLook), where the view is
   if (SFX.ambience !== amb) SFX.setAmbience(amb);
   Music.play(musicPick(MUS, levelState(S)));     // (v1.0.94) the track for now: the same one is a no-op
   SFX.ambTick(dt);

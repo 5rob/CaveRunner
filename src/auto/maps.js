@@ -110,9 +110,12 @@ export const levelFloor = lv => (lv <= 1 ? 1 : 2 + (lv - 2) % (THEMES.length - 1
 /** @param {number} floor */
 export const floorName = floor => (floor === 2 ? 'Coal Seams' : MAP_NAMES[(floor - 1) % MAP_NAMES.length]);
 // the level the run plays next: its old floor, palette, name and creatures (roster null: level 1's zone rules, unchanged)
-/** @param {AutoRun} run @param {number} seed the level's seed @returns {{ floor: number, theme: Theme, name: string, roster: string[] | null }} */
-export function levelLook(run, seed) {
-  const floor = levelFloor(mapsOf(run)[run.map || 0].level);
+/** @typedef {{ floor: number, theme: Theme, name: string, roster: string[] | null }} FloorLook */
+/** @type {(run: AutoRun, seed: number) => FloorLook} the level's seed */
+export const levelLook = (run, seed) => floorLook(levelFloor(mapsOf(run)[run.map || 0].level), seed);
+// old floor n's look (roster null on floor 1); Grem Mode asks it for each stretch between bosses (auto/level.js gremLooks)
+/** @param {number} floor @param {number} seed @returns {FloorLook} */
+export function floorLook(floor, seed) {
   if (floor === 1) return { floor, theme: THEMES[0], name: floorName(1), roster: null };
   let a = (seed ^ 0x5bd1e995) >>> 0;   // (floors 11-12) the roster's own random off the seed (mulberry32)
   const rnd = () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };

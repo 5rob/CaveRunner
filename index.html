@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v1.0.97</title>
-<!-- VERSION = 'v1000097' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v1.0.98</title>
+<!-- VERSION = 'v1000098' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -1301,7 +1301,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v1.0.97';</script>
+<script>const VERSION = 'v1.0.98';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -2177,7 +2177,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "autoHubDemoNear", g: "autohub", label: "A crystal machine plays its demo with you this near (world units; the old shop’s 100)", min: 20, max: 240, step: 5 }
   );
   DEV_GROUPS.push(["autohub", "Auto: hub"]);
-  Object.assign(DEV_DEFAULTS, { gremPrice: 100, gremGrow: 1.5, gremHard: 0.25, gremGold: 2, gremDark: 0.85, gremPickR: 40, gremChestSize: 2, gremChestGlow: 1, gremBossT: 3.2, gremGoT: 1.6, gremDmgScale: 1, gremGoldWait: 0.6 });
+  Object.assign(DEV_DEFAULTS, { gremPrice: 100, gremGrow: 1.5, gremHard: 0.25, gremGold: 2, gremDark: 0.85, gremPickR: 40, gremChestSize: 2, gremChestGlow: 1, gremBossT: 3.2, gremGoT: 1.6, gremDmgScale: 1, gremGoldWait: 0.6, gremSeamW: 160, gremSeamJag: 1 });
   DEV_META.push(
     { k: "gremPrice", g: "grem", label: "The first unlock costs (gold)", min: 5, max: 1e4, step: 5 },
     { k: "gremGrow", g: "grem", label: "Each unlock after it costs × this more", min: 1, max: 4, step: 0.05 },
@@ -2190,6 +2190,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "gremGoT", g: "grem", label: "GO! shows for (s)", min: 0.5, max: 5, step: 0.1 },
     { k: "gremDmgScale", g: "grem", label: "Guns grow with the level: share of the creatures’ health growth (1 all, 0 none)", min: 0, max: 2, step: 0.05 },
     { k: "gremGoldWait", g: "grem", label: "Gold bounces this long before it flies to you (s)", min: 0, max: 3, step: 0.05 },
+    // (owner, v1.0.98) each level cleared, the next old floor: the colours blend over a seam past the boss's arena
+    { k: "gremSeamW", g: "grem", label: "Floor change: the colours blend over this much cave (units)", min: 4, max: 600, step: 4 },
+    { k: "gremSeamJag", g: "grem", label: "… its edge this ragged (0 a straight fade)", min: 0, max: 3, step: 0.05 },
     { k: "gremPickR", g: "grem", label: "A tap picks the creature nearest it within (world units; the screen is 220 across)", min: 5, max: 220, step: 5 }
   );
   DEV_GROUPS.push(["grem", "Grem Mode"]);
@@ -13250,8 +13253,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var mapLabel = (run) => MAP_NAMES[run.map || 0] + " Lv " + mapsOf(run)[run.map || 0].level;
   var levelFloor = (lv) => lv <= 1 ? 1 : 2 + (lv - 2) % (THEMES.length - 1);
   var floorName = (floor) => floor === 2 ? "Coal Seams" : MAP_NAMES[(floor - 1) % MAP_NAMES.length];
-  function levelLook(run, seed) {
-    const floor = levelFloor(mapsOf(run)[run.map || 0].level);
+  var levelLook = (run, seed) => floorLook(levelFloor(mapsOf(run)[run.map || 0].level), seed);
+  function floorLook(floor, seed) {
     if (floor === 1) return { floor, theme: THEMES[0], name: floorName(1), roster: null };
     let a = (seed ^ 1540483477) >>> 0;
     const rnd2 = () => {
@@ -14078,11 +14081,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     spider: [["hamahakki", 5], ["meduusa", 1]]
   };
   var zoneHome = (Z) => TITLE_HOME[Z.spid ? "spider" : Z.z] || TITLE_HOME.moss;
+  function lookAt(S2, wx) {
+    if (!S2.looks) return null;
+    let L = null;
+    for (const l of S2.looks) if (l.x0 <= wx) L = l;
+    return L;
+  }
   function titleKind(S2, wx) {
-    const R = S2.rnd;
-    if (S2.roster && S2.roster.length) {
-      const ok = S2.roster.filter((id) => !NATURAL_ONLY[enemyFor(id, 1).act] || built(wx, S2) === 0);
-      const from = ok.length ? ok : S2.roster;
+    const R = S2.rnd, look = lookAt(S2, wx), roster = look && look.roster;
+    if (roster && roster.length) {
+      const ok = roster.filter((id) => !NATURAL_ONLY[enemyFor(id, 1).act] || built(wx, S2) === 0);
+      const from = ok.length ? ok : roster;
       return from[Math.floor(R() * from.length)];
     }
     const home = zoneHome(titleZoneSpan(wx, S2));
@@ -26037,7 +26046,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       e.x = e.f.x;
     }
     if (L.phase === "arena" && !L.boss && !L.bossDead) {
-      const ks = S2.roster && S2.roster.length ? S2.roster : TITLE_KINDS, id = ks[Math.floor(S2.rnd() * ks.length)];
+      const look = lookAt(S2, L.plan.arena.mid), ks = look && look.roster && look.roster.length ? look.roster : TITLE_KINDS, id = ks[Math.floor(S2.rnd() * ks.length)];
       const f = titleFoeAt(S2, bossKind(id, tier, mk), Math.min(L.plan.arena.x1 - 30, teamX + BOSS_IN));
       f.aggro = true;
       L.boss = f;
@@ -26283,10 +26292,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const look = levelLook(run, seed);
       L.floor = look.floor;
       L.name = look.name;
-      if (look.roster) {
-        S2.theme = look.theme;
-        S2.roster = look.roster;
-      }
+      if (look.roster) S2.looks = [Object.assign({ x0: -Infinity }, look)];
+    }
+    if (grem) {
+      S2.looks = [Object.assign({ x0: -Infinity }, floorLook(levelFloor(tier), seed + tier)), Object.assign({ x0: plan.arena.x1 }, floorLook(levelFloor(tier + 1), seed + tier + 1))];
+      L.floor = levelFloor(tier);
+      L.name = S2.looks[0].name;
     }
     L.elites = elitePlan(plan, S2.rnd);
     L.chests = chestPlan(plan);
@@ -26563,6 +26574,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     L.arenaT = -1;
     S2.gunsOff = false;
     S2.huddle = false;
+    if (S2.looks) S2.looks.push(Object.assign({ x0: a.x1 }, floorLook(levelFloor(tier + 1), P2.seed + tier + 1)));
+    L.floor = levelFloor(tier);
+    L.name = floorName(L.floor);
     if (S2.team) {
       for (const pl of S2.team) if (pl.alive !== false) pl.hp = playerStats(pl).maxHp;
     }
@@ -29583,6 +29597,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     "gremHard",
     "gremPickR",
     "gremPrice",
+    "gremSeamJag",
+    "gremSeamW",
     "jeAimTolHi",
     "jeAimTolLo",
     "jeBounceHi",
@@ -31294,6 +31310,32 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const big = fbm2(bx / 34 + 700, by / 34 + 500), shade = 1 - 0.55 * Math.max(0, Math.min(1, (big - 0.35) / 0.3));
     return mixc(T.bg, T.bg2, Math.min(1, t * 1.3), shade).map((v) => v + (h3 - 0.5) * 4);
   }
+  var BLEND = /* @__PURE__ */ new Map();
+  function blendTheme(A, B, t) {
+    const q = Math.round(t * 32), key = A.name + "|" + B.name + "|" + q;
+    let M = BLEND.get(key);
+    if (!M) {
+      const k = q / 32;
+      const mx = (x, y) => Array.isArray(x) ? x.map((v, i) => mx(v, y[i])) : typeof x === "number" ? x + (y - x) * k : x;
+      M = {};
+      for (const f of Object.keys(A)) M[f] = mx(A[f], B[f]);
+      BLEND.set(key, M);
+    }
+    return M;
+  }
+  function themeAt(S2, c, r) {
+    const wx = (c + 0.5) * TCELL, here = lookAt(S2, wx), base = here ? here.theme : THEMES[0];
+    if (!S2.looks || S2.looks.length < 2) return base;
+    const W = Math.max(1, DEV.gremSeamW), J = DEV.gremSeamJag, reach2 = W * (0.5 + J * 0.5) + 2;
+    for (let i = 1; i < S2.looks.length; i++) {
+      const b = S2.looks[i];
+      if (Math.abs(wx - b.x0) > reach2) continue;
+      const u = (wx - b.x0) / W + (fbm2(c / 14 + 50, r / 14 + 90) - 0.5) * J + (hash4(c, r) - 0.5) * 0.12;
+      const t = Math.max(0, Math.min(1, u + 0.5)), s = t * t * (3 - 2 * t);
+      return blendTheme(S2.looks[i - 1].theme, b.theme, s);
+    }
+    return base;
+  }
   function terrain(S2) {
     let C = CACHE.get(S2);
     if (!C) {
@@ -31308,6 +31350,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const paint3 = (c, r) => {
       const x = (c % N + N) % N, col = x * S2.rows, m = S2.cells[col + r];
       const up = r > 1 && (!TITLE_SOLID[S2.cells[col + r - 1]] || !TITLE_SOLID[S2.cells[col + r - 2]]);
+      T = themeAt(S2, c, r);
       const [cr, cg, cb] = cellRGB(m, c, r, up), o = (r * N + x) * 4;
       D[o] = cr;
       D[o + 1] = cg;
@@ -31315,6 +31358,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       D[o + 3] = S2.back && m === TM.AIR ? 0 : 255;
     };
     let ch2 = false;
+    const T0 = T;
     if (S2.dirtyAll) {
       C.painted = S2.gen - N;
       S2.dirtyAll = false;
@@ -31330,11 +31374,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       ch2 = true;
     }
     S2.dirty.length = 0;
+    T = T0;
     if (ch2) C.cx.putImageData(C.img, 0, 0);
     return C.cv;
   }
   function titleDraw(ctx, S2, cw, ch2, cam) {
-    T = S2.theme || THEMES[0];
+    const lk = lookAt(S2, S2.scroll + TITLE_VW / 2);
+    T = lk ? lk.theme : THEMES[0];
     const k = cw / TITLE_VW;
     ctx.fillStyle = "rgb(" + T.bg.join(",") + ")";
     ctx.fillRect(0, 0, cw, ch2);
@@ -32841,7 +32887,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (!SFX.ready) return;
     SFX.ear(0, 0);
     SFX.tick();
-    const amb = (S2.theme || THEMES[0]).name;
+    const lk = lookAt(S2, S2.scroll + TITLE_VW / 2), amb = (lk ? lk.theme : THEMES[0]).name;
     if (SFX.ambience !== amb) SFX.setAmbience(amb);
     Music.play(musicPick(MUS, levelState(S2)));
     SFX.ambTick(dt);
@@ -33159,7 +33205,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
 
   // src/version.js
-  var VERSION2 = "v1.0.97";
+  var VERSION2 = "v1.0.98";
 
   // src/art/zonelab.js
   var ZLAB_LEAD = 60;

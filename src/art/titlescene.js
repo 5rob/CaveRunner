@@ -119,14 +119,22 @@ export const TITLE_HOME = {
 // who comes into a zone: its TITLE_HOME list (a spider mine, Z.spid: the spiders')
 /** @param {TZone} Z */
 export const zoneHome = Z => TITLE_HOME[Z.spid ? 'spider' : Z.z] || TITLE_HOME.moss;
-// the kind that comes in at world x: an old floor's (S.roster: the old game's makeLevel, each as likely, a jellyfish only where
+// the old floor's look at world x (S.looks: the last one starting at or before it; null: none, Mossy Caves)
+/** @param {TitleScene} S @param {number} wx @returns {TLook | null} */
+export function lookAt(S, wx) {
+  if (!S.looks) return null;
+  let L = null;
+  for (const l of S.looks) if (l.x0 <= wx) L = l;
+  return L;
+}
+// the kind that comes in at world x: an old floor's (its look's roster: the old game's makeLevel, each as likely, a jellyfish only where
 // it isn't built up), else the zone's home list, weighted
 /** @param {TitleScene} S @param {number} wx @returns {string} */
 export function titleKind(S, wx) {
-  const R = S.rnd;
-  if (S.roster && S.roster.length) {
-    const ok = S.roster.filter(id => !NATURAL_ONLY[enemyFor(id, 1).act] || built(wx, S) === 0);
-    const from = ok.length ? ok : S.roster;
+  const R = S.rnd, look = lookAt(S, wx), roster = look && look.roster;
+  if (roster && roster.length) {
+    const ok = roster.filter(id => !NATURAL_ONLY[enemyFor(id, 1).act] || built(wx, S) === 0);
+    const from = ok.length ? ok : roster;
     return from[Math.floor(R() * from.length)];
   }
   const home = zoneHome(titleZoneSpan(wx, S));
@@ -181,9 +189,11 @@ const CLASSIC = { shoot: 1, turret: 1, chase: 1, bomb: 1 };
  *   webs: WebLine[], orbN?: number, orbs?: Record<number, OrbRig>, mush?: MushCloud[], orbHub?: { x: number, y: number, r: number }[], orbT?: number, cut: number, lineT: number, silk: { x: number, y: number, ax: number, ay: number, vx: number, vy: number, life: number }[],
  *   nav: { F: any, fx: number, fy: number, t: number }, fireAcc: number, fireN: number, burning: Set<number>, gotN: number, pops: number, lampsPopped: number, kitNames: Set<string>,
  *   digT: number, digs: number, digWhy: Record<string, number>, still?: boolean, zp: TitlePlan, snd: TSnd[], hub?: TitleHub, lvl?: TitleLevel, lab?: boolean, back?: (ctx: CanvasRenderingContext2D, S: TitleScene) => void, pace?: number, team?: RunPlayer[], blocked?: number, blockedKind?: string, huddle?: boolean, gunsOff?: boolean, dmgMul?: number, coinWait?: number, hgoal?: number, hgoalT?: number, fuelWait?: number, tier?: number, loot?: TLoot[],
- *   onTake?: (it: BagItem, x: number, y: number) => void, pick?: Enemy | null, theme?: Theme, roster?: string[] | null }} TitleScene */
-// (theme, roster: a CaveRunner Auto level past the first plays as an old floor, auto/maps.js levelLook: its palette (titledraw.js)
-// and its creatures, each as likely, jellyfish only in the natural zones (titleKind); none: Mossy Caves and the zones' own)
+ *   onTake?: (it: BagItem, x: number, y: number) => void, pick?: Enemy | null, looks?: TLook[] }} TitleScene */
+// (looks: a CaveRunner Auto level past the first plays as an old floor, auto/maps.js levelLook: its palette (titledraw.js), its
+// ambience and its creatures, each as likely, jellyfish only in the natural zones (titleKind); none: Mossy Caves and the zones'
+// own. In x order, each from its x0 on (Grem Mode: a new one past each boss's arena; the painter blends the seam, DEV.gremSeam*))
+/** @typedef {{ x0: number, theme: Theme, name: string, roster: string[] | null }} TLook */
 // (pick: Grem Mode's tapped target, ui/auto/GremScreen.js: every player aims at it while it lives, titleAimPick)
 // a finite level in the scrolling ring (CaveRunner Auto, auto/level.js levelScene): zp its plan (made whole up front); step runs
 // after titleStep's own; data is the level's own state. S.pace (0..) scales the scroll (auto/pilot.js)

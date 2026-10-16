@@ -24,7 +24,8 @@ Your team of jetpack runners plays the caves by itself; you kit them out.
 
 ### Grem Mode (the title's GREM MODE)
 
-A gentle mode for a toddler: one endless level, nobody gets hurt, gold is the only drop.
+A gentle mode for a toddler: one endless level, nobody gets hurt, gold is the only drop. Each boss beaten, the cave
+turns into the next of the old themed caves (its colours and creatures), blending in past the boss's arena.
 
 - The **gold** pays off the unlocks along the row under it: your saved gun presets (Dev → Presets), in a random
   order, with players 2-4 among them. A new one glows till you tap it: a gun goes to the picked player (tap a helmet
