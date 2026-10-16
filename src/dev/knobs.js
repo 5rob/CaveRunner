@@ -496,6 +496,16 @@ DEV_META.push(
   { k: 'coalGasBoom', g: 'coal', label: 'Gas whoomph: blast radius (units)', min: 4, max: 60, step: 1 },
   { k: 'coalGasDmg',  g: 'coal', label: 'Gas whoomph: damage to creatures', min: 0, max: 200, step: 1 });
 colourKnobs('coal', [['coalGasCol', 'Gas whoomph colours (core, edge)', '#e4f0ff', '#3f7dff', 'w']]);
+// (chunk C2) the Cavern's stalactites and stalagmites (art/titlescene.js stalLen, stalCol)
+Object.assign(DEV_DEFAULTS, { coalStalDense: 0.75, coalStalClus: 0.5, coalMiteDense: 0.65, coalMiteClus: 0.55 });
+DEV_META.push(
+  { k: 'coalStalDense', g: 'coal', label: 'Stalactites: density (share of spots in a cluster with one)', min: 0, max: 1, step: 0.05 },
+  { k: 'coalStalClus',  g: 'coal', label: 'Stalactites: clustering (bare share between clusters)', min: 0, max: 0.95, step: 0.05 },
+  { k: 'coalMiteDense', g: 'coal', label: 'Stalagmites: density (share of spots in a cluster with one)', min: 0, max: 1, step: 0.05 },
+  { k: 'coalMiteClus',  g: 'coal', label: 'Stalagmites: clustering (bare share between clusters)', min: 0, max: 0.95, step: 0.05 });
+rangeKnobs('coal', [
+  ['coalStalLen', 'Stalactites: length (units)', 0, 60, 1, 6, 22],
+  ['coalMiteLen', 'Stalagmites: length (units)', 0, 40, 1, 3, 10]]);
 DEV_GROUPS.push(['coal', 'Coal Seams']);
 // CaveRunner Auto's maps (auto/maps.js): the map machine's prices, and how much harder each map starts
 Object.assign(DEV_DEFAULTS, { autoMapPrice: 1000000, autoMapGrow: 1, autoMapStep: 5 });

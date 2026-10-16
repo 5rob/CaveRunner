@@ -57,6 +57,7 @@ function cellRGB(m, c, r, up) {
   const J = q => [q[0] + j, q[1] + j, q[2] + j];
   if (m === TM.ROCK) return J(up ? mixc(T.moss[0], T.moss[1], h) : mixc(T.rock[0], T.rock[1], fbm(c / 6 + 100, r / 6 + 100)));
   if (m === TM.MOSS) return J(mixc(T.moss[0], T.moss[1], h));
+  if (m === TM.ROCKL) return J(mixc(T.rock[0], T.rock[1], h).map(v => v * 1.45 + 18));   // (Coal Seams) a stalactite's lighter tip
   if (m === TM.BRICK) {
     const k = c + (r % 2) * 3;
     if (k % 6 === 0) return J(T.mortar);

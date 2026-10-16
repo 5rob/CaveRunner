@@ -79,8 +79,8 @@ export const TITLE_AIM = 90;         // he shoots only at creatures this near (w
 // rub and rubM (a rubble mound, its mossy top)
 // STEEL, BWALL (a brick back wall, open) and SWALL (a steel back wall, open): the auto hub's room (auto/hub.js)
 export const TM = { AIR: 0, ROCK: 1, MOSS: 2, BRICK: 3, WOOD: 4, CHAR: 5, BEAM: 6, BEAMD: 7, GRASS: 8, RUB: 9, RUBM: 10, STEEL: 11, BWALL: 12, SWALL: 13,
-  ROOT: 14, SILT: 15, SILTD: 16, IRON: 17, IROND: 18, CRYS: 19, CRYSL: 20, NEST: 21, NESTD: 22, COAL: 23, RAIL: 24 };   // 14 on: CaveRunner Auto's blocked zones (auto/blocked.js); COAL, RAIL (open: a minecart rail): Grem's Coal Seams
-export const TITLE_SOLID = [0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0];
+  ROOT: 14, SILT: 15, SILTD: 16, IRON: 17, IROND: 18, CRYS: 19, CRYSL: 20, NEST: 21, NESTD: 22, COAL: 23, RAIL: 24, ROCKL: 25 };   // 14 on: CaveRunner Auto's blocked zones (auto/blocked.js); COAL, RAIL (open: a minecart rail): Grem's Coal Seams
+export const TITLE_SOLID = [0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1];
 const SOLID = TITLE_SOLID;
 // (Auto's level, owner v1.0.52: strong guns blasted the cave away down to the bottom edge) a blast bites less toward the
 // play area's bottom (a tall level: the old height's stay as they were): × 1 down to DEV.autoHardDeep above the hard line,
@@ -89,7 +89,7 @@ const SOLID = TITLE_SOLID;
 /** @param {{ lvl?: { hardY?: (S: any, wx: number) => number }, vh: number, top: number, bot: number }} S @param {number} y @param {number} [wx] */
 export const deepK = (S, y, wx) => (!S.lvl || DEV.autoHardDeep <= 0 || S.bot - S.top <= MINE_TALL ? 1
   : Math.max(0, Math.min(1, ((S.lvl.hardY && wx != null ? S.lvl.hardY(S, wx) : S.vh - DEV.autoHardEdge) - y) / DEV.autoHardDeep)));
-const FUEL = [0, 0, 2, 0, 3, 0, 3, 3, 1, 0, 1, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 1, 1, 4, 0];   // the fuel kind each burns as (world/fire.js: 1 grass, 2 moss, 3 timber, 4 coal)
+const FUEL = [0, 0, 2, 0, 3, 0, 3, 3, 1, 0, 1, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 1, 1, 4, 0, 0];   // the fuel kind each burns as (world/fire.js: 1 grass, 2 moss, 3 timber, 4 coal)
 // how readily a fuel kind catches (coal: × the Coal Seams knob)
 /** @param {number} kind */
 const catchOf = kind => FIRE_CATCH[kind] * (kind === 4 ? DEV.coalCatch : 1);
@@ -484,8 +484,9 @@ const zFloor = (x, Z, B) => (Z.z === 'winding' ? windMid(x, Z, B) + windHalf(x, 
 // THE SPIDER ZONE (owner, after v1.0.74): the open cave (its roof and floor as moss's) with rock scattered through its
 // open air, natural: boulders (lumps of a noise field, DEV.autoSpiderRock their share), spikes down off the roof and up off
 // the floor; none near its ends. Something for webs to hang from (world/orbweb.js). Pure
-/** @param {number} wx @param {number} y @param {TZone} Z @param {number} cy @param {number} fy the column's roof and floor */
-export function spiderRock(wx, y, Z, cy, fy) {
+/** @param {number} wx @param {number} y @param {TZone} Z @param {number} cy @param {number} fy the column's roof and floor
+ * @param {boolean} [bare] no spikes (Coal Seams: its stalactites and stalagmites instead, stalCol) */
+export function spiderRock(wx, y, Z, cy, fy, bare) {
   const edge = Math.min(wx - Z.x0, Z.x1 - wx);
   if (edge < 24 || y < cy || y > fy) return false;
   const fade = Math.max(0, (70 - edge) / 70) * 0.15;
@@ -494,11 +495,61 @@ export function spiderRock(wx, y, Z, cy, fy) {
     if (n > 1 - DEV.autoSpiderRock + fade) return true;
   }
   const k = Math.floor(wx / 34), i = Z.i * 7, sx = k * 34 + 8 + h2(k, i + 21) * 18, sw = 3 + h2(k, i + 22) * 5, d = Math.abs(wx - sx) / sw;
-  if (d < 1 && h2(k, i + 25) < 0.6) {
+  if (!bare && d < 1 && h2(k, i + 25) < 0.6) {
     const len = (16 + h2(k, i + 23) * 44) * (1 - d * d) * (1 - fade * 3);
     return h2(k, i + 24) < 0.55 ? y < cy + len : y > fy - len * 0.6;
   }
   return false;
+}
+// (Coal Seams, chunk C2) the Cavern's stalactites (hanging off every underside: the roof, the boulders' bottoms) and
+// stalagmites (rising off the floor and the boulders' tops, shorter and blunter), in clusters of mixed lengths. One point
+// per slot along x (7 units stalactites, 9 stalagmites), there by DEV.coal{Stal,Mite}Dense where a noise field is over
+// DEV.coal{Stal,Mite}Clus (the bare gaps between clusters), its length in DEV.coal{Stal,Mite}Len{Lo,Hi} (shorter at a
+// cluster's edge). At column wx: [this column's length, the point's whole length] (0s: none). Pure
+/** @param {number} wx @param {boolean} up a stalagmite @param {number} ph the zone's phase */
+export function stalLen(wx, up, ph) {
+  const sp = up ? 9 : 7, s = up ? 41 : 47, k0 = Math.floor(wx / sp);
+  const dense = up ? DEV.coalMiteDense : DEV.coalStalDense, clus = up ? DEV.coalMiteClus : DEV.coalStalClus;
+  const lo = up ? DEV.coalMiteLenLo : DEV.coalStalLenLo, hi = up ? DEV.coalMiteLenHi : DEV.coalStalLenHi;
+  let best = 0, whole = 0;
+  for (let k = k0 - 2; k <= k0 + 2; k++) {
+    const sx = k * sp + sp / 2 + (h2(k, s + 1) - 0.5) * sp * 0.6;
+    const cl = titleNoise(sx / 70 + ph, s);
+    if (cl <= clus || h2(k, s + 3) >= dense) continue;
+    const L = (lo + (hi - lo) * h2(k, s + 2)) * Math.min(1, (cl - clus) / 0.1);
+    const w = up ? 1.6 + L * 0.32 : 1 + L * 0.13, d = Math.abs(wx - sx) / w;
+    if (d >= 1) continue;
+    const h = up ? L * (1 - d * d) : L * (1 - d);
+    if (h > best) { best = h; whole = L; }
+  }
+  return [best, whole];
+}
+// a Coal Seams Cavern column's rock: 0 air, 1 rock (roof, floor, boulders), 2 a point's rock, 3 a point's lighter tip.
+// Each point is cut to a share of the air past its edge (40% stalactites, 30% stalagmites), so none seals a way through. Pure
+/** @param {number} wx @param {TZone} Z @param {number} cy @param {number} fy @param {number} rows */
+export function stalCol(wx, Z, cy, fy, rows) {
+  const a = new Uint8Array(rows);
+  for (let r = 0; r < rows; r++) { const y = (r + 0.5) * TCELL; a[r] = y < cy || y >= fy || spiderRock(wx, y, Z, cy, fy, true) ? 1 : 0; }
+  if (Math.min(wx - Z.x0, Z.x1 - wx) < 24) return a;
+  const dn = stalLen(wx, false, Z.ph[0]), upL = stalLen(wx, true, Z.ph[1]);
+  if (!dn[0] && !upL[0]) return a;
+  const b = a.slice();
+  for (let r = 0; r < rows; ) {
+    if (b[r]) { r++; continue; }
+    let e = r;
+    while (e < rows && !b[e]) e++;   // air rows r..e-1, rock (or the column's end) past each end
+    const room = (e - r) * TCELL, y0 = r * TCELL, y1 = e * TCELL;
+    if (r > 0 && dn[0] > 0) {
+      const h = Math.min(dn[0], room * 0.4), tip = Math.max(2, dn[1] * 0.3);
+      for (let q = r; q < e && (q + 0.5) * TCELL < y0 + h; q++) a[q] = (q + 0.5) * TCELL - y0 > Math.min(h, dn[1]) - tip && h > dn[1] - tip ? 3 : 2;
+    }
+    if (e < rows && upL[0] > 0) {
+      const h = Math.min(upL[0], room * 0.3), tip = Math.max(2, upL[1] * 0.25);
+      for (let q = e - 1; q >= r && (q + 0.5) * TCELL > y1 - h; q--) if (!a[q]) a[q] = y1 - (q + 0.5) * TCELL > h - tip && h > upL[1] - tip ? 3 : 2;
+    }
+    r = e;
+  }
+  return a;
 }
 // ('beams') a mine's old timbering left standing in it: crossbeams at random heights (two rows: lit over shaded), a post
 // under each end down to the floor, a brace inside each. Not solid (as a mine's frames): it burns; webs hang off it.
@@ -666,6 +717,7 @@ function genCol(S, c) {
   const bk0 = Zn.blk, bk = bk0 && S.lvl && S.lvl.blockCell ? S.lvl.blockCell : null;
   const by0 = M && bands.length ? bands[Math.min(M.n, bands.length) - 1].c - 14 : cy, by1 = M && bands.length ? bands[0].f + 3 : fy;
   if (bk0 && S.lvl && S.lvl.blockCol) S.lvl.blockCol(S, bk0, c, wx, by0, by1);
+  const stal = coal && z === 'spider' ? stalCol(wx, Zn, cy, fy, S.rows) : null;   // (Coal Seams) the Cavern's rock, its points
   let carved = false;
   for (let r = 0; r < S.rows; r++) {
     const y = (r + 0.5) * TCELL, Zc = titleZoneLook(wx, y, S), zc = Zc.z;   // the skin (moss or bricks) frays at a border
@@ -684,7 +736,8 @@ function genCol(S, c) {
       m = TM.ROCK;
       if (zc === 'paved' && b > 0.3 && y < fy + 6) m = TM.BRICK;
       else if (!coal && y < fy + mossDeep * TCELL) m = TM.MOSS;
-    } else if (z === 'spider' && spiderRock(wx, y, Zn, cy, fy)) m = coal || spiderRock(wx, y - 2 * TCELL, Zn, cy, fy) ? TM.ROCK : TM.MOSS;   // (moss on their tops)
+    } else if (stal) m = stal[r] === 3 ? TM.ROCKL : stal[r] ? TM.ROCK : m;
+    else if (z === 'spider' && spiderRock(wx, y, Zn, cy, fy)) m = coal || spiderRock(wx, y - 2 * TCELL, Zn, cy, fy) ? TM.ROCK : TM.MOSS;   // (moss on their tops)
     else if (z === 'spider' && Zn.sv === 'beams' && spiderBeam(wx, y, Zn, cy, fy) >= 0) m = spiderBeam(wx, y, Zn, cy, fy);
     else if (ledge && y >= ly && y < ly + 4) m = TM.BRICK;
     else if (ledge && y >= ly - 2 && y < ly && tuft) m = TM.GRASS;
@@ -695,7 +748,7 @@ function genCol(S, c) {
     if (TITLE_SOLID[m] && zoneOpenAt(wx, y, S, Zn, fy, Zc)) { m = TM.AIR; carved = true; }
     if (tc && (m === TM.AIR || m === TM.RAIL) && tc.cells.has(r)) m = tc.cells.get(r) || m;   // (the timber: in front of a rail)
     if (m === TM.AIR) for (const q of chutes) if (y >= q.y - 1 && y < q.y + 5) m = y < q.y + 1 ? TM.BEAMD : TM.BEAM;   // (the trough's inside, its boards under it)
-    if (seam && m === TM.ROCK && coalCell(S, wx, y)) m = TM.COAL;
+    if (seam && m === TM.ROCK && !(stal && stal[r] > 1) && coalCell(S, wx, y)) m = TM.COAL;   // (the points stay rock)
     if (bk) m = bk(bk0, wx, y, by0, by1, m);
     S.cells[base + r] = m;
   }
@@ -918,9 +971,10 @@ function natCol(S, c) {
   if (a) return a;
   const wx = c * TCELL, Zn = titleZoneSpan(wx, S), cy = titleCeil(wx, S), fy = titleFloor(wx, S);
   a = new Uint8Array(S.rows);
+  const st = Zn.z === 'spider' && coalAt(S, wx) ? stalCol(wx, Zn, cy, fy, S.rows) : null;   // (as genCol: the Cavern's points)
   for (let r = 0; r < S.rows; r++) {
     const y = (r + 0.5) * TCELL;
-    let s = y < cy || y >= fy || (Zn.z === 'spider' && spiderRock(wx, y, Zn, cy, fy));
+    let s = y < cy || y >= fy || (st ? st[r] > 0 : Zn.z === 'spider' && spiderRock(wx, y, Zn, cy, fy));
     if (s && Zn.z === 'winding' && windAir(wx, y, Zn, S)) s = false;
     a[r] = s ? 1 : 0;
   }

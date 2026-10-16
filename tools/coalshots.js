@@ -19,6 +19,7 @@ require('../tests/build')();
   await ctx.addInitScript(() => { window.__TEST_TITLE = true; window.__TITLE_SEED = 101; window.__AUTO_LEVEL = 23; });
   const page = await ctx.newPage();
   page.on('pageerror', e => console.log('PAGEERROR', e.message));
+  page.on('console', m => { if (m.text().startsWith('at ')) console.log(m.text()); });
   await page.goto('file://' + path.join(__dirname, '..', 'tests', 'build', 'test.html'));
   await page.waitForTimeout(1200);
   await page.evaluate(() => { DEV.gremStartLv = 2; DEV.autoFoeDmg = 0; DEV.autoLvlPace = 1.6; });
@@ -26,7 +27,7 @@ require('../tests/build')();
   const save = async (n, what, clip) => { await page.screenshot({ path: path.join(OUT, PRE + '-' + n + '.png'), clip }); said.push(`${PRE}-${n}.png  ${what}`); };
   const zone = () => page.evaluate(() => { const S = window.__gremScene; return S ? titleZoneSpan(S.scroll + 110, S).z : '?'; });
   // (C1) a gas pocket on screen set off: the whoomph mid-flash, then just after, the fire round it (each also a close-up)
-  for (let i = 0; i < 400; i++) {
+  for (let i = 0; ONLY !== 'stal' && i < 400; i++) {
     const g = await page.evaluate(() => {
       const S = window.__gremScene, cv = document.querySelector('canvas');
       const g = S && cv && (S.gas || []).find(q => !q.gone && q.wx - S.scroll > 70 && q.wx - S.scroll < 150);
@@ -46,6 +47,36 @@ require('../tests/build')();
       break;
     }
     await page.waitForTimeout(200);
+  }
+  // (C2) the Cavern's stalactites and stalagmites: the view held on the Cavern, then close-ups of a roof and a floor cluster
+  if (ONLY === 'stal') {
+    await page.evaluate(() => { DEV.autoLvlPace = 4; });
+    for (let i = 0; i < 3000; i++) {
+      const on = await page.evaluate(() => { const S = window.__gremScene; return !!S && titleZoneSpan(S.scroll + 40, S).z === 'spider' && titleZoneSpan(S.scroll + TITLE_VW - 40, S).z === 'spider' && coalAt(S, S.scroll + 100); });
+      if (on) break;
+      await page.waitForTimeout(100);
+    }
+    const box = await page.evaluate(() => {
+      const S = window.__gremScene, cv = document.querySelector('canvas'), b = cv.getBoundingClientRect(), k = b.width / TITLE_VW;
+      S.lvl.step = null; S.pace = 0; console.log('at', S.scroll, titleZoneSpan(S.scroll + 100, S).z);
+      // the column with the most hanging (and rising) point cells near it
+      let up = { n: 0, x: 0, y: 0 }, dn = { n: 0, x: 0, y: 0 };
+      for (let x = 30; x < TITLE_VW - 30; x += 4) {
+        let h = 0, rr = 0, hy = 0, ry = 0;
+        for (let dx = -16; dx <= 16; dx += 2) {
+          const wx = S.scroll + x + dx, Z = titleZoneSpan(wx, S), st = stalCol(wx, Z, titleCeil(wx, S), titleFloor(wx, S), S.rows);
+          for (let r = 1; r < st.length; r++) if (st[r] > 1) { if (st[r - 1] >= 1 && r * TCELL < titleCeil(wx, S) + 40) { h++; hy = r * TCELL; } if (r * TCELL > titleFloor(wx, S) - 30) { rr++; ry = r * TCELL; } }
+        }
+        if (h > up.n) up = { n: h, x, y: hy }; if (rr > dn.n) dn = { n: rr, x, y: ry };
+      }
+      const clip = (/** @type {{ x: number, y: number }} */ q) => ({ x: Math.max(b.left, b.left + q.x * k - 90), y: Math.max(b.top, b.top + q.y * k - 90), width: 180, height: 180 });
+      return { up: clip(up), dn: clip(dn) };
+    });
+    await page.waitForTimeout(300);
+    await save('q-stal', 'the Cavern on Coal Seams: stalactites off the roof and the boulders, stalagmites on the floor');
+    await save('r-stal-roof', 'close up: a cluster hanging off the roof', box.up);
+    await save('s-stal-floor', 'close up: a cluster on the floor', box.dn);
+    await browser.close(); console.log(said.join(String.fromCharCode(10))); return;
   }
   if (ONLY === 'gas') { await browser.close(); console.log(said.join('\n')); return; }
   // shots as the level goes by: one in each zone kind met (up to 5), and their close-ups
