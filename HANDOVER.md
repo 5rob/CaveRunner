@@ -13,7 +13,7 @@ C2 stalactites/stalagmites, C3 ladders + Cavern timber, C4 bats, C5 glow worms, 
 check-ins, release steps, keep-it-short rule; tick its Status as chunks ship). Each step: phone screenshots
 (`node tools/coalshots.js`, `tools/timbershots.js`, Grem started at level 2) → owner OK → bump, docs, push `grem`.
 The plan is the Claude Doc: read it with the docs tools (doc id `62f545c8-940a-4833-9ba9-ff20db771da5`, tab body node
-`64396f1a-182a`; last write rev 25) — never web-fetch it. Every open question is decided (its Decisions section, owner
+`64396f1a-182a`; last write rev 26) — never web-fetch it. Every open question is decided (its Decisions section, owner
 2026-10-16): ideas 1, 2, 3, 10 picked; spider webs stay; burnt coal → open; ladders background, stalactites solid; bats harmless
 (Dev bite 0), glow worms ≈ spider health/strike, their blast hurts the team at half (Dev); Digging zone = `winding`, Cavern =
 `spider`; only light: lanterns and glow worms. Its HTML review copy https://claude.ai/artifact/BZCnJDP93NEcB1fd99JPXM (republish

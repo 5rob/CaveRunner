@@ -13,7 +13,7 @@ shots. Agent reports: at most 10 lines. Briefs give the facts so agents don't re
 ## Where things are
 
 - **Spec:** the Claude Doc "CaveRunner: Coal Seams", doc id `62f545c8-940a-4833-9ba9-ff20db771da5`, tab body node
-  `64396f1a-182a`, last write **rev 25**. Read it with the docs tools only (load the docs skill first; never web-fetch).
+  `64396f1a-182a`, last write **rev 26**. Read it with the docs tools only (load the docs skill first; never web-fetch).
   Sections: Cavern zone, Creatures (Bats: the owner's boids spec and Dev table; Glow worms: inchworm/FABRIK spec, behaviour,
   look, Dev list), Ten decoration ideas (3 = Gas pockets), Screenshots (newest first), Decisions (nothing open).
   Its HTML review copy: https://claude.ai/artifact/BZCnJDP93NEcB1fd99JPXM (stale since rev 23: republish at the end, C7).
