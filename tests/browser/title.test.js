@@ -72,6 +72,12 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   check('the title plays its sounds (the scene\'s, the game\'s voices)', snd.ready && snd.played > 5 && !snd.errors.length, snd);
   check('the jetpacks and the cave\'s ambience run', snd.loops >= 4 && snd.amb === 'Mossy caves', snd);
   check('the title track plays', snd.music && snd.mstep > 0, snd);
+  // (v1.0.96) another track live, then the picker (audio/songs.js musicPick) puts the title's back: no level, none cleared
+  const sw = await page.evaluate(() => ({ ok: Music.play('boss'), track: Music.track }));
+  check('a track switches live (the boss\'s)', sw.ok && sw.track === 'boss', sw);
+  await page.waitForTimeout(400);
+  const back = await page.evaluate(() => ({ track: Music.track, step: Music.step, errors: SFX.stats.errors.slice() }));
+  check('…and the game puts the title\'s back, playing, nothing broken', back.track === 'title' && back.step > 0 && !back.errors.length, back);
 
   // the buttons (v0.0.174): ▶ and ⚙ square, ⚙ left, ▶ right; ⚙ turns the window into the settings
   const bx = await page.evaluate(() => ['.tgear', '.tstart'].map(s => { const r = document.querySelector(s).getBoundingClientRect(); return [r.left, r.width, r.height]; }));

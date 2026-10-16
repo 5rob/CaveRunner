@@ -34,11 +34,11 @@ export const SOLO_BAR = 24;           // the solo's first bar
 export const HARM_BAR = 32;           // the second guitar joins here
 
 const PC = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
-/** @param {string} nm a note's name, e.g. 'G#5' @returns {number} its midi number */
+/** @param {string} nm a note's name, e.g. 'G#5' or 'Bb4' (a flat) @returns {number} its midi number */
 export function noteMidi(nm) {
-  const m = /^([A-G])(#?)(-?\d)$/.exec(nm);
+  const m = /^([A-G])([#b]?)(-?\d)$/.exec(nm);
   if (!m) throw new Error('bad note ' + nm);
-  return 12 * (Number(m[3]) + 1) + PC[m[1]] + (m[2] ? 1 : 0);
+  return 12 * (Number(m[3]) + 1) + PC[m[1]] + (m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0);
 }
 /** @param {number} n midi @returns {number} Hz */
 export const midiHz = n => 440 * Math.pow(2, (n - 69) / 12);
@@ -86,7 +86,7 @@ export const padNotes = c => CHORDS[c].tones.map(t => { let n = CHORDS[c].root +
 // the arpeggio's run through the chord (indices into the pad's tones over two octaves), a bar of 16ths
 const ARP = [0, 1, 2, 3, 4, 3, 2, 1, 0, 1, 2, 3, 5, 4, 3, 2];
 
-/** @typedef {{ i: string, n?: number, d?: number, v: number, pan?: number, bend?: boolean, vib?: boolean, open?: number, pad?: number[] }} SongEv */
+/** @typedef {{ i: string, n?: number, d?: number, v: number, pan?: number, bend?: boolean, vib?: boolean, open?: number, pad?: number[], soft?: boolean, drive?: number, tone?: number }} SongEv */
 // the song's bar for an ever-counting bar number (past the end it loops)
 /** @param {number} b */
 export const songBar = b => (b < SONG_BARS ? b : LOOP_BAR + ((b - LOOP_BAR) % (SONG_BARS - LOOP_BAR)));

@@ -26,6 +26,6 @@ for (let s = 0; s < 40 * 16 && !bad; s++) for (const e of G.songStep(s)) {
   if (!(e.v > 0 && e.v <= 1.2) || ns.some(n => !(n >= 20 && n <= 100))) bad = { s, e };
 }
 check('every event a real note and volume', !bad, bad);
-check('the music engine is in the source', G.source.includes('makeMusic') && G.source.includes('Music.start()'));
+check('the music engine is in the source', G.source.includes('makeMusic') && G.source.includes('Music.play('));
 if (fails) { console.log(fails + ' FAILED'); process.exit(1); }
 console.log('all passed');

@@ -1,22 +1,26 @@
 // @ts-check
-// The music's synths (v0.0.174): they play audio/song.js. makeMusic(ac, dest) builds the instruments on any audio
-// context (the game's, or an offline one that renders the song to a file: tools/musicwav.js); Music plays the
-// title's track live on the engine's music bus (SFX.musicOut, the settings' Music slider), a few steps ahead.
+// The music's synths (v0.0.174): they play a track (audio/songs.js: the title's, audio/song.js, and the rest).
+// makeMusic(ac, dest, track) builds the instruments on any audio context (the game's, or an offline one that renders
+// a track to a file: tools/musicwav.js); Music plays one live on the engine's music bus (SFX.musicOut, the settings'
+// Music slider), a few steps ahead, and crossfades to another (Music.play(id); v1.0.94).
 // No files: an 80s kick (a falling sine), a snare and hats of noise, a pumping bass (saw + square, a filter
 // snap; the pads and bass duck under every kick), detuned saw pads, a plucked arpeggio, and the guitar: a modelled
 // plucked string (string()) through an amp (a mid hump, a hard lopsided clip) and a speaker cabinet's roll-off, bent
 // into some notes by pushing the string's pitch, vibrato on long ones.
+// v1.0.94: a cleaner guitar (e.drive), a soft arpeggio (e.soft: triangles), and a synth lead (lead: e.tone, its brightness).
 // Reverb and a dotted-8th echo, both made here.
 
 import { SFX } from './sfx.js';
-import { STEP_SEC, midiHz, songStep } from './song.js';
+import { midiHz } from './song.js';
+import { TITLE_TRACK, trackById } from './songs.js';
 
 // how long each instrument's notes ring on past their end, fading under the next (the fade's time constant, s;
 // gone at about 5×; v0.0.174, owner: "fade them off after the next note starts")
-export const REL = { bass: 0.09, pad: 0.45, arp: 0.09, gtr: 0.16 };
+export const REL = { bass: 0.09, pad: 0.45, arp: 0.09, gtr: 0.16, lead: 0.12 };
 
-/** @param {BaseAudioContext} ac @param {AudioNode} dest */
-export function makeMusic(ac, dest) {
+/** @param {BaseAudioContext} ac @param {AudioNode} dest @param {import('./songs.js').Track} [track] (the title's) */
+export function makeMusic(ac, dest, track = TITLE_TRACK) {
+  const STEP_SEC = 60 / track.bpm / 4;     // one 16th note (s), this track's
   const mix = ac.createGain(); mix.gain.value = 0.55; mix.connect(dest);
   // the noise every drum is cut from
   const nb = ac.createBuffer(1, ac.sampleRate, ac.sampleRate), nd = nb.getChannelData(0);
@@ -136,11 +140,12 @@ export function makeMusic(ac, dest) {
     /** @param {number} t @param {any} e */
     arp(t, e) {
       const f = ac.createBiquadFilter(); f.type = 'lowpass'; f.Q.value = 4;
-      f.frequency.setValueAtTime(3200, t); f.frequency.exponentialRampToValueAtTime(700, t + 0.14);
+      f.frequency.setValueAtTime(e.soft ? 1800 : 3200, t); f.frequency.exponentialRampToValueAtTime(e.soft ? 500 : 700, t + 0.14);
       const g = ac.createGain(); f.connect(g); const p = panned(mix, e.pan || 0); g.connect(p); g.connect(dl);
       g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.13 * e.v, t + 0.002); g.gain.setTargetAtTime(0, t + 0.003, REL.arp);
       const end = t + REL.arp * 7;
-      osc('square', midiHz(e.n), t, end, f); osc('sawtooth', midiHz(e.n), t, end, f, 7);
+      if (e.soft) { osc('triangle', midiHz(e.n), t, end, f); osc('sine', midiHz(e.n) * 2, t, end, f, 5); }
+      else { osc('square', midiHz(e.n), t, end, f); osc('sawtooth', midiHz(e.n), t, end, f, 7); }
     },
     /** @param {number} t @param {any} e */
     gtr(t, e) {
@@ -148,7 +153,7 @@ export function makeMusic(ac, dest) {
       // the amp: a mid hump into a hard, lopsided clip (a tube's), then the speaker cabinet's roll-off
       const tight = ac.createBiquadFilter(); tight.type = 'highpass'; tight.frequency.value = 280;
       const hump = ac.createBiquadFilter(); hump.type = 'peaking'; hump.frequency.value = 800; hump.Q.value = 0.8; hump.gain.value = 9;
-      const drive = ac.createGain(); drive.gain.value = 24;
+      const drive = ac.createGain(); drive.gain.value = e.drive || 24;     // (a low drive: the chill track's cleaner guitar)
       const sh = ac.createWaveShaper(); sh.curve = curve; sh.oversample = '4x';
       const low = ac.createBiquadFilter(); low.type = 'highpass'; low.frequency.value = 85;
       const body = ac.createBiquadFilter(); body.type = 'peaking'; body.frequency.value = 130; body.Q.value = 1.2; body.gain.value = 3;
@@ -159,8 +164,9 @@ export function makeMusic(ac, dest) {
       tight.connect(hump); hump.connect(drive); drive.connect(sh); sh.connect(low); low.connect(body); body.connect(pres);
       pres.connect(cab1); cab1.connect(cab2); cab2.connect(g);
       g.connect(panned(mix, e.pan || 0)); g.connect(dl); g.connect(rv);
-      g.gain.setValueAtTime(0.16 * e.v, t);
-      g.gain.setValueAtTime(0.16 * e.v, t + len); g.gain.setTargetAtTime(0, t + len, REL.gtr);   // let ring under the next note
+      const lv = 0.16 * e.v * (e.drive ? Math.min(2.2, Math.sqrt(24 / e.drive)) : 1);   // a clean one is quieter: made up
+      g.gain.setValueAtTime(lv, t);
+      g.gain.setValueAtTime(lv, t + len); g.gain.setTargetAtTime(0, t + len, REL.gtr);   // let ring under the next note
       // the string: plucked twice over (a hair apart, a few cents out: two pickups' worth of shimmer)
       for (const [cents, lag, seed] of [[-4, 0, 0], [4, 0.006, 1]]) {
         const S = string(e.n, seed), src = ac.createBufferSource();
@@ -177,47 +183,85 @@ export function makeMusic(ac, dest) {
         src.connect(tight); src.start(t + lag); src.stop(end);
       }
     },
+    // the synth lead: two detuned saws and a square an octave down through a low-pass (e.tone: 0 dark .. 1 bright),
+    // a soft attack; bent up into a note from a tone below, vibrato on long ones
+    /** @param {number} t @param {any} e */
+    lead(t, e) {
+      const len = e.d * STEP_SEC, end = t + len + REL.lead * 6, tone = e.tone ?? 0.7, hz = midiHz(e.n);
+      const f = ac.createBiquadFilter(); f.type = 'lowpass'; f.Q.value = 2.5;
+      f.frequency.setValueAtTime(700 + 3200 * tone, t); f.frequency.setTargetAtTime(500 + 2000 * tone, t + 0.05, len * 0.6 + 0.1);
+      const g = ac.createGain(); f.connect(g); g.connect(panned(mix, e.pan || 0)); g.connect(dl); g.connect(rv);
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.1 * e.v, t + 0.025);
+      g.gain.setTargetAtTime(0.075 * e.v, t + 0.03, 0.15); g.gain.setTargetAtTime(0, t + len, REL.lead);
+      /** @type {OscillatorNode[]} */
+      const os = [osc('sawtooth', hz, t, end, f, -7), osc('sawtooth', hz, t, end, f, 7), osc('square', hz / 2, t, end, f)];
+      for (const o of os) {
+        if (e.bend) { const base = o.frequency.value; o.frequency.setValueAtTime(base * Math.pow(2, -2 / 12), t); o.frequency.setTargetAtTime(base, t + 0.03, 0.06); }
+      }
+      if (e.vib && len > 0.3) {
+        const l = ac.createOscillator(), lg = ac.createGain(); l.frequency.value = 5.2;
+        lg.gain.setValueAtTime(0, t); lg.gain.linearRampToValueAtTime(22, t + len * 0.8);
+        l.connect(lg); for (const o of os) lg.connect(o.detune); l.start(t + len * 0.25); l.stop(end);
+      }
+    },
   };
   return {
     /** @param {number} s the step @param {number} t when (the context's time) */
-    play(s, t) { for (const e of songStep(s)) { const f = I[e.i]; if (f) f(t, e); } },
+    play(s, t) { for (const e of track.step(s)) { const f = I[e.i]; if (f) f(t, e); } },
+    track,
+    step: STEP_SEC,
     /** @param {number} v @param {number} t @param {number} over */
     fade(v, t, over) { mix.gain.cancelScheduledValues(t); mix.gain.setValueAtTime(mix.gain.value, t); mix.gain.linearRampToValueAtTime(v, t + over); },
     out: mix,
   };
 }
 
-// The title's track, live: steps scheduled 0.25 s ahead every 40 ms; fading out on stop
+// The music, live: steps scheduled 0.25 s ahead every 40 ms. play(id) changes track (audio/songs.js trackById): the
+// old one fades out as the new one starts from its top (the boss's quickly); stop() fades out. start() plays the
+// track last asked for (the title's at first).
 export const Music = (() => {
   /** @type {ReturnType<typeof makeMusic> | null} */
   let M = null;
-  let timer = 0, step = 0, next = 0;
+  let timer = 0, step = 0, next = 0, want = TITLE_TRACK.id;
   const run = () => {
     const ac = SFX.ctx;
     if (!M || !ac) return;
     if (next < ac.currentTime - 0.1) next = ac.currentTime + 0.05;     // woke from a pause: no catch-up burst
-    try { while (next < ac.currentTime + 0.25) { M.play(step, next); step++; next += STEP_SEC; } } catch (_) { /* music must never break the game */ }
+    try { while (next < ac.currentTime + 0.25) { M.play(step, next); step++; next += M.step; } } catch (_) { /* music must never break the game */ }
   };
-  return {
+  /** @param {ReturnType<typeof makeMusic> | null} old @param {number} over (s) */
+  const fadeOut = (old, over) => {
+    const ac = SFX.ctx;
+    try { if (old && ac) { old.fade(0, ac.currentTime, over); setTimeout(() => { try { old.out.disconnect(); } catch (_) { /* gone */ } }, over * 1000 + 300); } } catch (_) { /* gone */ }
+  };
+  const self = {
     /** @returns {boolean} playing */
-    start() {
-      if (timer) return true;
+    start() { return self.play(want); },
+    /** @param {string} id a track (audio/songs.js) @returns {boolean} playing it */
+    play(id) {
+      want = id;
+      if (timer && M && M.track.id === id) return true;
       const ac = SFX.ctx, out = SFX.musicOut;
       if (!ac || !out || !SFX.ready) return false;
       try {
-        M = makeMusic(ac, out); step = 0; next = ac.currentTime + 0.1;
-        M.fade(0.55, ac.currentTime, 0.01);
-        timer = window.setInterval(run, 40); run();
+        const old = M, boss = id === 'boss';
+        M = makeMusic(ac, out, trackById(id)); step = 0; next = ac.currentTime + (old ? (boss ? 0.15 : 0.6) : 0.1);
+        const g = M.out.gain; g.setValueAtTime(0, ac.currentTime); g.setValueAtTime(0, next); g.linearRampToValueAtTime(0.55, next + (old && !boss ? 0.8 : 0.05));
+        fadeOut(old, boss ? 0.4 : 1.5);
+        if (!timer) timer = window.setInterval(run, 40);
+        run();
         return true;
       } catch (_) { M = null; return false; }
     },
     stop() {
       if (!timer) return;
       clearInterval(timer); timer = 0;
-      const old = M, ac = SFX.ctx; M = null;
-      try { if (old && ac) { old.fade(0, ac.currentTime, 1.2); setTimeout(() => { try { old.out.disconnect(); } catch (_) { /* gone */ } }, 1500); } } catch (_) { /* gone */ }
+      const old = M; M = null;
+      fadeOut(old, 1.2);
     },
     get playing() { return !!timer; },
     get step() { return step; },
+    get track() { return M ? M.track.id : ''; },
   };
+  return self;
 })();

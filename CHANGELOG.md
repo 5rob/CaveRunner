@@ -5,6 +5,12 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.96 — CaveRunner Auto: six music tracks and a boss track (branch `autobattler`)
+Released 2026-10-16 on the branch; owner approved the mp3s (`node tools/musicwav.js all`).
+- Five new tracks in the title's style, each its own mood and tempo: Glowworm (chill, 80 bpm, clean guitar), Afterburner (exciting, 128), Undertow (moody, 92), Surface Light (happy, 116, synth lead), Something Below (suspense, 104). Recipes in `audio/songs.js` (`makeTrack`: chords, 16-step drum and bass patterns, an arpeggio, a lead in the solo's notation, harmonised a third up).
+- Colossus (150 bpm) plays during every boss fight, from the boss's arrival until it's down; then the next of the six (Descent first), one per level cleared (`musicPick`, asked every frame in `ui/titlesound.js`). A lost level doesn't move it on. The count is per session.
+- `music.js`: each track's tempo, a crossfade between tracks (`Music.play(id)`; the boss's comes in fast), a synth lead, a cleaner guitar, a soft arpeggio. Notes may be flats (`Bb5`). `tools/musicwav.js <id>|all` renders any track to .wav + .mp3 (ffmpeg). Suite `songs`; `title` checks a live switch.
+
 ## v1.0.95 — CaveRunner Auto: the owner's Dev settings are the defaults (branch `autobattler`)
 Released 2026-10-16 on the branch, from the owner's Copy Dev settings of v1.0.94.
 - Mossy caves may have heavy vegetation and spider web (`zv_veg_moss`, `zv_spid_moss` 1); Mossy caves' own vegetation 0.8 patches, 0.55 thick, 0.95 vine length, orb webs ×10 (`zl_moss_*`, an `Object.assign` after the zone loop); Webs zone plants and webs density 0 (`zl_webs_dens`).

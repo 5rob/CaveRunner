@@ -108,6 +108,9 @@ drag to look around, and tap a player to follow them (tap them again to stop). W
 (one to three tunnels, in and out at different heights), jellyfish make the vines near them glow, and everything has the players' pixel look. It's dark like the game: the players' gun lights, lanterns, fire and jellyfish light it up, with shadows.
 The gun in your hands has the same chunky pixel look as you, in the game, the Bag and the title.
 The title has its own sound (everything you see on it, with the game's sounds) and music: a dark synthwave track with a guitar solo.
+Six tracks in the same style take turns, the next one each level you clear: Descent (the title's), Glowworm (chill),
+Afterburner (exciting), Undertow (moody), Surface Light (happy) and Something Below (suspense). Every boss fight has
+its own track, Colossus.
 ⚙ next to ▶ opens Settings: Master, FX and Music volume.
 
 **Pause.** ⏸ (top right) pauses: Resume, Save, Master / FX / Music volume sliders, and Exit

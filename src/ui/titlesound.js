@@ -5,10 +5,16 @@
 // title is drawn at half the game's scale, so a screen unit counts as two of the game's, more when zoomed in.
 
 import { Music } from '../audio/music.js';
+import { musicPick } from '../audio/songs.js';
+import { levelState } from '../auto/level.js';
 import { SFX } from '../audio/sfx.js';
 import { TCELL, TITLE_VW } from '../art/titlescene.js';
 import { PH, PW } from '../core/consts.js';
 import { THEMES } from '../data/themes.js';
+
+// which track plays (audio/songs.js musicPick): the boss's in a boss fight, else the six in turn, one a level cleared
+/** @type {import('../audio/songs.js').MusicMemory} */
+const MUS = { L: null, dead: false, n: 0 };
 
 const SCALE = 2;                        // title screen units → the game's world units (art/titlescene.js SP)
 
@@ -24,7 +30,7 @@ export function titleSound(S, C, L, dt) {
   SFX.ear(0, 0);
   SFX.tick();
   if (SFX.ambience !== THEMES[0].name) SFX.setAmbience(THEMES[0].name);
-  if (!Music.playing) Music.start();            // the title's track (audio/song.js)
+  Music.play(musicPick(MUS, levelState(S)));     // (v1.0.94) the track for now: the same one is a no-op
   SFX.ambTick(dt);
   const k = SCALE * C.z;
   /** @param {number} x */

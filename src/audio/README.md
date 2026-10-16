@@ -6,7 +6,8 @@
 | `sfx.js` | `SFX`, the engine: a lazy `AudioContext` made in `SFX.unlock()` (App calls it on the first pointerdown/keydown), a master compressor, two buses (sfx = `DEV.vol`, ambience = `DEV.vol × DEV.amb`), distance/pan/far-muffle round `SFX.ear`, the one-shot table `FX` (`SFX.fx(name, x, y, a)`, per-name gaps `FX_GAP`, `SFX.FX_NAMES`), loops, `setAmbience(themeName)` |
 
 | `song.js` | The title's music as data (pure, tested by `song`): A minor, Am F Dm E, 100 bpm; `songStep(s)` = what plays on 16th step s (pads, bass, kick, snare, hats, riser, arps, guitar); the solo in `SOLO` (note:16ths, `b` bend, `~` vibrato); `harmonyOf` (the second guitar, a third above); loops bars 8–39 |
-| `music.js` | The synths that play it: `makeMusic(ac, dest)` (any context: tools/musicwav.js renders it offline to a .wav/.m4a), and `Music` (start/stop, live on `SFX.musicOut`, the Music slider; the title starts it, `ui/titlesound.js`) |
+| `songs.js` | Every track (v1.0.94), pure, tested by `songs`: `TRACKS` (six, cycled one a level cleared: Descent = the title's song.js, Glowworm chill 80 bpm, Afterburner exciting 128, Undertow moody 92, Surface Light happy 116, Something Below suspense 104), `BOSS_TRACK` (Colossus, 150 bpm, every boss fight), `trackById`. The five new ones are recipes (`TrackSpec`) built by `makeTrack`: chords a bar each, 16-character drum/bass patterns, an arpeggio, a lead in the solo's notation (flats too: `Bb5`), harmonised a third up (`harmonyIn`) from a bar. `musicPick(memory, levelState)`: the boss's track while a boss is alive, else `TRACKS[cleared % 6]` |
+| `music.js` | The synths that play them: `makeMusic(ac, dest, track)` (any context: tools/musicwav.js renders it offline), instruments pad, bass, kick, snare, hat, ohat, riser, arp (`soft`: triangles), gtr (`drive`: low = cleaner), lead (a synth lead, `tone` 0 dark..1 bright); and `Music` live on `SFX.musicOut` (the Music slider): `Music.play(id)` crossfades to a track (the same one: nothing), `start`/`stop`. `ui/titlesound.js` asks every frame: `Music.play(musicPick(…))` (title, hub, levels, Grem) |
 
 The per-theme ambience table `AMBIENCE` is `data/themes.js`. Calls into `SFX` are one-liners at
 the events in `game/` (`SFX.cast` in `cast`/`releaseAt`, `SFX.boom` in `explode`, `SFX.creature(k,
@@ -36,6 +37,7 @@ the events in `game/` (`SFX.cast` in `cast`/`releaseAt`, `SFX.boom` in `explode`
   grabbing rustles at once, moving inside every `(0.42 − 0.24·speed)·rand` s, standing still is
   silent, and every rustle starts a random pause (≥0.16s), so a clump can't machine-gun.
 - **Volumes (v0.0.174):** Master (`setVolume`), FX (`setFxVolume`: the sfx and ambience buses) and Music (`setMusicVolume`: the music bus), each in localStorage (`VOL_KEY`, `FXVOL_KEY`, `MUSVOL_KEY`); the title's ⚙ settings.
-- **Writing music:** change `song.js` (a bar of the solo must add up to 16), listen with `node tools/musicwav.js`.
-- Tests: `tests/logic/sound.test.js`, `tests/logic/song.test.js`, `tests/browser/sound.test.js` (plays every voice and every
+- **Writing music:** the title's is `song.js` (a bar of the solo must add up to 16); the others are recipes in `songs.js` (a new one: a `SPECS` entry with its own `id`, mood and tempo; every pattern 16 characters, every lead bar 16 sixteenths, notes in the scale you give for its harmony). Listen with `node tools/musicwav.js <id>` or `all` (→ tests/build/music-<id>.wav + .mp3 with ffmpeg). A new instrument: a function in `makeMusic`'s `I`, and its name in the `songs` suite's list.
+- **Which track:** the boss's from the moment the boss appears until it's down; then the next of the six (the count is per session, it starts at the title's). A level lost doesn't move it on.
+- Tests: `tests/logic/sound.test.js`, `tests/logic/song.test.js`, `tests/logic/songs.test.js`, `tests/browser/sound.test.js` (plays every voice and every
   `FX_NAMES` entry, the Black Hole loop's lifecycle).
