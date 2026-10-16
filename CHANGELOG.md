@@ -5,6 +5,11 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v2.0.4 — Coal Seams: gas pockets (branch `grem`)
+2026-10-17 (owner OK'd the screenshots; design doc idea 3, chunk C1).
+- Invisible methane pockets in low corners (hollows, tunnel ends), about 1.5 a screen. Fire or a blast reaching one sets off a pale blue whoomph: a flash that lights the cave, a soft blast (no rock broken) that hurts creatures (12) and sets off carts and other pockets, fire left round it (timber nearby can catch).
+- Dev → Grem → Coal Seams: pockets a screen, size, blast radius, damage, colours (`coalGas*`). Suite `coal-gas`.
+
 ## v2.0.3 — Coal Seams: minecart rails, coal heaps and chutes, real timber (branch `grem`)
 2026-10-17 (owner OK'd the screenshots; design doc ideas 1 and 10, and the owner's "the supports look too copy and paste").
 - Minecart rails on wooden sleepers along about 60% of the Mines' tunnel floors (the floor flat under them); minecarts 3 × as likely on them.

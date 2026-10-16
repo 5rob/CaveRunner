@@ -5,9 +5,9 @@ release loop, testing), then the README of the `src/` folder you're working in.
 
 ## BRANCH `grem` (2026-10-16): CaveRunner Grem — Grem Mode only (the owner's focus)
 
-**Start here (fresh session on `grem`):** **v2.0.3 is pushed to `grem`** (2026-10-17, owner OK'd the shots: minecart rails, coal heaps and chutes (ideas 1, 10), and the timber rebuilt as the old game's measured sets (`art/timber.js`, owner: "too copy and paste"); v2.0.2 step 2, burnable coal + smouldering seams; v2.0.1 step 1. The owner allowed `grem` in Settings → Environments → github-pages on 2026-10-17, so `grem` pushes deploy Pages now): Coal Seams build step 1
+**Start here (fresh session on `grem`):** **v2.0.4 is pushed to `grem`** (2026-10-17, owner OK'd: C1 gas pockets, `coalGas*` knobs, CHANGELOG v2.0.4; next chunk C2). v2.0.3 (owner OK'd the shots: minecart rails, coal heaps and chutes (ideas 1, 10), and the timber rebuilt as the old game's measured sets (`art/timber.js`, owner: "too copy and paste"); v2.0.2 step 2, burnable coal + smouldering seams; v2.0.1 step 1. The owner allowed `grem` in Settings → Environments → github-pages on 2026-10-17, so `grem` pushes deploy Pages now): Coal Seams build step 1
 (its own zones; Mossy's plants off, the old mine set on; CHANGELOG v2.0.1; art/README's Coal Seams note). Live check:
-`/CaveRunner/grem/version.txt` = `2000003 v2.0.3`. Step 2 (v2.0.2): coal seams (`TM.COAL`, art/README's Coal note), catch rate 0.2 × timber (the doc's 0.8 was far too fast; told
+`/CaveRunner/grem/version.txt` = `2000004 v2.0.4`. Step 2 (v2.0.2): coal seams (`TM.COAL`, art/README's Coal note), catch rate 0.2 × timber (the doc's 0.8 was far too fast; told
 the owner). **Next: the rest of Coal Seams is run by a project-manager session from `COALSEAMS.md`** (chunks C1 gas pockets,
 C2 stalactites/stalagmites, C3 ladders + Cavern timber, C4 bats, C5 glow worms, C6 light check, C7 wrap; the agent brief,
 check-ins, release steps, keep-it-short rule; tick its Status as chunks ship). Each step: phone screenshots

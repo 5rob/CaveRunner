@@ -94,5 +94,5 @@ Rules:
 ## Status
 
 - [x] v2.0.1 step 1 · v2.0.2 coal · v2.0.3 rails, heaps, chutes, timber
-- [ ] C1 Gas pockets · [ ] C2 Stalactites/stalagmites · [ ] C3 Ladders + Cavern timber · [ ] C4 Bats · [ ] C5 Glow worms ·
+- [x] C1 Gas pockets (v2.0.4) · [ ] C2 Stalactites/stalagmites · [ ] C3 Ladders + Cavern timber · [ ] C4 Bats · [ ] C5 Glow worms ·
   [ ] C6 Light check · [ ] C7 Wrap
