@@ -33,6 +33,7 @@ export * from './world/shoplights.js';
 export * from './creatures/common.js';
 export * from './creatures/spider.js';
 export * from './creatures/bats.js';
+export * from './creatures/glowworm.js';
 export * from './creatures/rat.js';
 export * from './creatures/jelly.js';
 export * from './creatures/alien.js';

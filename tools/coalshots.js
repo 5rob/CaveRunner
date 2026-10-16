@@ -1,6 +1,6 @@
 // Screenshots for the owner (Coal Seams, grem branch): Grem Mode started at level 2 (Dev "Start at level"), phone size, a few
 // moments along the level, and close-ups of its decorations.
-//   node tools/coalshots.js [outdir] [prefix] [gas|stal|ladder|bats]   (default tests/build/autoshots, coal; one of those: its shots only)
+//   node tools/coalshots.js [outdir] [prefix] [gas|stal|ladder|bats|worm]   (default tests/build/autoshots, coal; one of those: its shots only)
 const { launch } = require('../tests/chromium');
 const path = require('path');
 const fs = require('fs');
@@ -27,7 +27,7 @@ require('../tests/build')();
   const save = async (n, what, clip) => { await page.screenshot({ path: path.join(OUT, PRE + '-' + n + '.png'), clip }); said.push(`${PRE}-${n}.png  ${what}`); };
   const zone = () => page.evaluate(() => { const S = window.__gremScene; return S ? titleZoneSpan(S.scroll + 110, S).z : '?'; });
   // (C1) a gas pocket on screen set off: the whoomph mid-flash, then just after, the fire round it (each also a close-up)
-  for (let i = 0; ONLY !== 'stal' && ONLY !== 'ladder' && ONLY !== 'bats' && i < 400; i++) {
+  for (let i = 0; ONLY !== 'stal' && ONLY !== 'ladder' && ONLY !== 'bats' && ONLY !== 'worm' && i < 400; i++) {
     const g = await page.evaluate(() => {
       const S = window.__gremScene, cv = document.querySelector('canvas');
       const g = S && cv && (S.gas || []).find(q => !q.gone && q.wx - S.scroll > 70 && q.wx - S.scroll < 150);
@@ -80,8 +80,8 @@ require('../tests/build')();
     });
     await page.waitForTimeout(300);
     await save('q-stal', 'the Cavern on Coal Seams: stalactites off the roof and the boulders, stalagmites on the floor');
-    await page.evaluate(() => { DEV.gremDark = 0; });   // (the close-ups: the darkness lifted)
-    await page.waitForTimeout(200);
+    await page.evaluate(() => { DEV.gremDark = 0; });   // (the close-ups: the darkness lifted)
+    await page.waitForTimeout(200);
     await save('t-stal-lit', 'the same screen, darkness lifted (for the shot only)');
     await save('r-stal-roof', 'close up (darkness lifted): a cluster hanging off the roof', box.up);
     await save('s-stal-floor', 'close up (darkness lifted): a cluster on the floor', box.dn);
@@ -154,6 +154,54 @@ require('../tests/build')();
     });
     await save('d-flock-lit', 'the same moment, darkness lifted (for the shot only)');
     await save('e-flock-close', 'close up (darkness lifted): bats flapping in the flock', fb);
+    await browser.close(); console.log(said.join(String.fromCharCode(10))); return;
+  }
+  // (C5a) the glow worms: the view held on a worm on a floor; close-ups (darkness lifted) at four points of its gait, then one
+  // on a wall or the roof
+  if (ONLY === 'worm') {
+    await page.evaluate(() => { DEV.autoLvlPace = 3; });
+    const find = (/** @type {string} */ k) => page.evaluate(k => {
+      const S = window.__gremScene; if (!S || !S.worms) return false;
+      const w = S.worms.find(w => w.r.x - S.scroll > 60 && w.r.x - S.scroll < 160 && (k === 'floor' ? w.r.ny < -0.8 && w.f.ny < -0.8 : Math.abs(w.r.ny) < 0.6 || w.r.ny > 0.8));
+      if (!w) return false;
+      S.lvl.step = null; S.pace = 0; S.foes.length = 0; S.spawn = 1e9; window.__worm = w; console.log('at', S.scroll, w.r.x, w.r.y, w.r.nx, w.r.ny); return true;
+    }, k);
+    const clip = () => page.evaluate(() => {
+      const S = window.__gremScene, w = window.__worm, cv = document.querySelector('canvas'), b = cv.getBoundingClientRect(), k = b.width / TITLE_VW;
+      const x = (w.r.x + w.f.x) / 2 - S.scroll, y = (w.r.y + w.f.y) / 2;
+      return { x: Math.max(b.left, b.left + x * k - 50), y: Math.max(b.top, b.top + y * k - 60), width: 100, height: 100 };
+    });
+    const at = async (/** @type {number} */ lo, /** @type {number} */ hi, /** @type {string} */ n, /** @type {string} */ what) => {
+      const crank = await page.evaluate(() => DEV.glowCrank);
+      await page.waitForFunction(([lo, hi]) => window.__worm.th >= lo && window.__worm.th < hi, [lo, hi], { polling: 'raf', timeout: 20000 });
+      await page.evaluate(() => { DEV.glowCrank = 0; });
+      await page.waitForTimeout(80);
+      await save(n, what, await clip());
+      await page.evaluate(c => { DEV.glowCrank = c; }, crank);
+    };
+    for (let i = 0; i < 2000 && !(await find('floor')); i++) await page.waitForTimeout(60);
+    await page.waitForTimeout(200);
+    await save('a-screen', 'Coal Seams with a glow worm on the floor near the middle (as played, dark: no glow yet, stage a)');
+    await page.evaluate(() => { DEV.gremDark = 0; });
+    await page.waitForTimeout(150);
+    await save('b-screen-lit', 'the same screen, darkness lifted (for the shot only)');
+    await at(0, 0.35, 'c-omega', 'close up (darkness lifted): feet together, the body looped up into an Ω');
+    await at(1.4, 1.75, 'd-reach', 'close up (darkness lifted): mid-reach, the rear foot gripping, the front lifted and going forward');
+    await at(2.95, 3.3, 'e-apart', 'close up (darkness lifted): feet furthest apart, the body a low horseshoe');
+    await at(4.55, 4.9, 'f-follow', 'close up (darkness lifted): the front gripping, the rear lifted and following');
+    await page.evaluate(() => { DEV.gremDark = DEV_DEFAULTS.gremDark; });
+    // on to a worm on a wall or the roof: the level's own steering is gone, so the view is pushed on by hand
+    let got = false;
+    for (let i = 0; i < 600 && !got; i++) {
+      await page.evaluate(() => { const S = window.__gremScene; S.scroll += 2; });
+      got = await find('wall');
+      if (!got) await page.waitForTimeout(30);
+    }
+    if (got) {
+      await page.evaluate(() => { DEV.gremDark = 0; });
+      await page.waitForTimeout(400);
+      await save('g-wall', 'close up (darkness lifted): a worm on a wall or the roof', await clip());
+    }
     await browser.close(); console.log(said.join(String.fromCharCode(10))); return;
   }
   if (ONLY === 'gas') { await browser.close(); console.log(said.join('\n')); return; }

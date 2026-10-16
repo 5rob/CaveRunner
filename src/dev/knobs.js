@@ -546,6 +546,21 @@ DEV_META.push(
   { k: 'batDebug',       g: 'bats', label: 'Debug draw: areas, reaches; scared red, returning blue (1 on)', min: 0, max: 1, step: 1 },
   { k: 'batBite',        g: 'bats', label: 'Bat bite damage (0: harmless)', min: 0, max: 20, step: 0.5 });
 DEV_GROUPS.push(['bats', 'Bats']);
+// (C5a) Coal Seams' glow worms (creatures/glowworm.js, the owner's spec): the body and the inchworm gait
+Object.assign(DEV_DEFAULTS, { glowPerScreen: 2, glowStride: 8, glowDMin: 5, glowDMax: 13, glowLiftF: 0.6, glowLiftR: 0.4, glowCrank: 4.5, glowLen: 18, glowW: 3.4, glowFoot: 2, glowTurn: 0.1 });
+DEV_META.push(
+  { k: 'glowPerScreen', g: 'glow', label: 'Glow worms: about this many a screen', min: 0, max: 12, step: 0.1 },
+  { k: 'glowStride',    g: 'glow', label: 'Stride (the foot gap swings this much)', min: 0, max: 20, step: 0.5 },
+  { k: 'glowDMin',      g: 'glow', label: 'Foot gap: shortest (dMin)', min: 0, max: 20, step: 0.5 },
+  { k: 'glowDMax',      g: 'glow', label: 'Foot gap: longest (dMax)', min: 1, max: 30, step: 0.5 },
+  { k: 'glowLiftF',     g: 'glow', label: 'Front foot lift (× half the stride)', min: 0, max: 2, step: 0.05 },
+  { k: 'glowLiftR',     g: 'glow', label: 'Rear foot lift (× half the stride)', min: 0, max: 2, step: 0.05 },
+  { k: 'glowCrank',     g: 'glow', label: 'Crank speed (turns of the gait: radians a second)', min: 0, max: 20, step: 0.1 },
+  { k: 'glowLen',       g: 'glow', label: 'Body size: length (units)', min: 4, max: 50, step: 0.5 },
+  { k: 'glowW',         g: 'glow', label: 'Body size: thickness (units)', min: 0.5, max: 10, step: 0.1 },
+  { k: 'glowFoot',      g: 'glow', label: 'Foot length (units)', min: 0, max: 8, step: 0.1 },
+  { k: 'glowTurn',      g: 'glow', label: 'Turn round: chance each step', min: 0, max: 1, step: 0.01 });
+DEV_GROUPS.push(['glow', 'Glow worms']);
 // CaveRunner Auto's maps (auto/maps.js): the map machine's prices, and how much harder each map starts
 Object.assign(DEV_DEFAULTS, { autoMapPrice: 1000000, autoMapGrow: 1, autoMapStep: 5 });
 // CaveRunner Auto's level (auto/level.js, auto/pilot.js, stage 4a): its length and the team's pace
@@ -921,7 +936,7 @@ DEV_TABS.splice(DEV_TABS.length - 1, 0, ['traj', 'Trajectory', ['trajorbit', 'tr
 // (Dev → Zones) the level zones' preview (ui/zonesim.js) over their knobs
 DEV_TABS.splice(DEV_TABS.length - 1, 0, ['zones', 'Zones', ['autozones', 'autoorb', 'moss', 'webs', 'timber', 'paved', 'grove', 'winding', 'spider'].map(g => (g.startsWith('auto') ? g : 'zone_' + g))]);
 // (Grem Mode) the gun presets library and Grem's own page (ui/auto/presetlib.js, gremkit.js; DevPanel's pages)
-DEV_TABS.splice(DEV_TABS.length - 1, 0, ['presets', 'Presets', []], ['grem', 'Grem', ['grem', 'coal', 'bats']]);
+DEV_TABS.splice(DEV_TABS.length - 1, 0, ['presets', 'Presets', []], ['grem', 'Grem', ['grem', 'coal', 'bats', 'glow']]);
 DEV_TABS.splice(DEV_TABS.length - 1, 0, ['auto', 'Auto', ['autolevel', 'autoguns', 'autoperks', 'autofoes', 'autodeath', 'autoloot', 'autochests']]);
 export const DEV_KEY = 'caverunner-dev';
 /** @type {DevKnobs} */
