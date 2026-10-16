@@ -13,7 +13,7 @@ import { plantGlowFill, plantWhite } from '../../creatures/jelly.js';
 import { THEMES } from '../../data/themes.js';
 import { drawEnemy } from '../../creatures/draw.js';
 import { drawBats } from '../../creatures/bats.js';
-import { drawWorms } from '../../creatures/glowworm.js';
+import { drawGlowWorm, wormBox } from '../../creatures/glowworm.js';
 import { coinR } from '../../world/nuggets.js';
 import { FIRE_COLS } from '../../world/fire.js';
 import { vinePt } from '../../world/sway.js';
@@ -236,7 +236,11 @@ export function titleDraw(ctx, S, cw, ch, cam) {
   }
   // (C4a) Coal Seams' bats, under the darkness
   if (S.bats) drawBats(ctx, S.bats, S.scroll, S.t, S.runners.filter(r => !r.out).map(r => ({ x: S.scroll + r.x + PW / 2, y: r.y + PH / 2 })));
-  if (S.worms) drawWorms(ctx, S.worms, S.scroll);   // (C5a) Coal Seams' glow worms
+  // (C5a) Coal Seams' glow worms, each in the creatures' pixel look on a grid pinned to it
+  for (const w of S.worms || []) {
+    const b = wormBox(w, S.scroll);
+    if (b.x + b.w > -10 && b.x < TITLE_VW + 10) pixelSprite(ctx, b.x, b.y, b.w, b.h, 1, false, c => drawGlowWorm(c, w, S.scroll));
+  }
   // floor 1's creatures, drawn by the game's own drawEnemy (they live in world coordinates), each in the players'
   // pixel look (v0.0.170) on a grid pinned to it, as the players' is
   for (const f of S.foes) {
@@ -358,7 +362,7 @@ export function titleDraw(ctx, S, cw, ch, cam) {
     }
     const q = p.life / p.max;
     // spores fade in and out (the level's luminescent spores); drips are solid water
-    ctx.globalAlpha = p.kind === 'spore' ? Math.sin(Math.PI * q) * 0.8 : p.kind === 'drip' ? 0.8 : p.kind === 'soot' ? 0.9 : p.kind === 'lump' ? 1 : q;
+    ctx.globalAlpha = p.kind === 'spore' || p.kind === 'wspore' ? Math.sin(Math.PI * q) * 0.8 : p.kind === 'drip' ? 0.8 : p.kind === 'soot' ? 0.9 : p.kind === 'lump' ? 1 : q;
     ctx.fillStyle = p.kind === 'fire' ? (q > 0.6 ? '#fff0b0' : q > 0.3 ? '#ff9a2e' : '#c8301a') : p.col;
     const rr = p.kind === 'fire' ? p.r * (0.5 + q) : p.r;
     ctx.fillRect(p.x - rr / 2, p.y - rr / 2, rr, rr);

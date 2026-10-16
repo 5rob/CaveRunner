@@ -1,7 +1,7 @@
 // Glow worms (Coal Seams, grem chunk C5; the owner's spec): fat little inchworms roaming every surface (floor, walls, roof,
 // round corners). Stage a: the body and the gait only. A worm is a plain object (`GlowWorm`, a foe can carry it later): two
 // feet on the rock (a point just off it and the rock's outward normal there), the crank angle th, the direction it crawls,
-// and the body's six joints. Stepped from the level scene (art/titlescene.js wormsStep), drawn by drawWorms
+// and the body's six joints. Stepped from the level scene (art/titlescene.js wormsStep), drawn by drawGlowWorm
 // (game/render/titledraw.js). Every number is a Dev knob (group 'glow'). World units throughout (the scene's 220 a screen).
 //
 // The gait (the owner's): two cranks half a turn apart; foot gap = dMid − A·cos θ (A = stride / 2). θ in 0..π: the rear grips
@@ -83,12 +83,13 @@ function turn(w) {
   if (w.th >= Math.PI) w.th = 2 * Math.PI - w.th;   // (contract → extend at the same gap: the new rear, the old front, grips)
 }
 
-// one frame of a worm's gait, then its body
-/** @param {GlowWorm} w @param {number} dt @param {WormSolid} solid @param {() => number} rnd */
+// one frame of a worm's gait, then its body; true when a foot comes down this frame (the half turns: a puff of spores)
+/** @param {GlowWorm} w @param {number} dt @param {WormSolid} solid @param {() => number} rnd @returns {boolean} */
 export function stepWorm(w, dt, solid, rnd) {
-  const D = DEV, A = D.glowStride / 2, dMid = (D.glowDMin + D.glowDMax) / 2;
+  const D = DEV, A = D.glowStride / 2, dMid = (D.glowDMin + D.glowDMax) / 2, was = w.th < Math.PI;
   w.th += D.glowCrank * dt;
-  if (w.th >= 2 * Math.PI) { w.th -= 2 * Math.PI; if (rnd() < D.glowTurn) turn(w); }
+  let plant = was !== (w.th < Math.PI);
+  if (w.th >= 2 * Math.PI) { w.th -= 2 * Math.PI; plant = true; if (rnd() < D.glowTurn) turn(w); }
   for (let k = 0; k < 2; k++) {
     const gap = dMid - A * Math.cos(w.th), ext = w.th < Math.PI;
     const p = ext ? wormCrawl(w.r, gap, w.dir, solid) : wormCrawl(w.f, gap, -w.dir, solid);
@@ -96,6 +97,7 @@ export function stepWorm(w, dt, solid, rnd) {
     turn(w);   // (the rock gives out ahead: back the way it came)
   }
   wormBody(w, solid);
+  return plant;
 }
 
 // the lifted feet and the body: six joints pinned footLen out from them, FABRIK from an arc bulging off the rock
@@ -154,19 +156,48 @@ function pull(P, i, j, b) {
 
 // ---- drawing (world units, ctx already scaled; ox: the view's left edge) ----
 const BODY = '#e6ffd8', EDGE = '#2fd23a';   // (stage a's plain placeholder: white-green, a green outline; the glow comes in stage b)
-/** @param {CanvasRenderingContext2D} c @param {GlowWorm[]} list @param {number} ox */
-export function drawWorms(c, list, ox) {
-  c.lineCap = 'round'; c.lineJoin = 'round';
-  for (const w of list) {
-    if (w.r.x - ox < -30 || w.r.x - ox > 250) continue;
-    const P = [w.rl, ...w.pts, w.fl].map(p => ({ x: p.x - ox, y: p.y }));
-    const path = () => {
-      c.beginPath(); c.moveTo(P[0].x, P[0].y); c.lineTo(P[1].x, P[1].y);
-      for (let i = 1; i < P.length - 2; i++) c.quadraticCurveTo(P[i].x, P[i].y, (P[i].x + P[i + 1].x) / 2, (P[i].y + P[i + 1].y) / 2);
-      c.quadraticCurveTo(P[P.length - 2].x, P[P.length - 2].y, P[P.length - 1].x, P[P.length - 1].y);
-    };
-    path(); c.strokeStyle = EDGE; c.lineWidth = DEV.glowW + 1.2; c.stroke();
-    path(); c.strokeStyle = BODY; c.lineWidth = DEV.glowW; c.stroke();
+// the body's centre line, sampled smooth: the lifted rear foot, the six joints, the lifted front foot (quadratics through the
+// joints' midpoints), every point with s, its share of the way along
+/** @param {GlowWorm} w @param {number} ox @returns {{ x: number, y: number, s: number }[]} */
+export function wormLine(w, ox) {
+  const P = [w.rl, ...w.pts, w.fl].map(p => ({ x: p.x - ox, y: p.y })), out = [{ x: P[0].x, y: P[0].y }];
+  /** @param {{ x: number, y: number }} a @param {{ x: number, y: number }} b @param {{ x: number, y: number }} e */
+  const quad = (a, b, e) => { for (let k = 1; k <= 6; k++) { const t = k / 6, u = 1 - t; out.push({ x: u * u * a.x + 2 * u * t * b.x + t * t * e.x, y: u * u * a.y + 2 * u * t * b.y + t * t * e.y }); } };
+  let a = { x: (P[0].x + P[1].x) / 2, y: (P[0].y + P[1].y) / 2 };
+  out.push(a);
+  for (let i = 1; i < P.length - 1; i++) {
+    const e = i === P.length - 2 ? P[i + 1] : { x: (P[i].x + P[i + 1].x) / 2, y: (P[i].y + P[i + 1].y) / 2 };
+    quad(a, P[i], e); a = e;
   }
-  c.lineCap = 'butt'; c.lineJoin = 'miter';
+  let L = 0; const d = [0];
+  for (let i = 1; i < out.length; i++) { L += Math.hypot(out[i].x - out[i - 1].x, out[i].y - out[i - 1].y); d.push(L); }
+  return out.map((p, i) => ({ x: p.x, y: p.y, s: L > 0 ? d[i] / L : 0 }));
+}
+// one worm (world units, ctx already scaled; ox: the view's left edge): fat in the middle, thinner to both ends (DEV.glowTaper:
+// an end's thickness, a share of the middle's), a green outline round a white-green body. The scene draws it through
+// pixelSprite (the creatures' pixel look)
+/** @param {CanvasRenderingContext2D} c @param {GlowWorm} w @param {number} ox */
+export function drawGlowWorm(c, w, ox) {
+  const Q = wormLine(w, ox), W = DEV.glowW, tp = DEV.glowTaper;
+  /** @param {number} s */
+  const th = s => W * (tp + (1 - tp) * Math.sin(Math.PI * s));
+  for (const { col, add } of [{ col: EDGE, add: 1 }, { col: BODY, add: 0 }]) {
+    c.fillStyle = col;
+    for (let i = 0; i < Q.length; i++) {
+      const p = Q[i], r = (th(p.s) + add) / 2;
+      c.beginPath(); c.arc(p.x, p.y, r, 0, 6.29); c.fill();
+      if (i) {   // (the gap between samples filled: a quad from the last disc to this one)
+        const q = Q[i - 1], rq = (th(q.s) + add) / 2, dx = p.x - q.x, dy = p.y - q.y, l = Math.hypot(dx, dy) || 1, nx = -dy / l, ny = dx / l;
+        c.beginPath(); c.moveTo(q.x + nx * rq, q.y + ny * rq); c.lineTo(p.x + nx * r, p.y + ny * r); c.lineTo(p.x - nx * r, p.y - ny * r); c.lineTo(q.x - nx * rq, q.y - ny * rq); c.fill();
+      }
+    }
+  }
+}
+// the box a worm is drawn in (screen units): for the pixel layer
+/** @param {GlowWorm} w @param {number} ox */
+export function wormBox(w, ox) {
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const p of [w.rl, w.fl, ...w.pts]) { x0 = Math.min(x0, p.x); y0 = Math.min(y0, p.y); x1 = Math.max(x1, p.x); y1 = Math.max(y1, p.y); }
+  const e = DEV.glowW + 3;
+  return { x: Math.floor(x0 - ox - e), y: Math.floor(y0 - e), w: Math.ceil(x1 - x0 + 2 * e) + 1, h: Math.ceil(y1 - y0 + 2 * e) + 1 };
 }

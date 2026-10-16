@@ -1404,7 +1404,25 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "batBite", g: "bats", label: "Bat bite damage (0: harmless)", step: 0.5 }
   );
   DEV_GROUPS.push(["bats", "Bats"]);
-  Object.assign(DEV_DEFAULTS, { glowPerScreen: 2, glowStride: 8, glowDMin: 5, glowDMax: 13, glowLiftF: 0.6, glowLiftR: 0.4, glowCrank: 4.5, glowLen: 18, glowW: 3.4, glowFoot: 2, glowTurn: 0.1 });
+  Object.assign(DEV_DEFAULTS, {
+    glowPerScreen: 2,
+    glowStride: 4,
+    glowDMin: 2.5,
+    glowDMax: 6.5,
+    glowLiftF: 0.6,
+    glowLiftR: 0.4,
+    glowCrank: 4.5,
+    glowLen: 8,
+    glowW: 1.8,
+    glowFoot: 1,
+    glowTurn: 0.1,
+    glowTaper: 0.55,
+    glowSpores: 3,
+    glowSporeSpd: 22,
+    glowSporeDrag: 3,
+    glowSporeSpread: 40,
+    glowAmbient: 4
+  });
   DEV_META.push(
     { k: "glowPerScreen", g: "glow", label: "Glow worms: about this many a screen", min: 0, max: 12, step: 0.1 },
     { k: "glowStride", g: "glow", label: "Stride (the foot gap swings this much)", min: 0, max: 20, step: 0.5 },
@@ -1416,7 +1434,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "glowLen", g: "glow", label: "Body size: length (units)", min: 4, max: 50, step: 0.5 },
     { k: "glowW", g: "glow", label: "Body size: thickness (units)", min: 0.5, max: 10, step: 0.1 },
     { k: "glowFoot", g: "glow", label: "Foot length (units)", min: 0, max: 8, step: 0.1 },
-    { k: "glowTurn", g: "glow", label: "Turn round: chance each step", min: 0, max: 1, step: 0.01 }
+    { k: "glowTurn", g: "glow", label: "Turn round: chance each step", min: 0, max: 1, step: 0.01 },
+    { k: "glowTaper", g: "glow", label: "Body: thickness at the ends (share of the middle)", min: 0.1, max: 1, step: 0.05 },
+    { k: "glowSpores", g: "glow", label: "Spores puffed out each step (as the jellyfish)", min: 0, max: 20, step: 1 },
+    { k: "glowSporeSpd", g: "glow", label: "Spore puff speed", min: 0, max: 200, step: 1 },
+    { k: "glowSporeDrag", g: "glow", label: "Spore puff drag (settles)", min: 0, max: 20, step: 0.1 },
+    { k: "glowSporeSpread", g: "glow", label: "Spore puff spread (± deg)", min: 0, max: 180, step: 1 },
+    { k: "glowAmbient", g: "glow", label: "Green spores drifting in Coal Seams (a second, a screen)", min: 0, max: 30, step: 0.5 }
   );
   DEV_GROUPS.push(["glow", "Glow worms"]);
   Object.assign(DEV_DEFAULTS, { autoMapPrice: 1e6, autoMapGrow: 1, autoMapStep: 5 });
@@ -7731,10 +7755,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (w.th >= Math.PI) w.th = 2 * Math.PI - w.th;
   }
   function stepWorm(w, dt, solid, rnd2) {
-    const D = DEV, A = D.glowStride / 2, dMid = (D.glowDMin + D.glowDMax) / 2;
+    const D = DEV, A = D.glowStride / 2, dMid = (D.glowDMin + D.glowDMax) / 2, was = w.th < Math.PI;
     w.th += D.glowCrank * dt;
+    let plant = was !== w.th < Math.PI;
     if (w.th >= 2 * Math.PI) {
       w.th -= 2 * Math.PI;
+      plant = true;
       if (rnd2() < D.glowTurn) turn(w);
     }
     for (let k = 0; k < 2; k++) {
@@ -7748,6 +7774,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       turn(w);
     }
     wormBody(w, solid);
+    return plant;
   }
   function wormBody(w, solid) {
     const D = DEV, A = D.glowStride / 2, s = Math.sin(w.th), ext = w.th < Math.PI;
@@ -7814,30 +7841,61 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     P2[i] = { x: P2[j].x + dx / l * b, y: P2[j].y + dy / l * b };
   }
   var BODY2 = "#e6ffd8", EDGE2 = "#2fd23a";
-  function drawWorms(c, list, ox) {
-    c.lineCap = "round";
-    c.lineJoin = "round";
-    for (const w of list) {
-      if (w.r.x - ox < -30 || w.r.x - ox > 250) continue;
-      const P2 = [w.rl, ...w.pts, w.fl].map((p) => ({ x: p.x - ox, y: p.y }));
-      const path = () => {
-        c.beginPath();
-        c.moveTo(P2[0].x, P2[0].y);
-        c.lineTo(P2[1].x, P2[1].y);
-        for (let i = 1; i < P2.length - 2; i++) c.quadraticCurveTo(P2[i].x, P2[i].y, (P2[i].x + P2[i + 1].x) / 2, (P2[i].y + P2[i + 1].y) / 2);
-        c.quadraticCurveTo(P2[P2.length - 2].x, P2[P2.length - 2].y, P2[P2.length - 1].x, P2[P2.length - 1].y);
-      };
-      path();
-      c.strokeStyle = EDGE2;
-      c.lineWidth = DEV.glowW + 1.2;
-      c.stroke();
-      path();
-      c.strokeStyle = BODY2;
-      c.lineWidth = DEV.glowW;
-      c.stroke();
+  function wormLine(w, ox) {
+    const P2 = [w.rl, ...w.pts, w.fl].map((p) => ({ x: p.x - ox, y: p.y })), out2 = [{ x: P2[0].x, y: P2[0].y }];
+    const quad = (a2, b, e) => {
+      for (let k = 1; k <= 6; k++) {
+        const t = k / 6, u = 1 - t;
+        out2.push({ x: u * u * a2.x + 2 * u * t * b.x + t * t * e.x, y: u * u * a2.y + 2 * u * t * b.y + t * t * e.y });
+      }
+    };
+    let a = { x: (P2[0].x + P2[1].x) / 2, y: (P2[0].y + P2[1].y) / 2 };
+    out2.push(a);
+    for (let i = 1; i < P2.length - 1; i++) {
+      const e = i === P2.length - 2 ? P2[i + 1] : { x: (P2[i].x + P2[i + 1].x) / 2, y: (P2[i].y + P2[i + 1].y) / 2 };
+      quad(a, P2[i], e);
+      a = e;
     }
-    c.lineCap = "butt";
-    c.lineJoin = "miter";
+    let L = 0;
+    const d = [0];
+    for (let i = 1; i < out2.length; i++) {
+      L += Math.hypot(out2[i].x - out2[i - 1].x, out2[i].y - out2[i - 1].y);
+      d.push(L);
+    }
+    return out2.map((p, i) => ({ x: p.x, y: p.y, s: L > 0 ? d[i] / L : 0 }));
+  }
+  function drawGlowWorm(c, w, ox) {
+    const Q = wormLine(w, ox), W = DEV.glowW, tp = DEV.glowTaper;
+    const th = (s) => W * (tp + (1 - tp) * Math.sin(Math.PI * s));
+    for (const { col, add } of [{ col: EDGE2, add: 1 }, { col: BODY2, add: 0 }]) {
+      c.fillStyle = col;
+      for (let i = 0; i < Q.length; i++) {
+        const p = Q[i], r = (th(p.s) + add) / 2;
+        c.beginPath();
+        c.arc(p.x, p.y, r, 0, 6.29);
+        c.fill();
+        if (i) {
+          const q = Q[i - 1], rq = (th(q.s) + add) / 2, dx = p.x - q.x, dy = p.y - q.y, l = Math.hypot(dx, dy) || 1, nx = -dy / l, ny = dx / l;
+          c.beginPath();
+          c.moveTo(q.x + nx * rq, q.y + ny * rq);
+          c.lineTo(p.x + nx * r, p.y + ny * r);
+          c.lineTo(p.x - nx * r, p.y - ny * r);
+          c.lineTo(q.x - nx * rq, q.y - ny * rq);
+          c.fill();
+        }
+      }
+    }
+  }
+  function wormBox(w, ox) {
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const p of [w.rl, w.fl, ...w.pts]) {
+      x0 = Math.min(x0, p.x);
+      y0 = Math.min(y0, p.y);
+      x1 = Math.max(x1, p.x);
+      y1 = Math.max(y1, p.y);
+    }
+    const e = DEV.glowW + 3;
+    return { x: Math.floor(x0 - ox - e), y: Math.floor(y0 - e), w: Math.ceil(x1 - x0 + 2 * e) + 1, h: Math.ceil(y1 - y0 + 2 * e) + 1 };
   }
 
   // src/world/fire.js
@@ -12761,8 +12819,33 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const x0 = Math.max(S.scroll - TITLE_BACK - 50, (S.gen - S.ncol) * TCELL + 40);
     if (S.worms.some((w) => w.r.x < x0)) S.worms = S.worms.filter((w) => w.r.x >= x0);
     const solid = rockAt(S);
-    for (const w of S.worms) stepWorm(w, dt, solid, S.wormRnd || S.rnd);
+    const R = S.wormRnd ||= wormRng(S.seed), D = DEV;
+    for (const w of S.worms) {
+      if (!stepWorm(w, dt, solid, R) || S.parts.length >= TITLE_PARTS - 20) continue;
+      const a0 = Math.atan2(w.r.ny + w.f.ny, w.r.nx + w.f.nx), m = w.pts[2], m2 = w.pts[3];
+      for (let i = 0, k = Math.round(D.glowSpores); i < k; i++) {
+        const a = a0 + (R() * 2 - 1) * D.glowSporeSpread * Math.PI / 180, v = D.glowSporeSpd * (0.6 + 0.4 * R()), l = 4 + R() * 3;
+        S.parts.push({ x: (m.x + m2.x) / 2 - S.scroll, y: (m.y + m2.y) / 2, vx: (R() - 0.5) * 4, vy: -1 - R() * 2, life: l, max: l, r: 0.8, col: WORM_SPORE, kind: "wspore", kx: Math.cos(a) * v, ky: Math.sin(a) * v });
+      }
+    }
+    if (S.parts.length < TITLE_PARTS - 40 && R() < dt * D.glowAmbient) {
+      const x = R() * TITLE_VW, wx = x + S.scroll, l = 5 + R() * 3;
+      if (coalAt(S, wx)) S.parts.push({
+        x,
+        y: titleCeil(wx, S) + 6 + R() * Math.max(0, titleFloor(wx, S) - titleCeil(wx, S) - 12),
+        vx: (R() - 0.5) * 8,
+        vy: -2 - R() * 3,
+        life: l,
+        max: l,
+        r: 0.9,
+        col: WORM_SPORE,
+        kind: "wspore",
+        kx: 0,
+        ky: 0
+      });
+    }
   }
+  var WORM_SPORE = "#7dff3a";
   function coalDeco(S, c, wx, Zn, cap, rcy, fy, tuns) {
     const R = S.rnd, base = ci(S, c, 0);
     if (cap != null && R() < 0.5) lamp(S, c, wx, (cap + 2.5) * TCELL, 3 + R() * 5, true);
@@ -13757,6 +13840,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         p.y += p.vy * dt;
         p.x -= sv(S) * dt;
         if (titleSolid(S, p.x, p.y + 0.5)) p.life = 0;
+        continue;
+      }
+      if (p.kind === "wspore") {
+        const kk = Math.exp(-DEV.glowSporeDrag * dt);
+        p.kx = (p.kx || 0) * kk;
+        p.ky = (p.ky || 0) * kk;
+        p.x += (p.vx + (p.kx || 0) + Math.sin(S.t * 1.7 + p.max * 9) * 3 - sv(S)) * dt;
+        p.y += (p.vy + (p.ky || 0)) * dt;
         continue;
       }
       if (p.kind === "spore") {
@@ -21632,7 +21723,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       });
     }
     if (S.bats) drawBats(ctx, S.bats, S.scroll, S.t, S.runners.filter((r) => !r.out).map((r) => ({ x: S.scroll + r.x + PW / 2, y: r.y + PH / 2 })));
-    if (S.worms) drawWorms(ctx, S.worms, S.scroll);
+    for (const w of S.worms || []) {
+      const b = wormBox(w, S.scroll);
+      if (b.x + b.w > -10 && b.x < TITLE_VW + 10) pixelSprite(ctx, b.x, b.y, b.w, b.h, 1, false, (c) => drawGlowWorm(c, w, S.scroll));
+    }
     for (const f of S.foes) {
       const sx2 = f.x - S.scroll;
       if (sx2 < -60 || sx2 > TITLE_VW + 60) continue;
@@ -21792,7 +21886,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         continue;
       }
       const q = p.life / p.max;
-      ctx.globalAlpha = p.kind === "spore" ? Math.sin(Math.PI * q) * 0.8 : p.kind === "drip" ? 0.8 : p.kind === "soot" ? 0.9 : p.kind === "lump" ? 1 : q;
+      ctx.globalAlpha = p.kind === "spore" || p.kind === "wspore" ? Math.sin(Math.PI * q) * 0.8 : p.kind === "drip" ? 0.8 : p.kind === "soot" ? 0.9 : p.kind === "lump" ? 1 : q;
       ctx.fillStyle = p.kind === "fire" ? q > 0.6 ? "#fff0b0" : q > 0.3 ? "#ff9a2e" : "#c8301a" : p.col;
       const rr2 = p.kind === "fire" ? p.r * (0.5 + q) : p.r;
       ctx.fillRect(p.x - rr2 / 2, p.y - rr2 / 2, rr2, rr2);

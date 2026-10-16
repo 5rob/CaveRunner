@@ -192,7 +192,7 @@ require('../tests/build')();
     const clip = () => page.evaluate(() => {
       const S = window.__gremScene, w = window.__worm, cv = document.querySelector('canvas'), b = cv.getBoundingClientRect(), k = b.width / TITLE_VW;
       const x = (w.r.x + w.f.x) / 2 - S.scroll, y = (w.r.y + w.f.y) / 2;
-      return { x: Math.max(b.left, b.left + x * k - 50), y: Math.max(b.top, b.top + y * k - 60), width: 100, height: 100 };
+      return { x: Math.max(b.left, b.left + x * k - 30), y: Math.max(b.top, b.top + y * k - 32), width: 60, height: 60 };
     });
     const at = async (/** @type {number} */ lo, /** @type {number} */ hi, /** @type {string} */ n, /** @type {string} */ what) => {
       const crank = await page.evaluate(() => DEV.glowCrank);
@@ -212,6 +212,12 @@ require('../tests/build')();
     await at(1.4, 1.75, 'd-reach', 'close up (darkness lifted): mid-reach, the rear foot gripping, the front lifted and going forward');
     await at(2.95, 3.3, 'e-apart', 'close up (darkness lifted): feet furthest apart, the body a low horseshoe');
     await at(4.55, 4.9, 'f-follow', 'close up (darkness lifted): the front gripping, the rear lifted and following');
+    await page.evaluate(() => { DEV.gremDark = DEV_DEFAULTS.gremDark; });
+    await page.waitForTimeout(2500);
+    await save('h-spores', 'as played (dark): the worms puffing green spores, green spores drifting through Coal Seams');
+    await page.evaluate(() => { DEV.gremDark = 0; });
+    await page.waitForTimeout(100);
+    { const q = await clip(); await save('i-spores-close', 'close up (darkness lifted): a worm and its spores', { x: q.x - 40, y: q.y - 40, width: 140, height: 140 }); }
     await page.evaluate(() => { DEV.gremDark = DEV_DEFAULTS.gremDark; });
     // on to a worm on a wall or the roof: the level's own steering is gone, so the view is pushed on by hand
     let got = false;

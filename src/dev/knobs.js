@@ -547,7 +547,8 @@ DEV_META.push(
   { k: 'batBite',        g: 'bats', label: 'Bat bite damage (0: harmless)', step: 0.5 });
 DEV_GROUPS.push(['bats', 'Bats']);
 // (C5a) Coal Seams' glow worms (creatures/glowworm.js, the owner's spec): the body and the inchworm gait
-Object.assign(DEV_DEFAULTS, { glowPerScreen: 2, glowStride: 8, glowDMin: 5, glowDMax: 13, glowLiftF: 0.6, glowLiftR: 0.4, glowCrank: 4.5, glowLen: 18, glowW: 3.4, glowFoot: 2, glowTurn: 0.1 });
+Object.assign(DEV_DEFAULTS, { glowPerScreen: 2, glowStride: 4, glowDMin: 2.5, glowDMax: 6.5, glowLiftF: 0.6, glowLiftR: 0.4, glowCrank: 4.5, glowLen: 8, glowW: 1.8, glowFoot: 1, glowTurn: 0.1,
+  glowTaper: 0.55, glowSpores: 3, glowSporeSpd: 22, glowSporeDrag: 3, glowSporeSpread: 40, glowAmbient: 4 });
 DEV_META.push(
   { k: 'glowPerScreen', g: 'glow', label: 'Glow worms: about this many a screen', min: 0, max: 12, step: 0.1 },
   { k: 'glowStride',    g: 'glow', label: 'Stride (the foot gap swings this much)', min: 0, max: 20, step: 0.5 },
@@ -559,7 +560,13 @@ DEV_META.push(
   { k: 'glowLen',       g: 'glow', label: 'Body size: length (units)', min: 4, max: 50, step: 0.5 },
   { k: 'glowW',         g: 'glow', label: 'Body size: thickness (units)', min: 0.5, max: 10, step: 0.1 },
   { k: 'glowFoot',      g: 'glow', label: 'Foot length (units)', min: 0, max: 8, step: 0.1 },
-  { k: 'glowTurn',      g: 'glow', label: 'Turn round: chance each step', min: 0, max: 1, step: 0.01 });
+  { k: 'glowTurn',      g: 'glow', label: 'Turn round: chance each step', min: 0, max: 1, step: 0.01 },
+  { k: 'glowTaper',     g: 'glow', label: 'Body: thickness at the ends (share of the middle)', min: 0.1, max: 1, step: 0.05 },
+  { k: 'glowSpores',    g: 'glow', label: 'Spores puffed out each step (as the jellyfish)', min: 0, max: 20, step: 1 },
+  { k: 'glowSporeSpd',  g: 'glow', label: 'Spore puff speed', min: 0, max: 200, step: 1 },
+  { k: 'glowSporeDrag', g: 'glow', label: 'Spore puff drag (settles)', min: 0, max: 20, step: 0.1 },
+  { k: 'glowSporeSpread', g: 'glow', label: 'Spore puff spread (± deg)', min: 0, max: 180, step: 1 },
+  { k: 'glowAmbient',   g: 'glow', label: 'Green spores drifting in Coal Seams (a second, a screen)', min: 0, max: 30, step: 0.5 });
 DEV_GROUPS.push(['glow', 'Glow worms']);
 // CaveRunner Auto's maps (auto/maps.js): the map machine's prices, and how much harder each map starts
 Object.assign(DEV_DEFAULTS, { autoMapPrice: 1000000, autoMapGrow: 1, autoMapStep: 5 });

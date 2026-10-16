@@ -41,7 +41,7 @@ check('never inside rock', inRock === 0, inRock);
 
 // round the corner: on along the floor into the wall, up it
 let up = false;
-for (let i = 0; i < 60 * 40 && !up; i++) {
+for (let i = 0; i < 60 * 90 && !up; i++) {
   G.stepWorm(w, dt, solid, rnd);
   for (const p of [w.r, w.f, w.rl, w.fl, ...w.pts]) if (solid(p.x, p.y)) inRock++;
   if (w.r.nx < -0.9 && w.f.nx < -0.9 && w.r.y < 80) up = true;
@@ -50,13 +50,13 @@ check('round the corner and up the wall (both feet on it)', up, { r: w.r, f: w.f
 check('… never inside rock', inRock === 0, inRock);
 // on up to the roof, and along it (upside down)
 let roof = false;
-for (let i = 0; i < 60 * 60 && !roof; i++) { G.stepWorm(w, dt, solid, rnd); if (w.r.ny > 0.9 && w.f.ny > 0.9 && w.r.x < 100) roof = true; }
+for (let i = 0; i < 60 * 150 && !roof; i++) { G.stepWorm(w, dt, solid, rnd); if (w.r.ny > 0.9 && w.f.ny > 0.9 && w.r.x < 100) roof = true; }
 check('… then round onto the roof and along it', roof, { r: w.r, f: w.f });
 // a step down off a ledge (a convex corner): over the edge and down its side
 const ledge = (x, y) => (x < 50 ? y >= 60 : y >= 100) || x < -200 || x >= 200;
 const w2 = G.newWorm(20, 59.5, 1, ledge, rnd);
 let down = false, bad = 0;
-for (let i = 0; i < 60 * 30 && !down; i++) { G.stepWorm(w2, dt, ledge, rnd); for (const p of [w2.r, w2.f, ...w2.pts]) if (ledge(p.x, p.y)) bad++; if (w2.r.nx > 0.9 && w2.r.y > 75) down = true; }
+for (let i = 0; i < 60 * 40 && !down; i++) { G.stepWorm(w2, dt, ledge, rnd); for (const p of [w2.r, w2.f, ...w2.pts]) if (ledge(p.x, p.y)) bad++; if (w2.r.nx > 0.9 && w2.r.y > 75) down = true; }
 check('over a ledge (a convex corner) and down its side', down && bad === 0, { down, bad, r: w2.r });
 
 // a Grem level at level 2 (Coal Seams): worms made as it goes, about DEV.glowPerScreen a screen, never in rock
@@ -77,9 +77,11 @@ check('… their feet never inside rock', lv === 0, lv);
 S.lvl.step = null; S.pace = 0; S.still = true; S.props.length = 0;
 const mine = (S.worms || []).filter(q => q.r.x > S.scroll - 50 && q.r.x < S.scroll + 270), st = mine.map(q => ({ x: q.r.x, y: q.r.y }));
 for (let i = 0; i < 600; i++) { G.titleStep(S, dt); for (const q of mine) if (rock(q.r.x, q.r.y) || rock(q.f.x, q.f.y)) lv++; }
-const went = mine.filter((q, i) => Math.hypot(q.r.x - st[i].x, q.r.y - st[i].y) > 10).length;
-check('in the level: the worms on screen roam on (most move 10+ units in 10 s)', mine.length > 0 && went >= mine.length * 0.6, { n: mine.length, went });
+const went = mine.filter((q, i) => Math.hypot(q.r.x - st[i].x, q.r.y - st[i].y) > 6).length;
+check('in the level: the worms on screen roam on (most move 6+ units in 10 s)', mine.length > 0 && went >= mine.length * 0.6, { n: mine.length, went });
 check('… never inside rock', lv === 0, lv);
+const sp = S.parts.filter(p => p.kind === 'wspore');
+check('green spores: puffed by the worms and drifting in Coal Seams', sp.length > 5 && sp.every(p => p.col === sp[0].col), sp.length);
 
 console.log(fails ? `\n${fails} FAILED` : '\nall ok');
 process.exit(fails ? 1 : 0);

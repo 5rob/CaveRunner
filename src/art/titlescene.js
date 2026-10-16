@@ -187,7 +187,7 @@ const CLASSIC = { shoot: 1, turret: 1, chase: 1, bomb: 1 };
  *   real?: boolean, by?: number, trig?: string | null, timer?: number, pay?: Shot[] | null, age?: number,
  *   sid?: string, tr?: number[], homeR?: number, light?: string, lightR?: number,
  *   beam?: number, ang?: number, bx?: number, by2?: number, pull?: number, vac?: number, heal?: number, tick?: number, follow?: number, sp0?: number, orbit?: number, spiral?: number, boomer?: number, pong?: number, born?: number, back?: number, caught?: number, oa?: number, or0?: number, odir?: number, pdir?: number, ptr?: number[], homN?: number, seekN?: number, nearN?: number, autoaim?: number, aimed?: number, gravN?: number, floatN?: number, flat?: number, tgt?: Enemy | null, sp1?: number, max?: number, hopT?: number, hx?: number, hy?: number, only?: DiscrimTarget | null, manaB?: number, mana?: number }} TShot */
-/** @typedef {{ x: number, y: number, vx: number, vy: number, life: number, max: number, r: number, col: string, kind: string, to?: { x: number, y: number, life: number }, fx?: boolean, u?: number, a?: number, g?: number }} TPart */
+/** @typedef {{ x: number, y: number, vx: number, vy: number, life: number, max: number, r: number, col: string, kind: string, to?: { x: number, y: number, life: number }, fx?: boolean, u?: number, a?: number, g?: number, kx?: number, ky?: number }} TPart */
 /** @typedef {{ x: number, y: number, r: number, t: number, max: number, sid?: string }} TBoom */
 /** a nuke's mushroom cloud (game/render/autolooks.js drawMushroom): wx its world x, y the blast's, r its size
  * @typedef {{ wx: number, y: number, r: number, t: number, max: number, seed: number }} MushCloud */
@@ -1154,8 +1154,24 @@ function wormsStep(S, dt) {
   const x0 = Math.max(S.scroll - TITLE_BACK - 50, (S.gen - S.ncol) * TCELL + 40);   // (and before the ring of columns reuses theirs)
   if (S.worms.some(w => w.r.x < x0)) S.worms = S.worms.filter(w => w.r.x >= x0);
   const solid = rockAt(S);
-  for (const w of S.worms) stepWorm(w, dt, solid, S.wormRnd || S.rnd);
+  const R = S.wormRnd ||= wormRng(S.seed), D = DEV;
+  for (const w of S.worms) {
+    if (!stepWorm(w, dt, solid, R) || S.parts.length >= TITLE_PARTS - 20) continue;
+    // a foot down: a puff of green spores off the middle of its back, out from the rock (the jellyfish's puff, devpanel.js JellyPreview)
+    const a0 = Math.atan2(w.r.ny + w.f.ny, w.r.nx + w.f.nx), m = w.pts[2], m2 = w.pts[3];
+    for (let i = 0, k = Math.round(D.glowSpores); i < k; i++) {
+      const a = a0 + (R() * 2 - 1) * D.glowSporeSpread * Math.PI / 180, v = D.glowSporeSpd * (0.6 + 0.4 * R()), l = 4 + R() * 3;
+      S.parts.push({ x: (m.x + m2.x) / 2 - S.scroll, y: (m.y + m2.y) / 2, vx: (R() - 0.5) * 4, vy: -1 - R() * 2, life: l, max: l, r: 0.8, col: WORM_SPORE, kind: 'wspore', kx: Math.cos(a) * v, ky: Math.sin(a) * v });
+    }
+  }
+  // the green spores drifting through Coal Seams, where the worms live (the natural caves' luminescent spores, in the worms' green)
+  if (S.parts.length < TITLE_PARTS - 40 && R() < dt * D.glowAmbient) {
+    const x = R() * TITLE_VW, wx = x + S.scroll, l = 5 + R() * 3;
+    if (coalAt(S, wx)) S.parts.push({ x, y: titleCeil(wx, S) + 6 + R() * Math.max(0, titleFloor(wx, S) - titleCeil(wx, S) - 12), vx: (R() - 0.5) * 8, vy: -2 - R() * 3,
+      life: l, max: l, r: 0.9, col: WORM_SPORE, kind: 'wspore', kx: 0, ky: 0 });
+  }
 }
+const WORM_SPORE = '#7dff3a';   // (the worms' neon green)
 // Coal Seams' mine set in column c (the old game's floor 2 decorations): rusted lanterns hung off whatever rock or timber is over a
 // spot in the open (the roof, a boulder's underside) and under a support's cap now and then; explosive minecarts (the floor flat
 // under the whole cart) and pickaxes lying on the floors: a natural zone's, a mine's tunnels' (tuns: those open here)
@@ -1968,6 +1984,10 @@ export function titleStep(S, dt) {
       p.vy = Math.min(38, p.vy + 30 * dt); p.y += p.vy * dt; p.x -= sv(S) * dt;
       if (titleSolid(S, p.x, p.y + 0.5)) p.life = 0;
       continue;
+    }
+    if (p.kind === 'wspore') {   // (C5a) a worm's spore: the puff's kick settling (DEV.glowSporeDrag), then a spore's drift
+      const kk = Math.exp(-DEV.glowSporeDrag * dt); p.kx = (p.kx || 0) * kk; p.ky = (p.ky || 0) * kk;
+      p.x += (p.vx + (p.kx || 0) + Math.sin(S.t * 1.7 + p.max * 9) * 3 - sv(S)) * dt; p.y += (p.vy + (p.ky || 0)) * dt; continue;
     }
     if (p.kind === 'spore') { p.x += (p.vx + Math.sin(S.t * 1.7 + p.max * 9) * 3 - sv(S)) * dt; p.y += p.vy * dt; continue; }
     p.x += p.vx * dt; p.y += p.vy * dt;
