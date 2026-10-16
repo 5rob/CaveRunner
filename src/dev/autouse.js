@@ -123,6 +123,8 @@ export const AUTO_KNOBS = new Set([
   'autoMushT',
   'autoNavCut',
   'autoNavGive',
+  'autoOldCd',
+  'autoOldDmg',
   'autoOrbChance',
   'autoOrbGap',
   'autoOrbMax',

@@ -13,7 +13,7 @@ import { eliteOf, enemyFor } from '../data/creatures.js';
 import { deathFall } from './death.js';
 import { shieldSoak } from './perks.js';
 import { gremHardTier } from './grem.js';
-import { TCELL, TITLE_KINDS, TITLE_VW, titleFoeAt, titleZoneSpan, zoneHome } from '../art/titlescene.js';
+import { TCELL, TITLE_KINDS, TITLE_VW, titleFoeAt, titleKind } from '../art/titlescene.js';
 
 export const FALL_FLICKER = 0.6;      // (retired, feedback round 2: a fallen player is a ragdoll now, auto/death.js)
 const BOSS_IN = 90;                   // the boss comes in this far right of the team (world units)
@@ -33,14 +33,6 @@ export function elitePlan(plan, rnd, n = DEV.autoFoeElites) {
   return out;
 }
 
-// a creature kind for world x by the zone's home rules (weighted)
-/** @param {import('../art/titlescene.js').TitleScene} S @param {number} x */
-function homeKind(S, x) {
-  const home = zoneHome(titleZoneSpan(x, S));
-  let roll = S.rnd() * home.reduce((a, h) => a + h[1], 0);
-  for (const [q, w] of home) { if (roll < w) return q; roll -= w; }
-  return home[0][0];
-}
 
 // (owner, v1.0.53: a level 10 team one-shot the boss for six levels; the old game's +35% health a floor is too gentle for
 // Auto's growing guns) a creature at the run's tier: the old game's kind at tier 1, its health × DEV.autoTierHp and its
@@ -96,7 +88,7 @@ export function levelFoes(S, L, teamX) {
     if (e.alive === false) continue;
     if (!e.f) {
       if (e.x - S.scroll < TITLE_VW + 16 && e.x < S.gen * TCELL - 6) {
-        const id = e.id || (e.id = homeKind(S, e.x));
+        const id = e.id || (e.id = titleKind(S, e.x));
         e.f = titleFoeAt(S, eliteOf(mk(id, tier), e.u == null ? 0.5 : e.u), e.x);
       }
       continue;
@@ -106,7 +98,7 @@ export function levelFoes(S, L, teamX) {
   }
   // the boss: in when the team reaches the arena, hunting at once
   if (L.phase === 'arena' && !L.boss && !L.bossDead) {
-    const id = TITLE_KINDS[Math.floor(S.rnd() * TITLE_KINDS.length)];
+    const ks = S.roster && S.roster.length ? S.roster : TITLE_KINDS, id = ks[Math.floor(S.rnd() * ks.length)];   // (v1.0.97) an old floor's: one of its roster
     const f = titleFoeAt(S, bossKind(id, tier, mk), Math.min(L.plan.arena.x1 - 30, teamX + BOSS_IN));
     f.aggro = true;
     L.boss = f;

@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v1.0.96</title>
-<!-- VERSION = 'v1000096' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v1.0.97</title>
+<!-- VERSION = 'v1000097' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -1301,7 +1301,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v1.0.96';</script>
+<script>const VERSION = 'v1.0.97';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -2342,7 +2342,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "autoGhostRange", g: "autoperks", label: "Angry Ghost: range (units)", min: 20, max: 400, step: 5 }
   );
   DEV_GROUPS.push(["autoperks", "Auto: perks"]);
-  Object.assign(DEV_DEFAULTS, { autoFoeGap0: 4, autoFoeGap1: 1.5, autoFoeCap0: 3, autoFoeCap1: 10, autoFoeDmg: 0.5, autoFoeElites: 2, autoBossSize: 4, autoBossHp: 12, autoBossDmg: 3, autoTierHp: 1.45, autoTierDmg: 1.15 });
+  Object.assign(DEV_DEFAULTS, { autoFoeGap0: 4, autoFoeGap1: 1.5, autoFoeCap0: 3, autoFoeCap1: 10, autoFoeDmg: 0.5, autoFoeElites: 2, autoBossSize: 4, autoBossHp: 12, autoBossDmg: 3, autoTierHp: 1.45, autoTierDmg: 1.15, autoOldDmg: 0.4, autoOldCd: 1.5 });
   DEV_META.push(
     { k: "autoRoamT", g: "autofoes", label: "Tall levels: the team picks a new height to roam at every … s", min: 1, max: 30, step: 0.5 },
     { k: "autoRoamHi", g: "autofoes", label: "… the top third, at this chance", min: 0, max: 1, step: 0.05 },
@@ -2362,7 +2362,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "autoTierDmg", g: "autofoes", label: "Creatures’ bite × this for each level past 1 (compounding)", min: 1, max: 2, step: 0.01 },
     { k: "autoBossSize", g: "autofoes", label: "Boss size (× a normal one)", min: 1, max: 8, step: 0.25 },
     { k: "autoBossHp", g: "autofoes", label: "Boss health (× a normal one)", min: 1, max: 200, step: 1 },
-    { k: "autoBossDmg", g: "autofoes", label: "Boss damage (× a normal one)", min: 0.5, max: 10, step: 0.25 }
+    { k: "autoBossDmg", g: "autofoes", label: "Boss damage (× a normal one)", min: 0.5, max: 10, step: 0.25 },
+    // (v1.0.97) levels 2+ play as the old game's floors (auto/maps.js levelLook): their shooters, turrets, chasers and bombers
+    { k: "autoOldDmg", g: "autofoes", label: "Old floors: shooters, chasers and bombers hurt × this (on top of the line above)", min: 0, max: 3, step: 0.05 },
+    { k: "autoOldCd", g: "autofoes", label: "Old floors: time between a shooter’s shots × this", min: 0.25, max: 5, step: 0.05 }
   );
   DEV_GROUPS.push(["autofoes", "Auto: enemies"]);
   Object.assign(DEV_DEFAULTS, { autoMoveK: 0.75, autoJetTilt: 1, autoJetSmoke: 1, autoDeathStop: 1.5, autoTpBlink: 1, autoTpBoomWait: 0.6, autoTpBoomR: 60, autoSpStride: 0.14, autoRoamT: 8, autoRoamHi: 0.45, autoRoamMid: 0.4, autoRoamFly: 2.5, autoRoamRun: 0.4, autoJeTurnTier: 0.2, autoJeTurnMax: 2.5, autoExitNukeR: 90, autoExitNukeF: 1600, autoExitNukeWait: 3.5, autoMushT: 3.2, autoMushK: 1, autoFuelDrain: 1, autoFuelRegen: 1, autoCtlWait: 3, autoVineFire: 1, autoVineSpread: 4, autoVineJitter: 0.8, autoVineAsh: 8, autoFireJump: 2, autoFireJumpP: 0.5, autoNavCut: 0.8, autoNavGive: 1.2 });
@@ -13245,6 +13248,21 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     syncTier(run);
   }
   var mapLabel = (run) => MAP_NAMES[run.map || 0] + " Lv " + mapsOf(run)[run.map || 0].level;
+  var levelFloor = (lv) => lv <= 1 ? 1 : 2 + (lv - 2) % (THEMES.length - 1);
+  var floorName = (floor) => floor === 2 ? "Coal Seams" : MAP_NAMES[(floor - 1) % MAP_NAMES.length];
+  function levelLook(run, seed) {
+    const floor = levelFloor(mapsOf(run)[run.map || 0].level);
+    if (floor === 1) return { floor, theme: THEMES[0], name: floorName(1), roster: null };
+    let a = (seed ^ 1540483477) >>> 0;
+    const rnd2 = () => {
+      a = a + 1831565813 >>> 0;
+      let t = a;
+      t = Math.imul(t ^ t >>> 15, t | 1);
+      t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+    return { floor, theme: THEMES[floor - 1], name: floorName(floor), roster: rosterFor(floor, rnd2) };
+  }
 
   // src/auto/run.js
   var BAG_COLS = 7, BAG_ROWS = 10, BAG_SLOTS = BAG_COLS * BAG_ROWS;
@@ -14060,6 +14078,22 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     spider: [["hamahakki", 5], ["meduusa", 1]]
   };
   var zoneHome = (Z) => TITLE_HOME[Z.spid ? "spider" : Z.z] || TITLE_HOME.moss;
+  function titleKind(S2, wx) {
+    const R = S2.rnd;
+    if (S2.roster && S2.roster.length) {
+      const ok = S2.roster.filter((id) => !NATURAL_ONLY[enemyFor(id, 1).act] || built(wx, S2) === 0);
+      const from = ok.length ? ok : S2.roster;
+      return from[Math.floor(R() * from.length)];
+    }
+    const home = zoneHome(titleZoneSpan(wx, S2));
+    let roll = R() * home.reduce((a, h3) => a + h3[1], 0);
+    for (const [q, w] of home) {
+      if (roll < w) return q;
+      roll -= w;
+    }
+    return home[0][0];
+  }
+  var CLASSIC = { shoot: 1, turret: 1, chase: 1, bomb: 1 };
   function titleRng(seed) {
     let a = seed >>> 0;
     return () => {
@@ -14789,15 +14823,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   };
   function addFoe(S2, x, cap = TITLE_FOES) {
     const R = S2.rnd, wx = (x === void 0 ? TITLE_VW + 16 : x) + S2.scroll;
-    const home = zoneHome(titleZoneSpan(wx, S2));
-    let roll = R() * home.reduce((a, h3) => a + h3[1], 0), id = home[0][0];
-    for (const [q, w] of home) {
-      if (roll < w) {
-        id = q;
-        break;
-      }
-      roll -= w;
-    }
+    const id = titleKind(S2, wx);
     S2.kinds[id] = (S2.kinds[id] || 0) + 1;
     const n = id === "rotta" ? 3 + Math.floor(R() * 4) : id === "hamahakki" ? 1 + Math.floor(R() * 2) : 1;
     for (let i = 0; i < n && S2.foes.length < Math.min(cap, TITLE_FOES); i++) {
@@ -14809,7 +14835,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   function titleFoeAt(S2, k, ex) {
     const R = S2.rnd, id = k.id, cy = titleCeil(ex, S2), fy = titleFloor(ex, S2);
-    const ey = id === "meduusa" ? cy + (fy - cy) * (0.25 + 0.45 * R()) : id === "hamahakki" && R() < 0.5 ? cy + k.r : fy - k.r - 1;
+    const ey = id === "meduusa" || CLASSIC[k.act] ? cy + (fy - cy) * (0.25 + 0.45 * R()) : id === "hamahakki" && R() < 0.5 ? cy + k.r : fy - k.r - 1;
     const f = {
       x: ex,
       y: ey,
@@ -16459,13 +16485,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (k.act === "jelly") jellyAct(S2, e, hunting, goal, sees, CS, dt);
       else if (k.act === "spider") spiderAct(S2, e, hunting, goal, sees, dist, dx, dy, CS, dt);
       else if (k.act === "rat") ratAct(S2, e, ru, hunting, CS, dt);
-      e.ty = e.y;
+      if (CLASSIC[k.act]) {
+        if (classicAct(S2, e, hunting, goal, dist, dx, dy, CS, dt)) continue;
+      } else e.ty = e.y;
       if (!hunting && R() < 0.07 * dt) snd(S2, "idle", e.x - S2.scroll, e.ty, k);
       if (hunting && dist < e.r + 14 && e.touch <= 0) {
-        e.touch = kr(k.kp + "BiteCd", R);
+        e.touch = k.kp ? kr(k.kp + "BiteCd", R) : 0.9;
         snd(S2, "bite", e.x - S2.scroll, e.ty, k);
         burst(S2, ru.x + PW / 2, ru.y + PH / 2, 4, "#ff6a5a", 50, "spark", 0.2);
-        if (S2.lvl && S2.lvl.hurt) S2.lvl.hurt(S2, ru.id, k.dmg);
+        if (S2.lvl && S2.lvl.hurt) S2.lvl.hurt(S2, ru.id, k.dmg * (CLASSIC[k.act] ? DEV.autoOldDmg : 1));
       }
       if (!(e.burn > 0) && S2.fire.length && fireNear2(S2, e.x, e.ty, e.r * 0.7)) {
         e.burn = kr("fireBurn", R);
@@ -16498,6 +16526,108 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
     }
     S2.silk = S2.silk.filter((b) => b.life > 0);
+  }
+  function classicAct(S2, e, hunting, goal, dist, dx, dy, CS, dt) {
+    const R = S2.rnd, k = e.k;
+    const solid = (x, y) => !!CS(Math.floor(x / CELL), Math.floor(y / CELL));
+    const blocked = (x, y) => solid(x - e.r, y) || solid(x + e.r, y) || solid(x, y - e.r) || solid(x, y + e.r);
+    if (k.act !== "turret") {
+      const step = k.spd * dt;
+      if (hunting) {
+        const wx = e.x + dx / dist * step, wy = e.y + dy / dist * step;
+        if (!blocked(wx, wy)) {
+          e.x = wx;
+          e.y = wy;
+        } else if (!solid(wx, e.y)) e.x = wx;
+        else if (!solid(e.x, wy)) e.y = wy;
+        else {
+          e.tgt = null;
+          e.rest = 0;
+        }
+      } else {
+        e.rest -= dt;
+        if (!e.tgt || e.rest <= 0 || Math.hypot(e.tgt.x - e.x, e.tgt.y - e.y) < 6) {
+          const a = R() * Math.PI * 2, r = 10 + R() * PATROL_R;
+          e.tgt = { x: e.hx + Math.cos(a) * r, y: e.hy + Math.sin(a) * r };
+          e.rest = 2 + R() * 3.5;
+        }
+        const tdx = e.tgt.x - e.x, tdy = e.tgt.y - e.y, td = Math.hypot(tdx, tdy) || 1;
+        const wx = e.x + tdx / td * step, wy = e.y + tdy / td * step;
+        if (blocked(wx, wy)) {
+          e.tgt = null;
+          e.rest = 0;
+        } else {
+          e.x = wx;
+          e.y = wy;
+        }
+      }
+    }
+    e.ty = e.y + Math.sin(S2.t * 2 + e.phase) * (hunting ? 2 : 4);
+    if (k.act === "bomb" && hunting) {
+      if (dist < 160 && (e.fuseT = (e.fuseT || 0) - dt) <= 0) {
+        e.fuseT = 0.12 + dist / 400;
+        snd(S2, "fuse", e.x - S2.scroll, e.ty, k);
+      }
+      if (dist < e.r + 14) {
+        burst(S2, e.x - S2.scroll, e.ty, 22, k.col.a, 90, "spark", 0.4);
+        snd(S2, "boom", e.x - S2.scroll, e.ty, 10);
+        const ru = nearestRunner(S2, e.x - S2.scroll, e.ty);
+        if (S2.lvl && S2.lvl.hurt) S2.lvl.hurt(S2, ru.id, k.dmg * DEV.autoOldDmg);
+        if (k.id === "tuli") titleIgnite(S2, e.x - S2.scroll, e.ty, 26, 1);
+        e.hp = 0;
+        return true;
+      }
+    }
+    if (k.range > 0) {
+      if (e.charge > 0) {
+        e.charge -= dt;
+        if (e.charge <= 0) foeShot(S2, e, goal, CS);
+      } else if (dist < k.range / DEV.zoom && e.cd <= 0) {
+        e.cd = 0.4;
+        if (losClear(e.x, e.ty, goal.x, goal.y, CS)) {
+          e.cd = k.cd * DEV.autoOldCd * (0.85 + R() * 0.3);
+          if (!e.spotted) {
+            e.spotted = true;
+            snd(S2, "alert", e.x - S2.scroll, e.ty, k);
+          }
+          if (k.tele) {
+            e.charge = k.tele;
+            snd(S2, "charge", e.x - S2.scroll, e.ty, k);
+          } else foeShot(S2, e, goal, CS);
+        }
+      }
+    }
+    return false;
+  }
+  function foeShot(S2, e, goal, CS) {
+    const k = e.k, R = S2.rnd;
+    if (!losClear(e.x, e.ty, goal.x, goal.y, CS)) return;
+    const base = Math.atan2(goal.y - e.ty, goal.x - e.x), n = k.shots || 1;
+    snd(S2, "fire", e.x - S2.scroll, e.ty, k);
+    for (let s = 0; s < n; s++) {
+      const a = base + (n > 1 ? (s - (n - 1) / 2) * 0.15 : 0) + (R() - 0.5) * 0.22;
+      S2.shots.push({
+        x: e.x - S2.scroll + Math.cos(a) * (e.r + 4),
+        y: e.ty + Math.sin(a) * (e.r + 4),
+        vx: Math.cos(a) * k.bspd,
+        vy: Math.sin(a) * k.bspd,
+        size: k.body === "blob" ? 4 : 3,
+        col: k.col.a,
+        look: "ball",
+        life: 2.5,
+        foe: true,
+        spin: 0,
+        grav: 0,
+        drag: 0,
+        explode: 0,
+        pit: 0,
+        fire: 0,
+        bounce: 0,
+        bounceE: 0,
+        pierce: 0,
+        dmg: k.dmg * DEV.autoOldDmg
+      });
+    }
   }
   function jellyAct(S2, e, hunting, goal, sees, CS, dt) {
     const R = S2.rnd;
@@ -25847,15 +25977,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     return out;
   }
-  function homeKind(S2, x) {
-    const home = zoneHome(titleZoneSpan(x, S2));
-    let roll = S2.rnd() * home.reduce((a, h3) => a + h3[1], 0);
-    for (const [q, w] of home) {
-      if (roll < w) return q;
-      roll -= w;
-    }
-    return home[0][0];
-  }
   function autoFoe(id, tier) {
     const k = enemyFor(id, tier), b = enemyFor(id, 1), n = Math.max(0, tier - 1);
     return Object.assign(k, { hp: Math.max(1, Math.round(b.hp * Math.pow(DEV.autoTierHp, n))), dmg: Math.max(1, Math.round(b.dmg * Math.pow(DEV.autoTierDmg, n))) });
@@ -25904,7 +26025,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (e.alive === false) continue;
       if (!e.f) {
         if (e.x - S2.scroll < TITLE_VW + 16 && e.x < S2.gen * TCELL - 6) {
-          const id = e.id || (e.id = homeKind(S2, e.x));
+          const id = e.id || (e.id = titleKind(S2, e.x));
           e.f = titleFoeAt(S2, eliteOf(mk(id, tier), e.u == null ? 0.5 : e.u), e.x);
         }
         continue;
@@ -25916,7 +26037,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       e.x = e.f.x;
     }
     if (L.phase === "arena" && !L.boss && !L.bossDead) {
-      const id = TITLE_KINDS[Math.floor(S2.rnd() * TITLE_KINDS.length)];
+      const ks = S2.roster && S2.roster.length ? S2.roster : TITLE_KINDS, id = ks[Math.floor(S2.rnd() * ks.length)];
       const f = titleFoeAt(S2, bossKind(id, tier, mk), Math.min(L.plan.arena.x1 - 30, teamX + BOSS_IN));
       f.aggro = true;
       L.boss = f;
@@ -26157,6 +26278,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (grem) {
       S2.dmgMul = gremDmgMul(tier);
       S2.coinWait = DEV.gremGoldWait;
+    }
+    if (run && !grem) {
+      const look = levelLook(run, seed);
+      L.floor = look.floor;
+      L.name = look.name;
+      if (look.roster) {
+        S2.theme = look.theme;
+        S2.roster = look.roster;
+      }
     }
     L.elites = elitePlan(plan, S2.rnd);
     L.chests = chestPlan(plan);
@@ -29305,6 +29435,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     "autoMushT",
     "autoNavCut",
     "autoNavGive",
+    "autoOldCd",
+    "autoOldDmg",
     "autoOrbChance",
     "autoOrbGap",
     "autoOrbMax",
@@ -31202,6 +31334,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return C.cv;
   }
   function titleDraw(ctx, S2, cw, ch2, cam) {
+    T = S2.theme || THEMES[0];
     const k = cw / TITLE_VW;
     ctx.fillStyle = "rgb(" + T.bg.join(",") + ")";
     ctx.fillRect(0, 0, cw, ch2);
@@ -31351,6 +31484,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       for (const s of S2.shots) {
         const b = s;
         if (s.sid && drawGlowShot(c, s, W)) continue;
+        if (s.look === "ball") {
+          c.globalAlpha = 1;
+          c.fillStyle = s.col;
+          c.beginPath();
+          c.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+          c.fill();
+          continue;
+        }
         if (!drawLook(W, G2, b)) {
           const sp = Math.hypot(s.vx, s.vy) || 1, tl = Math.min(10, sp * 0.025);
           c.globalAlpha = 1;
@@ -32700,7 +32841,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (!SFX.ready) return;
     SFX.ear(0, 0);
     SFX.tick();
-    if (SFX.ambience !== THEMES[0].name) SFX.setAmbience(THEMES[0].name);
+    const amb = (S2.theme || THEMES[0]).name;
+    if (SFX.ambience !== amb) SFX.setAmbience(amb);
     Music.play(musicPick(MUS, levelState(S2)));
     SFX.ambTick(dt);
     const k = SCALE * C.z;
@@ -32757,8 +32899,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         case "idle":
         case "bite":
         case "fire":
+        case "fuse":
           SFX.creature(e.a, e.k, x, y);
           break;
+        case "charge":
+          SFX.creature(e.a, e.k, x, y, e.a.tele);
+          break;
+        // a turret's wind-up (the old game's classic creatures)
         case "step":
           SFX.fx("step", x, y);
           break;
@@ -33012,7 +33159,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
 
   // src/version.js
-  var VERSION2 = "v1.0.96";
+  var VERSION2 = "v1.0.97";
 
   // src/art/zonelab.js
   var ZLAB_LEAD = 60;
@@ -39049,7 +39196,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   function mapInfo(run) {
     const i = run.map || 0, m = mapsOf(run)[i];
-    return { name: MAP_NAMES[i], level: m.level, top: Math.max(m.level, (m.best || 0) + 1) };
+    return { name: floorName(levelFloor(m.level)), level: m.level, top: Math.max(m.level, (m.best || 0) + 1) };
   }
   var HELM_PX = 12;
   var helmCache = {};

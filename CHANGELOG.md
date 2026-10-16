@@ -5,6 +5,14 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.97 — CaveRunner Auto: the old game's themed floors as levels 2+ (branch `autobattler`)
+Built 2026-10-16; screenshots sent (`node tools/floorshots.js`), **waiting on the owner's OK before the push**.
+- Level 1 is unchanged (checked: the same run, frame for frame, with the randomness pinned). From level 2 the levels cycle the old game's floors 2..12 as they were before main's custom Level 2 (the Tombs): Coal Seams, Frozen Deep, Ember Halls, Fungal Grotto, Salt Flats, Amethyst Vein, Rustworks, Bone Garden, Drowned Halls, Ash Wastes, Void Hollow, then round again from Coal Seams (`auto/maps.js levelFloor`, by the active map's level; a wipe still sends it back to level 1).
+- Each brings its palette (`THEMES`, the scene's `S.theme`, `game/render/titledraw.js`), its ambience, and its creatures: the old `ROSTERS` (floors 2-10 fixed, 11-12 rolled off the level's seed), each as likely, jellyfish only in the natural zones, as the old makeLevel (`S.roster`, `titleKind`); the elites and the boss come off the roster too. The top left names the floor (was the map's name).
+- The old classic creatures work in Auto's level (`titlescene.js classicAct`, ported from `game/creatures/classic.js`): shooters (Hiisi, Tappurahiisi, Chaingunner) patrol and fire balls, turrets (Snipuhiisi, Kärpässieni, Jäätiö, Elävät luut) hold station and fire (wind-up first where they had one), chasers (Lohkare, Mato, Hurtta, Kobold, Konna) hunt and bite, bombers (Limanuljaska, Stendari: fire) burst on contact. Their sounds as the old game's (fuse, charge).
+- Two Dev knobs (Auto: enemies): **Old floors: hurt × 0.4** (`autoOldDmg`) and **time between shots × 1.5** (`autoOldCd`): Auto can't dodge, and at full strength a starter died in ~40 s on level 2; at these a starter lasts about as long on level 2 as on level 1, harder from there.
+- Suite `auto-floors` (logic); screenshots `tools/floorshots.js [out] [levels]`.
+
 ## v1.0.96 — CaveRunner Auto: six music tracks and a boss track (branch `autobattler`)
 Released 2026-10-16 on the branch; owner approved the mp3s (`node tools/musicwav.js all`).
 - Five new tracks in the title's style, each its own mood and tempo: Glowworm (chill, 80 bpm, clean guitar), Afterburner (exciting, 128), Undertow (moody, 92), Surface Light (happy, 116, synth lead), Something Below (suspense, 104). Recipes in `audio/songs.js` (`makeTrack`: chords, 16-step drum and bass patterns, an arpeggio, a lead in the solo's notation, harmonised a third up).

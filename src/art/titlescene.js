@@ -9,9 +9,9 @@
 // suite runs it); game/render/titledraw.js paints it (it needs the game's bullet looks, layer 5);
 // titleText paints the big CAVE RUNNER. ui/title.js runs it on one requestAnimationFrame.
 
-import { COL, AIR_ACC, CELL, COIN_PULL, DEAD, GRAVITY, GROUND_ACC, JET as P_JET, JET_ACC, PW, PH, WALK, WEB_HAND } from '../core/consts.js';
+import { COL, AIR_ACC, CELL, COIN_PULL, DEAD, GRAVITY, GROUND_ACC, JET as P_JET, JET_ACC, PATROL_R, PW, PH, WALK, WEB_HAND } from '../core/consts.js';
 import { approach } from '../core/util.js';
-import { ROSTERS, enemyFor } from '../data/creatures.js';
+import { NATURAL_ONLY, ROSTERS, enemyFor } from '../data/creatures.js';
 import { THEMES } from '../data/themes.js';
 import { DEV, carrotAt, kr, kru, spr } from '../dev/knobs.js';
 import { jellyPal, jellyStep } from '../creatures/jelly.js';
@@ -119,6 +119,25 @@ export const TITLE_HOME = {
 // who comes into a zone: its TITLE_HOME list (a spider mine, Z.spid: the spiders')
 /** @param {TZone} Z */
 export const zoneHome = Z => TITLE_HOME[Z.spid ? 'spider' : Z.z] || TITLE_HOME.moss;
+// the kind that comes in at world x: an old floor's (S.roster: the old game's makeLevel, each as likely, a jellyfish only where
+// it isn't built up), else the zone's home list, weighted
+/** @param {TitleScene} S @param {number} wx @returns {string} */
+export function titleKind(S, wx) {
+  const R = S.rnd;
+  if (S.roster && S.roster.length) {
+    const ok = S.roster.filter(id => !NATURAL_ONLY[enemyFor(id, 1).act] || built(wx, S) === 0);
+    const from = ok.length ? ok : S.roster;
+    return from[Math.floor(R() * from.length)];
+  }
+  const home = zoneHome(titleZoneSpan(wx, S));
+  let roll = R() * home.reduce((a, h) => a + h[1], 0);
+  for (const [q, w] of home) { if (roll < w) return q; roll -= w; }
+  return home[0][0];
+}
+// the old game's classic creatures (data/creatures.js acts): they float (no gravity), shooters patrol and fire on sight,
+// turrets hold station and fire, chasers come at you and bite, bombers come at you and burst (game/creatures/classic.js)
+/** @type {Record<string, number>} */
+const CLASSIC = { shoot: 1, turret: 1, chase: 1, bomb: 1 };
 
 /** @typedef {{ art: string, shot: string, mods: string[], name: string, cd: number, n: number, dmg: number, speed: number, spread: number, size: number,
  *   life: number, grav: number, drag: number, explode: number, pit: number, fire: number, bounce: number, bounceE: number, pierce: number, homing: number,
@@ -162,7 +181,9 @@ export const zoneHome = Z => TITLE_HOME[Z.spid ? 'spider' : Z.z] || TITLE_HOME.m
  *   webs: WebLine[], orbN?: number, orbs?: Record<number, OrbRig>, mush?: MushCloud[], orbHub?: { x: number, y: number, r: number }[], orbT?: number, cut: number, lineT: number, silk: { x: number, y: number, ax: number, ay: number, vx: number, vy: number, life: number }[],
  *   nav: { F: any, fx: number, fy: number, t: number }, fireAcc: number, fireN: number, burning: Set<number>, gotN: number, pops: number, lampsPopped: number, kitNames: Set<string>,
  *   digT: number, digs: number, digWhy: Record<string, number>, still?: boolean, zp: TitlePlan, snd: TSnd[], hub?: TitleHub, lvl?: TitleLevel, lab?: boolean, back?: (ctx: CanvasRenderingContext2D, S: TitleScene) => void, pace?: number, team?: RunPlayer[], blocked?: number, blockedKind?: string, huddle?: boolean, gunsOff?: boolean, dmgMul?: number, coinWait?: number, hgoal?: number, hgoalT?: number, fuelWait?: number, tier?: number, loot?: TLoot[],
- *   onTake?: (it: BagItem, x: number, y: number) => void, pick?: Enemy | null }} TitleScene */
+ *   onTake?: (it: BagItem, x: number, y: number) => void, pick?: Enemy | null, theme?: Theme, roster?: string[] | null }} TitleScene */
+// (theme, roster: a CaveRunner Auto level past the first plays as an old floor, auto/maps.js levelLook: its palette (titledraw.js)
+// and its creatures, each as likely, jellyfish only in the natural zones (titleKind); none: Mossy Caves and the zones' own)
 // (pick: Grem Mode's tapped target, ui/auto/GremScreen.js: every player aims at it while it lives, titleAimPick)
 // a finite level in the scrolling ring (CaveRunner Auto, auto/level.js levelScene): zp its plan (made whole up front); step runs
 // after titleStep's own; data is the level's own state. S.pace (0..) scales the scroll (auto/pilot.js)
@@ -877,9 +898,7 @@ const wsolid = S => { const C = csolid(S); return (x, y) => !!C(Math.floor(x / C
 /** @param {TitleScene} S @param {number} [x] @param {number} [cap] (a swarm stops at it too) */
 function addFoe(S, x, cap = TITLE_FOES) {
   const R = S.rnd, wx = (x === undefined ? TITLE_VW + 16 : x) + S.scroll;
-  const home = zoneHome(titleZoneSpan(wx, S));
-  let roll = R() * home.reduce((a, h) => a + h[1], 0), id = home[0][0];
-  for (const [q, w] of home) { if (roll < w) { id = q; break; } roll -= w; }
+  const id = titleKind(S, wx);
   S.kinds[id] = (S.kinds[id] || 0) + 1;
   const n = id === 'rotta' ? 3 + Math.floor(R() * 4) : id === 'hamahakki' ? 1 + Math.floor(R() * 2) : 1;
   for (let i = 0; i < n && S.foes.length < Math.min(cap, TITLE_FOES); i++) {
@@ -894,7 +913,7 @@ function addFoe(S, x, cap = TITLE_FOES) {
 /** @param {TitleScene} S @param {CreatureKind} k @param {number} ex world x @returns {Enemy} */
 export function titleFoeAt(S, k, ex) {
   const R = S.rnd, id = k.id, cy = titleCeil(ex, S), fy = titleFloor(ex, S);
-  const ey = id === 'meduusa' ? cy + (fy - cy) * (0.25 + 0.45 * R()) : id === 'hamahakki' && R() < 0.5 ? cy + k.r : fy - k.r - 1;
+  const ey = id === 'meduusa' || CLASSIC[k.act] ? cy + (fy - cy) * (0.25 + 0.45 * R()) : id === 'hamahakki' && R() < 0.5 ? cy + k.r : fy - k.r - 1;
   /** @type {Enemy} */
   const f = { x: ex, y: ey, ty: ey, r: k.r, phase: R() * 6.28, hp: k.hp, hpMax: k.hp, cd: 1 + R() * 2, flash: 0, lx: 0, ly: 1,
     hx: ex, hy: ey, tgt: null, rest: R() * 3, k, touch: 0, charge: 0 };
@@ -2260,12 +2279,13 @@ function stepFoes(S, dt) {
     if (k.act === 'jelly') jellyAct(S, e, hunting, goal, sees, CS, dt);
     else if (k.act === 'spider') spiderAct(S, e, hunting, goal, sees, dist, dx, dy, CS, dt);
     else if (k.act === 'rat') ratAct(S, e, ru, hunting, CS, dt);
-    e.ty = e.y;
+    if (CLASSIC[k.act]) { if (classicAct(S, e, hunting, goal, dist, dx, dy, CS, dt)) continue; }
+    else e.ty = e.y;
     // a bite when it reaches him (he takes no harm here: a puff where it lands)
     if (!hunting && R() < 0.07 * dt) snd(S, 'idle', e.x - S.scroll, e.ty, k);
     if (hunting && dist < e.r + 14 && e.touch <= 0) {
-      e.touch = kr(k.kp + 'BiteCd', R); snd(S, 'bite', e.x - S.scroll, e.ty, k); burst(S, ru.x + PW / 2, ru.y + PH / 2, 4, '#ff6a5a', 50, 'spark', 0.2);
-      if (S.lvl && S.lvl.hurt) S.lvl.hurt(S, ru.id, k.dmg);   // CaveRunner Auto: it hurts (auto/enemies.js levelHurt)
+      e.touch = k.kp ? kr(k.kp + 'BiteCd', R) : 0.9; snd(S, 'bite', e.x - S.scroll, e.ty, k); burst(S, ru.x + PW / 2, ru.y + PH / 2, 4, '#ff6a5a', 50, 'spark', 0.2);
+      if (S.lvl && S.lvl.hurt) S.lvl.hurt(S, ru.id, k.dmg * (CLASSIC[k.act] ? DEV.autoOldDmg : 1));   // CaveRunner Auto: it hurts (auto/enemies.js levelHurt; an old floor's creature × autoOldDmg)
     }
     // on fire (game/systems/fire.js): it catches from burning cells, burns for a while, hurt as it goes
     if (!(e.burn > 0) && S.fire.length && fireNear(S, e.x, e.ty, e.r * 0.7)) { e.burn = kr('fireBurn', R); snd(S, 'whoosh', e.x - S.scroll, e.ty); }
@@ -2289,6 +2309,79 @@ function stepFoes(S, dt) {
     }
   }
   S.silk = S.silk.filter(b => b.life > 0);
+}
+// a classic creature's frame (game/creatures/classic.js classicMove, bombBurst, gunFire, as the old game): hunting (chasers and
+// bombers) it comes straight at him sliding along rock, else it patrols round home; it hovers (e.ty bobs); a bomber reaching him
+// bursts (true: it's gone); a shooter or turret fires on him within its range (a turret with a wind-up, k.tele, shows its ring
+// first) through the level's hurt. (Auto plays itself: no dodging, so DEV.autoOldDmg / autoOldCd soften them)
+/** @param {TitleScene} S @param {Enemy} e @param {boolean} hunting @param {Pt} goal @param {number} dist @param {number} dx @param {number} dy @param {(cx: number, cy: number) => number} CS @param {number} dt @returns {boolean} */
+function classicAct(S, e, hunting, goal, dist, dx, dy, CS, dt) {
+  const R = S.rnd, k = e.k;
+  /** @param {number} x @param {number} y */
+  const solid = (x, y) => !!CS(Math.floor(x / CELL), Math.floor(y / CELL));
+  /** @param {number} x @param {number} y */
+  const blocked = (x, y) => solid(x - e.r, y) || solid(x + e.r, y) || solid(x, y - e.r) || solid(x, y + e.r);
+  if (k.act !== 'turret') {
+    const step = k.spd * dt;
+    if (hunting) {
+      const wx = e.x + dx / dist * step, wy = e.y + dy / dist * step;
+      if (!blocked(wx, wy)) { e.x = wx; e.y = wy; }
+      else if (!solid(wx, e.y)) e.x = wx;
+      else if (!solid(e.x, wy)) e.y = wy;
+      else { e.tgt = null; e.rest = 0; }
+    } else {
+      e.rest -= dt;
+      if (!e.tgt || e.rest <= 0 || Math.hypot(e.tgt.x - e.x, e.tgt.y - e.y) < 6) {
+        const a = R() * Math.PI * 2, r = 10 + R() * PATROL_R;
+        e.tgt = { x: e.hx + Math.cos(a) * r, y: e.hy + Math.sin(a) * r };
+        e.rest = 2 + R() * 3.5;
+      }
+      const tdx = e.tgt.x - e.x, tdy = e.tgt.y - e.y, td = Math.hypot(tdx, tdy) || 1;
+      const wx = e.x + tdx / td * step, wy = e.y + tdy / td * step;
+      if (blocked(wx, wy)) { e.tgt = null; e.rest = 0; } else { e.x = wx; e.y = wy; }
+    }
+  }
+  e.ty = e.y + Math.sin(S.t * 2 + e.phase) * (hunting ? 2 : 4);
+  // a bomber: its fuse ticks closing in, and it bursts on reaching him (gone, no drop)
+  if (k.act === 'bomb' && hunting) {
+    if (dist < 160 && (e.fuseT = (e.fuseT || 0) - dt) <= 0) { e.fuseT = 0.12 + dist / 400; snd(S, 'fuse', e.x - S.scroll, e.ty, k); }
+    if (dist < e.r + 14) {
+      burst(S, e.x - S.scroll, e.ty, 22, k.col.a, 90, 'spark', 0.4);
+      snd(S, 'boom', e.x - S.scroll, e.ty, 10);
+      const ru = nearestRunner(S, e.x - S.scroll, e.ty);
+      if (S.lvl && S.lvl.hurt) S.lvl.hurt(S, ru.id, k.dmg * DEV.autoOldDmg);
+      if (k.id === 'tuli') titleIgnite(S, e.x - S.scroll, e.ty, 26, 1);   // Stendari: a fire bomb
+      e.hp = 0;
+      return true;
+    }
+  }
+  // a shooter or turret: within its range and in sight, a shot (or the wind-up first)
+  if (k.range > 0) {
+    if (e.charge > 0) { e.charge -= dt; if (e.charge <= 0) foeShot(S, e, goal, CS); }
+    else if (dist < k.range / DEV.zoom && e.cd <= 0) {
+      e.cd = 0.4;
+      if (losClear(e.x, e.ty, goal.x, goal.y, CS)) {
+        e.cd = k.cd * DEV.autoOldCd * (0.85 + R() * 0.3);
+        if (!e.spotted) { e.spotted = true; snd(S, 'alert', e.x - S.scroll, e.ty, k); }
+        if (k.tele) { e.charge = k.tele; snd(S, 'charge', e.x - S.scroll, e.ty, k); } else foeShot(S, e, goal, CS);
+      }
+    }
+  }
+  return false;
+}
+// a classic creature's shot(s) at him (game/systems/enemies.js fireEnemyShot): k.shots in a fan, a little spread; a foe shot
+// in the scene (screen x), its colour the creature's
+/** @param {TitleScene} S @param {Enemy} e @param {Pt} goal @param {(cx: number, cy: number) => number} CS */
+function foeShot(S, e, goal, CS) {
+  const k = e.k, R = S.rnd;
+  if (!losClear(e.x, e.ty, goal.x, goal.y, CS)) return;
+  const base = Math.atan2(goal.y - e.ty, goal.x - e.x), n = k.shots || 1;
+  snd(S, 'fire', e.x - S.scroll, e.ty, k);
+  for (let s = 0; s < n; s++) {
+    const a = base + (n > 1 ? (s - (n - 1) / 2) * 0.15 : 0) + (R() - 0.5) * 0.22;
+    S.shots.push({ x: e.x - S.scroll + Math.cos(a) * (e.r + 4), y: e.ty + Math.sin(a) * (e.r + 4), vx: Math.cos(a) * k.bspd, vy: Math.sin(a) * k.bspd,
+      size: k.body === 'blob' ? 4 : 3, col: k.col.a, look: 'ball', life: 2.5, foe: true, spin: 0, grav: 0, drag: 0, explode: 0, pit: 0, fire: 0, bounce: 0, bounceE: 0, pierce: 0, dmg: k.dmg * DEV.autoOldDmg });
+  }
 }
 /** @param {TitleScene} S @param {Enemy} e @param {boolean} hunting @param {Pt} goal @param {number} sees @param {(cx: number, cy: number) => number} CS @param {number} dt */
 function jellyAct(S, e, hunting, goal, sees, CS, dt) {

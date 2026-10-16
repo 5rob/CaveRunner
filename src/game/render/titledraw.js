@@ -34,7 +34,7 @@ import { drawBoom, drawGlowShot, drawMushroom, drawSolidShot, shotLights } from 
 // a pickup drawn as its bag tile: this many world units across
 export const LOOT_TILE = 13;
 
-const T = THEMES[0];                                   // Mossy caves
+let T = THEMES[0];                                     // Mossy caves; a level past the first: its old floor's palette (S.theme, set per draw)
 /** @type {WeakMap<object, { cv: HTMLCanvasElement, cx: CanvasRenderingContext2D, img: ImageData, painted: number, white?: number, whiteT?: number }>} */
 const CACHE = new WeakMap();
 
@@ -123,6 +123,7 @@ function terrain(S) {
 // cam: the title's camera (art/titlescene.js titleCam: pinch zoom, pan, following a player), none: the whole screen
 /** @param {CanvasRenderingContext2D} ctx @param {import('../../art/titlescene.js').TitleScene} S @param {number} cw css width @param {number} ch css height @param {import('../../art/titlescene.js').TitleCam} [cam] */
 export function titleDraw(ctx, S, cw, ch, cam) {
+  T = S.theme || THEMES[0];
   const k = cw / TITLE_VW;
   ctx.fillStyle = 'rgb(' + T.bg.join(',') + ')'; ctx.fillRect(0, 0, cw, ch);
   ctx.save();
@@ -242,6 +243,7 @@ export function titleDraw(ctx, S, cw, ch, cam) {
       /** @type {any} */
       const b = s;
       if (s.sid && drawGlowShot(c, s, W)) continue;
+      if (s.look === 'ball') { c.globalAlpha = 1; c.fillStyle = s.col; c.beginPath(); c.arc(s.x, s.y, s.size, 0, Math.PI * 2); c.fill(); continue; }   // an old creature's shot: a ball (render/looks.js drawShots)
       if (!drawLook(W, G2, b)) {
         const sp = Math.hypot(s.vx, s.vy) || 1, tl = Math.min(10, sp * 0.025);
         c.globalAlpha = 1; c.strokeStyle = s.col; c.lineWidth = s.size; c.lineCap = 'round';

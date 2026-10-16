@@ -4,10 +4,12 @@
 // it beaten), everyone falling resets it to 1. The difficulty and the rewards follow the active map: mapTier = level +
 // map × DEV.autoMapStep, written to run.tier (syncTier) so everything that reads run.tier keeps working. Map i + 1 is
 // bought at the hub's map machine with gold (mapPrice), only once map i is beaten; only the next locked map takes gold.
-// (Every map still plays as today's cave: only the name, the progress and the difficulty differ.)
+// (Every map plays the same levels: only the name, the progress and the difficulty differ. Which old floor a level plays
+// as, its palette and creatures: levelFloor / levelLook, by the map's level.)
 
 import { DEV } from '../dev/knobs.js';
 import { THEMES } from '../data/themes.js';
+import { rosterFor } from '../data/creatures.js';
 
 // the maps' names, in Title Case ("Mossy caves" → "Mossy Caves")
 export const MAP_NAMES = THEMES.map(t => t.name.replace(/\b\w/g, c => c.toUpperCase()));
@@ -97,3 +99,22 @@ export function mapFailed(run) {
 // the pause menu's label: "Mossy Caves Lv 3"
 /** @param {AutoRun} run */
 export const mapLabel = run => MAP_NAMES[run.map || 0] + ' Lv ' + mapsOf(run)[run.map || 0].level;
+
+// (owner, v1.0.97: the old game's themed floors back) which old floor a level plays as: level 1 is floor 1 (Mossy Caves,
+// today's level, untouched); from level 2 the old floors 2..12 in turn (Coal Seams, Frozen Deep, … Void Hollow), then round
+// again from floor 2. Each brings its palette (THEMES) and its creatures (data/creatures.js ROSTERS: floors 1-10 fixed, 11
+// and 12 rolled off the level's seed, as the old game did)
+/** @param {number} lv the active map's level @returns {number} the old floor (1..THEMES.length) */
+export const levelFloor = lv => (lv <= 1 ? 1 : 2 + (lv - 2) % (THEMES.length - 1));
+// an old floor's name, Title Case (floor 2 is the old game's Coal Seams: THEMES[1] was renamed Tombs for main's Level 2)
+/** @param {number} floor */
+export const floorName = floor => (floor === 2 ? 'Coal Seams' : MAP_NAMES[(floor - 1) % MAP_NAMES.length]);
+// the level the run plays next: its old floor, palette, name and creatures (roster null: level 1's zone rules, unchanged)
+/** @param {AutoRun} run @param {number} seed the level's seed @returns {{ floor: number, theme: Theme, name: string, roster: string[] | null }} */
+export function levelLook(run, seed) {
+  const floor = levelFloor(mapsOf(run)[run.map || 0].level);
+  if (floor === 1) return { floor, theme: THEMES[0], name: floorName(1), roster: null };
+  let a = (seed ^ 0x5bd1e995) >>> 0;   // (floors 11-12) the roster's own random off the seed (mulberry32)
+  const rnd = () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  return { floor, theme: THEMES[floor - 1], name: floorName(floor), roster: rosterFor(floor, rnd) };
+}

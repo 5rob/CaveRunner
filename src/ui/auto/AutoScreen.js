@@ -22,7 +22,7 @@ import { DEAD, PH, PW } from '../../core/consts.js';
 import { holoPass } from '../../game/render/guide.js';
 import { chestOpen } from '../../auto/chests.js';
 import { HUB_W, hubExit, hubLeft, hubMapA, hubMapPick, hubScene, hubState, hubStick, hubStopX } from '../../auto/hub.js';
-import { MAP_NAMES, mapLabel, mapsOf } from '../../auto/maps.js';
+import { floorName, levelFloor, mapLabel, mapsOf } from '../../auto/maps.js';
 import { THROW_TAKES, hubPayAt, hubPayOne, payVel } from '../../auto/throw.js';
 import { hubOwed } from '../../auto/payout.js';
 import { levelClearedAge, levelControl, levelDeathPrompt, levelDone, levelHold, levelLost, levelPicked, levelScene, levelState, levelTeleportHome } from '../../auto/level.js';
@@ -1477,12 +1477,12 @@ function CoinBurst({ burst }) {
     h('b', null, '+' + burst.n));
 }
 
-// the active map and its level, top left of the play area (owner)
+// the active map's level and the old floor it plays as (v1.0.97; was the map's name), top left of the play area (owner)
 // (owner v1.0.74) and the top level reached on it (the highest cleared + 1, or the one it's on)
 /** @param {AutoRun} run @returns {{ name: string, level: number, top: number }} */
 function mapInfo(run) {
   const i = run.map || 0, m = mapsOf(run)[i];
-  return { name: MAP_NAMES[i], level: m.level, top: Math.max(m.level, (m.best || 0) + 1) };
+  return { name: floorName(levelFloor(m.level)), level: m.level, top: Math.max(m.level, (m.best || 0) + 1) };   // (v1.0.97) the old floor the level plays as
 }
 // (owner) the journey box: the whole level at its own width-to-height shape, across the play area; each player's helmet
 // (the scene's sprite, pixelated) where he is in it; the fallen and the hidden left out; (owner, v1.0.79) an outline round

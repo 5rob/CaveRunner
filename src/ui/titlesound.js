@@ -29,7 +29,8 @@ export function titleSound(S, C, L, dt) {
   if (!SFX.ready) return;
   SFX.ear(0, 0);
   SFX.tick();
-  if (SFX.ambience !== THEMES[0].name) SFX.setAmbience(THEMES[0].name);
+  const amb = (S.theme || THEMES[0]).name;     // (v1.0.97) an old floor's own ambience (auto/maps.js levelLook)
+  if (SFX.ambience !== amb) SFX.setAmbience(amb);
   Music.play(musicPick(MUS, levelState(S)));     // (v1.0.94) the track for now: the same one is a no-op
   SFX.ambTick(dt);
   const k = SCALE * C.z;
@@ -56,7 +57,8 @@ export function titleSound(S, C, L, dt) {
       case 'arc': SFX.arc(e.a && e.a.near ? Math.max(x, -TITLE_VW / 2 * k) : x, y, false); break;   // (near: a hub arrival off screen, heard from the left edge)
       case 'lamp': SFX.fx('shatter', x, y, 'glass'); SFX.fx('whoosh', x, y); break;
       case 'rustle': SFX.rustle(x, y, e.a.v, e.a.st); break;
-      case 'die': case 'hurt': case 'alert': case 'idle': case 'bite': case 'fire': SFX.creature(e.a, e.k, x, y); break;
+      case 'die': case 'hurt': case 'alert': case 'idle': case 'bite': case 'fire': case 'fuse': SFX.creature(e.a, e.k, x, y); break;
+      case 'charge': SFX.creature(e.a, e.k, x, y, e.a.tele); break;   // a turret's wind-up (the old game's classic creatures)
       case 'step': SFX.fx('step', x, y); break;
       case 'land': SFX.fx('land', x, y, { v: e.a }); break;
       case 'swap': SFX.fx('switch', x, y); break;
