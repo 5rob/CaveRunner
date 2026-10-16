@@ -1,6 +1,6 @@
 // Screenshots for the owner (Coal Seams, grem branch): Grem Mode started at level 2 (Dev "Start at level"), phone size, a few
 // moments along the level, and close-ups of its decorations.
-//   node tools/coalshots.js [outdir] [prefix] [gas]      (default tests/build/autoshots, coal; 'gas': the gas pockets' shots only)
+//   node tools/coalshots.js [outdir] [prefix] [gas|stal|ladder|bats]   (default tests/build/autoshots, coal; one of those: its shots only)
 const { launch } = require('../tests/chromium');
 const path = require('path');
 const fs = require('fs');
@@ -27,7 +27,7 @@ require('../tests/build')();
   const save = async (n, what, clip) => { await page.screenshot({ path: path.join(OUT, PRE + '-' + n + '.png'), clip }); said.push(`${PRE}-${n}.png  ${what}`); };
   const zone = () => page.evaluate(() => { const S = window.__gremScene; return S ? titleZoneSpan(S.scroll + 110, S).z : '?'; });
   // (C1) a gas pocket on screen set off: the whoomph mid-flash, then just after, the fire round it (each also a close-up)
-  for (let i = 0; ONLY !== 'stal' && ONLY !== 'ladder' && i < 400; i++) {
+  for (let i = 0; ONLY !== 'stal' && ONLY !== 'ladder' && ONLY !== 'bats' && i < 400; i++) {
     const g = await page.evaluate(() => {
       const S = window.__gremScene, cv = document.querySelector('canvas');
       const g = S && cv && (S.gas || []).find(q => !q.gone && q.wx - S.scroll > 70 && q.wx - S.scroll < 150);
@@ -120,6 +120,40 @@ require('../tests/build')();
     await save('b-lad-lit', 'the same screen, darkness lifted (for the shot only)');
     if (box.lad) await save('c-ladder', 'close up (darkness lifted): a ladder', box.lad);
     if (box.tim) await save('d-cavtim', 'close up (darkness lifted): Cavern timber (under a boulder where one is on screen)', box.tim);
+    await browser.close(); console.log(said.join(String.fromCharCode(10))); return;
+  }
+  // (C4a) the bats: the view held on a roost (players not scaring them), a close-up of it lit; then Scare all: the flock in flight
+  if (ONLY === 'bats') {
+    await page.evaluate(() => { DEV.autoLvlPace = 3; DEV.batScare = 0; DEV.batTakeoff = 0; });
+    for (let i = 0; i < 2000; i++) {
+      const on = await page.evaluate(() => { const S = window.__gremScene; return !!S && !!S.bats && S.bats.roosts.some(q => q.x - S.scroll > 80 && q.x - S.scroll < 140 && q.y > 20); });
+      if (on) break;
+      await page.waitForTimeout(60);
+    }
+    const box = await page.evaluate(() => {
+      const S = window.__gremScene, cv = document.querySelector('canvas'), b = cv.getBoundingClientRect(), k = b.width / TITLE_VW;
+      S.lvl.step = null; S.pace = 0;
+      const q = S.bats.roosts.find(q => q.x - S.scroll > 80 && q.x - S.scroll < 140 && q.y > 20); console.log('at', S.scroll, q.x, q.y);
+      return { x: Math.max(b.left, b.left + (q.x - S.scroll) * k - 90), y: Math.max(b.top, b.top + q.y * k - 50), width: 180, height: 180 };
+    });
+    await page.waitForTimeout(300);
+    await save('a-roost', 'Coal Seams: a bat roost under the rock (as played, dark)');
+    await page.evaluate(() => { DEV.gremDark = 0; });
+    await page.waitForTimeout(150);
+    await save('b-roost-close', 'close up (darkness lifted): the roost, bats hanging folded in their slots', box);
+    await page.evaluate(() => { DEV.gremDark = DEV_DEFAULTS.gremDark; BAT_CMD.scare = true; });
+    await page.waitForTimeout(900);
+    await save('c-flock', 'Scare all (Dev): the flock in flight (as played, dark)');
+    await page.evaluate(() => { DEV.gremDark = 0; });
+    await page.waitForTimeout(60);
+    const fb = await page.evaluate(() => {
+      const S = window.__gremScene, cv = document.querySelector('canvas'), b = cv.getBoundingClientRect(), k = b.width / TITLE_VW;
+      const f = S.bats.list.filter(q => q.st === 'fly' && q.x - S.scroll > 0 && q.x - S.scroll < TITLE_VW); let x = 0, y = 0; for (const q of f) { x += q.x - S.scroll; y += q.y; }
+      x /= f.length || 1; y /= f.length || 1;
+      return { x: Math.max(b.left, b.left + x * k - 100), y: Math.max(b.top, b.top + y * k - 100), width: 200, height: 200 };
+    });
+    await save('d-flock-lit', 'the same moment, darkness lifted (for the shot only)');
+    await save('e-flock-close', 'close up (darkness lifted): bats flapping in the flock', fb);
     await browser.close(); console.log(said.join(String.fromCharCode(10))); return;
   }
   if (ONLY === 'gas') { await browser.close(); console.log(said.join('\n')); return; }

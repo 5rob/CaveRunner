@@ -519,6 +519,33 @@ DEV_META.push(
   { k: 'coalCavBroken', g: 'coal', label: 'Cavern timber: share with a snapped post', min: 0, max: 1, step: 0.05 },
   { k: 'coalCavLean',   g: 'coal', label: 'Cavern timber: share that are a lone prop leaning up to the rock', min: 0, max: 1, step: 0.05 });
 DEV_GROUPS.push(['coal', 'Coal Seams']);
+// (C4a) Coal Seams' bats (creatures/bats.js, the owner's spec): roosts under downward-facing rock, a flock (boids) in flight
+Object.assign(DEV_DEFAULTS, { batRoosts: 1.5, batsPerRoost: 14, batSlotSpacing: 8, batTakeoff: 0.02, batFlightMin: 4, batFlightMax: 10, batMaxSpeed: 140, batMaxForce: 320,
+  batPerception: 55, batSepDist: 16, batSep: 1.8, batAli: 0.08, batCoh: 0.5, batWander: 1.2, batZonePull: 2, batWallAvoid: 3, batScareR: 90, batClearMult: 1.6,
+  batScare: 1, batDebug: 0, batBite: 0 });
+DEV_META.push(
+  { k: 'batRoosts',      g: 'bats', label: 'Bat roosts: about this many a screen (under the roof, under boulders)', min: 0, max: 5, step: 0.1 },
+  { k: 'batsPerRoost',   g: 'bats', label: 'Bats per roost', min: 1, max: 40, step: 1 },
+  { k: 'batSlotSpacing', g: 'bats', label: 'Roost: slot spacing along the rock (units)', min: 4, max: 20, step: 1 },
+  { k: 'batTakeoff',     g: 'bats', label: 'Take off on its own: chance a second', min: 0, max: 0.2, step: 0.005 },
+  { k: 'batFlightMin',   g: 'bats', label: 'Flight time: shortest (s)', min: 1, max: 30, step: 0.5 },
+  { k: 'batFlightMax',   g: 'bats', label: 'Flight time: longest (s)', min: 1, max: 40, step: 0.5 },
+  { k: 'batMaxSpeed',    g: 'bats', label: 'Top speed', min: 40, max: 300, step: 5 },
+  { k: 'batMaxForce',    g: 'bats', label: 'Steering force: most', min: 50, max: 800, step: 10 },
+  { k: 'batPerception',  g: 'bats', label: 'Flock: sees others within', min: 10, max: 150, step: 1 },
+  { k: 'batSepDist',     g: 'bats', label: 'Flock: keeps apart within', min: 4, max: 60, step: 1 },
+  { k: 'batSep',         g: 'bats', label: 'Flock: separation', min: 0, max: 5, step: 0.05 },
+  { k: 'batAli',         g: 'bats', label: 'Flock: alignment', min: 0, max: 2, step: 0.01 },
+  { k: 'batCoh',         g: 'bats', label: 'Flock: cohesion', min: 0, max: 3, step: 0.05 },
+  { k: 'batWander',      g: 'bats', label: 'Wander jitter', min: 0, max: 3, step: 0.05 },
+  { k: 'batZonePull',    g: 'bats', label: 'Pull back inside the roost’s area', min: 0, max: 5, step: 0.1 },
+  { k: 'batWallAvoid',   g: 'bats', label: 'Steer away from rock ahead', min: 0, max: 8, step: 0.1 },
+  { k: 'batScareR',      g: 'bats', label: 'A player scares bats within', min: 10, max: 250, step: 5 },
+  { k: 'batClearMult',   g: 'bats', label: 'Calm again past (× the scare reach)', min: 1, max: 3, step: 0.05 },
+  { k: 'batScare',       g: 'bats', label: 'Players scare bats (1 on, 0 off)', min: 0, max: 1, step: 1 },
+  { k: 'batDebug',       g: 'bats', label: 'Debug draw: areas, reaches; scared red, returning blue (1 on)', min: 0, max: 1, step: 1 },
+  { k: 'batBite',        g: 'bats', label: 'Bat bite damage (0: harmless)', min: 0, max: 20, step: 0.5 });
+DEV_GROUPS.push(['bats', 'Bats']);
 // CaveRunner Auto's maps (auto/maps.js): the map machine's prices, and how much harder each map starts
 Object.assign(DEV_DEFAULTS, { autoMapPrice: 1000000, autoMapGrow: 1, autoMapStep: 5 });
 // CaveRunner Auto's level (auto/level.js, auto/pilot.js, stage 4a): its length and the team's pace
@@ -894,7 +921,7 @@ DEV_TABS.splice(DEV_TABS.length - 1, 0, ['traj', 'Trajectory', ['trajorbit', 'tr
 // (Dev → Zones) the level zones' preview (ui/zonesim.js) over their knobs
 DEV_TABS.splice(DEV_TABS.length - 1, 0, ['zones', 'Zones', ['autozones', 'autoorb', 'moss', 'webs', 'timber', 'paved', 'grove', 'winding', 'spider'].map(g => (g.startsWith('auto') ? g : 'zone_' + g))]);
 // (Grem Mode) the gun presets library and Grem's own page (ui/auto/presetlib.js, gremkit.js; DevPanel's pages)
-DEV_TABS.splice(DEV_TABS.length - 1, 0, ['presets', 'Presets', []], ['grem', 'Grem', ['grem', 'coal']]);
+DEV_TABS.splice(DEV_TABS.length - 1, 0, ['presets', 'Presets', []], ['grem', 'Grem', ['grem', 'coal', 'bats']]);
 DEV_TABS.splice(DEV_TABS.length - 1, 0, ['auto', 'Auto', ['autolevel', 'autoguns', 'autoperks', 'autofoes', 'autodeath', 'autoloot', 'autochests']]);
 export const DEV_KEY = 'caverunner-dev';
 /** @type {DevKnobs} */

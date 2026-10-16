@@ -17,6 +17,7 @@ import { DEV, carrotAt, kcol, kr, kru, spr } from '../dev/knobs.js';
 import { jellyPal, jellyStep } from '../creatures/jelly.js';
 import { ratSpread, ratStep } from '../creatures/rat.js';
 import { spiderStep } from '../creatures/spider.js';
+import { addRoost, dropBats, newBats, stepBats } from '../creatures/bats.js';
 import { roamStep } from '../creatures/common.js';
 import { FIRE_CATCH, FIRE_COLS, FIRE_KNOB, FIRE_TICK, FIRE_UPW, FLAMMABLE } from '../world/fire.js';
 import { navField, navWay } from '../world/nav.js';
@@ -202,7 +203,7 @@ const CLASSIC = { shoot: 1, turret: 1, chase: 1, bomb: 1 };
 /** @typedef {{ t: number, vh: number, top: number, bot: number, seed: number, rnd: () => number, scroll: number, shake: number, spawn: number,
  *   kills: number, gold: number, got: number, runner: TRunner, runners: TRunner[], foes: Enemy[], shots: TShot[], parts: TPart[], coins: Coin[],
  *   booms: TBoom[], zaps: TZap[], flash: number, rows: number, ncol: number, cells: Uint8Array, gen: number, props: TProp[],
- *   fire: TFire[], lightLater?: number[][], tim?: Record<number, { x: number, sets: import('./timber.js').TSet[] }>, timCol?: Map<number, Uint8Array>, chutes?: { x: number, y: number, s: number }[], gas?: TGas[], gasNext?: number, dirty: number[][], dirtyAll: boolean, carved: number, burnt: number, swaps: number, groundT: number, flyT: number, kinds: Record<string, number>,
+ *   fire: TFire[], lightLater?: number[][], tim?: Record<number, { x: number, sets: import('./timber.js').TSet[] }>, timCol?: Map<number, Uint8Array>, chutes?: { x: number, y: number, s: number }[], gas?: TGas[], gasNext?: number, bats?: import('../creatures/bats.js').Bats, batNext?: number, dirty: number[][], dirtyAll: boolean, carved: number, burnt: number, swaps: number, groundT: number, flyT: number, kinds: Record<string, number>,
  *   webs: WebLine[], orbN?: number, orbs?: Record<number, OrbRig>, mush?: MushCloud[], orbHub?: { x: number, y: number, r: number }[], orbT?: number, cut: number, lineT: number, silk: { x: number, y: number, ax: number, ay: number, vx: number, vy: number, life: number }[],
  *   nav: { F: any, fx: number, fy: number, t: number }, fireAcc: number, fireN: number, burning: Set<number>, gotN: number, pops: number, lampsPopped: number, kitNames: Set<string>,
  *   digT: number, digs: number, digWhy: Record<string, number>, still?: boolean, zp: TitlePlan, snd: TSnd[], hub?: TitleHub, lvl?: TitleLevel, lab?: boolean, back?: (ctx: CanvasRenderingContext2D, S: TitleScene) => void, pace?: number, team?: RunPlayer[], blocked?: number, blockedKind?: string, huddle?: boolean, gunsOff?: boolean, dmgMul?: number, coinWait?: number, hgoal?: number, hgoalT?: number, fuelWait?: number, tier?: number, loot?: TLoot[],
@@ -813,6 +814,7 @@ function genCol(S, c) {
     S.webs.push(L);
   }
   if (coal && M) for (const h of M.holes) { const q = chuteOf(h, bands, wx); if (q && q.end) (S.chutes || (S.chutes = [])).push({ x: wx, y: q.y - 1.5, s: q.s }); }
+  if (coal) batCol(S, c, wx);
   if (coal) { coalDeco(S, c, wx, Zn, tc && tc.lamp, rcy, fy, tun.filter(t => t.open && inside(t, t.rf - 3))); return; }
   // plants: vines, mycelium and roots under the roof, bouncy mushrooms on the floor
   // the grove: a curtain of long vines, every other column, some down near the floor (thick in its
@@ -1096,6 +1098,30 @@ function timberCol(S, c, M, bands) {
     if (T.mid === c) lamp = T.cap;
   }
   return { cells, lamp };
+}
+// (C4a) Coal Seams' bat roosts, about DEV.batRoosts a screen: one under a downward-facing rock face in column c (the roof, a
+// boulder's or a tunnel's underside), with room under it; its bats (creatures/bats.js) hang there and fly in the space below
+/** @param {TitleScene} S @param {number} c @param {number} wx */
+function batCol(S, c, wx) {
+  if (DEV.batRoosts <= 0 || wx < (S.batNext ?? TITLE_VW * 0.6)) return;
+  const base = ci(S, c, 0), cand = [];
+  for (let r = 1; r < S.rows - 8; r++) {
+    if (!SOLID[S.cells[base + r - 1]] || SOLID[S.cells[base + r]]) continue;
+    let a = 0; while (r + a < S.rows && !SOLID[S.cells[base + r + a]]) a++;
+    if (a >= 12) cand.push([r, r + a]);   // (24 units open under it at least)
+  }
+  if (!cand.length) return;
+  const [r, f] = cand[Math.floor(S.rnd() * cand.length)];
+  addRoost(S.bats ||= newBats(), wx, r * TCELL, S.rnd, f * TCELL - 6);
+  S.batNext = wx + TITLE_VW / Math.max(0.01, DEV.batRoosts) * (0.5 + S.rnd());
+}
+// the bats' frame (creatures/bats.js): the players scare them; a bite only with DEV.batBite over 0
+/** @param {TitleScene} S @param {number} dt */
+function batsStep(S, dt) {
+  const B = S.bats; if (!B) return;
+  dropBats(B, S.scroll - TITLE_BACK - 50);
+  const live = S.runners.filter(r => !r.out), preds = live.map(r => ({ x: S.scroll + r.x + PW / 2, y: r.y + PH / 2 }));
+  stepBats(B, dt, preds, (x, y) => !!SOLID[titleCell(S, Math.floor(x / TCELL), Math.floor(y / TCELL))], S.rnd, (i, d) => { if (S.lvl && S.lvl.hurt) S.lvl.hurt(S, live[i].id, d); });
 }
 // Coal Seams' mine set in column c (the old game's floor 2 decorations): rusted lanterns hung off whatever rock or timber is over a
 // spot in the open (the roof, a boulder's underside) and under a support's cap now and then; explosive minecarts (the floor flat
@@ -1832,6 +1858,7 @@ export function titleStep(S, dt) {
   if (S.spawn <= 0 && !S.hub && S.foes.length < sp.cap) { addFoe(S, undefined, sp.cap); S.spawn = sp.gap * (1 + R() * 1.5); }
   if (!S.still) { for (const r of S.runners) if (!r.out) stepRunner(S, r, dt); separate(S, dt); }
   stepFoes(S, dt);
+  batsStep(S, dt);
   stepEliteFx(S, dt);
   stepShots(S, dt);
   stepFire(S, dt);

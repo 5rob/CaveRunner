@@ -12,6 +12,7 @@ import { DEV, jcol, kcol, kru } from '../../dev/knobs.js';
 import { plantGlowFill, plantWhite } from '../../creatures/jelly.js';
 import { THEMES } from '../../data/themes.js';
 import { drawEnemy } from '../../creatures/draw.js';
+import { drawBats } from '../../creatures/bats.js';
 import { coinR } from '../../world/nuggets.js';
 import { FIRE_COLS } from '../../world/fire.js';
 import { vinePt } from '../../world/sway.js';
@@ -232,6 +233,8 @@ export function titleDraw(ctx, S, cw, ch, cam) {
       c.globalAlpha = 1;
     });
   }
+  // (C4a) Coal Seams' bats, under the darkness
+  if (S.bats) drawBats(ctx, S.bats, S.scroll, S.t, S.runners.filter(r => !r.out).map(r => ({ x: S.scroll + r.x + PW / 2, y: r.y + PH / 2 })));
   // floor 1's creatures, drawn by the game's own drawEnemy (they live in world coordinates), each in the players'
   // pixel look (v0.0.170) on a grid pinned to it, as the players' is
   for (const f of S.foes) {

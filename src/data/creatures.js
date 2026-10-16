@@ -105,7 +105,7 @@ export const CREATURE_IDS = Object.keys(CREATURES);
 // middle, the armoured and the wind-up shooters at the top.
 export const ROSTERS = [
   ['meduusa', 'hamahakki'],
-  ['meduusa', 'hamahakki', 'hiisi'],
+  ['hamahakki'],   // (grem C4a, the owner: Coal Seams is spiders and bats (creatures/bats.js, the scene's own); glow worms to come)
   ['hiisi', 'konna', 'hamahakki'],
   ['hiisi', 'mato', 'lima', 'kobold'],
   ['hiisi', 'karpas', 'hurtta', 'lima'],

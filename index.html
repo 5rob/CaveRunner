@@ -1357,6 +1357,53 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "coalCavLean", g: "coal", label: "Cavern timber: share that are a lone prop leaning up to the rock", min: 0, max: 1, step: 0.05 }
   );
   DEV_GROUPS.push(["coal", "Coal Seams"]);
+  Object.assign(DEV_DEFAULTS, {
+    batRoosts: 1.5,
+    batsPerRoost: 14,
+    batSlotSpacing: 8,
+    batTakeoff: 0.02,
+    batFlightMin: 4,
+    batFlightMax: 10,
+    batMaxSpeed: 140,
+    batMaxForce: 320,
+    batPerception: 55,
+    batSepDist: 16,
+    batSep: 1.8,
+    batAli: 0.08,
+    batCoh: 0.5,
+    batWander: 1.2,
+    batZonePull: 2,
+    batWallAvoid: 3,
+    batScareR: 90,
+    batClearMult: 1.6,
+    batScare: 1,
+    batDebug: 0,
+    batBite: 0
+  });
+  DEV_META.push(
+    { k: "batRoosts", g: "bats", label: "Bat roosts: about this many a screen (under the roof, under boulders)", min: 0, max: 5, step: 0.1 },
+    { k: "batsPerRoost", g: "bats", label: "Bats per roost", min: 1, max: 40, step: 1 },
+    { k: "batSlotSpacing", g: "bats", label: "Roost: slot spacing along the rock (units)", min: 4, max: 20, step: 1 },
+    { k: "batTakeoff", g: "bats", label: "Take off on its own: chance a second", min: 0, max: 0.2, step: 5e-3 },
+    { k: "batFlightMin", g: "bats", label: "Flight time: shortest (s)", min: 1, max: 30, step: 0.5 },
+    { k: "batFlightMax", g: "bats", label: "Flight time: longest (s)", min: 1, max: 40, step: 0.5 },
+    { k: "batMaxSpeed", g: "bats", label: "Top speed", min: 40, max: 300, step: 5 },
+    { k: "batMaxForce", g: "bats", label: "Steering force: most", min: 50, max: 800, step: 10 },
+    { k: "batPerception", g: "bats", label: "Flock: sees others within", min: 10, max: 150, step: 1 },
+    { k: "batSepDist", g: "bats", label: "Flock: keeps apart within", min: 4, max: 60, step: 1 },
+    { k: "batSep", g: "bats", label: "Flock: separation", min: 0, max: 5, step: 0.05 },
+    { k: "batAli", g: "bats", label: "Flock: alignment", min: 0, max: 2, step: 0.01 },
+    { k: "batCoh", g: "bats", label: "Flock: cohesion", min: 0, max: 3, step: 0.05 },
+    { k: "batWander", g: "bats", label: "Wander jitter", min: 0, max: 3, step: 0.05 },
+    { k: "batZonePull", g: "bats", label: "Pull back inside the roost’s area", min: 0, max: 5, step: 0.1 },
+    { k: "batWallAvoid", g: "bats", label: "Steer away from rock ahead", min: 0, max: 8, step: 0.1 },
+    { k: "batScareR", g: "bats", label: "A player scares bats within", min: 10, max: 250, step: 5 },
+    { k: "batClearMult", g: "bats", label: "Calm again past (× the scare reach)", min: 1, max: 3, step: 0.05 },
+    { k: "batScare", g: "bats", label: "Players scare bats (1 on, 0 off)", min: 0, max: 1, step: 1 },
+    { k: "batDebug", g: "bats", label: "Debug draw: areas, reaches; scared red, returning blue (1 on)", min: 0, max: 1, step: 1 },
+    { k: "batBite", g: "bats", label: "Bat bite damage (0: harmless)", min: 0, max: 20, step: 0.5 }
+  );
+  DEV_GROUPS.push(["bats", "Bats"]);
   Object.assign(DEV_DEFAULTS, { autoMapPrice: 1e6, autoMapGrow: 1, autoMapStep: 5 });
   Object.assign(DEV_DEFAULTS, {
     autoLvlMin: 2,
@@ -1759,7 +1806,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   DEV_TABS.splice(DEV_TABS.length, 0, ["firesim", "Fire sim", ["firelab", "firefx", "autofire", "firesilk", "fire"]]);
   DEV_TABS.splice(DEV_TABS.length - 1, 0, ["traj", "Trajectory", ["trajorbit", "trajspiral", "trajboomer", "trajpong", "trajhoming", "trajseeker", "trajnear", "trajaim", "trajgrav", "trajfloat", "trajflat"]]);
   DEV_TABS.splice(DEV_TABS.length - 1, 0, ["zones", "Zones", ["autozones", "autoorb", "moss", "webs", "timber", "paved", "grove", "winding", "spider"].map((g) => g.startsWith("auto") ? g : "zone_" + g)]);
-  DEV_TABS.splice(DEV_TABS.length - 1, 0, ["presets", "Presets", []], ["grem", "Grem", ["grem", "coal"]]);
+  DEV_TABS.splice(DEV_TABS.length - 1, 0, ["presets", "Presets", []], ["grem", "Grem", ["grem", "coal", "bats"]]);
   DEV_TABS.splice(DEV_TABS.length - 1, 0, ["auto", "Auto", ["autolevel", "autoguns", "autoperks", "autofoes", "autodeath", "autoloot", "autochests"]]);
   var DEV_KEY = "caverunner-dev";
   var DEV = Object.assign({}, DEV_DEFAULTS);
@@ -6089,7 +6136,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var CREATURE_IDS = Object.keys(CREATURES);
   var ROSTERS = [
     ["meduusa", "hamahakki"],
-    ["meduusa", "hamahakki", "hiisi"],
+    ["hamahakki"],
+    // (grem C4a, the owner: Coal Seams is spiders and bats (creatures/bats.js, the scene's own); glow worms to come)
     ["hiisi", "konna", "hamahakki"],
     ["hiisi", "mato", "lima", "kobold"],
     ["hiisi", "karpas", "hurtta", "lima"],
@@ -7265,6 +7313,290 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       ctx.fill();
     }
     ctx.restore();
+  }
+
+  // src/creatures/bats.js
+  var BAT_CMD = { reset: false, scare: false };
+  var LOOK = 18;
+  var ZONE_W = 70;
+  var ZONE_H = 80;
+  var newBats = () => ({ roosts: [], list: [] });
+  var slotOff = (i) => Math.ceil(i / 2) * (i % 2 ? 1 : -1);
+  function slotPos(ro, i, solid) {
+    const x = ro.x + slotOff(i) * DEV.batSlotSpacing;
+    if (ro.hy[i] === void 0) {
+      let y = NaN;
+      for (let k = 0; k <= 24; k++) {
+        const a = ro.y - k, b = ro.y + k;
+        if (!solid(x, a + 0.5) && solid(x, a - 1)) {
+          y = a;
+          break;
+        }
+        if (!solid(x, b + 0.5) && solid(x, b - 1)) {
+          y = b;
+          break;
+        }
+      }
+      ro.hy[i] = Math.floor(y / 2) * 2;
+    }
+    return { x, y: ro.hy[i] ?? ro.y };
+  }
+  function addRoost(B, x, y, rnd2, bottom = Infinity) {
+    const ro = { x, y, x0: x - ZONE_W, x1: x + ZONE_W, y0: y, y1: Math.min(bottom, y + ZONE_H), n: Math.round(DEV.batsPerRoost), hy: [] };
+    B.roosts.push(ro);
+    for (let i = 0; i < ro.n; i++) B.list.push({ x, y, vx: 0, vy: 0, ro, slot: i, st: "roost", t: 0, scared: false, wa: rnd2() * 6.28, ph: rnd2() * 6.28, bite: 0, placed: false });
+    return ro;
+  }
+  function takeOff(b, rnd2, scared) {
+    b.st = "fly";
+    b.scared = scared;
+    b.t = DEV.batFlightMin + rnd2() * Math.max(0, DEV.batFlightMax - DEV.batFlightMin);
+    b.vy += 30 + rnd2() * 20;
+    b.vx += (rnd2() - 0.5) * 40;
+  }
+  function steer(b, dx, dy, out) {
+    const m = Math.hypot(dx, dy);
+    if (m < 1e-6) {
+      out[0] = 0;
+      out[1] = 0;
+      return;
+    }
+    out[0] = dx / m * DEV.batMaxSpeed - b.vx;
+    out[1] = dy / m * DEV.batMaxSpeed - b.vy;
+  }
+  function stepBats(B, dt, preds, solid, rnd2, onBite) {
+    const D = DEV, sR = D.batScareR, scareOn = D.batScare > 0.5;
+    if (BAT_CMD.reset) {
+      BAT_CMD.reset = false;
+      for (const b of B.list) {
+        const p = slotPos(b.ro, b.slot, solid);
+        b.x = p.x;
+        b.y = p.y;
+        b.vx = b.vy = 0;
+        b.st = "roost";
+        b.scared = false;
+      }
+    }
+    if (BAT_CMD.scare) {
+      BAT_CMD.scare = false;
+      for (const b of B.list) if (b.st !== "fly" || !b.scared) {
+        if (b.st === "fly") b.scared = true;
+        else takeOff(b, rnd2, true);
+      }
+    }
+    const fly = B.list.filter((b) => b.st === "fly"), f = [0, 0];
+    for (const b of B.list) {
+      if (!b.placed) {
+        let p = slotPos(b.ro, b.slot, solid);
+        for (let k = 0; k < 20 && (isNaN(p.y) || solid(p.x, p.y + 0.5)); k++) p = slotPos(b.ro, b.slot = b.ro.n++, solid);
+        b.x = p.x;
+        b.y = isNaN(p.y) ? b.ro.y : p.y;
+        b.placed = true;
+      }
+      b.bite -= dt;
+      let d = Infinity, pi = -1;
+      for (let i = 0; i < preds.length; i++) {
+        const q = Math.hypot(preds[i].x - b.x, preds[i].y - b.y);
+        if (q < d) {
+          d = q;
+          pi = i;
+        }
+      }
+      if (scareOn && d < sR) {
+        if (b.st === "fly") b.scared = true;
+        else takeOff(b, rnd2, true);
+      }
+      if (b.scared && (d > sR * D.batClearMult || !scareOn)) b.scared = false;
+      if (b.st === "roost") {
+        if (rnd2() < D.batTakeoff * dt) takeOff(b, rnd2, false);
+        continue;
+      }
+      if (b.st === "fly") {
+        if (!b.scared && (b.t -= dt) <= 0) {
+          b.st = "return";
+        } else {
+          let ax = 0, ay = 0;
+          let n = 0, sx = 0, sy = 0, avx = 0, avy = 0, cx = 0, cy = 0, ns = 0;
+          for (const o of fly) {
+            if (o === b || o.st !== "fly") continue;
+            const ox = b.x - o.x, oy = b.y - o.y, q = Math.hypot(ox, oy);
+            if (q > D.batPerception || q < 1e-6) continue;
+            n++;
+            avx += o.vx;
+            avy += o.vy;
+            cx += o.x;
+            cy += o.y;
+            if (q < D.batSepDist) {
+              sx += ox / q / q;
+              sy += oy / q / q;
+              ns++;
+            }
+          }
+          if (ns) {
+            steer(b, sx, sy, f);
+            ax += f[0] * D.batSep;
+            ay += f[1] * D.batSep;
+          }
+          if (n) {
+            steer(b, avx / n, avy / n, f);
+            ax += f[0] * D.batAli;
+            ay += f[1] * D.batAli;
+            steer(b, cx / n - b.x, cy / n - b.y, f);
+            ax += f[0] * D.batCoh;
+            ay += f[1] * D.batCoh;
+          }
+          b.wa += (rnd2() - 0.5) * 12 * dt;
+          steer(b, Math.cos(b.wa), Math.sin(b.wa), f);
+          ax += f[0] * D.batWander;
+          ay += f[1] * D.batWander;
+          if (b.scared && pi >= 0 && d < sR * D.batClearMult) {
+            steer(b, b.x - preds[pi].x, b.y - preds[pi].y, f);
+            ax += f[0] * 2;
+            ay += f[1] * 2;
+          }
+          const R = b.ro, zx = Math.max(R.x0, Math.min(R.x1, b.x)), zy = Math.max(R.y0 + 4, Math.min(R.y1, b.y));
+          if (zx !== b.x || zy !== b.y) {
+            steer(b, zx - b.x, zy - b.y, f);
+            ax += f[0] * D.batZonePull;
+            ay += f[1] * D.batZonePull;
+          }
+          const sp = Math.hypot(b.vx, b.vy) || 1;
+          if (solid(b.x + b.vx / sp * LOOK, b.y + b.vy / sp * LOOK) || solid(b.x + b.vx / sp * LOOK * 0.5, b.y + b.vy / sp * LOOK * 0.5)) {
+            let wx = 0, wy = 0;
+            for (let k = 0; k < 8; k++) {
+              const a = k * Math.PI / 4, ux = Math.cos(a), uy = Math.sin(a);
+              if (solid(b.x + ux * LOOK * 0.6, b.y + uy * LOOK * 0.6)) {
+                wx -= ux;
+                wy -= uy;
+              }
+            }
+            if (!wx && !wy) {
+              wx = -b.vx;
+              wy = -b.vy;
+            }
+            steer(b, wx, wy, f);
+            ax += f[0] * D.batWallAvoid;
+            ay += f[1] * D.batWallAvoid;
+          }
+          const am = Math.hypot(ax, ay);
+          if (am > D.batMaxForce) {
+            ax *= D.batMaxForce / am;
+            ay *= D.batMaxForce / am;
+          }
+          b.vx += ax * dt;
+          b.vy += ay * dt;
+        }
+      }
+      let goal = null;
+      if (b.st === "return") {
+        goal = slotPos(b.ro, b.slot, solid);
+        if (isNaN(goal.y)) goal = { x: b.ro.x, y: b.ro.y };
+        const gx = goal.x - b.x, gy = goal.y - b.y, q = Math.hypot(gx, gy);
+        if (q < 3) {
+          b.x = goal.x;
+          b.y = goal.y;
+          b.vx = b.vy = 0;
+          b.st = "roost";
+          continue;
+        }
+        const s = Math.min(D.batMaxSpeed, q * 2.5);
+        b.vx = gx / q * s;
+        b.vy = gy / q * s;
+      }
+      const v = Math.hypot(b.vx, b.vy);
+      if (v > D.batMaxSpeed) {
+        b.vx *= D.batMaxSpeed / v;
+        b.vy *= D.batMaxSpeed / v;
+      }
+      const steps = Math.max(1, Math.ceil(Math.hypot(b.vx, b.vy) * dt / 1));
+      for (let s = 0; s < steps; s++) {
+        const nx = b.x + b.vx * dt / steps, ny = b.y + b.vy * dt / steps;
+        if (!solid(nx, ny)) {
+          b.x = nx;
+          b.y = ny;
+        } else if (!solid(nx, b.y)) {
+          b.x = nx;
+          b.vy *= -0.5;
+        } else if (!solid(b.x, ny)) {
+          b.y = ny;
+          b.vx *= -0.5;
+        } else {
+          b.vx = -b.vx * 0.5;
+          b.vy = -b.vy * 0.5;
+          break;
+        }
+      }
+      if (onBite && D.batBite > 0 && pi >= 0 && d < 5 && b.bite <= 0) {
+        b.bite = 1;
+        onBite(pi, D.batBite);
+      }
+    }
+  }
+  function dropBats(B, x0) {
+    if (!B.roosts.some((r) => r.x1 < x0)) return;
+    B.roosts = B.roosts.filter((r) => r.x1 >= x0);
+    const keep = new Set(B.roosts);
+    B.list = B.list.filter((b) => keep.has(b.ro));
+  }
+  var BODY = "#4a3a4c", EDGE = "#6e5a70";
+  function drawBats(c, B, ox, t, preds) {
+    const dbg = DEV.batDebug > 0.5;
+    if (dbg) {
+      c.lineWidth = 0.4;
+      c.strokeStyle = "rgba(120,255,160,0.7)";
+      for (const r of B.roosts) {
+        c.strokeRect(r.x0 - ox, r.y0, r.x1 - r.x0, r.y1 - r.y0);
+        c.beginPath();
+        c.arc(r.x - ox, r.y, 1.5, 0, 6.29);
+        c.stroke();
+      }
+      c.strokeStyle = "rgba(255,220,90,0.6)";
+      for (const p of preds || []) {
+        c.beginPath();
+        c.arc(p.x - ox, p.y, DEV.batScareR, 0, 6.29);
+        c.stroke();
+        c.beginPath();
+        c.arc(p.x - ox, p.y, DEV.batScareR * DEV.batClearMult, 0, 6.29);
+        c.stroke();
+      }
+    }
+    for (const b of B.list) {
+      const x = b.x - ox, y = b.y;
+      if (x < -10 || x > 240) continue;
+      const col = dbg && b.scared ? "#ff3b3b" : dbg && b.st === "return" ? "#3b8bff" : BODY;
+      c.fillStyle = col;
+      if (b.st === "roost") {
+        c.beginPath();
+        c.moveTo(x - 0.9, y);
+        c.lineTo(x + 0.9, y);
+        c.lineTo(x + 1.1, y + 2.6);
+        c.lineTo(x, y + 3.8);
+        c.lineTo(x - 1.1, y + 2.6);
+        c.closePath();
+        c.fill();
+        c.fillRect(x - 0.9, y + 3.6, 0.5, 0.7);
+        c.fillRect(x + 0.4, y + 3.6, 0.5, 0.7);
+        c.fillStyle = EDGE;
+        c.fillRect(x - 0.15, y, 0.3, 0.5);
+        continue;
+      }
+      const fl = Math.sin(t * 28 + b.ph), s = b.vx < 0 ? -1 : 1;
+      c.beginPath();
+      for (const w of [-1, 1]) {
+        c.moveTo(x, y - 0.3);
+        c.lineTo(x + w * 2.2, y - 0.8 - fl * 1.6);
+        c.lineTo(x + w * 4.2, y - 0.2 - fl * 2.4);
+        c.lineTo(x + w * 3.2, y + 0.6 - fl * 0.8);
+        c.lineTo(x + w * 2, y + 0.3 - fl * 0.6);
+        c.lineTo(x, y + 0.6);
+      }
+      c.fill();
+      c.beginPath();
+      c.ellipse(x, y + 0.2, 1, 1.3, 0, 0, 6.29);
+      c.fill();
+      c.fillRect(x + s * 0.4 - 0.25, y - 1.5, 0.5, 0.6);
+      c.fillRect(x - s * 0.2 - 0.25, y - 1.5, 0.5, 0.6);
+    }
   }
 
   // src/world/fire.js
@@ -11850,6 +12182,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const q = chuteOf(h3, bands, wx);
       if (q && q.end) (S.chutes || (S.chutes = [])).push({ x: wx, y: q.y - 1.5, s: q.s });
     }
+    if (coal) batCol(S, c, wx);
     if (coal) {
       coalDeco(S, c, wx, Zn, tc && tc.lamp, rcy, fy, tun.filter((t) => t.open && inside(t, t.rf - 3)));
       return;
@@ -12139,6 +12472,29 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (T2.mid === c) lamp2 = T2.cap;
     }
     return { cells, lamp: lamp2 };
+  }
+  function batCol(S, c, wx) {
+    if (DEV.batRoosts <= 0 || wx < (S.batNext ?? TITLE_VW * 0.6)) return;
+    const base = ci(S, c, 0), cand = [];
+    for (let r2 = 1; r2 < S.rows - 8; r2++) {
+      if (!SOLID[S.cells[base + r2 - 1]] || SOLID[S.cells[base + r2]]) continue;
+      let a = 0;
+      while (r2 + a < S.rows && !SOLID[S.cells[base + r2 + a]]) a++;
+      if (a >= 12) cand.push([r2, r2 + a]);
+    }
+    if (!cand.length) return;
+    const [r, f] = cand[Math.floor(S.rnd() * cand.length)];
+    addRoost(S.bats ||= newBats(), wx, r * TCELL, S.rnd, f * TCELL - 6);
+    S.batNext = wx + TITLE_VW / Math.max(0.01, DEV.batRoosts) * (0.5 + S.rnd());
+  }
+  function batsStep(S, dt) {
+    const B = S.bats;
+    if (!B) return;
+    dropBats(B, S.scroll - TITLE_BACK - 50);
+    const live = S.runners.filter((r) => !r.out), preds = live.map((r) => ({ x: S.scroll + r.x + PW / 2, y: r.y + PH / 2 }));
+    stepBats(B, dt, preds, (x, y) => !!SOLID[titleCell(S, Math.floor(x / TCELL), Math.floor(y / TCELL))], S.rnd, (i, d) => {
+      if (S.lvl && S.lvl.hurt) S.lvl.hurt(S, live[i].id, d);
+    });
   }
   function coalDeco(S, c, wx, Zn, cap, rcy, fy, tuns) {
     const R = S.rnd, base = ci(S, c, 0);
@@ -13026,6 +13382,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       separate(S, dt);
     }
     stepFoes(S, dt);
+    batsStep(S, dt);
     stepEliteFx(S, dt);
     stepShots(S, dt);
     stepFire(S, dt);
@@ -17010,7 +17367,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
 
   // src/auto/chests.js
-  var EDGE = 40;
+  var EDGE2 = 40;
   var BLK_GAP = 24;
   function rng(seed) {
     let a = seed >>> 0 || 1;
@@ -17024,8 +17381,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function chestPlan(plan, n = DEV.autoChestN) {
     const R = rng(plan.seed * 7919 + 11), out = [];
     n = Math.max(0, Math.round(n));
-    const z0 = plan.z0 + EDGE, z1 = plan.z1 - EDGE, len = (z1 - z0) / Math.max(1, n);
-    const blocked = (x) => plan.zp.z.some((Z) => Z.blk && x > Z.blk.x0 - BLK_GAP && x < Z.blk.x1 + BLK_GAP || Z.flat && x > Z.x0 - EDGE && x < Z.x1 + EDGE);
+    const z0 = plan.z0 + EDGE2, z1 = plan.z1 - EDGE2, len = (z1 - z0) / Math.max(1, n);
+    const blocked = (x) => plan.zp.z.some((Z) => Z.blk && x > Z.blk.x0 - BLK_GAP && x < Z.blk.x1 + BLK_GAP || Z.flat && x > Z.x0 - EDGE2 && x < Z.x1 + EDGE2);
     for (let i = 0; i < n; i++) {
       for (let k = 0; k < 30; k++) {
         const x = z0 + (i + 0.15 + R() * 0.7) * len;
@@ -21006,6 +21363,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         c.globalAlpha = 1;
       });
     }
+    if (S.bats) drawBats(ctx, S.bats, S.scroll, S.t, S.runners.filter((r) => !r.out).map((r) => ({ x: S.scroll + r.x + PW / 2, y: r.y + PH / 2 })));
     for (const f of S.foes) {
       const sx2 = f.x - S.scroll;
       if (sx2 < -60 || sx2 > TITLE_VW + 60) continue;
@@ -23783,10 +24141,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var LAB_SPOT = Math.round(TITLE_VW * 2 / 3);
   var LAB_GAP = 50;
   var LAB_IN = 0.1;
-  var EDGE2 = 40;
+  var EDGE3 = 40;
   var LAB_KINDS = ["vines", "webs", "timber", "moss", "grass"];
-  var LAB_SPOTS = LAB_KINDS.map((kind, i) => ({ kind, x0: EDGE2 + i * (LAB_SPOT + LAB_GAP) }));
-  var LAB_W = EDGE2 * 2 + LAB_KINDS.length * LAB_SPOT + (LAB_KINDS.length - 1) * LAB_GAP;
+  var LAB_SPOTS = LAB_KINDS.map((kind, i) => ({ kind, x0: EDGE3 + i * (LAB_SPOT + LAB_GAP) }));
+  var LAB_W = EDGE3 * 2 + LAB_KINDS.length * LAB_SPOT + (LAB_KINDS.length - 1) * LAB_GAP;
   var MINE_H = 46;
   function labScene(vh, seed) {
     const R = titleRng(seed), fy = vh - LAB_FLOOR, roof = LAB_ROOF, room = fy - roof, mroof = fy - Math.max(MINE_H, room * 0.5);
@@ -25287,7 +25645,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           h(
             "div",
             { className: "devbtns" },
-            act("devcopy", "Copy Dev settings", () => copyText(devCopyText))
+            act("devcopy", "Copy Dev settings", () => copyText(devCopyText)),
+            act("batreset", "Reset bats", () => {
+              BAT_CMD.reset = true;
+            }),
+            // (C4a, creatures/bats.js)
+            act("batscare", "Scare all bats", () => {
+              BAT_CMD.scare = true;
+            })
           ),
           // (v1.0.94) everything Dev keeps: auto/devcopy.js
           copied ? h("p", { className: "devnote devcopied" + (copied.ok ? " ok" : "") }, copied.empty ? "Nothing audited yet — pin, trash or give feedback on a mod or perk card first." : copied.ok ? copied.what === "audit" ? "Audit copied — paste it into Claude Code." : "Copied — paste it to Claude." : "Could not reach the clipboard — press and hold the text below to copy it.") : null,
@@ -25565,7 +25930,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
       });
     }, []);
-    const steer = (st) => {
+    const steer2 = (st) => {
       const S = scene.current, C = cam.current, w = whoRef.current, r = S && S.runners.find((q) => q.id === w);
       if (!S || !S.lvl || !r || r.out) return;
       levelHold(S, 0);
@@ -25680,7 +26045,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       h("div", { className: "ggold", "data-gold": gold }, h("span", { className: "ggicon" }, h(NuggetIcon, { kind: "gold" })), h("b", null, gold.toLocaleString())),
       h(GremGuns, { presets, items: items.current, gold, sel: has[who] ?? -1, who, fresh: fresh2, pick: pickItem, box: guns }),
       h(GremHelms, { run: run.current, who, pick: pickWho }),
-      h("div", { className: "abtns gstick" }, h(PillStick, { onMove: steer })),
+      h("div", { className: "abtns gstick" }, h(PillStick, { onMove: steer2 })),
       flies.map((f) => h(FlyTile, { key: f.k, f, done: () => setFlies((fs) => fs.filter((q) => q.k !== f.k)) })),
       devOpen ? h(DevPanel, { close: () => {
         SFX.fx("close");

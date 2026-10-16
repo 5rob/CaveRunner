@@ -18,6 +18,7 @@ import {
   CURVES, DEV, DEV_DEFAULTS, DEV_GROUPS, DEV_META, DEV_TABS, devSet, devTabOf, kr, kru
 } from '../dev/knobs.js';
 import { devCopyText } from '../auto/devcopy.js';
+import { BAT_CMD } from '../creatures/bats.js';
 import { FireSim } from './firesim.js';
 import { ZoneSim } from './zonesim.js';
 import { h, useEffect, useRef, useState } from './h.js';
@@ -615,7 +616,9 @@ export function DevPanel({ close, pages }) {
           h('h2', null, 'Dev'),
           h('button', { className: 'done', onPointerDown: e => { e.preventDefault(); close(); } }, 'Done')),
         h('div', { className: 'devbtns' },
-          act('devcopy', 'Copy Dev settings', () => copyText(devCopyText))),   // (v1.0.94) everything Dev keeps: auto/devcopy.js
+          act('devcopy', 'Copy Dev settings', () => copyText(devCopyText)),
+          act('batreset', 'Reset bats', () => { BAT_CMD.reset = true; }),   // (C4a, creatures/bats.js)
+          act('batscare', 'Scare all bats', () => { BAT_CMD.scare = true; })),   // (v1.0.94) everything Dev keeps: auto/devcopy.js
         copied ? h('p', { className: 'devnote devcopied' + (copied.ok ? ' ok' : '') }, copied.empty
           ? 'Nothing audited yet — pin, trash or give feedback on a mod or perk card first.'
           : copied.ok ? (copied.what === 'audit' ? 'Audit copied — paste it into Claude Code.' : 'Copied — paste it to Claude.')
