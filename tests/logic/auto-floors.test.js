@@ -52,8 +52,10 @@ const sky = (S.top + S.bot) / 2;
 const hi = G.titleFoeAt(S, G.autoFoe('hiisi', 1), S.scroll + r0.x + 40);
 hi.y = hi.ty = hi.hy = Math.min(sky, r0.y); hi.hp = hi.hpMax = 1e6; hi.cd = 0;
 const hp0 = pl.hp;
-check('a Hiisi shoots a ball at him', until(S, s => s.shots.some(b => b.foe && b.look === 'ball'), 300) >= 0);
-check('… and it hurts', until(S, () => pl.hp < hp0, 300) >= 0, [hp0, pl.hp]);
+// (held beside him, level with his middle: he flies about, and behind rock it can't see him; the shooting is what's measured)
+const beside = () => { hi.x = hi.hx = S.scroll + r0.x + G.PW / 2 + 40; hi.y = hi.ty = hi.hy = r0.y + G.PH / 2; };
+check('a Hiisi shoots a ball at him', until(S, s => { beside(); return s.shots.some(b => b.foe && b.look === 'ball'); }, 300) >= 0);
+check('… and it hurts', until(S, () => { beside(); return pl.hp < hp0; }, 300) >= 0, [hp0, pl.hp]);
 // a chaser comes at him
 S.foes.length = 0;
 const ko = G.titleFoeAt(S, G.autoFoe('kobold', 1), S.scroll + r0.x + 70);
