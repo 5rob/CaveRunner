@@ -3,15 +3,17 @@ name: Android app + Pages
 # Ship a build to the phone: push game changes to main (or run this manually).
 # - deploy-pages publishes index.html + version.txt to GitHub Pages (the update
 #   source the installed app checks). Pages is one site per repo, replaced whole
-#   by every deploy, so each run publishes BOTH builds: main's at the root and
-#   the autobattler branch's (CaveRunner Auto) under auto/. Keep this file the
-#   same on both branches.
+#   by every deploy, so each run publishes ALL builds: main's at the root,
+#   the autobattler branch's (CaveRunner Auto) under auto/ and the grem
+#   branch's (CaveRunner Grem) under grem/. Keep this file the same on all
+#   three branches.
 # - build-apk builds the WebView shell and attaches app-debug.apk to a Release
 #   you download once to your phone: tag "app" from main, "app-auto" (the second
-#   app, com.caverunner.auto, updating from auto/) from autobattler.
+#   app, com.caverunner.auto, updating from auto/) from autobattler, "app-grem"
+#   (the third, com.caverunner.grem, updating from grem/) from grem.
 on:
   push:
-    branches: [ main, autobattler ]
+    branches: [ main, autobattler, grem ]
   workflow_dispatch:
 
 jobs:
@@ -38,9 +40,14 @@ jobs:
           ref: autobattler
           path: auto
         continue-on-error: true
-      - name: Assemble site (both games + version.txt)
+      - uses: actions/checkout@v4
+        with:
+          ref: grem
+          path: grem
+        continue-on-error: true
+      - name: Assemble site (all games + version.txt)
         run: |
-          for d in main auto; do
+          for d in main auto grem; do
             [ -f $d/index.html ] || continue
             cd $d
             mkdir -p _site
@@ -52,7 +59,8 @@ jobs:
           mkdir -p _site
           cp main/_site/* _site/
           if [ -d auto/_site ]; then mkdir -p _site/auto && cp auto/_site/* _site/auto/; fi
-          echo "Published:"; cat _site/version.txt; cat _site/auto/version.txt || true
+          if [ -d grem/_site ]; then mkdir -p _site/grem && cp grem/_site/* _site/grem/; fi
+          echo "Published:"; cat _site/version.txt; cat _site/auto/version.txt || true; cat _site/grem/version.txt || true
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
@@ -107,11 +115,11 @@ jobs:
 
       - name: Build APK
         working-directory: android
-        # -PcaveAuto=true builds the second app (android/app/build.gradle); main builds as before
-        run: gradle assembleDebug --no-daemon --stacktrace ${{ github.ref_name == 'autobattler' && '-PcaveAuto=true' || '' }}
+        # -PcaveAuto=true builds the second app, -PcaveGrem=true the third (android/app/build.gradle); main builds as before
+        run: gradle assembleDebug --no-daemon --stacktrace ${{ github.ref_name == 'autobattler' && '-PcaveAuto=true' || github.ref_name == 'grem' && '-PcaveGrem=true' || '' }}
 
       - name: Publish APK to the "app" release
-        if: github.ref_name != 'autobattler'
+        if: github.ref_name == 'main'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: app
@@ -132,4 +140,16 @@ jobs:
           body: |
             The auto-battler test app (branch autobattler). Installs beside the
             main CaveRunner app and updates from GitHub Pages' auto/ address.
+          files: android/app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Publish APK to the "app-grem" release
+        if: github.ref_name == 'grem'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: app-grem
+          target_commitish: ${{ github.sha }}
+          name: CaveRunner Grem app (latest shell)
+          body: |
+            The Grem Mode only app (branch grem). Installs beside the other two
+            CaveRunner apps and updates from GitHub Pages' grem/ address.
           files: android/app/build/outputs/apk/debug/app-debug.apk
