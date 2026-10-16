@@ -11582,13 +11582,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       while (e < rows && !b[e]) e++;
       const room = (e - r) * TCELL, y0 = r * TCELL, y1 = e * TCELL, g = Math.max(0.4, room / DEV.coalStalRoom);
       const dn = stalLen(wx, false, Z.ph[0], g), upL = stalLen(wx, true, Z.ph[1], g);
+      let low = r - 1;
       if (r > 0 && dn[0] > 0) {
         const h3 = Math.min(dn[0], room * DEV.coalStalCap), tip = Math.max(2, dn[1] * 0.3);
-        for (let q = r; q < e && (q + 0.5) * TCELL < y0 + h3; q++) a[q] = (q + 0.5) * TCELL - y0 > Math.min(h3, dn[1]) - tip && h3 > dn[1] - tip ? 3 : 2;
+        for (let q = r; q < e - 2 && (q + 0.5) * TCELL < y0 + h3; q++, low++) a[q] = (q + 0.5) * TCELL - y0 > Math.min(h3, dn[1]) - tip && h3 > dn[1] - tip ? 3 : 2;
       }
       if (e < rows && upL[0] > 0) {
         const h3 = Math.min(upL[0], room * DEV.coalMiteCap), tip = Math.max(2, upL[1] * 0.25);
-        for (let q = e - 1; q >= r && (q + 0.5) * TCELL > y1 - h3; q--) if (!a[q]) a[q] = y1 - (q + 0.5) * TCELL > h3 - tip && h3 > upL[1] - tip ? 3 : 2;
+        for (let q = e - 1; q > low + 2 && (q + 0.5) * TCELL > y1 - h3; q--) if (!a[q]) a[q] = y1 - (q + 0.5) * TCELL > h3 - tip && h3 > upL[1] - tip ? 3 : 2;
       }
       r = e;
     }

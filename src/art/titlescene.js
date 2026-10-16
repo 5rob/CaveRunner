@@ -539,13 +539,14 @@ export function stalCol(wx, Z, cy, fy, rows) {
     while (e < rows && !b[e]) e++;   // air rows r..e-1, rock (or the column's end) past each end
     const room = (e - r) * TCELL, y0 = r * TCELL, y1 = e * TCELL, g = Math.max(0.4, room / DEV.coalStalRoom);
     const dn = stalLen(wx, false, Z.ph[0], g), upL = stalLen(wx, true, Z.ph[1], g);
+    let low = r - 1;   // (the last row a stalactite took: a stalagmite stops 2 rows short of it, always a way through)
     if (r > 0 && dn[0] > 0) {
       const h = Math.min(dn[0], room * DEV.coalStalCap), tip = Math.max(2, dn[1] * 0.3);
-      for (let q = r; q < e && (q + 0.5) * TCELL < y0 + h; q++) a[q] = (q + 0.5) * TCELL - y0 > Math.min(h, dn[1]) - tip && h > dn[1] - tip ? 3 : 2;
+      for (let q = r; q < e - 2 && (q + 0.5) * TCELL < y0 + h; q++, low++) a[q] = (q + 0.5) * TCELL - y0 > Math.min(h, dn[1]) - tip && h > dn[1] - tip ? 3 : 2;
     }
     if (e < rows && upL[0] > 0) {
       const h = Math.min(upL[0], room * DEV.coalMiteCap), tip = Math.max(2, upL[1] * 0.25);
-      for (let q = e - 1; q >= r && (q + 0.5) * TCELL > y1 - h; q--) if (!a[q]) a[q] = y1 - (q + 0.5) * TCELL > h - tip && h > upL[1] - tip ? 3 : 2;
+      for (let q = e - 1; q > low + 2 && (q + 0.5) * TCELL > y1 - h; q--) if (!a[q]) a[q] = y1 - (q + 0.5) * TCELL > h - tip && h > upL[1] - tip ? 3 : 2;
     }
     r = e;
   }

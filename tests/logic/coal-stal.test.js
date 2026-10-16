@@ -56,6 +56,21 @@ const M = walk(23, 1);
 let mt = 0, msp = 0;
 for (const q of M.cols.values()) { mt += q.a.filter(m => m === TM.ROCKL).length; if (q.z === 'spider') msp++; }
 check('none on another level', mt === 0, { tips: mt, cavernCols: msp });
+// the space: a big cave gets longer points, each capped at its share of the space
+{
+  const D = G.DEV, ph = 0.3;
+  let small = 0, big = 0;
+  for (let x = 0; x < 4000; x += 2) { small = Math.max(small, G.stalLen(x, false, ph, 0.5)[0]); big = Math.max(big, G.stalLen(x, false, ph, 2)[0]); }
+  check('twice the space: the longest point about 4× a half-space one', big > small * 3.5, { small: +small.toFixed(1), big: +big.toFixed(1) });
+  let over = 0, n = 0;
+  for (const [c, q] of W.cols) if (q.z === 'spider' && q.coal) {
+    const wx = c * TC, st = G.stalCol(wx, G.titleZoneSpan(wx, W.S), G.titleCeil(wx, W.S), G.titleFloor(wx, W.S), W.S.rows);
+    for (let r = 0; r < st.length; ) { if (st[r] === 1) { r++; continue; } let e = r; while (e < st.length && st[e] !== 1) e++;
+      const run = st.slice(r, e), room = (e - r) * TC; let a = 0; while (a < run.length && run[a] > 1) a++; let b = 0; while (b < run.length - a && run[run.length - 1 - b] > 1) b++;
+      n++; if (a * TC > room * D.coalStalCap + TC || b * TC > room * D.coalMiteCap + TC || a + b > run.length - 2) over++; r = e; }
+  }
+  check('every point within its cap; no gap sealed', n > 50 && over === 0, { gaps: n, over });
+}
 // the knobs: density 0 makes none
 {
   const D = G.DEV, d0 = D.coalStalDense, m0 = D.coalMiteDense;
