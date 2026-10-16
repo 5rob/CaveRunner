@@ -550,8 +550,8 @@ DEV_META.push(
   { k: 'batPanic',       g: 'bats', label: 'A roost hit: its bats panic for (s)', step: 0.5 });
 DEV_GROUPS.push(['bats', 'Bats']);
 // (C5a) Coal Seams' glow worms (creatures/glowworm.js, the owner's spec): the body and the inchworm gait
-Object.assign(DEV_DEFAULTS, { glowPerScreen: 2, glowStride: 4, glowDMin: 2.5, glowDMax: 6.5, glowLiftF: 0.6, glowLiftR: 0.4, glowCrank: 4.5, glowLen: 8, glowW: 1.8, glowFoot: 1, glowTurn: 0.1,
-  glowTaper: 0.55, glowSpores: 3, glowSporeSpd: 22, glowSporeDrag: 3, glowSporeSpread: 40, glowAmbient: 4 });
+Object.assign(DEV_DEFAULTS, { glowPerScreen: 0, glowStride: 4, glowDMin: 2.5, glowDMax: 6.5, glowLiftF: 0.6, glowLiftR: 0.4, glowCrank: 4.5, glowLen: 8, glowW: 1.8, glowFoot: 1, glowTurn: 0.1,
+  glowTaper: 0.55, glowSpores: 3, glowSporeSpd: 22, glowSporeDrag: 3, glowSporeSpread: 40, glowAmbient: 0 });   // (v2.0.7: glow worms off until the owner OKs them: 2 and 4)
 DEV_META.push(
   { k: 'glowPerScreen', g: 'glow', label: 'Glow worms: about this many a screen', min: 0, max: 12, step: 0.1 },
   { k: 'glowStride',    g: 'glow', label: 'Stride (the foot gap swings this much)', min: 0, max: 20, step: 0.5 },

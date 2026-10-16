@@ -5,6 +5,14 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v2.0.7 — Coal Seams: bats are enemies, bat Dev preview (branch `grem`)
+2026-10-17 (owner OK'd the screenshots; C4 feedback rounds).
+- Bats are foes: the players aim at and shoot them; health `batHp` 3; a dead bat puffs, falls and drops loot. A hit or killed bat sends its whole roost into panicked flight (`batPanic` 3 s). A bat's health bar shows only once hit.
+- Bats drawn through the pixel filter; `batSize` knob. The Bats Dev knobs have no min/max (number boxes; the panel clamps only rows with limits).
+- Dev → Grem → Bats has a live preview cave (`ui/batpreview.js`, `batLab`): two roosts, a player walking past and back; knobs act at once.
+- Fixed: bat roosts are dropped before their rock column is reused (one could hang in mid-air). A slot with no rock near is left out.
+- Glow worms are in the code (body, inchworm walk, green spores) but off by default (`glowPerScreen` 0, `glowAmbient` 0) until the owner OKs them.
+
 ## v2.0.6 — Coal Seams: ladders, Cavern timber, bats (branch `grem`)
 2026-10-17 (owner OK'd the screenshots; chunks C3 and C4).
 - Ladders in the Cavern: two rails and rungs, upright or a little leaning, floor to boulder or rock top to rock above; background timber (pass through, burn). Dev `coalLadders`, `coalLadLean`, `coalLadMaxH`.

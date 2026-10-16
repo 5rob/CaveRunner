@@ -6,6 +6,8 @@ const G = require('../load');
 let fails = 0;
 const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FAIL'} ${n}${x !== undefined ? ' -> ' + JSON.stringify(x) : ''}`); };
 const D = G.DEV;
+if (!D.glowPerScreen) D.glowPerScreen = 2;   // (worms off by default until the owner OKs them)
+if (!D.glowAmbient) D.glowAmbient = 4;
 D.autoFoeDmg = 0; D.glowTurn = 0;
 let seed = 7; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
 const dt = 1 / 60;
