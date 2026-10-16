@@ -5,6 +5,11 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.109 — Grem Mode's Dev panel trimmed to Grem; the creatures named for what they are (branch `autobattler`)
+Released 2026-10-16 (owner: implement and push).
+- Grem Mode's Dev panel shows only what Grem plays with (`ui/devpanel.js DevPanel`'s new `only`, Grem's list `GREM_DEV` in `ui/auto/GremScreen.js`): camera, torch and fog, player, Black Hole, sound, every creature group (elites and their flames too), the floor's layout rows Auto reads, arched vines, sway, all trajectories, zones, fire (all four), Grem, Presets, and Auto's level, guns, perks, enemies, jetpack and death, loot, chests. Gone there: hub, maps, bag, throw, economy, blocked zones, the old game's pages (Level 2, menus, Witness, Aim Assist, Carrot, hologram). In the mixed groups (camera, torch and fog, player, floor layout) only the rows Auto reads. Tabs with nothing left are hidden. Copy Dev settings still copies everything. Suite `grem-dev` checks it.
+- Creatures renamed from the Finnish names borrowed from Noita to what they are (`data/creatures.js`; the ids stay): Poison Jellyfish (Myrkkymeduusa), Spider (Hämähäkki), Rat (Rotta), Rat Nest (Rotanpesä), Drone (Hiisi), Shotgun Drone (Tappurahiisi), Chaingun Drone (Chaingunner), Sniper Drone (Snipuhiisi), Boulder (Lohkare), Worm (Mato), Hound (Hurtta), Kobold, Toad (Konna), Slime (Limanuljaska), Fire Slime (Stendari), Toadstool (Kärpässieni), Frost Skull (Jäätiö), Living Bones (Elävät luut), Alien.
+
 ## v1.0.108 — After the last floor, back to Mossy Caves (branch `autobattler`)
 Released 2026-10-16 (owner).
 - The levels cycle all twelve floors: after Void Hollow (level 12) comes Mossy Caves again (level 13, today's level 1 look and creatures), then Coal Seams. Was: round again from Coal Seams (`auto/maps.js levelFloor`). Both modes.

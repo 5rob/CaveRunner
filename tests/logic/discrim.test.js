@@ -24,7 +24,7 @@ ok('targetOf', G.targetOf(idB).id === 'hiisi' && G.targetOf('discrim') === null 
 ok('ensureMod rebuilds a saved id', G.ensureMod('discrim:creature:lima') && G.MODS['discrim:creature:lima'].tgt.id === 'lima');
 ok('ensureMod refuses junk', !G.ensureMod('discrim:nope:x') && !G.ensureMod('discrim:creature:') && !G.ensureMod('zzz') && !G.ensureMod(null));
 ok('an icon for each', G.targetIcon(bat) && G.targetIcon(you) && G.targetIcon(barrel));
-ok('names', G.targetName(bat) === 'Hiisi' && G.targetName(you) === 'You' && G.targetName(barrel) === 'Barrel', [G.targetName(bat), G.targetName(barrel)]);
+ok('names', G.targetName(bat) === 'Drone' && G.targetName(you) === 'You' && G.targetName(barrel) === 'Barrel', [G.targetName(bat), G.targetName(barrel)]);
 
 // stacks: same target together, different targets (and unset) apart
 const st = G.stackBag(['discrim', idB, 'discrim', idB, idY]);

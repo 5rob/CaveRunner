@@ -40,6 +40,14 @@ fs.mkdirSync(OUT, { recursive: true });
   await page.waitForTimeout(500);
   check('the ⚙️ opens the Dev panel', !!(await page.$('.devtab')));
   check('… with its Presets and Grem tabs', !!(await page.$('.devtab[data-t="presets"]')) && !!(await page.$('.devtab[data-t="grem"]')));
+  // (v1.0.109) only what Grem plays with: no old-game Level 2 tab; the Auto tab without the hub, maps, bag, throw or prices
+  const tabsShown = await page.evaluate(() => [...document.querySelectorAll('.devtab')].map(b => b.getAttribute('data-t')));
+  check('Grem Mode tabs: no old game Level 2, the creatures, zones, fire and trajectories there', !tabsShown.includes('level2') && ['creatures', 'zones', 'firesim', 'traj', 'auto'].every(t => tabsShown.includes(t)), tabsShown);
+  await page.locator('.devtab[data-t="auto"]').click();
+  await page.waitForTimeout(200);
+  const autoGroups = await page.evaluate(() => [...document.querySelectorAll('.devgroup')].map(g => g.textContent || ''));
+  check('… the Auto tab: level, enemies, chests; no hub, maps, bag, throw or economy', autoGroups.some(t => /Auto: level/.test(t)) && autoGroups.some(t => /Auto: enemies/.test(t))
+    && !autoGroups.some(t => /Auto: (hub|maps|bag|throw|economy|blocks)/.test(t)), autoGroups.map(t => t.slice(0, 24)));
   await page.screenshot({ path: path.join(OUT, 'grem-dev-panel.png') });
   await browser.close();
   console.log(fails ? fails + ' FAILED' : 'all passed');

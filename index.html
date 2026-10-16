@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v1.0.108</title>
-<!-- VERSION = 'v1000108' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v1.0.109</title>
+<!-- VERSION = 'v1000109' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -1307,7 +1307,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v1.0.108';</script>
+<script>const VERSION = 'v1.0.109';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -6815,7 +6815,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     // hunting, it lines its head up on you and spits dripping poison. Its numbers are
     // Dev-panel knobs (DEV.je*); dmg and spd here are only its defaults, for show.
     meduusa: {
-      name: "Myrkkymeduusa",
+      name: "Poison Jellyfish",
       body: "jelly",
       act: "jelly",
       kp: "je",
@@ -6832,7 +6832,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       spd: 140
     },
     hiisi: {
-      name: "Hiisi",
+      name: "Drone",
       body: "drone",
       act: "shoot",
       col: { a: "#4f7a52", b: "#22331f", c: "#7fb383", eye: "#ffd98a" },
@@ -6846,7 +6846,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       spd: 34
     },
     tappura: {
-      name: "Tappurahiisi",
+      name: "Shotgun Drone",
       body: "drone",
       act: "shoot",
       shots: 4,
@@ -6861,7 +6861,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       spd: 30
     },
     chain: {
-      name: "Chaingunner",
+      name: "Chaingun Drone",
       body: "drone",
       act: "shoot",
       col: { a: "#8a3f3f", b: "#3a1c1c", c: "#c06a6a", eye: "#ff8a8a" },
@@ -6875,7 +6875,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       spd: 32
     },
     snipu: {
-      name: "Snipuhiisi",
+      name: "Sniper Drone",
       body: "drone",
       act: "turret",
       tele: 0.55,
@@ -6893,7 +6893,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     // string at you that slows you until you pull it too long and it snaps. Its speeds and
     // reaches are Dev-panel knobs (DEV.sp*); spd is the burst speed's default, for show.
     hamahakki: {
-      name: "Hämähäkki",
+      name: "Spider",
       body: "spider",
       act: "spider",
       kp: "sp",
@@ -6931,7 +6931,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     // you, grabs any loose gold near it and carries it home. Its numbers are Dev knobs (DEV.ra*).
     // It is never rolled off a roster: rats only come out of nests.
     rotta: {
-      name: "Rotta",
+      name: "Rat",
       body: "rat",
       act: "rat",
       kp: "ra",
@@ -6950,7 +6950,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     // rat nest: a room in the rock at the end of a thin tunnel. Doesn't move; lets a rat out
     // now and then while it has fewer than its max out; dies to digging or blasting.
     pesa: {
-      name: "Rotanpesä",
+      name: "Rat Nest",
       body: "nest",
       act: "nest",
       noRoster: 1,
@@ -6965,7 +6965,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       spd: 0
     },
     lohkare: {
-      name: "Lohkare",
+      name: "Boulder",
       body: "crawler",
       act: "chase",
       aggro: 260,
@@ -6980,7 +6980,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       spd: 26
     },
     mato: {
-      name: "Mato",
+      name: "Worm",
       body: "worm",
       act: "chase",
       aggro: 320,
@@ -6995,7 +6995,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       spd: 84
     },
     hurtta: {
-      name: "Hurtta",
+      name: "Hound",
       body: "crawler",
       act: "chase",
       aggro: 360,
@@ -7025,7 +7025,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       spd: 92
     },
     konna: {
-      name: "Konna",
+      name: "Toad",
       body: "blob",
       act: "chase",
       aggro: 260,
@@ -7040,7 +7040,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       spd: 48
     },
     lima: {
-      name: "Limanuljaska",
+      name: "Slime",
       body: "blob",
       act: "bomb",
       aggro: 300,
@@ -7055,7 +7055,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       spd: 55
     },
     tuli: {
-      name: "Stendari",
+      name: "Fire Slime",
       body: "blob",
       act: "bomb",
       aggro: 330,
@@ -7071,7 +7071,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       spd: 60
     },
     karpas: {
-      name: "Kärpässieni",
+      name: "Toadstool",
       body: "blob",
       act: "turret",
       col: { a: "#b04a4a", b: "#3d1616", c: "#e88a8a", eye: "#ffffff" },
@@ -7085,7 +7085,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       spd: 0
     },
     jaatio: {
-      name: "Jäätiö",
+      name: "Frost Skull",
       body: "skull",
       act: "turret",
       tele: 0.3,
@@ -7100,7 +7100,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       spd: 0
     },
     skull: {
-      name: "Elävät luut",
+      name: "Living Bones",
       body: "skull",
       act: "turret",
       tele: 0.35,
@@ -33421,7 +33421,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
 
   // src/version.js
-  var VERSION2 = "v1.0.108";
+  var VERSION2 = "v1.0.109";
 
   // src/art/zonelab.js
   var ZLAB_LEAD = 60;
@@ -34741,7 +34741,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var blurBox = () => {
     if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
   };
-  function DevPanel({ input, refresh, close, onRestart, onSpawnGun, onSpawnLevel, onGem, onMod, pages }) {
+  function DevPanel({ input, refresh, close, onRestart, onSpawnGun, onSpawnLevel, onGem, onMod, pages, only }) {
+    const inG = (g) => !only || only.groups.has(g);
+    const rowOk = (m) => !only || !only.auto.has(m.g) || AUTO_KNOBS.has(m.k) || AUTO_KNOBS.has(m.k.replace(/(Lo|Hi)$/, ""));
+    const tabs = DEV_TABS.filter(([t, , gs]) => !only || gs.some(inG) || !!(pages && pages[t]));
     const [grid, setGrid] = useState(false);
     const LO = input.current.loadout;
     const [, bump] = useState(0);
@@ -34750,9 +34753,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const [openG, setOpenG] = useState(() => lsGet("caverunner-devgroups") || {});
     const [tab, setTabS] = useState(() => {
       const t = lsGet("caverunner-devtab");
-      if (DEV_TABS.some((x) => x[0] === t)) return t;
-      const o = DEV_GROUPS.find(([g]) => openG[g]);
-      return o ? devTabOf(o[0]) : DEV_TABS[0][0];
+      if (tabs.some((x) => x[0] === t)) return t;
+      const o = DEV_GROUPS.find(([g]) => openG[g] && inG(g));
+      return o ? devTabOf(o[0]) : tabs[0][0];
     });
     const setTab = (t) => {
       blurBox();
@@ -34800,10 +34803,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     } }, label);
     const needle = q.trim().toLowerCase();
     const tabName = (t) => (DEV_TABS.find((x) => x[0] === t) || DEV_TABS[0])[1];
-    const shown2 = DEV_GROUPS.filter(([g]) => needle || devTabOf(g) === tab && !g.startsWith("zone_")).map(
+    const shown2 = DEV_GROUPS.filter(([g]) => inG(g) && (needle || devTabOf(g) === tab && !g.startsWith("zone_"))).map(
       // (a zone's own group: in its card, ui/zonesim.js)
       ([g, name]) => {
-        const rows = DEV_META.filter((m) => m.g === g);
+        const rows = DEV_META.filter((m) => m.g === g && rowOk(m));
         const nameHit = needle && name.toLowerCase().includes(needle);
         const hits = needle && !nameHit ? rows.filter((m) => (m.label + " " + m.k).toLowerCase().includes(needle)) : rows;
         return { g, name, rows, hits, nameHit };
@@ -34876,7 +34879,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           needle ? null : h(
             "div",
             { className: "devtabs", role: "tablist" },
-            DEV_TABS.map(([t, name, gs]) => {
+            tabs.map(([t, name, gs]) => {
               const chg = DEV_META.filter((m) => gs.includes(m.g) && DEV[m.k] !== DEV_DEFAULTS[m.k]).length;
               return h("button", {
                 key: t,
@@ -39825,13 +39828,66 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }, close: () => {
         SFX.fx("close");
         setDevOpen(false);
-      }, pages: DEV_PAGES }) : null,
+      }, pages: DEV_PAGES, only: GREM_DEV }) : null,
       paused ? h(PauseMenu, { input, label: "Grem Mode · Level " + lvl, onNew: () => location.reload(), close: () => {
         SFX.fx("close");
         setPaused(false);
       } }) : null
     );
   }
+  var GREM_DEV = {
+    groups: /* @__PURE__ */ new Set([
+      "view",
+      "light",
+      "player",
+      "bh",
+      "sound",
+      "enemy",
+      "elite",
+      "elitefx",
+      "spider",
+      "rat",
+      "jelly",
+      "jellycol",
+      "level",
+      "arch",
+      "sway",
+      "trajhoming",
+      "trajseeker",
+      "trajnear",
+      "trajaim",
+      "trajgrav",
+      "trajfloat",
+      "trajflat",
+      "trajorbit",
+      "trajspiral",
+      "trajboomer",
+      "trajpong",
+      "autoorb",
+      "autozones",
+      "zone_moss",
+      "zone_webs",
+      "zone_timber",
+      "zone_paved",
+      "zone_grove",
+      "zone_winding",
+      "zone_spider",
+      "grem",
+      "autolevel",
+      "autoguns",
+      "autoperks",
+      "autofoes",
+      "autodeath",
+      "autoloot",
+      "autochests",
+      "fire",
+      "autofire",
+      "firelab",
+      "firefx",
+      "firesilk"
+    ]),
+    auto: /* @__PURE__ */ new Set(["view", "light", "player", "level"])
+  };
   var wheelSideways = (e) => {
     if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) e.currentTarget.scrollLeft += e.deltaY;
   };

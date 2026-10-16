@@ -918,6 +918,8 @@ interface AutoRun { tier: number; players: RunPlayer[]; bag: (BagItem | null)[];
   /** the active map (auto/maps.js; THEMES index) and each map's progress */
   map?: number; maps?: MapProgress[] }
 /** one map's progress (auto/maps.js): its level now (1 up), the best cleared, beaten once, gold paid toward it, bought */
+/** a Dev panel shown in part (ui/devpanel.js DevPanel's only; Grem Mode's GREM_DEV): these groups; in the auto ones only the rows Auto reads */
+interface DevOnly { groups: Set<string>; auto: Set<string> }
 interface MapProgress { level: number; best: number; beaten: boolean; paid: number; owned: boolean }
 /** a stats meter's record (auto/meters.js): n buckets of dt s in a ring, i the one now, t the time into it */
 interface Meter { dt: number; n: number; buf: number[]; i: number; t: number; all?: number[] }

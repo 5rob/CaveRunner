@@ -559,8 +559,15 @@ const blurBox = () => {
 // ("All mods" is the old DEBUG shelf) and Copy report; then a search box and the tabs
 // (DEV_TABS), each a page of collapsible groups of the saved, persisted variables.
 // pages (CaveRunner Auto): a tab's own page over its knobs, by tab id (Presets: the gun presets library; Grem: player 1's kit)
-/** @param {{ input: { current: GameInput }, refresh: () => void, close: () => void, onRestart: () => void, onSpawnGun?: () => void, onSpawnLevel?: () => void, onGem?: (kind: 'red' | 'green') => void, onMod?: (id: string) => void, pages?: Record<string, () => any> }} props */
-export function DevPanel({ input, refresh, close, onRestart, onSpawnGun, onSpawnLevel, onGem, onMod, pages }) {
+// only (Grem Mode, owner v1.0.109): just these groups (and the tabs holding them or a page); in a group of `only.auto` just
+// the rows CaveRunner Auto reads (AUTO_KNOBS). Copy Dev settings still copies everything
+/** @param {{ input: { current: GameInput }, refresh: () => void, close: () => void, onRestart: () => void, onSpawnGun?: () => void, onSpawnLevel?: () => void, onGem?: (kind: 'red' | 'green') => void, onMod?: (id: string) => void, pages?: Record<string, () => any>, only?: DevOnly }} props */
+export function DevPanel({ input, refresh, close, onRestart, onSpawnGun, onSpawnLevel, onGem, onMod, pages, only }) {
+  /** @param {string} g */
+  const inG = g => !only || only.groups.has(g);
+  /** @param {DevRow} m */
+  const rowOk = m => !only || !only.auto.has(m.g) || AUTO_KNOBS.has(m.k) || AUTO_KNOBS.has(m.k.replace(/(Lo|Hi)$/, ''));
+  const tabs = DEV_TABS.filter(([t, , gs]) => !only || gs.some(inG) || !!(pages && pages[t]));
   const [grid, setGrid] = useState(false);   // (Auto, owner v1.0.74) the mod grid shown
   const LO = input.current.loadout;
   const [, bump] = useState(0);
@@ -571,9 +578,9 @@ export function DevPanel({ input, refresh, close, onRestart, onSpawnGun, onSpawn
   // the tab: the last one used, else the first with an open group, else the first
   const [tab, setTabS] = useState(() => {
     const t = lsGet('caverunner-devtab');
-    if (DEV_TABS.some(x => x[0] === t)) return t;
-    const o = DEV_GROUPS.find(([g]) => openG[g]);
-    return o ? devTabOf(o[0]) : DEV_TABS[0][0];
+    if (tabs.some(x => x[0] === t)) return t;
+    const o = DEV_GROUPS.find(([g]) => openG[g] && inG(g));
+    return o ? devTabOf(o[0]) : tabs[0][0];
   });
   const setTab = t => { blurBox(); setTabS(t); lsSet('caverunner-devtab', t); };
   // (Fire sim: its groups open until shut)
@@ -608,9 +615,9 @@ export function DevPanel({ input, refresh, close, onRestart, onSpawnGun, onSpawn
   const needle = q.trim().toLowerCase();
   const tabName = t => (DEV_TABS.find(x => x[0] === t) || DEV_TABS[0])[1];
   // the groups to show: this tab's, or with a search, every group holding a match (opened, matches only)
-  const shown = DEV_GROUPS.filter(([g]) => needle || (devTabOf(g) === tab && !g.startsWith('zone_'))).map(   // (a zone's own group: in its card, ui/zonesim.js)
+  const shown = DEV_GROUPS.filter(([g]) => inG(g) && (needle || (devTabOf(g) === tab && !g.startsWith('zone_')))).map(   // (a zone's own group: in its card, ui/zonesim.js)
     ([g, name]) => {
-    const rows = DEV_META.filter(m => m.g === g);
+    const rows = DEV_META.filter(m => m.g === g && rowOk(m));
     const nameHit = needle && name.toLowerCase().includes(needle);
     const hits = needle && !nameHit ? rows.filter(m => (m.label + ' ' + m.k).toLowerCase().includes(needle)) : rows;
     return { g, name, rows, hits, nameHit };
@@ -646,7 +653,7 @@ export function DevPanel({ input, refresh, close, onRestart, onSpawnGun, onSpawn
             onChange: e => setQ(e.target.value) }),
           q ? h('button', { className: 'devclear', 'aria-label': 'Clear search', onPointerDown: e => { e.preventDefault(); setQ(''); } }, '×') : null),
         needle ? null : h('div', { className: 'devtabs', role: 'tablist' },
-          DEV_TABS.map(([t, name, gs]) => {
+          tabs.map(([t, name, gs]) => {
             const chg = DEV_META.filter(m => gs.includes(m.g) && DEV[m.k] !== DEV_DEFAULTS[m.k]).length;
             return h('button', { key: t, className: 'devtab' + (t === tab ? ' on' : ''), 'data-t': t, role: 'tab',
               'aria-selected': t === tab, onClick: () => setTab(t) }, name, chg ? h('i', { className: 'devdot' }) : null);
