@@ -627,7 +627,7 @@ DEV_META.push(
   { k: 'gremGoldWait', g: 'grem', label: 'Gold bounces this long before it flies to you (s)', min: 0, max: 3, step: 0.05 },
   // (owner, v1.0.98) each level cleared, the next old floor: the colours blend over a seam past the boss's arena
   { k: 'gremSeamW',    g: 'grem', label: 'Floor change: the colours blend over this much cave (units)', min: 4, max: 600, step: 4 },
-  // (owner, v1.0.101) a tap that isn't a chest or a creature: the picked player heads there (then stands till the idle wait, Auto: player's autoCtlWait)
+  // (owner, v1.0.101) a tap that isn't a chest or a creature: the picked player heads there (v1.0.103: on at once once there)
   { k: 'gremWayT',     g: 'grem', label: 'A tapped spot: given up after this long if not reached (s)', min: 1, max: 30, step: 0.5 },
   { k: 'gremChestTapR', g: 'grem', label: 'A chest opens at a tap this near it, from any distance (units)', min: 5, max: 80, step: 1 },
   { k: 'gremSeamJag',  g: 'grem', label: '… its edge this ragged (0 a straight fade)', min: 0, max: 3, step: 0.05 },
@@ -790,7 +790,7 @@ DEV_META.push(
 DEV_GROUPS.push(['autofoes', 'Auto: enemies']);
 // the jetpack (art/titlescene.js jetStep, feedback round 2: the old game's flame and smoke) and a death (auto/death.js: the ragdoll,
 // the slow stop, Tap A, the helmet light, the blast, home)
-Object.assign(DEV_DEFAULTS, { autoMoveK: 0.75, autoJetTilt: 1, autoJetSmoke: 1, autoDeathStop: 1.5, autoTpBlink: 1, autoTpBoomWait: 0.6, autoTpBoomR: 60, autoSpStride: 0.14, autoRoamT: 8, autoRoamHi: 0.45, autoRoamMid: 0.4, autoRoamFly: 2.5, autoRoamRun: 0.4, autoJeTurnTier: 0.2, autoJeTurnMax: 2.5, autoExitNukeR: 90, autoExitNukeF: 1600, autoExitNukeWait: 3.5, autoMushT: 3.2, autoMushK: 1, autoFuelDrain: 1, autoFuelRegen: 1, autoCtlWait: 3, autoVineFire: 1, autoVineSpread: 4, autoVineJitter: 0.8, autoVineAsh: 8, autoFireJump: 2, autoFireJumpP: 0.5, autoNavCut: 0.8, autoNavGive: 1.2 });
+Object.assign(DEV_DEFAULTS, { autoMoveK: 0.75, autoJetTilt: 1, autoJetSmoke: 1, autoDeathStop: 1.5, autoTpBlink: 1, autoTpBoomWait: 0.6, autoTpBoomR: 60, autoSpStride: 0.14, autoRoamT: 8, autoRoamHi: 0.45, autoRoamMid: 0.4, autoRoamFly: 2.5, autoRoamRun: 0.4, autoJeTurnTier: 0.2, autoJeTurnMax: 2.5, autoExitNukeR: 90, autoExitNukeF: 1600, autoExitNukeWait: 3.5, autoMushT: 3.2, autoMushK: 1, autoFuelDrain: 1, autoFuelRegen: 1, autoCtlWait: 1, autoVineFire: 1, autoVineSpread: 4, autoVineJitter: 0.8, autoVineAsh: 8, autoFireJump: 2, autoFireJumpP: 0.5, autoNavCut: 0.8, autoNavGive: 1.2 });
 DEV_META.push(
   { k: 'autoVineFire',   g: 'autofire', label: 'Vines burn up at this × the old game speed (the title menu: 0.1)', min: 0.1, max: 5, step: 0.1 },
   { k: 'autoVineSpread', g: 'autofire', label: 'Auto levels: the flames climb a vine this × faster than it burns away (1: only the tip burns)', min: 1, max: 40, step: 0.5 },
@@ -800,6 +800,7 @@ DEV_META.push(
   { k: 'autoVineAsh',    g: 'autofire', label: 'Vines: the charred, crumbling end is this long (units)', min: 0, max: 20, step: 1 },
   { k: 'autoFireJump',   g: 'autofire', label: 'Vines: fire jumps sideways from a burning vine to vines and webs this near (units)', min: 2, max: 40, step: 1 },
   { k: 'autoFireJumpP',  g: 'autofire', label: '… at this chance a fire tick, from each burning stretch', min: 0, max: 1, step: 0.05 },
+  // (owner v1.0.106: a third of the old 3 s)
   { k: 'autoCtlWait',    g: 'autodeath', label: 'Manual mode: seconds of the stick at rest before the autopilot takes him back', min: 0, max: 10, step: 0.25 },
   { k: 'autoMoveK',      g: 'autodeath', label: 'Hand-steered speed (× the old game’s walk, jet, their pushes; hub and steering a player; the hub’s followers too)', min: 0.2, max: 1.5, step: 0.05 },
   { k: 'autoJetTilt',    g: 'autodeath', label: 'Jet flame: the autopilot’s tilt with its speed across (at most)', min: 0, max: 1.5, step: 0.05 },
