@@ -488,6 +488,14 @@ DEV_META.push(
   { k: 'coalChutes', g: 'coal', label: 'Coal chutes: chance down each hole between tunnels', min: 0, max: 1, step: 0.05 },
   { k: 'coalSpill',  g: 'coal', label: 'Coal chutes: lumps spilled a second', min: 0, max: 5, step: 0.1 });
 DEV_META.push({ k: 'coalGlints', g: 'coal', label: 'Coal: glints, share of its cells', min: 0, max: 0.4, step: 0.01 });
+// (chunk C1) gas pockets: invisible methane in low corners; fire or a blast reaching one sets off a pale blue whoomph (art/titlescene.js gasBoom)
+Object.assign(DEV_DEFAULTS, { coalGas: 1.5, coalGasSize: 10, coalGasBoom: 14, coalGasDmg: 12 });
+DEV_META.push(
+  { k: 'coalGas',     g: 'coal', label: 'Gas pockets: about this many a screen (in low corners)', min: 0, max: 8, step: 0.1 },
+  { k: 'coalGasSize', g: 'coal', label: 'Gas pockets: size (how near fire must come, units)', min: 2, max: 40, step: 1 },
+  { k: 'coalGasBoom', g: 'coal', label: 'Gas whoomph: blast radius (units)', min: 4, max: 60, step: 1 },
+  { k: 'coalGasDmg',  g: 'coal', label: 'Gas whoomph: damage to creatures', min: 0, max: 200, step: 1 });
+colourKnobs('coal', [['coalGasCol', 'Gas whoomph colours (core, edge)', '#e4f0ff', '#3f7dff', 'w']]);
 DEV_GROUPS.push(['coal', 'Coal Seams']);
 // CaveRunner Auto's maps (auto/maps.js): the map machine's prices, and how much harder each map starts
 Object.assign(DEV_DEFAULTS, { autoMapPrice: 1000000, autoMapGrow: 1, autoMapStep: 5 });

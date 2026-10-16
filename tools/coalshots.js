@@ -1,12 +1,13 @@
 // Screenshots for the owner (Coal Seams, grem branch): Grem Mode started at level 2 (Dev "Start at level"), phone size, a few
 // moments along the level, and close-ups of its decorations.
-//   node tools/coalshots.js [outdir] [prefix]      (default tests/build/autoshots, coal)
+//   node tools/coalshots.js [outdir] [prefix] [gas]      (default tests/build/autoshots, coal; 'gas': the gas pockets' shots only)
 const { launch } = require('../tests/chromium');
 const path = require('path');
 const fs = require('fs');
 
 const OUT = path.resolve(process.argv[2] || path.join(__dirname, '..', 'tests', 'build', 'autoshots'));
 const PRE = process.argv[3] || 'coal';
+const ONLY = process.argv[4] || '';
 fs.mkdirSync(OUT, { recursive: true });
 require('./build')();
 require('../tests/build')();
@@ -24,6 +25,29 @@ require('../tests/build')();
   await page.locator('.tstart').dispatchEvent('pointerdown');
   const save = async (n, what, clip) => { await page.screenshot({ path: path.join(OUT, PRE + '-' + n + '.png'), clip }); said.push(`${PRE}-${n}.png  ${what}`); };
   const zone = () => page.evaluate(() => { const S = window.__gremScene; return S ? titleZoneSpan(S.scroll + 110, S).z : '?'; });
+  // (C1) a gas pocket on screen set off: the whoomph mid-flash, then just after, the fire round it (each also a close-up)
+  for (let i = 0; i < 400; i++) {
+    const g = await page.evaluate(() => {
+      const S = window.__gremScene, cv = document.querySelector('canvas');
+      const g = S && cv && (S.gas || []).find(q => !q.gone && q.wx - S.scroll > 70 && q.wx - S.scroll < 150);
+      if (!g) return null;
+      S.lvl.step = null; S.pace = 0;   // (the view held still)
+      const b = cv.getBoundingClientRect(), k = b.width / TITLE_VW, cx = b.left + (g.wx - S.scroll) * k, cy = b.top + g.y * k;
+      g.fuse = 0.01;
+      return { x: Math.max(b.left, cx - 110), y: Math.max(b.top, cy - 150), width: 220, height: 220 };
+    });
+    if (g) {
+      await page.waitForTimeout(90);
+      await save('m-gas-flash', 'a gas pocket set off: the pale blue whoomph, mid-flash');
+      await save('n-gas-flash-close', 'the same moment, close up', g);
+      await page.waitForTimeout(450);
+      await save('o-gas-after', 'just after: the flash gone, fire round where the pocket was');
+      await save('p-gas-after-close', 'the same, close up', g);
+      break;
+    }
+    await page.waitForTimeout(200);
+  }
+  if (ONLY === 'gas') { await browser.close(); console.log(said.join('\n')); return; }
   // shots as the level goes by: one in each zone kind met (up to 5), and their close-ups
   const got = new Set();
   for (let i = 0; i < 160 && got.size < 5; i++) {

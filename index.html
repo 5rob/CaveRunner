@@ -1325,6 +1325,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "coalSpill", g: "coal", label: "Coal chutes: lumps spilled a second", min: 0, max: 5, step: 0.1 }
   );
   DEV_META.push({ k: "coalGlints", g: "coal", label: "Coal: glints, share of its cells", min: 0, max: 0.4, step: 0.01 });
+  Object.assign(DEV_DEFAULTS, { coalGas: 1.5, coalGasSize: 10, coalGasBoom: 14, coalGasDmg: 12 });
+  DEV_META.push(
+    { k: "coalGas", g: "coal", label: "Gas pockets: about this many a screen (in low corners)", min: 0, max: 8, step: 0.1 },
+    { k: "coalGasSize", g: "coal", label: "Gas pockets: size (how near fire must come, units)", min: 2, max: 40, step: 1 },
+    { k: "coalGasBoom", g: "coal", label: "Gas whoomph: blast radius (units)", min: 4, max: 60, step: 1 },
+    { k: "coalGasDmg", g: "coal", label: "Gas whoomph: damage to creatures", min: 0, max: 200, step: 1 }
+  );
+  colourKnobs("coal", [["coalGasCol", "Gas whoomph colours (core, edge)", "#e4f0ff", "#3f7dff", "w"]]);
   DEV_GROUPS.push(["coal", "Coal Seams"]);
   Object.assign(DEV_DEFAULTS, { autoMapPrice: 1e6, autoMapGrow: 1, autoMapStep: 5 });
   Object.assign(DEV_DEFAULTS, {
@@ -11990,6 +11998,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     for (const { f, rail } of Zn.z === "timber" ? tuns.map((t) => ({ f: t.rail ? t.f : t.rf, rail: t.rail })) : [{ f: fy, rail: false }]) {
       const r = Math.ceil(f / TCELL - 0.5);
       if (r <= 8 || r >= S.rows || !SOLID[S.cells[base + r]] || SOLID[S.cells[base + r - 1]]) continue;
+      if (wx >= (S.gasNext ?? 0) && lowCorner(S, c, r)) {
+        (S.gas ||= []).push({ wx, y: r * TCELL, r: DEV.coalGasSize * (0.7 + 0.6 * h2(wx, 71)) });
+        S.gasNext = wx + TITLE_VW / Math.max(0.01, DEV.coalGas) * (0.4 + 1.2 * h2(wx, 73));
+      }
       const p = R(), y = r * TCELL;
       const cp = DEV.coalCarts * (rail ? 3 : 1);
       if (p < cp) {
@@ -12004,6 +12016,47 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         S.props.push({ k: "bake", st: "pickaxe", ox: wx + 1, x: 0, y, len: 0, seed: R(), side: R() < 0.5 ? 1 : -1, burn: 0, ac: c, ar: r });
       }
     }
+  }
+  function lowCorner(S, c, r) {
+    for (let k = 2; k <= 6; k++) {
+      const b = ci(S, c - k, 0);
+      if (SOLID[S.cells[b + r - 3]] && SOLID[S.cells[b + r - 5]]) return true;
+    }
+    return false;
+  }
+  function gasBoom(S, g) {
+    if (g.gone) return;
+    g.gone = true;
+    const x = g.wx - S.scroll, y = g.y - g.r * 0.5, r = DEV.coalGasBoom;
+    snd(S, "whoosh", x, y, r * 2);
+    S.booms.push({ x, y, r: r * 1.6, t: 0, max: 0.6, sid: "gas" });
+    burst(S, x, y, 14, kcol("coalGasCol", 0.3), 70, "fire", 0.5);
+    S.shake = Math.min(7, S.shake + 1.5);
+    S.flash = Math.min(0.3, S.flash + 0.08);
+    titleIgnite(S, x, y, r + 3);
+    for (const f of S.foes) if (f.hp > 0 && Math.hypot(f.x - S.scroll - x, f.ty - y) < r + f.r) hitFoe(S, f, DEV.coalGasDmg, "#9cc8ff");
+    for (const q of S.props) if (!q.gone && q.k === "barrel" && cartHit(q, x, y, r)) q.fuse = Math.min(q.fuse ?? 1, CART_FUSE + S.rnd() * 0.15);
+  }
+  function stepGas(S, dt) {
+    if (!S.gas || !S.gas.length) return;
+    for (const g of S.gas) {
+      if (g.gone) continue;
+      if (g.fuse != null) {
+        if ((g.fuse -= dt) <= 0) gasBoom(S, g);
+        continue;
+      }
+      const x = g.wx - S.scroll;
+      if (x < -40 || x > TITLE_VW + 40) continue;
+      if (S.fire.length && fireNear(S, g.wx, g.y - g.r * 0.5, g.r)) {
+        g.fuse = 0.05;
+        continue;
+      }
+      for (const b of S.booms) if (b.t < 0.15 && Math.hypot(b.x - x, b.y - (g.y - g.r * 0.5)) < b.r * 0.6 + g.r) {
+        g.fuse = 0.08 + S.rnd() * 0.1;
+        break;
+      }
+    }
+    S.gas = S.gas.filter((g) => !g.gone && g.wx - S.scroll > -80);
   }
   var cartHit = (p, x, y, r) => x > p.x - 9 - r && x < p.x + 9 + r && y > p.y - 13 - r && y < p.y + r;
   var CART_FUSE = 0.12;
@@ -12944,6 +12997,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       S.mush = S.mush.filter((m) => m.t < m.max);
     }
     S.booms = S.booms.filter((b) => b.t < b.max);
+    stepGas(S, dt);
     for (const z of S.zaps) z.t -= dt;
     S.zaps = S.zaps.filter((z) => z.t > 0);
     stepSway(S, dt);
@@ -20453,6 +20507,30 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return true;
   }
   function drawBoom(ctx, b) {
+    if (b.sid === "gas") {
+      const q2 = b.t / b.max, rad2 = b.r * (0.35 + 0.65 * Math.sqrt(q2)), rgb = (u) => {
+        const h3 = kcol("coalGasCol", u);
+        return parseInt(h3.slice(1, 3), 16) + "," + parseInt(h3.slice(3, 5), 16) + "," + parseInt(h3.slice(5, 7), 16) + ",";
+      };
+      const gr2 = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, rad2);
+      gr2.addColorStop(0, "rgba(" + rgb(0) + (1 - q2) * 0.9 + ")");
+      gr2.addColorStop(0.3, "rgba(" + rgb(0.7) + (1 - q2) * 0.85 + ")");
+      gr2.addColorStop(0.7, "rgba(" + rgb(1) + (1 - q2) * 0.45 + ")");
+      gr2.addColorStop(1, "rgba(" + rgb(1) + "0)");
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = gr2;
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, rad2, 0, 6.283);
+      ctx.fill();
+      ctx.globalAlpha = 0.5 * (1 - q2);
+      ctx.strokeStyle = kcol("coalGasCol", 0.4);
+      ctx.lineWidth = 1.5 * (1 - q2) + 0.4;
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, b.r * (0.3 + 0.8 * Math.sqrt(q2)), 0, 6.283);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      return;
+    }
     if (b.sid === "manaburst") {
       const q2 = b.t / b.max, gr2 = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r * 0.5);
       gr2.addColorStop(0, "rgba(230,245,255," + (1 - q2) + ")");
@@ -21361,6 +21439,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       pool(p.x, ly, TITLE_LAMPR * Math.min(1, 0.6 + 0.4 * k), 0.95 * Math.min(1, k), 0.25);
       lc.restore();
     }
+    for (const o of S.booms) if (o.sid === "gas") pool(o.x, o.y, o.r * 2.2, 0.95 * (1 - o.t / o.max), 0.3);
     if (S.fire.length) {
       const st = Math.max(1, Math.ceil(S.fire.length / 80));
       for (let k = 0; k < S.fire.length; k += st) {

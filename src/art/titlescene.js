@@ -13,7 +13,7 @@ import { COL, AIR_ACC, CELL, COIN_PULL, DEAD, GRAVITY, GROUND_ACC, JET as P_JET,
 import { approach } from '../core/util.js';
 import { NATURAL_ONLY, ROSTERS, enemyFor } from '../data/creatures.js';
 import { THEMES } from '../data/themes.js';
-import { DEV, carrotAt, kr, kru, spr } from '../dev/knobs.js';
+import { DEV, carrotAt, kcol, kr, kru, spr } from '../dev/knobs.js';
 import { jellyPal, jellyStep } from '../creatures/jelly.js';
 import { ratSpread, ratStep } from '../creatures/rat.js';
 import { spiderStep } from '../creatures/spider.js';
@@ -197,10 +197,12 @@ const CLASSIC = { shoot: 1, turret: 1, chase: 1, bomb: 1 };
  *   wvy?: number, wu?: number, on?: TProp | null, drop?: boolean, links?: number, rust?: number, fuse?: number }} TProp */
 // (rust: Coal Seams' rusted lantern; fuse: an explosive minecart's, s till it goes off)
 /** @typedef {{ c: number, r: number, t: number }} TFire */
+// (Coal Seams) a gas pocket: invisible methane in a low corner, world x wx, floor y; r its size; fuse: s till it goes off
+/** @typedef {{ wx: number, y: number, r: number, fuse?: number, gone?: boolean }} TGas */
 /** @typedef {{ t: number, vh: number, top: number, bot: number, seed: number, rnd: () => number, scroll: number, shake: number, spawn: number,
  *   kills: number, gold: number, got: number, runner: TRunner, runners: TRunner[], foes: Enemy[], shots: TShot[], parts: TPart[], coins: Coin[],
  *   booms: TBoom[], zaps: TZap[], flash: number, rows: number, ncol: number, cells: Uint8Array, gen: number, props: TProp[],
- *   fire: TFire[], lightLater?: number[][], tim?: Record<number, { x: number, sets: import('./timber.js').TSet[] }>, timCol?: Map<number, Uint8Array>, chutes?: { x: number, y: number, s: number }[], dirty: number[][], dirtyAll: boolean, carved: number, burnt: number, swaps: number, groundT: number, flyT: number, kinds: Record<string, number>,
+ *   fire: TFire[], lightLater?: number[][], tim?: Record<number, { x: number, sets: import('./timber.js').TSet[] }>, timCol?: Map<number, Uint8Array>, chutes?: { x: number, y: number, s: number }[], gas?: TGas[], gasNext?: number, dirty: number[][], dirtyAll: boolean, carved: number, burnt: number, swaps: number, groundT: number, flyT: number, kinds: Record<string, number>,
  *   webs: WebLine[], orbN?: number, orbs?: Record<number, OrbRig>, mush?: MushCloud[], orbHub?: { x: number, y: number, r: number }[], orbT?: number, cut: number, lineT: number, silk: { x: number, y: number, ax: number, ay: number, vx: number, vy: number, life: number }[],
  *   nav: { F: any, fx: number, fy: number, t: number }, fireAcc: number, fireN: number, burning: Set<number>, gotN: number, pops: number, lampsPopped: number, kitNames: Set<string>,
  *   digT: number, digs: number, digWhy: Record<string, number>, still?: boolean, zp: TitlePlan, snd: TSnd[], hub?: TitleHub, lvl?: TitleLevel, lab?: boolean, back?: (ctx: CanvasRenderingContext2D, S: TitleScene) => void, pace?: number, team?: RunPlayer[], blocked?: number, blockedKind?: string, huddle?: boolean, gunsOff?: boolean, dmgMul?: number, coinWait?: number, hgoal?: number, hgoalT?: number, fuelWait?: number, tier?: number, loot?: TLoot[],
@@ -1007,6 +1009,10 @@ function coalDeco(S, c, wx, Zn, cap, rcy, fy, tuns) {
   for (const { f, rail } of Zn.z === 'timber' ? tuns.map(t => ({ f: t.rail ? t.f : t.rf, rail: t.rail })) : [{ f: fy, rail: false }]) {
     const r = Math.ceil(f / TCELL - 0.5);   // the floor's top rock row
     if (r <= 8 || r >= S.rows || !SOLID[S.cells[base + r]] || SOLID[S.cells[base + r - 1]]) continue;
+    if (wx >= (S.gasNext ?? 0) && lowCorner(S, c, r)) {   // a gas pocket in a low corner, about DEV.coalGas a screen
+      (S.gas ||= []).push({ wx, y: r * TCELL, r: DEV.coalGasSize * (0.7 + 0.6 * h2(wx, 71)) });
+      S.gasNext = wx + TITLE_VW / Math.max(0.01, DEV.coalGas) * (0.4 + 1.2 * h2(wx, 73));
+    }
     const p = R(), y = r * TCELL;
     const cp = DEV.coalCarts * (rail ? 3 : 1);   // (carts mostly on the rails)
     if (p < cp) {
@@ -1022,6 +1028,42 @@ function coalDeco(S, c, wx, Zn, cap, rcy, fy, tuns) {
       S.props.push({ k: 'bake', st: 'pickaxe', ox: wx + 1, x: 0, y, len: 0, seed: R(), side: R() < 0.5 ? 1 : -1, burn: 0, ac: c, ar: r });
     }
   }
+}
+// a low corner at column c's floor (top rock row r): rock rises 3+ cells over it within 6 columns behind (a hollow's
+// side, a tunnel's dead end)
+/** @param {TitleScene} S @param {number} c @param {number} r */
+function lowCorner(S, c, r) {
+  for (let k = 2; k <= 6; k++) { const b = ci(S, c - k, 0); if (SOLID[S.cells[b + r - 3]] && SOLID[S.cells[b + r - 5]]) return true; }
+  return false;
+}
+// (Coal Seams) a gas pocket goes off: a pale blue whoomph, a flash, a soft blast (no rock bitten) that hurts the creatures in it
+// (DEV.coalGasDmg), sets fire round it and sets off carts; its boom (sid 'gas') sets off pockets near it (stepGas)
+/** @param {TitleScene} S @param {TGas} g */
+function gasBoom(S, g) {
+  if (g.gone) return;
+  g.gone = true;
+  const x = g.wx - S.scroll, y = g.y - g.r * 0.5, r = DEV.coalGasBoom;
+  snd(S, 'whoosh', x, y, r * 2);
+  S.booms.push({ x, y, r: r * 1.6, t: 0, max: 0.6, sid: 'gas' });
+  burst(S, x, y, 14, kcol('coalGasCol', 0.3), 70, 'fire', 0.5);
+  S.shake = Math.min(7, S.shake + 1.5); S.flash = Math.min(0.3, S.flash + 0.08);
+  titleIgnite(S, x, y, r + 3);
+  for (const f of S.foes) if (f.hp > 0 && Math.hypot(f.x - S.scroll - x, f.ty - y) < r + f.r) hitFoe(S, f, DEV.coalGasDmg, '#9cc8ff');
+  for (const q of S.props) if (!q.gone && q.k === 'barrel' && cartHit(q, x, y, r)) q.fuse = Math.min(q.fuse ?? 1, CART_FUSE + S.rnd() * 0.15);
+}
+// the gas pockets each frame: fire at one, or a fresh blast reaching it, lights it (a short fuse, so a chain ripples)
+/** @param {TitleScene} S @param {number} dt */
+function stepGas(S, dt) {
+  if (!S.gas || !S.gas.length) return;
+  for (const g of S.gas) {
+    if (g.gone) continue;
+    if (g.fuse != null) { if ((g.fuse -= dt) <= 0) gasBoom(S, g); continue; }
+    const x = g.wx - S.scroll;
+    if (x < -40 || x > TITLE_VW + 40) continue;
+    if (S.fire.length && fireNear(S, g.wx, g.y - g.r * 0.5, g.r)) { g.fuse = 0.05; continue; }
+    for (const b of S.booms) if (b.t < 0.15 && Math.hypot(b.x - x, b.y - (g.y - g.r * 0.5)) < b.r * 0.6 + g.r) { g.fuse = 0.08 + S.rnd() * 0.1; break; }
+  }
+  S.gas = S.gas.filter(g => !g.gone && g.wx - S.scroll > -80);
 }
 // an explosive minecart's body (screen), where a shot or a blast finds it
 /** @param {TProp} p @param {number} x @param {number} y @param {number} r */
@@ -1771,6 +1813,7 @@ export function titleStep(S, dt) {
   for (const b of S.booms) b.t += dt;
   if (S.mush) { for (const m of S.mush) m.t += dt; S.mush = S.mush.filter(m => m.t < m.max); }
   S.booms = S.booms.filter(b => b.t < b.max);
+  stepGas(S, dt);
   for (const z of S.zaps) z.t -= dt;
   S.zaps = S.zaps.filter(z => z.t > 0);
   stepSway(S, dt);

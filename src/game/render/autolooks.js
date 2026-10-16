@@ -6,6 +6,7 @@
 // shotLights: the light a shot throws round it. What they shed as they fly is auto/shotfx.js.
 
 import { glowAt } from '../../art/sprites.js';
+import { kcol } from '../../dev/knobs.js';
 import { drawBolt, drawField, drawLook, drawWhiteHole } from './looks.js';
 import { jagPts } from '../../auto/shotfx.js';
 import { MODS } from '../../spells/mods.js';
@@ -243,6 +244,16 @@ export function drawGlowShot(c, s, W) {
 // boomLook) a white flash, a fireball rolling out, and a shockwave ring racing past it (a nuke's mushroom: drawMushroom)
 /** @param {CanvasRenderingContext2D} ctx @param {TBoom} b */
 export function drawBoom(ctx, b) {
+  if (b.sid === 'gas') {                // (Coal Seams) a gas pocket's whoomph: a pale blue flash swelling out, soft-edged, and a faint ring
+    const q = b.t / b.max, rad = b.r * (0.35 + 0.65 * Math.sqrt(q)), rgb = (/** @type {number} */ u) => { const h = kcol('coalGasCol', u); return parseInt(h.slice(1, 3), 16) + ',' + parseInt(h.slice(3, 5), 16) + ',' + parseInt(h.slice(5, 7), 16) + ','; };
+    const gr = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, rad);
+    gr.addColorStop(0, 'rgba(' + rgb(0) + (1 - q) * 0.9 + ')'); gr.addColorStop(0.3, 'rgba(' + rgb(0.7) + (1 - q) * 0.85 + ')'); gr.addColorStop(0.7, 'rgba(' + rgb(1) + (1 - q) * 0.45 + ')'); gr.addColorStop(1, 'rgba(' + rgb(1) + '0)');
+    ctx.globalAlpha = 1; ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(b.x, b.y, rad, 0, 6.283); ctx.fill();
+    ctx.globalAlpha = 0.5 * (1 - q); ctx.strokeStyle = kcol('coalGasCol', 0.4); ctx.lineWidth = 1.5 * (1 - q) + 0.4;
+    ctx.beginPath(); ctx.arc(b.x, b.y, b.r * (0.3 + 0.8 * Math.sqrt(q)), 0, 6.283); ctx.stroke();
+    ctx.globalAlpha = 1;
+    return;
+  }
   if (b.sid === 'manaburst') {          // (owner, after v1.0.83) Mana Burst: a blue flash and a ring out to its reach
     const q = b.t / b.max, gr = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r * 0.5);
     gr.addColorStop(0, 'rgba(230,245,255,' + (1 - q) + ')'); gr.addColorStop(1, 'rgba(74,156,255,0)');
