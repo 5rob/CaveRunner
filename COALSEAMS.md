@@ -55,6 +55,8 @@ agent finishes (knobs, test, tidy) → PM releases. Logic-only chunks skip the s
 
 ## PM duties
 
+**Owner rule (2026-10-17):** when an agent sits waiting for the owner's OK, start the next chunk's agent; the owner batch-approves. Only one agent RUNS at a time: queue feedback rounds and resume each waiting agent in turn.
+
 - Before each chunk: read only the doc section it needs (by block id from an outline read), write the brief (template
   below) with the facts, start the agent (`Agent`, general-purpose, `run_in_background`). One agent at a time on these files.
 - **Check in about every 10 minutes:** `git log --oneline -3` / `git diff --stat`, or `SendMessage` asking for a one-line
@@ -94,5 +96,5 @@ Rules:
 ## Status
 
 - [x] v2.0.1 step 1 · v2.0.2 coal · v2.0.3 rails, heaps, chutes, timber
-- [x] C1 Gas pockets (v2.0.4) · [ ] C2 Stalactites/stalagmites · [ ] C3 Ladders + Cavern timber · [ ] C4 Bats · [ ] C5 Glow worms ·
+- [x] C1 Gas pockets (v2.0.4) · [x] C2 Stalactites/stalagmites (v2.0.5) · [ ] C3 Ladders + Cavern timber · [ ] C4 Bats · [ ] C5 Glow worms ·
   [ ] C6 Light check · [ ] C7 Wrap

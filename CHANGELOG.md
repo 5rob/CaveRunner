@@ -5,6 +5,11 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v2.0.5 — Coal Seams: stalactites and stalagmites (branch `grem`)
+2026-10-17 (owner OK'd the screenshots, asked for them really long in big caves; chunk C2).
+- In the Cavern on Coal Seams: solid rock points hang off the roof and boulder undersides and rise off floors and boulder tops, in clusters of mixed lengths, a lighter tip (`TM.ROCKL`, 25). They replace the Cavern's old spikes.
+- They grow with the open height they face (stalactites 14–50 units, stalagmites 8–26 at 100 units of room; caps 45% / 35% of the gap; always 2 rows left open). Dev: `coalStal*` / `coalMite*` density, clustering, lengths, `coalStalRoom`, caps. Suite `coal-stal`.
+
 ## v2.0.4 — Coal Seams: gas pockets (branch `grem`)
 2026-10-17 (owner OK'd the screenshots; design doc idea 3, chunk C1).
 - Invisible methane pockets in low corners (hollows, tunnel ends), about 1.5 a screen. Fire or a blast reaching one sets off a pale blue whoomph: a flash that lights the cave, a soft blast (no rock broken) that hurts creatures (12) and sets off carts and other pockets, fire left round it (timber nearby can catch).
