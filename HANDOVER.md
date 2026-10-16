@@ -3,6 +3,40 @@
 Where things stand, for a fresh session. Read `CLAUDE.md` first (the owner's working style, the
 release loop, testing), then the README of the `src/` folder you're working in.
 
+## BRANCH `grem` (2026-10-16): CaveRunner Grem — Grem Mode only (the owner's focus)
+
+Forked from `autobattler` at v1.0.109 (owner: "git branch a Grem Mode only version and just work on that, so we can properly
+archive out the regular mode legacy content and bloated dev menu"). **v2.0.0** is the fork. `autobattler` and `main` keep
+everything; nothing there changed except the shared CI file.
+
+- **Its own app and address:** package `com.caverunner.grem` ("CaveRunner Grem", `android/app/build.gradle` `-PcaveGrem=true`),
+  APK at release `app-grem`, updates from `https://5rob.github.io/CaveRunner/grem/`. `.github/workflows/android.yml` deploys all
+  three builds (root, `auto/`, `grem/`) on any push: **keep it identical on main, autobattler and grem**. The `github-pages`
+  environment must allow `grem` (Settings → Environments → github-pages → Deployment branches) — if the first deploy fails
+  there, the owner adds it.
+- **What was cut:** the title's ▶ opens Grem (no GREM MODE button, no Auto run); the Auto play screen (`ui/auto/AutoScreen.js`;
+  the pieces Grem uses moved to `ui/auto/parts.js`: DEV_PAGES, PillStick, GunPanel, ItemIcon, FlyTile); the old game's files
+  (Game, its systems and render passes, old creature brains, the old level generator `makeLevel` with tomb / dark zones /
+  destruction / nests / veins, shops, minimap, witness, replays, saves, aim assist, guide hologram); and every top-level
+  function the build no longer reaches (found by building `src/main.js` with tree shaking and cutting what it drops; 1.63 MB →
+  ~1.0 MB page). A few tiny helpers the suites set up with (`newRun`, `addPlayer`, `levelDone`, `meterSum`, …) sit at the
+  end of their files under "kept for the test suites".
+- **Dev menu:** only what Grem reads. `dev/knobs.js` lost every row and group no remaining code reads (fx, holo flash, guide,
+  bag, menu pointer, witness, Level 2's four, carrot, aim assist, Auto economy / hub / maps / blocks / bag / throw; also
+  bhSpeed, old elite counts, old fire damage); values still read whose rows lived on cut pages are fixed constants at the
+  end of knobs.js. GREM_DEV, DevPanel's `only`, AUTO_KNOBS (`dev/autouse.js`, `tools/autoknobs.js`) and the green/grey
+  colour key are gone; the old run buttons and "Copy mod & perk audit" too. Copy Dev settings now lists only knobs the
+  panel has (rows + zone check boxes).
+- **Tests:** suites for cut code deleted; essentials now version, spells, cast, grem, auto-guns/level/tall/zones/blocked/
+  enemies/boss/floors/preview + browser title, grem-tap, grem-dev. Known failures (also on autobattler): `auto-zonelab`,
+  `modtable` (3 glyph clashes), `orbweb` ("no orb web strung in view").
+- **Folder READMEs** carry a "grem branch" note naming the files cut there; older text may still name them (it describes
+  autobattler / main). Many `tools/*shots.js` were written for the Auto screen and may not run here; fix or delete one when
+  it's needed (`tools/gremshots.js` works).
+- **Next:** Coal Seams, planning only so far (design doc https://claude.ai/code/artifact/62f545c8-940a-4833-9ba9-ff20db771da5,
+  HTML review copy https://claude.ai/artifact/BZCnJDP93NEcB1fd99JPXM): its creatures are now Spiders, Bats (the owner's boids
+  spec) and Glow worms (inchworm gait, agro, explode) — build on `grem`.
+
 ## BRANCH `autobattler` (2026-10-09): the auto-battler pivot — read AUTOBATTLER.md
 
 Planned with the owner (brief + quiz answers + 16 stages + the PM's kick-start prompt, all in `AUTOBATTLER.md`;

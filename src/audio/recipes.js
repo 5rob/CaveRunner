@@ -6,11 +6,6 @@
 import { DEV } from '../dev/knobs.js';
 import { MODS } from '../spells/mods.js';
 
-// The jet's roar climbs the longer you hold it, levelling off after 3 seconds.
-/** @param {number} onT @returns {number} */
-export function jetPitch(onT) { return 1 + 0.7 * Math.min(Math.max(onT, 0), 3) / 3; }
-export const HEAR_FIRE = 320;                                  // how far off a blaze's crackle carries
-
 // ---- sound ----
 // Every sound is synthesised on the spot with the Web Audio API — there are no sound files.
 // First the pure part (which voice a spell, creature or floor speaks with, and how its stats
@@ -35,8 +30,6 @@ export const SPELL_VOICE = {
   boom: 'none', brim: 'none', crystal: 'crystal', dormant: 'crystal', glitter: 'crystal',
   stillc: 'aura', shieldc: 'aura', vigour: 'aura', manaspring: 'aura', storm: 'thunder', vacfield: 'void',
 };
-export const SPELL_VOICES = ['magic', 'pierce', 'heavy', 'energy', 'scatter', 'bubble', 'saw', 'lob',
-  'fire', 'thunder', 'void', 'dig', 'beam', 'spore', 'crystal', 'aura', 'none'];
 /** @type {(v: number, a: number, b: number) => number} */
 export const clampS = (v, a, b) => Math.max(a, Math.min(b, v));
 // The recipe for one planned shot, from its FINAL stats — after every modifier has had its
@@ -74,7 +67,6 @@ export const BODY_VOICE = { drone: 'gibber', crawler: 'chitter', spider: 'chitte
   rat: 'chitter', nest: 'chitter', alien: 'chitter' };
 /** @type {Record<string, string>} */
 export const CREATURE_TONE = { lohkare: 'growl', hurtta: 'growl', jaatio: 'icy', tuli: 'ember', karpas: 'spore' };
-export const CREATURE_VOICES = ['gibber', 'chitter', 'slither', 'gurgle', 'rattle', 'growl', 'icy', 'ember', 'spore'];
 /** @param {CreatureKind} k @returns {{ v: string, pitch: number }} */
 export function creatureSound(k) {
   const v = CREATURE_TONE[k.id] || BODY_VOICE[k.body] || 'chitter';
@@ -83,8 +75,6 @@ export function creatureSound(k) {
   const pitch = clampS(Math.pow(9 / r, 0.9) * (spd > 80 ? 1.2 : 1), 0.45, 2);
   return { v, pitch };
 }
-export const AMB_EVENTS = ['drip', 'critter', 'wind', 'trickle', 'rumble', 'creak', 'chime', 'crack',
-  'crackle', 'hiss', 'puff', 'bloop', 'hum', 'clank', 'rattle', 'whisper'];
 
 // Which Dev volume knob each SFX.fx sound answers to (anything not listed is world/props).
 /** @type {Record<string, string>} */
@@ -114,3 +104,10 @@ export function rustleStep(st, dt, touching, entered, speed, rnd) {
   st.t = (0.42 - 0.24 * s) * (0.8 + rnd() * 0.5);
   return 0.3 + 0.5 * s;
 }
+
+// ---- kept for the test suites (grem branch: the game no longer calls these; the suites set up with them) ----
+export const SPELL_VOICES = ['magic', 'pierce', 'heavy', 'energy', 'scatter', 'bubble', 'saw', 'lob',
+  'fire', 'thunder', 'void', 'dig', 'beam', 'spore', 'crystal', 'aura', 'none'];
+export const CREATURE_VOICES = ['gibber', 'chitter', 'slither', 'gurgle', 'rattle', 'growl', 'icy', 'ember', 'spore'];
+export const AMB_EVENTS = ['drip', 'critter', 'wind', 'trickle', 'rumble', 'creak', 'chime', 'crack',
+  'crackle', 'hiss', 'puff', 'bloop', 'hum', 'clank', 'rattle', 'whisper'];

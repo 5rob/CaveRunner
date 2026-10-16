@@ -494,17 +494,9 @@ interface SavedLevel {
  * rest are an index signature: `any`, since TS can't tell a range key from a colour key.
  */
 interface DevKnobs {
-  zoom: number; torch: number; fogDark: number; fogDim: number; move: number; sputDip: number;
-  aggro: number; loseAggro: number; aimDist: number; bhPull: number; bhSpeed: number;
-  vol: number; amb: number; jetVol: number; vSpell: number; vBoom: number; vHit: number;
-  vEnemy: number; vEnemyFire: number; vWorld: number; vDrip: number; vStep: number; vUi: number;
-  bagSpeed: number;
-  witPad: number; witKbps: number;
-  holoAlpha: number; bloom: number; bloomBlur: number; bloomBright: number;
-  holoMin: number; holoMax: number; holoFade: number; holoC1x: number; holoC1y: number; holoC2x: number; holoC2y: number;
-  guideCps: number; guideWait: number; guideIn: number; shopGap: number; shopTorch: number;
-  due1: number; enemies: number; enemiesUp: number; lvlBonus: number; lvlGrow: number; rewardGrow: number; killGrow: number; runnerPx: number; runnerLine: number;
-  ptrStart: number; ptrReach: number; ptrSize: number; ptrLine: number; snapR: number; snapPull: number; snapHit: number;
+  zoom: number; torch: number; fogDim: number; move: number; sputDip: number; aggro: number; loseAggro: number; bhPull: number; vol: number;
+  amb: number; jetVol: number; vSpell: number; vBoom: number; vHit: number; vEnemy: number; vEnemyFire: number; vWorld: number; vDrip: number;
+  vStep: number; vUi: number; holoAlpha: number; enemies: number; killGrow: number; runnerPx: number;
   [k: string]: any;
 }
 /** a curve knob's shape (dev/knobs.js curveKnobs, core/util.js bezierAt): from (0, y0) to (1, y3), bent by (x1, y1) and (x2, y2) */
@@ -918,8 +910,6 @@ interface AutoRun { tier: number; players: RunPlayer[]; bag: (BagItem | null)[];
   /** the active map (auto/maps.js; THEMES index) and each map's progress */
   map?: number; maps?: MapProgress[] }
 /** one map's progress (auto/maps.js): its level now (1 up), the best cleared, beaten once, gold paid toward it, bought */
-/** a Dev panel shown in part (ui/devpanel.js DevPanel's only; Grem Mode's GREM_DEV): these groups; in the auto ones only the rows Auto reads */
-interface DevOnly { groups: Set<string>; auto: Set<string> }
 interface MapProgress { level: number; best: number; beaten: boolean; paid: number; owned: boolean }
 /** a stats meter's record (auto/meters.js): n buckets of dt s in a ring, i the one now, t the time into it */
 interface Meter { dt: number; n: number; buf: number[]; i: number; t: number; all?: number[] }

@@ -8,7 +8,6 @@ import { SFX } from '../../audio/sfx.js';
 import { TITLE_VW, camTo, titleCam } from '../../art/titlescene.js';
 import { DEAD, PH, PW } from '../../core/consts.js';
 import { holoPass } from '../../game/render/guide.js';
-import { DEV } from '../../dev/knobs.js';
 import { MODS, famCol } from '../../spells/mods.js';
 import { HUB_MACHINES } from '../../auto/hub.js';
 import { PERKS } from '../../data/perks.js';
@@ -223,14 +222,6 @@ export function ItemIcon({ it }) {
   return h('span', { className: 'aglyph' }, h(GlyphIcon, { glyph: g.glyph, col: g.col }),
     g.tier ? h('i', { className: 'atier' }, ROMAN[g.tier - 1]) : null,
     tg && isAutoTarget(tg) ? h(TargetPic, { t: tg, size: 22, className: 'atgt aon' }) : null);
-}
-
-
-// the grab handle: a circle round the tile's centre, DEV.autoGrab of the tile's width in radius (touch-action none:
-// only it starts a drag; the rest of the tile scrolls the bag)
-export function Grab() {
-  const d = (200 * DEV.autoGrab).toFixed(1) + '%';
-  return h('i', { className: 'agrab', style: { width: d, height: d } });
 }
 
 // a tile's outline by the item's group (owner): auto/itemtile.js itemEdgeCol (the canvas's tiles share it)

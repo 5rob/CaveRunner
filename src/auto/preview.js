@@ -66,12 +66,6 @@ function pinFoe(pv) {
   f.x = f.hx = pv.dx; f.y = f.ty = f.hy = pv.dy; f.hp = f.hpMax = PV_HP; f.aggro = false;
 }
 
-// The slots one pull fired (as the old Bag's fireSimStep lit them): from where the list stood (`start`, in `order`) to where it
-// is now (to the end when it ran out), trailing modifiers that modified nothing left off
-/** @param {Gun} g @param {number[]} order @param {number} start @returns {number[]} */
-export function pvLit(g, order, start) {
-  return pvPull(g, order, start).slots;
-}
 // (owner, after v1.0.78: "the switch must show which mods it's paired with") a pull's slots as pvLit, less the groups a
 // Switch passed over this pull (skip): after a Switch in the pull, the next swN mods (passives not counted; owner, after v1.0.82);
 // the one up (its count in g.swc, spells/cast.js planCast, one less than now, mod swN) stays lit, the others are skipped
@@ -160,4 +154,12 @@ export function pvSim(sim, g) {
   sim.max = g.manaMax + gunPassives(g).manaMax;
   sim.mana = g.mana == null ? sim.max : g.mana;
   sim.delayT = g.delayT || 0; sim.delayMax = g.delayMax || 0; sim.rechT = g.rechT || 0; sim.rechLen = g.rechLen || 0;
+}
+
+// ---- kept for the test suites (grem branch: the game no longer calls these; the suites set up with them) ----
+// The slots one pull fired (as the old Bag's fireSimStep lit them): from where the list stood (`start`, in `order`) to where it
+// is now (to the end when it ran out), trailing modifiers that modified nothing left off
+/** @param {Gun} g @param {number[]} order @param {number} start @returns {number[]} */
+export function pvLit(g, order, start) {
+  return pvPull(g, order, start).slots;
 }

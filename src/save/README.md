@@ -1,5 +1,7 @@
 # save/ — layer 4: the autosave
 
+**grem branch (CaveRunner Grem, v2.0.0):** cut from this folder as unused by Grem Mode: `audit.js`, `clips.js`. Anything below that still names them describes `autobattler` / `main`, where they live on.
+
 `save.js`: `SAVE_KEY` (`caverunner-save` in localStorage), `GUN_DEFAULTS`, `readSave`,
 `cleanLoadout`, `cleanGun` (pure, tested; v0.0.155: a gun named Gravity Gun gets `followaim` for an old `follow`), `loadSave`, `clearSave`. Writing the save is
 `saveRun` (`game/systems/save-run.js`). `cleanPerks` fits a perk once at most (v129: a second copy in

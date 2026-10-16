@@ -58,9 +58,6 @@ export function gremUnlocks(n, rnd) {
   }
   return out;
 }
-// preset i's place on that list (for its price)
-/** @param {number} i @param {number} n */
-export const gremGunAt = (i, n) => gremUnlocks(n).findIndex(u => 'gun' in u && u.gun === i);
 // the first u unlocks of list: the presets open (in the order they opened) and how many players there are (1 + the extra ones)
 /** @param {number} u @param {GremUnlock[]} list @returns {{ guns: number[], team: number }} */
 export function gremOpen(u, list) {
@@ -134,3 +131,8 @@ export function gremRun(kit, rnd = Math.random) {
   mapsOf(run);
   return run;
 }
+
+// ---- kept for the test suites (grem branch: the game no longer calls these; the suites set up with them) ----
+// preset i's place on that list (for its price)
+/** @param {number} i @param {number} n */
+export const gremGunAt = (i, n) => gremUnlocks(n).findIndex(u => 'gun' in u && u.gun === i);

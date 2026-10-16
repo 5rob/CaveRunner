@@ -75,13 +75,6 @@ export function webNearU(L, x, y) {
   const q = webAt(L, u);
   return { x: q.x, y: q.y, u };
 }
-// trace a web line as drawn into the current path (straight when it's neither sagging nor bent)
-/** @param {CanvasRenderingContext2D} ctx @param {WebLine} L */
-export function webPath(ctx, L) {
-  ctx.moveTo(L.a0x, L.a0y);
-  if (!L.sag && !bendAwake(L)) { ctx.lineTo(L.b0x, L.b0y); return; }
-  for (let k = 1; k <= 8; k++) { const q = webAt(L, k / 8); ctx.lineTo(q.x, q.y); }
-}
 
 // A hanging vine's root, moved by the arch it hangs off (a strand), and how far across its
 // swing has carried it at height y (the whole vine turned about its root, so down it at depth d,
@@ -90,11 +83,6 @@ export function webPath(ctx, L) {
 export const hangRootX = pr => (pr.on && pr.on.wx ? tent(pr.u || 0, pr.on.wu == null ? 0.5 : pr.on.wu) * pr.on.wx : 0);
 /** @param {Prop} pr */
 export const hangRootY = pr => (pr.on && pr.on.wy ? tent(pr.u || 0, pr.on.wu == null ? 0.5 : pr.on.wu) * pr.on.wy : 0);
-/** @param {Prop} pr @param {number} y */
-export function hangX(pr, y) {
-  if (!pr.sw && !pr.tl) return hangRootX(pr);
-  return vinePt(pr, Math.max(0, Math.min(pr.len || 0, y - pr.y - hangRootY(pr)))).x;
-}
 
 // The tail of a swinging vine (v129): below the joint (depth sj: your hands while you hold it) the
 // vine is a few links (tl: their ends, from the vine's origin) that hang off it under gravity, so
@@ -166,4 +154,11 @@ export function lineLetGo(nx, ny, mag, ux, uy, atA, atB) {
   if (mag <= 0.5) return false;
   const along = nx * ux + ny * uy, across = Math.abs(nx * uy - ny * ux);
   return across > LINE_OFF || (atB && along > 0.3) || (atA && along < -0.3);
+}
+
+// ---- kept for the test suites (grem branch: the game no longer calls these; the suites set up with them) ----
+/** @param {Prop} pr @param {number} y */
+export function hangX(pr, y) {
+  if (!pr.sw && !pr.tl) return hangRootX(pr);
+  return vinePt(pr, Math.max(0, Math.min(pr.len || 0, y - pr.y - hangRootY(pr)))).x;
 }

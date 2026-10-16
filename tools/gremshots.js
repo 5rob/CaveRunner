@@ -1,4 +1,4 @@
-// Screenshots for the owner (Grem Mode): a: the title's GREM MODE; b: Grem Mode playing (2 guns paid off, the third filling, a
+// Screenshots for the owner (Grem Mode): a: the title; b: Grem Mode playing (2 guns paid off, the third filling, a
 // creature tapped: the red ring; v1.0.90: players among the unlocks, no A / B, the stick centred, lighter dark, a chest's Tap to open.); c: Dev → Presets; d: a preset open in its editor; e: Dev → Grem (player 1's kit).
 //   node tools/gremshots.js [outdir]      (default tests/build/autoshots)
 const { launch } = require('../tests/chromium');
@@ -40,8 +40,8 @@ const PRESETS = [['Pea Shooter', ['bolt']], ['Double Spark', ['double', 'spark']
   await page.reload();
   await page.waitForTimeout(1500);
   const save = async (n, what, clip) => { await page.screenshot({ path: path.join(OUT, 'grem-' + n + '.png'), clip }); said.push(`grem-${n}.png  ${what}`); };
-  await save('a-title', 'the title: GREM MODE between ⚙ and ▶');
-  await page.locator('.tgrem').dispatchEvent('pointerdown');
+  await save('a-title', 'the title (grem branch): ⚙ and ▶, which opens Grem Mode');
+  await page.locator('.tstart').dispatchEvent('pointerdown');
   // (v1.0.92) GO! once the team is through the start pad
   for (let i = 0; i < 200; i++) {
     const t = await page.evaluate(() => { const S = window.__gremScene, T = S && levelTitle(S); return T ? T.a : -1; });

@@ -13,18 +13,13 @@ import {
   drawJelly, jellyBell, jellyPal, jellyStep, plantGlowFill, plantWhite
 } from '../creatures/jelly.js';
 import { enemyFor } from '../data/creatures.js';
-import { THEMES, themeFor } from '../data/themes.js';
+import { themeFor } from '../data/themes.js';
 import {
   CURVES, DEV, DEV_DEFAULTS, DEV_GROUPS, DEV_META, DEV_TABS, devSet, devTabOf, kr, kru
 } from '../dev/knobs.js';
-import { auditText, loadAudit } from '../save/audit.js';
 import { devCopyText } from '../auto/devcopy.js';
-import { loadPresets, presetGun, removePreset, savePresets } from '../save/presets.js';
-import { gunColor } from '../spells/guns.js';
-import { AUTO_KNOBS } from '../dev/autouse.js';
 import { FireSim } from './firesim.js';
 import { ZoneSim } from './zonesim.js';
-import { ModGrid } from './modgrid.js';
 import { h, useEffect, useRef, useState } from './h.js';
 
 // A live jellyfish for Dev → Jellyfish colours: the real jellyStep and drawJelly in a
@@ -476,16 +471,13 @@ export function RampEditor({ k = 'elFxAlpha', life = 'elFxLife' } = {}) {
 // value, its default shown as the placeholder. Committing an empty box restores the
 // default; anything else is parsed, clamped to the knob's range and saved at once.
 /** @param {{ meta: DevRow }} props */
-// (owner v1.0.57) green: CaveRunner Auto reads this knob; grey: only the old game (tools/autoknobs.js, src/dev/autouse.js)
-/** @param {string} k */
-const autoCls = k => (AUTO_KNOBS.has(k) ? 'devauto' : 'devold');
 export function DevRow({ meta }) {
   const [val, setVal] = useState(String(DEV[meta.k]));
   if (meta.type === 'curve' || meta.type === 'grad' || meta.type === 'ramp') return null;   // shaped on their editors, not typed
   if (meta.type === 'slider') {
     // a slider: changes live as you drag, the number beside the label; ↺ puts the default back
     const set = v => { devSet(meta.k, v); setVal(String(v)); };
-    return h('div', { className: 'devrow ' + autoCls(meta.k) },
+    return h('div', { className: 'devrow' },
       h('label', null, meta.label, h('span', { className: 'devval' }, String(DEV[meta.k]))),
       h('input', { type: 'range', min: meta.min, max: meta.max, step: meta.step, value: DEV[meta.k],
         onChange: e => set(parseFloat(e.target.value)) }),
@@ -494,7 +486,7 @@ export function DevRow({ meta }) {
   if (meta.type === 'color') {
     // a colour: changes live as you pick; ↺ puts the default back
     const set = v => { devSet(meta.k, v); setVal(v); };
-    return h('div', { className: 'devrow ' + autoCls(meta.k) },
+    return h('div', { className: 'devrow' },
       h('label', null, meta.label),
       h('input', { type: 'color', value: DEV[meta.k], onChange: e => set(e.target.value) }),
       h('button', { className: 'devreset', 'aria-label': 'Default', onPointerDown: () => set(DEV_DEFAULTS[meta.k]) }, '↺'));
@@ -508,7 +500,7 @@ export function DevRow({ meta }) {
     devSet(meta.k, v);
     setVal(String(v));
   };
-  return h('div', { className: 'devrow ' + autoCls(meta.k) },
+  return h('div', { className: 'devrow' },
     h('label', null, meta.label),
     h('input', { type: 'number', inputMode: 'decimal', step: meta.step,
       value: val, placeholder: String(DEV_DEFAULTS[meta.k]),
@@ -520,14 +512,14 @@ export function DevRow({ meta }) {
 
 // A group's header: a tap opens or shuts the group (a finger that scrolls the panel gets no
 // click, so scrolling can't flip one). Shows how many knobs it holds and how many you've changed.
-/** @param {{ g: string, name: string, shut: boolean, toggle: (g: string) => void, n: number, changed: number, tab?: string, auto: number }} props */
-export function DevGroupHead({ g, name, shut, toggle, n, changed, tab, auto }) {
+/** @param {{ g: string, name: string, shut: boolean, toggle: (g: string) => void, n: number, changed: number, tab?: string }} props */
+export function DevGroupHead({ g, name, shut, toggle, n, changed, tab }) {
   return h('button', { className: 'devghead' + (shut ? '' : ' open'), 'data-g': g, 'aria-expanded': !shut,
     onClick: () => toggle(g) },
     h('span', { className: 'devcaret' }, '›'),
     h('span', { className: 'devgname' }, name, tab ? h('span', { className: 'devgtab' }, tab) : null),
     changed ? h('span', { className: 'devgchg', title: 'changed from default' }, changed + ' changed') : null,
-    h('span', { className: 'devgn ' + (auto === n ? 'devauto' : auto ? 'devsome' : 'devold'), title: auto + ' of ' + n + ' work in Auto' }, String(n)));
+    h('span', { className: 'devgn' }, String(n)));
 }
 
 // what a group draws besides its rows: the previews and editors that shape its knobs
@@ -558,19 +550,11 @@ const blurBox = () => {
 // so the look-of-it knobs (zoom, torch, fog) preview live as you type. On top: the actions
 // ("All mods" is the old DEBUG shelf) and Copy report; then a search box and the tabs
 // (DEV_TABS), each a page of collapsible groups of the saved, persisted variables.
-// pages (CaveRunner Auto): a tab's own page over its knobs, by tab id (Presets: the gun presets library; Grem: player 1's kit)
-// only (Grem Mode, owner v1.0.109): just these groups (and the tabs holding them or a page); in a group of `only.auto` just
-// the rows CaveRunner Auto reads (AUTO_KNOBS). Copy Dev settings still copies everything
-/** @param {{ input: { current: GameInput }, refresh: () => void, close: () => void, onRestart: () => void, onSpawnGun?: () => void, onSpawnLevel?: () => void, onGem?: (kind: 'red' | 'green') => void, onMod?: (id: string) => void, pages?: Record<string, () => any>, only?: DevOnly }} props */
-export function DevPanel({ input, refresh, close, onRestart, onSpawnGun, onSpawnLevel, onGem, onMod, pages, only }) {
-  /** @param {string} g */
-  const inG = g => !only || only.groups.has(g);
-  /** @param {DevRow} m */
-  const rowOk = m => !only || !only.auto.has(m.g) || AUTO_KNOBS.has(m.k) || AUTO_KNOBS.has(m.k.replace(/(Lo|Hi)$/, ''));
-  const tabs = DEV_TABS.filter(([t, , gs]) => !only || gs.some(inG) || !!(pages && pages[t]));
-  const [grid, setGrid] = useState(false);   // (Auto, owner v1.0.74) the mod grid shown
-  const LO = input.current.loadout;
-  const [, bump] = useState(0);
+// pages: a tab's own page over its knobs, by tab id (Presets: the gun presets library; Grem: player 1's kit)
+// (grem branch) the tables hold only what Grem Mode uses (dev/knobs.js), so every group and row shows
+/** @param {{ close: () => void, pages?: Record<string, () => any> }} props */
+export function DevPanel({ close, pages }) {
+  const tabs = DEV_TABS;
   const [copied, setCopied] = useState(null);     // null, or the text + whether it copied
   const [q, setQ] = useState('');
   // which groups are open: remembered on this device only, all shut the first time
@@ -579,7 +563,7 @@ export function DevPanel({ input, refresh, close, onRestart, onSpawnGun, onSpawn
   const [tab, setTabS] = useState(() => {
     const t = lsGet('caverunner-devtab');
     if (tabs.some(x => x[0] === t)) return t;
-    const o = DEV_GROUPS.find(([g]) => openG[g] && inG(g));
+    const o = DEV_GROUPS.find(([g]) => openG[g]);
     return o ? devTabOf(o[0]) : tabs[0][0];
   });
   const setTab = t => { blurBox(); setTabS(t); lsSet('caverunner-devtab', t); };
@@ -615,9 +599,9 @@ export function DevPanel({ input, refresh, close, onRestart, onSpawnGun, onSpawn
   const needle = q.trim().toLowerCase();
   const tabName = t => (DEV_TABS.find(x => x[0] === t) || DEV_TABS[0])[1];
   // the groups to show: this tab's, or with a search, every group holding a match (opened, matches only)
-  const shown = DEV_GROUPS.filter(([g]) => inG(g) && (needle || (devTabOf(g) === tab && !g.startsWith('zone_')))).map(   // (a zone's own group: in its card, ui/zonesim.js)
+  const shown = DEV_GROUPS.filter(([g]) => needle || (devTabOf(g) === tab && !g.startsWith('zone_'))).map(   // (a zone's own group: in its card, ui/zonesim.js)
     ([g, name]) => {
-    const rows = DEV_META.filter(m => m.g === g && rowOk(m));
+    const rows = DEV_META.filter(m => m.g === g);
     const nameHit = needle && name.toLowerCase().includes(needle);
     const hits = needle && !nameHit ? rows.filter(m => (m.label + ' ' + m.k).toLowerCase().includes(needle)) : rows;
     return { g, name, rows, hits, nameHit };
@@ -631,18 +615,7 @@ export function DevPanel({ input, refresh, close, onRestart, onSpawnGun, onSpawn
           h('h2', null, 'Dev'),
           h('button', { className: 'done', onPointerDown: e => { e.preventDefault(); close(); } }, 'Done')),
         h('div', { className: 'devbtns' },
-          // (the old game's run buttons; CaveRunner Auto has no loadout: just the knobs and the report)
-          ...(LO ? [
-            act('toggle' + (LO.debug ? ' on' : ''), 'All mods', () => { LO.debug = !LO.debug; refresh(); bump(n => n + 1); }),
-            act('toggle allperks' + (LO.debugPerks ? ' on' : ''), 'All perks', () => { LO.debugPerks = !LO.debugPerks; refresh(); bump(n => n + 1); }),
-            act('spawngun', 'Spawn gun', onSpawnGun),
-            act('spawnlevel', 'Spawn level', onSpawnLevel),
-            act('restart', 'Restart run', onRestart)] : []),
-          // (Auto) a red / green crystal straight into the bag, one a tap
-          ...(onGem ? [act('gemred', '+1 red crystal', () => onGem('red')), act('gemgreen', '+1 green crystal', () => onGem('green'))] : []),
-          ...(onMod ? [act('toggle modgridbtn' + (grid ? ' on' : ''), 'Mod grid', () => setGrid(g => !g))] : []),
-          act('devcopy', 'Copy Dev settings', () => copyText(devCopyText)),   // (v1.0.94) everything Dev keeps: auto/devcopy.js
-          act('devaudit', 'Copy mod & perk audit', () => copyText(() => auditText(loadAudit()), 'audit'))),
+          act('devcopy', 'Copy Dev settings', () => copyText(devCopyText))),   // (v1.0.94) everything Dev keeps: auto/devcopy.js
         copied ? h('p', { className: 'devnote devcopied' + (copied.ok ? ' ok' : '') }, copied.empty
           ? 'Nothing audited yet — pin, trash or give feedback on a mod or perk card first.'
           : copied.ok ? (copied.what === 'audit' ? 'Audit copied — paste it into Claude Code.' : 'Copied — paste it to Claude.')
@@ -663,80 +636,21 @@ export function DevPanel({ input, refresh, close, onRestart, onSpawnGun, onSpawn
       // (Dev → Zones) the zone preview, sticky like the fire sim's, and its zone cards
       !needle && tab === 'zones' ? h(ZoneSim, { Row: DevRow }) : null,
       h('div', { className: 'devbody' },
-        // (the mod grid scrolls with the knobs: outside the body it had no scroll and ran off the panel)
-        grid && onMod ? h(ModGrid, { onMod }) : null,
         !needle && pages && pages[tab] ? pages[tab]() : null,
-        h('p', { className: 'devkey' }, h('i', { className: 'devauto' }), 'works in Auto ', h('i', { className: 'devsome' }), 'some ', h('i', { className: 'devold' }), 'old game only'),
         shown.length || (!needle && pages && pages[tab]) ? null : h('p', { className: 'devnote' }, 'No knob matches “' + q.trim() + '”.'),
         shown.map(({ g, name, rows, hits, nameHit }) => {
           const shut = needle ? false : !isOpen(g);
           const changed = rows.filter(m => DEV[m.k] !== DEV_DEFAULTS[m.k]).length;
           return h('div', { key: g, className: 'devgroup' + (shut ? '' : ' open') },
-            h(DevGroupHead, { g, name, shut, toggle: toggleG, n: rows.filter(m => m.type !== 'curve').length, auto: rows.filter(m => m.type !== 'curve' && AUTO_KNOBS.has(m.k)).length, changed,
+            h(DevGroupHead, { g, name, shut, toggle: toggleG, n: rows.filter(m => m.type !== 'curve').length, changed,
               tab: needle ? tabName(devTabOf(g)) : '' }),
             shut ? null : h('div', { className: 'devvars' },
               !needle || nameHit ? groupExtras(g) : null,
               hits.map(m => h(DevRow, { key: m.k, meta: m }))));
         }),
         h('p', { className: 'devnote' },
-          'Values save on their own and stick across reloads and sessions. Leave a box empty to put its default back; ↺ resets a slider or colour. Copy Dev settings sends every knob you changed (to make them the defaults); Copy mod & perk audit sends your 📌 / 🗑️ / feedback notes.'))
+          'Values save on their own and stick across reloads and sessions. Leave a box empty to put its default back; ↺ resets a slider or colour. Copy Dev settings sends every knob you changed (to make them the defaults).'))
     )
   );
 }
 
-// Dev → Spawn level (owner: New cave and Floor 2 in one): every floor's theme, tap one for a fresh
-// cave of that floor (input.current.newCave = its number; game/systems/step.js). Yours is lit.
-/** @param {{ input: { current: GameInput }, close: () => void }} props */
-export function SpawnLevel({ input, close }) {
-  const cur = input.current.floor || 1;
-  const go = (/** @type {number} */ n) => { input.current.newCave = n; close(); };
-  return h('div', { className: 'devwrap' },
-    h('div', { className: 'devback', onPointerDown: e => { e.preventDefault(); close(); } }),
-    h('div', { className: 'devpanel spawnpanel' },
-      h('div', { className: 'devhead' },
-        h('h2', null, 'Spawn level'),
-        h('button', { className: 'done', onPointerDown: e => { e.preventDefault(); close(); } }, 'Cancel')),
-      h('div', { className: 'lvlpick' },
-        THEMES.map((t, i) => h('button', { key: i, className: 'dbg lvlgo' + (i + 1 === cur ? ' on' : ''), 'data-floor': i + 1,
-          onPointerDown: e => { e.preventDefault(); go(i + 1); } }, h('b', null, i + 1), ' ' + t.name)))));
-}
-
-/** @param {{ input: { current: GameInput }, close: () => void }} props */
-export function SpawnGun({ input, close }) {
-  const [lvl, setLvl] = useState(String(input.current.floor || 1));
-  const spawn = () => {
-    input.current.spawnGun = Math.max(1, Math.floor(Number(lvl) || 1));
-    close();
-  };
-  return h('div', { className: 'devwrap' },
-    h('div', { className: 'devback', onPointerDown: e => { e.preventDefault(); close(); } }),
-    h('div', { className: 'devpanel spawnpanel' },
-      h('div', { className: 'devhead' },
-        h('h2', null, 'Spawn gun'),
-        h('button', { className: 'done', onPointerDown: e => { e.preventDefault(); close(); } }, 'Cancel')),
-      h('div', { className: 'devrow' },
-        h('label', null, 'Level'),
-        h('input', { className: 'spawnlvl', type: 'number', min: 1, inputMode: 'numeric', value: lvl,
-          onChange: e => setLvl(e.target.value) })),
-      h('button', { className: 'dbg spawngo', onPointerDown: e => { e.preventDefault(); spawn(); } }, 'Spawn'),
-      h(PresetList, { input, close })));
-}
-
-// The gun presets (save/presets.js; the Bag's 💾 saves one): tap one to drop that exact gun in front
-// of you (input.current.spawnPreset, game/systems/step.js); 🗑️ asks once (it turns into a red Delete).
-/** @param {{ input: { current: GameInput }, close: () => void }} props */
-function PresetList({ input, close }) {
-  const [list, setList] = useState(loadPresets);
-  const [asking, setAsking] = useState(-1);
-  const tap = (/** @type {() => void} */ f) => (/** @type {any} */ e) => { e.preventDefault(); e.stopPropagation(); f(); };
-  const del = (/** @type {number} */ i) => { const next = removePreset(loadPresets(), i); savePresets(next); setList(next); setAsking(-1); };
-  return h('div', { className: 'presets' },
-    h('p', { className: 'lab' }, 'Presets'),
-    list.length ? h('div', { className: 'prelist' }, list.map((p, i) => h('div', { key: i, className: 'prerow', 'data-preset': i },
-      h('button', { className: 'pregun', style: { color: gunColor(p.gun) },
-        onPointerDown: tap(() => { input.current.spawnPreset = presetGun(p); close(); }) }, p.name),
-      asking === i
-        ? h('button', { className: 'predel', onPointerDown: tap(() => del(i)) }, 'Delete')
-        : h('button', { className: 'predelask', 'aria-label': 'Delete preset', onPointerDown: tap(() => setAsking(i)) }, '🗑️'))))
-      : h('p', { className: 'prenone' }, 'No presets yet — 💾 in the Bag saves one'));
-}

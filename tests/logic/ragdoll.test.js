@@ -44,12 +44,5 @@ check('a blast wakes it', !b.still);
 run(b, 0.3);
 check('and throws it away from the blast', R.ragHip(b).x < hx - 10, [hx, R.ragHip(b).x]);
 
-// the replay copies it deep, so a later move doesn't change a snapshot
-const c = R.rpClone({ x: 1, rag: a });
-a.joints[0].x += 50;
-check('a snapshot keeps its own joints', c.rag.joints[0].x !== a.joints[0].x);
-const mid = R.rpLerp({ rag: { joints: [{ x: 0, y: 0 }] } }, { rag: { joints: [{ x: 10, y: 4 }] } }, 0.5);
-check('and the joints slide between snapshots', mid.rag.joints[0].x === 5 && mid.rag.joints[0].y === 2, mid.rag);
-
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -63,8 +63,6 @@ export function parsePhrase(ph) {
 }
 // the solo's 16 bars, parsed once
 const SOLO_BARS = SOLO.flatMap(parsePhrase);
-// each bar's length in 16ths (the tests: all 16)
-export const soloBarLengths = () => SOLO.flatMap(ph => ph.split('|').map(b => b.trim().split(/\s+/).reduce((a, t) => a + Number(t.split(':')[1].replace(/[b~]/g, '')), 0)));
 
 // The second guitar: a third above in the key (A natural minor; G# over the E chord), the next note of the scale but one
 /** @param {number} n midi @param {number} chord the chord's index @returns {number} */
@@ -127,3 +125,7 @@ export function songStep(s) {
   }
   return E;
 }
+
+// ---- kept for the test suites (grem branch: the game no longer calls these; the suites set up with them) ----
+// each bar's length in 16ths (the tests: all 16)
+export const soloBarLengths = () => SOLO.flatMap(ph => ph.split('|').map(b => b.trim().split(/\s+/).reduce((a, t) => a + Number(t.split(':')[1].replace(/[b~]/g, '')), 0)));

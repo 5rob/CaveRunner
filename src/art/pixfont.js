@@ -61,10 +61,6 @@ for (const [ch, src] of Object.entries(SRC)) {
   GLYPHS.set(ch, { w: rows[0].length, runs });
 }
 
-// can the font draw every character of s?
-/** @param {string} s */
-export const pixHas = s => [...s].every(ch => GLYPHS.has(ch));
-
 // s's width, for pixels px wide (one pixel between letters, plus the bold smear)
 /** @param {string} s @param {number} px @param {number} [bold] */
 export function pixWidth(s, px, bold = 0) {
@@ -89,3 +85,8 @@ export function pixText(ctx, s, x, y, px, ph, bold = 0, snap = 4) {
     x += (g.w + 1 + bold) * px;
   }
 }
+
+// ---- kept for the test suites (grem branch: the game no longer calls these; the suites set up with them) ----
+// can the font draw every character of s?
+/** @param {string} s */
+export const pixHas = s => [...s].every(ch => GLYPHS.has(ch));

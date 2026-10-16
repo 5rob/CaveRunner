@@ -10,9 +10,6 @@
 import { hexArr } from '../core/util.js';
 
 export const LUT_N = 64;
-export const GRAD_RE = /^(\s*[\d.]+:#[0-9a-f]{6}\s*)+$/i;
-export const RAMP_RE = /^(\s*[\d.]+:[\d.]+\s*)+$/;
-
 
 const c01 = (/** @type {number} */ v) => Math.max(0, Math.min(1, v));
 /** @param {string} s @returns {GradStop[]} sorted by t */

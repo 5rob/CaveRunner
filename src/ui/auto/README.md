@@ -1,5 +1,7 @@
 # ui/auto/ — layer 6: CaveRunner Auto's screens (branch `autobattler`)
 
+**grem branch (CaveRunner Grem, v2.0.0):** cut from this folder as unused by Grem Mode: `AutoScreen.js`. Anything below that still names them describes `autobattler` / `main`, where they live on.
+
 React for the auto-battler (`AUTOBATTLER.md`). The pure parts are in `src/auto/` (the run model, the save);
 this folder only shows them and takes the taps.
 

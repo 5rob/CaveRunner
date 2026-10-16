@@ -46,8 +46,8 @@ G.titleStep(S, dt);
 check('he goes limp: a ragdoll, his sprite hidden (feedback round 2)', !!r0.rag && r0.hide === true);
 check('one player, fallen: all fallen, not lost till Tap A (auto-death)', G.allFallen(S) && !G.levelLost(S));
 const tier0 = run.tier;
-G.levelFailed(run);
-check('levelFailed: home, tier unchanged, healed and alive', run.tier === tier0 && pl.alive && pl.hp === G.playerStats(pl).maxHp);
+G.healRun(run);
+check('healRun: tier unchanged, healed and alive', run.tier === tier0 && pl.alive && pl.hp === G.playerStats(pl).maxHp);
 // two players: one falls, the level goes on
 const run2 = G.newRun(4); G.addPlayer(run2) || run2.players.push(G.newPlayer(1));
 const S2 = G.levelScene(190, 22, 2, G.levelPlan(22), run2.players, 1);

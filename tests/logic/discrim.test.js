@@ -50,8 +50,6 @@ ok('a bare bolt has no target', G.planCast(mk(['bolt'])).shots[0].only === null)
 const g = mk([idB, 'bolt']);
 ok('a gun keeps its targeted copy', G.cleanGun(JSON.parse(JSON.stringify(g))).slots[0] === idB);
 delete G.MODS['discrim:creature:kobold'];
-const lo = G.cleanLoadout({ guns: [null, null, null, null], sel: 0, bag: ['discrim', 'discrim:creature:kobold', 'bolt'], gold: 0 });
-ok('the bag keeps it (made on load)', lo.bag.includes('discrim:creature:kobold') && G.MODS['discrim:creature:kobold'], lo.bag);
 
 // (owner, after v1.0.82) two Discriminates on one spell add up: it touches either target, nothing else
 {

@@ -133,22 +133,3 @@ export function collideNuggets(list, solid, rOf) {
   }
 }
 
-// a round body of radius r shoved out of a box (you: x, y its top left, w by h) moving at (vx, vy):
-// pushed clear the shortest way and given at least the box's speed that way, so walking into a
-// crystal rolls it ahead of you. Never into rock (it stays put then). Returns true if it touched
-/** @param {Nug} g @param {number} r @param {{ x: number, y: number, w: number, h: number }} box @param {number} vx @param {number} vy @param {(x: number, y: number) => boolean} solid */
-export function shoveNugget(g, r, box, vx, vy, solid) {
-  const cx = Math.max(box.x, Math.min(g.x, box.x + box.w)), cy = Math.max(box.y, Math.min(g.y, box.y + box.h));
-  let dx = g.x - cx, dy = g.y - cy, d = Math.hypot(dx, dy), push;
-  if (d >= r) return false;
-  if (d < 0.01) {                          // its middle inside the box: out the nearest side
-    const L = g.x - box.x, R = box.x + box.w - g.x, T = g.y - box.y, B = box.y + box.h - g.y, m = Math.min(L, R, T, B);
-    dx = m === L ? -1 : m === R ? 1 : 0; dy = dx ? 0 : m === T ? -1 : 1;
-    d = 1; push = m + r;
-  } else push = r - d;
-  const ux = dx / d, uy = dy / d, x = g.x + ux * push, y = g.y + uy * push;
-  if (!solid(x + ux * r, y + uy * r)) { g.x = x; g.y = y; }
-  const vn = vx * ux + vy * uy, gn = (g.vx || 0) * ux + (g.vy || 0) * uy;
-  if (vn > gn) { g.vx = (g.vx || 0) + ux * (vn - gn) * 1.1; g.vy = (g.vy || 0) + uy * (vn - gn) * 1.1; }
-  return true;
-}

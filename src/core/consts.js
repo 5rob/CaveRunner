@@ -8,9 +8,6 @@ export const CW = 640, CH = 1600;        // terrain size in pixels
 export const WW = CW * CELL, WH = CH * CELL;
 export const BW = CW / 4, BH = CH / 4;   // background at quarter resolution
 export const BCELL = WW / BW;            // world units per background pixel
-export const VIEW_W = 360;               // world units visible across a phone screen
-export const VIEW_MIN_H = 340;           // wide screens: keep at least this much height in view
-export const ROCK = 1, BRICK = 2, BED = 3;
 
 // ---- tuning ----
 export const GRAVITY = 1400;
@@ -32,30 +29,15 @@ export const KNOB = 0.38;
 // line the knob's *edge* crosses at the exact moment the trigger goes live, which is
 // what makes it worth drawing rather than just being another circle.
 export const AIM_RING = AIM_DEAD * 0.72 + KNOB;
-// The trigger ring (owner, LIST3 #8): just inside the right stick's gauge rings (`outer`, their inner
-// edge as a share of the stick), `pad` css px in from them (Dev `aimPad`). `ring` is its diameter as a
-// share of the stick, `mag` the push that fires: the knob's edge reaching it. Never inside the tap
-// circle (AIM_RING / AIM_DEAD).
-/** @param {number} size the stick's width (css px) @param {number} pad @param {number} [outer] @returns {{ ring: number, mag: number }} */
-export const triggerRing = (size, pad, outer = 1) => {
-  const ring = Math.max(AIM_RING, Math.min(outer, outer - 2 * pad / Math.max(1, size)));
-  return { ring, mag: Math.min(1, (ring - KNOB) / 0.72) };
-};
 export const PW = 12, PH = 22;
 export const FUEL_DRAIN = 0.28, FUEL_REGEN = 0.7, FUEL_RESTART = 0.2;
 export const PLAYER_HP = 100;
-export const START_GOLD = 0;          // a new run starts with no gold and no guns (v0.0.142; it was 40 and three guns)
 
 export const COIN_PULL = 36;         // gold within this many units flies to you
 // how many enemies a floor gets before the floor lift. What they are and how hard
 // they hit is the roster's business now — see CREATURES.
 export const ENEMY_COUNT = 50;
-export const MOD_DROPS = 7;          // red crystals lying in the cave (they were mods: game/systems/shops.js)
-export const GUN_DROPS = 5;          // guns lying in the cave, unchanged
-export const PICKUP_GAP = 260;       // and no two of them closer than this
 export const PATROL_R = 70;          // how far an enemy will drift from where it spawned
-                              // (each creature carries its own patrol speed — see CREATURES)
-export const PICKUP_COOL = 2;        // a gun you walked away from stays quiet this long
 
 // the shop room sits under the whole cave: floor, interior, then a brick roof
 export const SHOP_FLOOR = CH - 10;            // first row of solid floor
@@ -75,8 +57,6 @@ export const SHOP_SLOT = 120;
 export const ARRIVAL_X = 66, HEAL_X = 556;   // the heal centred under its tube (LIGHT_X[4]; v0.0.144, it was 566)
 export const VEND_BUY_X = 676, VEND_SELL_X = VEND_BUY_X + SHOP_SLOT;
 export const SHOP_MACHINE_X = [VEND_BUY_X + 2 * SHOP_SLOT, VEND_BUY_X + 3 * SHOP_SLOT, VEND_BUY_X + 4 * SHOP_SLOT];
-export const LVL_BUY = 1000000000, LVL_SELL = 1000001000;
-export const OLD_LVL_BUY = 64000000000;   // what a level cost before v130 (save/save.js mends saves from v106/v107 by it)
 // and it must be repaid within an hour of buying the level (real time, the device clock, ms)
 export const DEADLINE_MS = 60 * 60 * 1000;
 
@@ -94,12 +74,6 @@ export const SIGHT = 200;                     // how far the torch reaches: line
                                        // for the rest of the floor. This is a medium bubble —
                                        // generous, but the cave beyond it stays dark
 export const LAMP_REACH = 1.15;               // the lamp's pool is this many times the sight radius,
-                                       // so the whole lifted bubble is lit and fades out at
-                                       // its edge. The lamp is MASKED by the fog: it brightens
-                                       // ground the line of sight has already uncovered and
-                                       // leaves the rest dark — see the note on the lamp in draw()
-export const FOG_DIM = 0.85;                  // how dark somewhere you have been but cannot see
-export const FOG_DARK = 0.99;                 // how dark somewhere you have never been — near black,
                                        // because that darkness is the fog of war now
 
 export const COL = {

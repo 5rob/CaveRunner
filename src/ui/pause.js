@@ -6,28 +6,8 @@
 // (the first tap turns it into "Tap again: new run"; after 3 s it turns back).
 
 import { getSlot } from '../save/save.js';
-import { DEV_HOLD_MS } from './devmode.js';
-import { h, useEffect, useRef, useState } from './h.js';
+import { h, useEffect, useState } from './h.js';
 import { Volumes } from './volume.js';
-
-// ⏸ itself (top right, where the Dev ⚙️ was): a tap (released before DEV_HOLD_MS) opens the menu; held
-// DEV_HOLD_MS it toggles dev mode instead (ui/devmode.js: the ⚙️ beside it, the cards' audit, the 💾 preset)
-/** @param {{ open: () => void, toggleDev: () => void }} props */
-export function PauseButton({ open, toggleDev }) {
-  const timer = useRef(0);
-  useEffect(() => () => clearTimeout(timer.current), []);
-  const stop = () => { const was = timer.current; clearTimeout(timer.current); timer.current = 0; return was; };
-  return h('button', { className: 'pausebtn', title: 'Pause',
-    onPointerDown: e => {
-      e.preventDefault(); stop();
-      timer.current = window.setTimeout(() => {
-        timer.current = 0; toggleDev();
-        try { if (navigator.vibrate) navigator.vibrate(60); } catch (_) { /* no vibration */ }
-      }, DEV_HOLD_MS);
-    },
-    onPointerUp: e => { e.preventDefault(); if (stop()) open(); },
-    onPointerCancel: stop }, '⏸');
-}
 
 // label: the header's right side (default the save slot; CaveRunner Auto passes its own)
 /** @param {{ input: { current: { saveRun?: () => void } }, close: () => void, label?: string, onNew?: () => void }} props */

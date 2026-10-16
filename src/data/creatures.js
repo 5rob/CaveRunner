@@ -131,13 +131,6 @@ export function rosterFor(floor, rnd) {
 // (exponential: × DEV.killGrow, 1.35, each floor up, so a high floor's kills keep up with its level's price)
 export const goldScale = floor => Math.pow(DEV.killGrow, Math.max(0, floor - 1));
 
-// the shop heal: the first on a floor is free, then HEAL_PRICE, times HEAL_MUL for each one after,
-// all lifted by the floor like the kill gold. A new floor's shop starts the count again
-export const HEAL_PRICE = 100, HEAL_MUL = 1.75;
-/** @param {number} bought heals already bought on this floor @param {number} floor */
-export const healPrice = (bought, floor) => bought <= 0 ? 0
-  : Math.round(HEAL_PRICE * Math.pow(HEAL_MUL, bought - 1) * goldScale(floor) / 5) * 5;
-
 // One floor's worth of one creature: the type's own numbers, lifted by the floor it
 // belongs to. Health climbs hardest, gold next, damage least — a floor 10 enemy is
 // worth a lot more than it hurts, or the shop heal would never keep up.
@@ -171,11 +164,6 @@ export function eliteCol(c, u) {
   const tint = kcol('elTint', u), a = kru('elTintAmt', u), t = (/** @type {string} */ x) => mixHex(x, tint, a);
   return { a: t(c.a), b: t(c.b), c: t(c.c), eye: c.eye };
 }
-
-// the acts that hunt you: they notice you on a sightline within their aggro reach, keep
-// coming, and only lose you far away (see the enemy loop)
-/** @type {Record<string, number>} */
-export const HUNTERS = { chase: 1, bomb: 1, spider: 1, jelly: 1, rat: 1, alien: 1 };
 
 // creatures (by act) that live only in the natural zones: spawned there, and they won't swim
 // out into a built-up zone (jellyStep's env.stay)

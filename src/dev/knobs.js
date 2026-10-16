@@ -4,7 +4,7 @@
 // Every table registers its rows before DEV is built from the defaults below, so they all
 // live here for now (REFACTOR.md, D11).
 
-import { DEADLINE_MS, ENEMY_COUNT, LVL_SELL, LVL_BUY } from '../core/consts.js';
+import { ENEMY_COUNT } from '../core/consts.js';
 import { HEX_RE, hexMix, hsvAdjust } from '../core/util.js';
 
 // ---- dev settings ----
@@ -14,28 +14,17 @@ import { HEX_RE, hexMix, hsvAdjust } from '../core/util.js';
 // localStorage touch is wrapped: it throws in a private window and does not exist at all
 // under Node (the logic tests eval this file), and a missing store just means "defaults".
 /** @type {DevKnobs} */
-export const DEV_DEFAULTS = { zoom: 1.7, renderScale: 1.5, torch: 0.7, fogDark: 0.99, fogDim: 0.9, move: 1.2, sputDip: 45, aggro: 0.6, loseAggro: 2, aimDist: 44, bhPull: 65, bhSpeed: 50, vol: 1, amb: 0.4, jetVol: 0.05,
-  vSpell: 0.6, vBoom: 1, vHit: 1, vEnemy: 1, vEnemyFire: 1, vWorld: 1, vDrip: 0.5, vStep: 1, vUi: 1, bagSpeed: 1,
-  holoAlpha: 1, bloom: 2, bloomBlur: 35, bloomBright: 1.3, pixelFx: 1, holoPx: 1.5,
-  holoMin: 0, holoMax: 1, holoFade: 3, holoC1x: 0.41, holoC1y: 0.97, holoC2x: 0.45, holoC2y: -0.02,
-  guideCps: 30, guideWait: 1.4, guideIn: 50, shopGap: 0.9, shopTorch: 0.45, beamDeg: 50, beamReach: 2.2, beamNear: 0.5, beamGlow: 0.5,
-  due1: 1440, enemies: ENEMY_COUNT, enemiesUp: 20, lvlBonus: LVL_SELL - LVL_BUY, lvlGrow: 3, rewardGrow: 2, killGrow: 1.35,
-  runnerPx: 1, runnerLine: 0, aimPad: 5,
-  ptrStart: 0.01, ptrReach: 1, ptrSize: 0.5, ptrLine: 0.75, snapR: 75, snapPull: 0.75, snapHit: 25,
-  witPad: 80, witKbps: 2500,
-  webSag: 0.08, bendK: 140, bendDamp: 5, bendPush: 0.3, bendGrab: 0.35, bendDip: 5, bendMax: 14,
+export const DEV_DEFAULTS = { zoom: 1.7, torch: 0.7, fogDim: 0.9, move: 1.2, sputDip: 45, aggro: 0.6, loseAggro: 2, bhPull: 65, vol: 1, amb: 0.4, jetVol: 0.05,
+  vSpell: 0.6, vBoom: 1, vHit: 1, vEnemy: 1, vEnemyFire: 1, vWorld: 1, vDrip: 0.5, vStep: 1, vUi: 1, holoAlpha: 1, beamDeg: 50, beamReach: 2.2, beamNear: 0.5, beamGlow: 0.5,
+  enemies: ENEMY_COUNT, killGrow: 1.35,
+  runnerPx: 1, webSag: 0.08, bendK: 140, bendDamp: 5, bendPush: 0.3, bendGrab: 0.35, bendDip: 5, bendMax: 14,
   vineGrav: 1, vineDamp: 1.2, vinePush: 0.6, vineMax: 0.9, vineLinks: 4, vineTailDamp: 1.5 };
 // g: the collapsible group the knob sits in on the Dev panel (DEV_GROUPS gives the order)
 /** @type {DevRow[]} */
 export const DEV_META = [
   { k: 'zoom',      g: 'view',  label: 'Camera zoom',                 min: 0.3, max: 3,  step: 0.05 },
-  { k: 'renderScale', g: 'view', label: 'Draw sharpness: canvas px per screen px, at most (lower = faster, softer)', min: 0.5, max: 4, step: 0.25 },
-  { k: 'aimDist',   g: 'view',  label: 'Crosshair distance',          min: 10,  max: 200, step: 2 },
   { k: 'torch',     g: 'light', label: 'Torch fall-off distance',     min: 0.2, max: 5,  step: 0.05 },
-  { k: 'fogDark',   g: 'light', label: 'Fog of war darkness',         min: 0,   max: 1,  step: 0.01 },
   { k: 'fogDim',    g: 'light', label: 'Outside-torchlight darkness', min: 0,   max: 1,  step: 0.01 },
-  { k: 'shopGap',   g: 'light', label: 'Shop hall: darkness between the ceiling lights', min: 0, max: 1, step: 0.05 },
-  { k: 'shopTorch', g: 'light', label: 'Shop hall: how much your torch lifts its dark (1 = all)', min: 0, max: 1, step: 0.05 },
   { k: 'beamDeg',   g: 'light', label: 'Gun light: cone width (degrees)', min: 10, max: 160, step: 2 },
   { k: 'beamReach', g: 'light', label: 'Gun light: how far the cone reaches (× the old torch)', min: 1, max: 5, step: 0.1 },
   { k: 'beamNear',  g: 'light', label: 'Gun light: the glow round you (× the old torch)', min: 0, max: 1, step: 0.05 },
@@ -45,7 +34,6 @@ export const DEV_META = [
   { k: 'aggro',    g: 'enemy', label: 'Enemy aggro distance',        min: 0.2, max: 5,  step: 0.05 },
   { k: 'loseAggro', g: 'enemy', label: 'Lose aggro distance (×aggro)', min: 1,  max: 10, step: 0.1 },
   { k: 'bhPull',    g: 'bh',    label: 'Black Hole max pull range',   min: 0,   max: 600, step: 5 },
-  { k: 'bhSpeed',   g: 'bh',    label: 'Black Hole travel speed',     min: 0,   max: 1000, step: 5 },
   { k: 'vol',       g: 'sound', label: 'Sound volume',                min: 0,   max: 2,  step: 0.05 },
   { k: 'amb',       g: 'sound', label: 'Ambience volume (×sound)',    min: 0,   max: 3,  step: 0.05 },
   { k: 'jetVol',    g: 'sound', label: 'Jetpack volume (×sound)',     min: 0,   max: 3,  step: 0.05 },
@@ -58,47 +46,20 @@ export const DEV_META = [
   { k: 'vDrip',     g: 'sound', label: 'Drips & trickles (×sound)',   min: 0,   max: 3,  step: 0.05 },
   { k: 'vStep',     g: 'sound', label: 'Footsteps (×sound)',          min: 0,   max: 3,  step: 0.05 },
   { k: 'vUi',       g: 'sound', label: 'UI & pickups (×sound)',       min: 0,   max: 3,  step: 0.05 },
-  { k: 'holoAlpha', g: 'fx',    label: 'Hologram master brightness',        min: 0,   max: 1,  step: 0.05 },
-  { k: 'bloom',     g: 'fx',    label: 'Hologram glow strength',      min: 0,   max: 2,  step: 0.05 },
-  { k: 'bloomBlur', g: 'fx',    label: 'Hologram glow size (px)',     min: 0,   max: 40, step: 1 },
-  { k: 'bloomBright', g: 'fx',  label: 'Hologram glow brighten',      min: 0.5, max: 3,  step: 0.05 },
-  { k: 'holoPx',    g: 'fx',    label: 'Hologram pixel size (2 = rock size)', min: 0.5, max: 8, step: 0.5 },
-  { k: 'pixelFx',   g: 'fx',    label: 'Pixelated light & fog (0 smooth, 1 pixel)', min: 0, max: 1, step: 1 },
+  
   // the flash on a kill: up to holoMax, back down to holoMin over holoFade seconds along the curve
   // (its two control points: the curve editor on the panel, not boxes)
-  { k: 'holoMin',   g: 'holoflash', label: 'Brightness at rest',       min: 0,   max: 1,  step: 0.05 },
-  { k: 'holoMax',   g: 'holoflash', label: 'Brightness on a kill',     min: 0,   max: 1,  step: 0.05 },
-  { k: 'holoFade',  g: 'holoflash', label: 'Fade length (s)',          min: 0.05, max: 20, step: 0.05 },
-  { k: 'holoC1x',   g: 'holoflash', label: 'Fade curve point 1 x', min: 0, max: 1, step: 0.01, type: 'curve' },
-  { k: 'holoC1y',   g: 'holoflash', label: 'Fade curve point 1 y', min: -0.5, max: 1.5, step: 0.01, type: 'curve' },
-  { k: 'holoC2x',   g: 'holoflash', label: 'Fade curve point 2 x', min: 0, max: 1, step: 0.01, type: 'curve' },
-  { k: 'holoC2y',   g: 'holoflash', label: 'Fade curve point 2 y', min: -0.5, max: 1.5, step: 0.01, type: 'curve' },
+  
   // a new run's guide hologram (world/guide.js): how fast its speech box types, and the pause after each box
-  { k: 'guideCps',  g: 'guide', label: 'Typing speed (letters a second)', min: 2, max: 200, step: 1 },
-  { k: 'guideWait', g: 'guide', label: 'Pause after each box (s, + a little per letter)', min: 0, max: 10, step: 0.1 },
+  
   // how far on screen (world units in from the right edge; the screen is ~225 wide) its dark spot must be before its light snaps on
-  { k: 'guideIn',   g: 'guide', label: 'On screen before its light comes on (units in)', min: 0, max: 200, step: 5 },
-  { k: 'due1',      g: 'level', label: 'Time to repay level 1 (minutes)', min: 0.1, max: 1440, step: 1 },
-  { k: 'enemies',   g: 'level', label: 'Enemies on floor 1 (next level made)', min: 0, max: 400, step: 1 },
-  { k: 'enemiesUp', g: 'level', label: 'More enemies each floor after', min: 0, max: 60, step: 1 },
-  { k: 'lvlBonus',  g: 'level', label: 'Level reward: yours after the debt is paid (gold)', min: 0, max: 1000000, step: 100 },
-  { k: 'lvlGrow',   g: 'level', label: 'Level price (debt): × each floor up', min: 1, max: 10, step: 0.05 },
-  { k: 'rewardGrow', g: 'level', label: 'Level reward: × each floor up', min: 1, max: 20, step: 0.05 },
   { k: 'killGrow',  g: 'level', label: 'Kill gold: × each floor up', min: 1, max: 4, step: 0.05 },
   { k: 'runnerPx',  g: 'player', label: 'Player pixel size (world units, 0 = smooth)', min: 0, max: 3, step: 0.25 },
-  { k: 'runnerLine', g: 'player', label: 'Player dark outline (0 off, 1 on)', min: 0, max: 1, step: 1 },
-  { k: 'aimPad',    g: 'player', label: 'Right stick: trigger ring’s gap inside the gauge rings (px; bigger = fires sooner)', min: 0, max: 40, step: 1 },
+  
   // the vending menus' right-stick pointer (ui/vendshop.js useMenuNav, menuPointer, snapTo)
-  { k: 'ptrStart',  g: 'menuptr', label: 'Stick push before the pointer comes out (of its reach)', min: 0, max: 0.9, step: 0.01 },
-  { k: 'ptrReach',  g: 'menuptr', label: 'Pointer reach (× distance to the far screen corner)', min: 0.2, max: 3, step: 0.05 },
-  { k: 'ptrSize',   g: 'menuptr', label: 'Ring size (× the knob)', min: 0.2, max: 3, step: 0.05 },
-  { k: 'ptrLine',   g: 'menuptr', label: 'Ring line width (px)', min: 0.25, max: 4, step: 0.25 },
-  { k: 'snapR',     g: 'menuptr', label: 'Snap reach (px from a button’s edge)', min: 0, max: 120, step: 1 },
-  { k: 'snapPull',  g: 'menuptr', label: 'Snap pull (0 none, 1 right onto its middle)', min: 0, max: 1, step: 0.01 },
-  { k: 'snapHit',   g: 'menuptr', label: 'Counts as on a button within (px of its edge)', min: 0, max: 60, step: 1 },
+  
   // a saved death replay keeps only what's round your path: this far past it the camera may still go
-  { k: 'witPad',    g: 'witness', label: 'Saved replay: how far the camera may stray from you (world units)', min: 0, max: 300, step: 10 },
-  { k: 'witKbps',   g: 'witness', label: 'Exported video quality (kbit/s)', min: 500, max: 20000, step: 500 },
+  
   // vines and web lines that give (world/sway.js): lines bend on one spring, hanging vines swing
   { k: 'webSag',    g: 'sway', label: 'Web line sag at rest (× its width)', min: 0, max: 0.3, step: 0.005 },
   { k: 'bendK',     g: 'sway', label: 'Lines: springiness (higher = quicker wobble)', min: 10, max: 600, step: 5 },
@@ -113,18 +74,17 @@ export const DEV_META = [
   { k: 'vineMax',   g: 'sway', label: 'Hanging vines: widest swing (radians)', min: 0, max: 1.5, step: 0.05 },
   { k: 'vineLinks', g: 'sway', label: 'Hanging vines: links below your grip (more = floppier)', min: 1, max: 8, step: 1 },
   { k: 'vineTailDamp', g: 'sway', label: 'Hanging vines: the part below your grip settles (higher = sooner)', min: 0, max: 10, step: 0.1 },
-  { k: 'bagSpeed',  g: 'ui',    label: 'Bag fire preview speed (×real time)', min: 0.05, max: 5, step: 0.05 },
+  
 ];
-export const DEV_GROUPS = [['view', 'Camera & aim'], ['light', 'Torch & fog'], ['fx', 'Hologram & glow'], ['holoflash', 'Hologram flash (on a kill)'], ['guide', 'Guide hologram (new run)'], ['player', 'Player'],
-  ['enemy', 'Enemies'], ['elite', 'Elites'], ['elitefx', 'Elites: flames'], ['spider', 'Spider'], ['rat', 'Rats & nests'], ['jelly', 'Jellyfish'], ['jellycol', 'Jellyfish colours'], ['bh', 'Black Hole tweaks'], ['sound', 'Sound'], ['ui', 'Bag screen'], ['menuptr', 'Menu pointer & snapping'], ['witness', 'Witness (death replays)'], ['level', 'Level layout (floor 1)'], ['level2', 'Level 2: layout & look'], ['l2dark', 'Level 2: dark zones'], ['l2boom', 'Level 2: destruction'], ['l2alien', 'Level 2: aliens'], ['arch', 'Arched vines'], ['sway', 'Vines & webs: sway'], ['fire', 'Fire'], ['carrot', 'Carrot (suit stat)']];
+export const DEV_GROUPS = [['view', 'Camera & aim'], ['light', 'Torch & fog'], ['player', 'Player'],
+  ['enemy', 'Enemies'], ['elite', 'Elites'], ['elitefx', 'Elites: flames'], ['spider', 'Spider'], ['rat', 'Rats & nests'], ['jelly', 'Jellyfish'], ['jellycol', 'Jellyfish colours'], ['bh', 'Black Hole tweaks'], ['sound', 'Sound'], ['level', 'Level layout (floor 1)'], ['arch', 'Arched vines'], ['sway', 'Vines & webs: sway'], ['fire', 'Fire'], ];
 // The Dev panel's tabs: each a page of DEV_GROUPS, in this order (a group in no tab lands on the last)
 /** @type {[string, string, string[]][]} */
 export const DEV_TABS = [
-  ['look', 'Look', ['view', 'light', 'fx', 'holoflash', 'guide']],
-  ['player', 'Player', ['player', 'carrot', 'bh', 'sound', 'ui', 'menuptr', 'aimassist', 'witness']],
+  ['look', 'Look', ['view', 'light']],
+  ['player', 'Player', ['player', 'bh', 'sound']],
   ['creatures', 'Creatures', ['enemy', 'elite', 'elitefx', 'spider', 'rat', 'jelly', 'jellycol']],
   ['world', 'World', ['level', 'arch', 'sway']],
-  ['level2', 'Level 2', ['level2', 'l2dark', 'l2boom', 'l2alien']],
 ];
 /** @param {string} g @returns {string} the tab a group sits on */
 export const devTabOf = g => (DEV_TABS.find(t => t[2].includes(g)) || DEV_TABS[DEV_TABS.length - 1])[0];
@@ -136,7 +96,9 @@ export const devTabOf = g => (DEV_TABS.find(t => t[2].includes(g)) || DEV_TABS[D
 const shown = v => (typeof v === 'number' ? +v.toFixed(6) : v);
 export function devReport() {
   const label = new Map(DEV_META.map(m => [m.k, m.label]));
-  const keys = Object.keys(DEV_DEFAULTS), changed = keys.filter(k => DEV[k] !== DEV_DEFAULTS[k]);
+  // (grem branch) the knobs the panel has: its rows and the Zones page's check boxes (zv_*), not the fixed values left from
+  // the cut pages
+  const keys = [...new Set(DEV_META.map(m => m.k).concat(Object.keys(DEV_DEFAULTS).filter(k => k.startsWith('zv_'))))], changed = keys.filter(k => DEV[k] !== DEV_DEFAULTS[k]);
   const lines = ['CaveRunner ' + VERSION + ' dev settings — please make these the new defaults:', ''];
   if (!changed.length) lines.push('(nothing changed — everything is at its default)');
   for (const k of changed)
@@ -335,31 +297,8 @@ export const JE_COLS = colourKnobs('jellycol', [
 // hole, cavern and working rolls its own number between min and max. Sizes are terrain
 // pixels (the runner is 6 wide, 11 tall). A change shows on the next cave: Dev → New cave.
 export const LV_KNOBS = rangeKnobs('level', [
-  ['lvHead',    'Corridor headroom (px, runner is 11)', 12, 80, 1,  20, 32],
-  ['lvSqueeze', 'Squeeze headroom (px)',              12, 30, 1,    13, 16],
-  ['lvSqz',     'Squeezes per corridor',              0, 4, 0.1,    0, 1.2],
-  ['lvThick',   'Layer thickness (px)',               5, 60, 1,     16, 32],
-  ['lvWave',    'Layer waviness (px)',                0, 40, 1,     5, 12],
-  ['lvHoles',   'Extra holes per layer (loops)',      0, 8, 0.1,    0.2, 1],
-  ['lvHoleW',   'Hole width (px)',                    12, 80, 1,    18, 40],
-  ['lvWalls',   'Walls per corridor (dead ends)',     0, 5, 0.1,    0, 1],
-  ['lvCaves',   'Big caverns',                        0, 8, 0.1,    2.5, 4.5],
-  ['lvCaveW',   'Cavern half width (px)',             20, 320, 5,   120, 200],
-  ['lvCaveH',   'Cavern half height (px)',            20, 320, 5,   100, 150],
-  ['lvWorks',   'Old workings (flattened stretches)', 0, 12, 0.1,   3, 5],
-  ['lvWorkW',   'Old workings length (px)',           30, 400, 5,   90, 190],
-  ['lvWorkH',   'Old workings headroom (px)',         14, 60, 1,    22, 30],
-  ['lvPost',    'Timber post spacing (px)',           14, 120, 1,   30, 46],
-  ['lvPropZones', 'Propped patches',                  0, 16, 0.1,   5, 8],
-  ['lvPropR',   'Propped patch radius (px)',          20, 400, 5,   70, 140],
-  ['lvPropDense', 'Timber density in a patch (×)',    0.5, 4, 0.05, 0.9, 1.15],
-  ['lvPropRot', 'Bays rotted away outside patches (0-1)', 0, 1, 0.05, 0.3, 0.6],
   // v87: floor 1 is two styles in zones. A big slow noise over the map says which: built-up
   // (the layered cave above) or natural (the old noise cave). See makeLevel.
-  ['lvZoneSize', 'Zone size (px)',                     60, 900, 10,  220, 320],
-  ['lvZoneShare', 'Built-up share of the map (0-1)',   0, 1, 0.05,   0.4, 0.55],
-  ['lvZoneRag', 'Zone edge raggedness (px)',           0, 60, 1,     8, 18],
-  ['lvLamps',   'Lanterns in the built-up zones',      0, 150, 1,    40, 55],
 ]);
 // Arched vines (v87): a long vine hung between two ceiling spots over an open pocket, sagging
 // between them, thick with leaves and dangling strands. Rolled per floor / per arch with the
@@ -368,12 +307,9 @@ export const LV_KNOBS = rangeKnobs('level', [
 // Each elite rolls once where it sits in its looks and toughness (u), so min to max spans the elites
 // on a floor; the rewards are rolled fresh when one dies.
 export const ELITE_KNOBS = rangeKnobs('elite', [
-  ['elCount',   'Elites per floor',                       0, 40, 1,      2, 4],
   ['elHp',      'Health (× a normal one)',                0.5, 10, 0.1,  2.5, 4],
   ['elDmg',     'Damage (× a normal one)',                0.5, 10, 0.1,  1.5, 3],
   ['elGold',    'Gold reward (× a normal one)',           0, 20, 0.5,    4, 5],
-  ['elRed',     'Red crystals dropped',                   0, 20, 1,      3, 6],
-  ['elGreen',   'Green crystals dropped',                 0, 10, 1,      1, 2],
   ['elScale',   'Size (× a normal one)',                  0.5, 3, 0.05,  1, 3],
   ['elTintAmt', 'Tint strength (0 none, 1 all tint)',     0, 1, 0.05,    0.45, 0.75],
   ['elGlow',    'Highlight glow strength',                0, 1, 0.01,    0, 0],
@@ -406,22 +342,6 @@ DEV_META.push({ k: 'elFxGrad', g: 'elitefx', label: 'Colour over life (gradient)
 // corridor), so a seed plus the same knobs is the same tomb. Terrain pixels (a world unit is half one).
 // A change shows on the next cave: Dev → New cave (or Floor 2, to go there).
 export const L2_KNOBS = rangeKnobs('level2', [
-  ['l2Rooms',   'Rooms (how many it tries to fit)',          4, 120, 1,      70, 80],
-  ['l2Big',     'Large rooms: share (0-1)',                  0, 1, 0.05,     0.3, 0.3],
-  ['l2SmallW',  'Small rooms: width (px)',                   20, 140, 2,     48, 80],
-  ['l2SmallH',  'Small rooms: height (px)',                  18, 90, 2,      32, 48],
-  ['l2BigW',    'Large rooms: width (px)',                   50, 400, 2,     110, 200],
-  ['l2BigH',    'Large rooms: height (px)',                  30, 200, 2,     60, 108],
-  ['l2Gap',     'Rock between rooms, at least (px)',         4, 80, 1,       12, 16],
-  ['l2Hall',    'Galleries (level corridors): height (px)',  13, 40, 1,      16, 20],
-  ['l2Shaft',   'Shafts (upright corridors): width (px)',    10, 40, 2,      14, 18],
-  ['l2Ledge',   'Shafts: a ledge every (px)',                10, 200, 2,     28, 36],
-  ['l2Loops',   'Extra links (loops, 0-1)',                  0, 1, 0.05,     0.35, 0.35],
-  ['l2Course',  'Cut stone: course height (px)',             3, 12, 1,       6, 6],
-  ['l2Block',   'Cut stone: block length (px)',              4, 40, 1,       14, 14],
-  ['l2Mason',   'Cut stone: how deep into the rock (px)',    0, 30, 1,       6, 6],
-  ['l2Furn',    'Room kits: furniture amount (×)',           0, 3, 0.05,     1, 1],
-  ['l2Bones',   'Room kits: skeletal remains (×)',           0, 3, 0.05,     1, 1],
 ]);
 // and its look: the palette (the Tombs theme, data/themes.js themeFor) and how much decoration
 /** @type {[key: string, label: string, def: string][]} */
@@ -435,110 +355,29 @@ export const L2_LOOK = [
 ];
 for (const [k, label, def] of L2_LOOK) {
   DEV_DEFAULTS[k] = def;
-  DEV_META.push({ k, g: 'level2', label: 'Colour: ' + label, type: 'color' });
 }
 DEV_DEFAULTS.l2Decor = 1;
-DEV_META.push({ k: 'l2Decor', g: 'level2', label: 'Decoration amount (× the room kits, all of it; 0 = bare tomb)', min: 0, max: 4, step: 0.05 });
-// Curve knobs: a cubic bezier from (0, start y) to (1, end y), bent by two control points, shaped
-// on the panel's CurveEdit (ui/devpanel.js; every row is type 'curve', so no boxes). curveKnobs(group,
-// p, label, lo, hi, def) registers p+'0' (start y), p+'C1x', p+'C1y', p+'C2x', p+'C2y', p+'1' (end y);
-// lo..hi is the y range the editor shows. kcurve(p) is the curve as plain numbers (core/util.js bezierAt).
-/** @param {string} g @param {string} p @param {string} label @param {number} lo @param {number} hi @param {Curve} def */
-export function curveKnobs(g, p, label, lo, hi, def) {
-  /** @type {[string, string, number, number, number][]} */
-  const rows = [['0', 'start y', def.y0, lo, hi], ['C1x', 'point 1 x', def.x1, 0, 1], ['C1y', 'point 1 y', def.y1, lo, hi],
-    ['C2x', 'point 2 x', def.x2, 0, 1], ['C2y', 'point 2 y', def.y2, lo, hi], ['1', 'end y', def.y3, lo, hi]];
-  for (const [s, what, v, min, max] of rows) {
-    DEV_DEFAULTS[p + s] = v;
-    DEV_META.push({ k: p + s, g, label: label + ': ' + what, min, max, step: 0.01, type: 'curve' });
-  }
-  CURVES.push({ g, p, label, lo, hi });
-}
 /** every curve knob, for the panel: its group, key prefix, label and y range @type {{ g: string, p: string, label: string, lo: number, hi: number }[]} */
 export const CURVES = [];
-/** @param {string} p @returns {Curve} */
-export const kcurve = p => ({ y0: DEV[p + '0'], x1: DEV[p + 'C1x'], y1: DEV[p + 'C1y'], x2: DEV[p + 'C2x'], y2: DEV[p + 'C2y'], y3: DEV[p + '1'] });
 // Level 2: destruction (world/destroy.js, Level 2 stage 5): explosions scattered round the
 // dark zones, denser and bigger near them, and bones across the wasteland. Distances in terrain pixels. destructionOpts() reads them.
 DEV_DEFAULTS.l2bMaxDist = 100; DEV_DEFAULTS.l2bCount = 100; DEV_DEFAULTS.l2bFire = 30; DEV_DEFAULTS.l2bJitter = 0; DEV_DEFAULTS.l2bClear = 4; DEV_DEFAULTS.l2bBones = 90; DEV_DEFAULTS.l2bInRock = 1; DEV_DEFAULTS.l2bScorch = 1.8; DEV_DEFAULTS.l2bStreak = 1;
-DEV_META.push(
-  { k: 'l2bMaxDist', g: 'l2boom', label: 'Reach: most distance from a dark zone (px)', min: 1, max: 1600, step: 5 },
-  { k: 'l2bCount',   g: 'l2boom', label: 'Number of explosions', min: 0, max: 2000, step: 1 },
-  { k: 'l2bFire',    g: 'l2boom', label: 'Explosions that cause fire (%)', min: 0, max: 100, step: 1 },
-  { k: 'l2bJitter',  g: 'l2boom', label: 'Extra position randomness (± px)', min: 0, max: 100, step: 1 },
-  { k: 'l2bInRock',  g: 'l2boom', label: 'Blasts anywhere in the ring, rock too (0: open air only)', min: 0, max: 1, step: 1 },
-  { k: 'l2bScorch',  g: 'l2boom', label: 'Scorch ring width (× the hole\'s radius)', min: 0, max: 4, step: 0.05 },
-  { k: 'l2bStreak',  g: 'l2boom', label: 'Blast streaks: length × (0: none)', min: 0, max: 4, step: 0.05 },
-  { k: 'l2bClear',   g: 'l2boom', label: 'Clearance from terrain, open air only (px)', min: 0, max: 60, step: 1 },
-  { k: 'l2bBones',   g: 'l2boom', label: 'Bones and skulls in the ground, outside the zones', min: 0, max: 600, step: 1 });
 export const L2B_KNOBS = rangeKnobs('l2boom', [
-  ['l2bSize', 'Explosion size (px radius)', 1, 120, 1, 6, 18],
 ]);
-curveKnobs('l2boom', 'l2bDen', 'Destruction amount (Y) by distance from a dark zone (X)', 0, 1, { y0: 1, x1: 0.33, y1: 0.67, x2: 0.66, y2: 0.33, y3: 0 });
-curveKnobs('l2boom', 'l2bScale', 'Size × (Y, 0-2) by distance from a dark zone (X)', 0, 2, { y0: 2, x1: 0.33, y1: 1.4, x2: 0.66, y2: 0.7, y3: 0.25 });
 // Level 2 stage 4: floor 2's dark zones (world/dark.js darkZones; their look: game/render/dark.js). Terrain px
 // for sizes; how many and how big are rolled per floor on the zones' own stream
 export const L2D_KNOBS = rangeKnobs('l2dark', [
-  ['l2dCount', 'Dark zones on the floor', 0, 8, 1, 2, 3],
-  ['l2dSize',  'Dark zone size (radius, px)', 20, 320, 1, 120, 176],     // (doubled: owner, round 5)
-  ['l2dOpen',  'Share of a zone that ends up open (small alien tunnels fill it to this)', 0, 0.9, 0.01, 0.65, 0.75],
 ]);
 DEV_DEFAULTS.l2dRough = 1; DEV_DEFAULTS.l2dFringe = 30;
-DEV_META.push(
-  { k: 'l2dRough',  g: 'l2dark', label: 'Rough cave walls inside (0 = smooth)', min: 0, max: 2, step: 0.05 },
-  { k: 'l2dFringe', g: 'l2dark', label: 'Ragged fringe round a zone: width (px)', min: 0, max: 120, step: 1 });
 DEV_DEFAULTS.l2dSpace = 120; DEV_DEFAULTS.l2dShop = 140; DEV_DEFAULTS.l2dTop = 120; DEV_DEFAULTS.l2dSilk = 1;
 DEV_DEFAULTS.l2dDark = 1; DEV_DEFAULTS.l2dBands = 3; DEV_DEFAULTS.l2dHoloBlur = 0; DEV_DEFAULTS.l2dHolo = 0.8; DEV_DEFAULTS.l2dBack = 0.12; DEV_DEFAULTS.l2dBlur = 5; DEV_DEFAULTS.l2dFireR = 45;
 DEV_DEFAULTS.l2dTintDepth = 12; DEV_DEFAULTS.l2dTorchDepth = 18; DEV_DEFAULTS.l2dTorchHyst = 4;   // (owner: black a short way in, most of a zone dark; the torch fails just past it)
-DEV_META.push(
-  { k: 'l2dSpace', g: 'l2dark', label: 'Zones apart, at least (px, plus half their sizes)', min: 0, max: 800, step: 5 },
-  { k: 'l2dShop',  g: 'l2dark', label: 'Kept away from the shop (px above its roof)', min: 0, max: 600, step: 5 },
-  { k: 'l2dTop',   g: 'l2dark', label: 'Kept away from the exits (px from the top)', min: 0, max: 600, step: 5 },
-  { k: 'l2dSilk',  g: 'l2dark', label: 'Silk: how thick (×)', min: 0, max: 4, step: 0.05 },
-  { k: 'l2dDark',  g: 'l2dark', label: 'Darkness (0 = none, 1 = pitch black)', min: 0, max: 1, step: 0.01 },
-  { k: 'l2dBands', g: 'l2dark', label: 'Edge: steps of grey from clear to black (owner: 3, no blur)', min: 1, max: 12, step: 1 },
-  { k: 'l2dHoloBlur', g: 'l2dark', label: 'Silk blurs the hologram behind it (0 off: faster, 1 on)', min: 0, max: 1, step: 1 },
-  { k: 'l2dHolo',  g: 'l2dark', label: 'Hologram through the silk (0 = hidden, diffused)', min: 0, max: 1, step: 0.01 },
-  { k: 'l2dBlur',  g: 'l2dark', label: 'Silk blur: how much it frosts the back wall (and the hologram, if on) behind it (terrain px)', min: 0, max: 12, step: 0.5 },
-  { k: 'l2dBack',  g: 'l2dark', label: 'Back wall brightness behind the silk', min: 0, max: 1, step: 0.01 },
-  { k: 'l2dFireR', g: 'l2dark', label: 'Fire lifts the black tint out to (px)', min: 1, max: 200, step: 1 },
-  { k: 'l2dTintDepth', g: 'l2dark', label: 'Black fades in over this far into a zone (px)', min: 1, max: 160, step: 1 },
-  { k: 'l2dTorchDepth', g: 'l2dark', label: 'The torch fails this far in (px; just past the fade\'s end)', min: 0, max: 200, step: 1 },
-  { k: 'l2dTorchHyst', g: 'l2dark', label: 'And comes back on this much nearer the edge (px, no strobing)', min: 0, max: 40, step: 1 });
 DEV_DEFAULTS.l2dFlk = 1; DEV_DEFAULTS.l2dFlkRate = 0.9; DEV_DEFAULTS.l2dFlkTears = 0.75; DEV_DEFAULTS.l2dFlkDrops = 0.9; DEV_DEFAULTS.l2dFlkFlash = 1.6; DEV_DEFAULTS.l2dFlkGlitch = 10; DEV_DEFAULTS.l2dFlkNear = 40; DEV_DEFAULTS.l2dFlkBase = 0.5;
 DEV_META.push(   // the hologram glitching while you're in or near a zone (world/holoflicker.js; owner, after v0.0.148)
-  { k: 'l2dFlk',       g: 'l2dark', label: 'Hologram glitches in the zones (0 off, 1 on)', min: 0, max: 1, step: 1 },
-  { k: 'l2dFlkBase',   g: 'l2dark', label: 'Glitch: the hologram between bursts (× its brightness; 0 = dark till a burst)', min: 0, max: 1, step: 0.05 },
-  { k: 'l2dFlkRate',   g: 'l2dark', label: 'Glitch: how often it blinks on bright (flashes a second)', min: 0, max: 8, step: 0.05 },
-  { k: 'l2dFlkTears',  g: 'l2dark', label: 'Glitch: how often it tears into slices (a second)', min: 0, max: 8, step: 0.05 },
-  { k: 'l2dFlkDrops',  g: 'l2dark', label: 'Glitch: how often it cuts out (a second)', min: 0, max: 8, step: 0.05 },
-  { k: 'l2dFlkFlash',  g: 'l2dark', label: 'Glitch: flash brightness (× the hologram; past 1 brighter than it)', min: 0, max: 3, step: 0.05 },
-  { k: 'l2dFlkGlitch', g: 'l2dark', label: 'Glitch: tearing, how far the slices jump (terrain px; 0 none)', min: 0, max: 60, step: 1 },
-  { k: 'l2dFlkNear',   g: 'l2dark', label: 'Glitch starts this near a zone (px outside its box)', min: 0, max: 200, step: 1 });
-curveKnobs('l2dark', 'l2dFire', 'Fire lifts the black (Y, 1 = full colour) by distance to it (X, 0 to the max)', 0, 1, { y0: 1, x1: 0.35, y1: 1, x2: 0.55, y2: 0.1, y3: 0 });
+  );
 // Level 2 stage 7b: the dark zones' aliens (creatures/alien.js alienStep; spawned in world/level.js). World units
 // for reaches and speeds (CELL = 2 a terrain px)
 export const AL_KNOBS = rangeKnobs('l2alien', [
-  ['alCount',   'Aliens per dark zone',                         0, 400, 1,     30, 60],
-  ['alStrays',  'Strays per floor (black, outside the zones)',  0, 20, 1,      2, 4],
-  ['alScale',   'Size × (each one rolled in this range)',        0.2, 5, 0.05,  0.6, 2.4],
-  ['alBias',    'Size: lean to small (1 even; higher = more small, few big)', 1, 8, 0.1, 3, 4],
-  ['alSpeed',   'Roaming: burst speed',                          10, 600, 5,    80, 240],
-  ['alRoamOn',  'Roaming: burst length (s)',                     0.02, 3, 0.01, 0.15, 0.9],
-  ['alRoamOff', 'Roaming: rest between (s)',                     0, 6, 0.05,    0.3, 2],
-  ['alFleeSpd', 'Fleeing (and a stray sprinting home): speed',   10, 800, 5,    220, 320],
-  ['alFleeR',   'Flees from fire within (world units)',          0, 600, 5,     110, 140],
-  ['alHunt',    'Coming for you in the dark: speed',             10, 600, 5,    120, 200],
-  ['alKeep',    'In light: keeps this far from you',             0, 300, 5,     50, 80],
-  ['alAggro',   'Aggro distance (×enemy aggro)',                 0.1, 5, 0.05,  0.9, 1.1],
-  ['alBoidR',   'Pack: neighbours within',                       2, 80, 1,      14, 20],
-  ['alSep',     'Pack: separation weight',                       0, 5, 0.05,    1.2, 1.6],
-  ['alAli',     'Pack: alignment weight',                        0, 5, 0.05,    0.5, 0.8],
-  ['alCoh',     'Pack: cohesion weight',                         0, 5, 0.05,    0.4, 0.6],
-  ['alBite',    'Bite damage',                                   0, 100, 1,     3, 5],
-  ['alBiteCd',  'Secs between bites',                            0.1, 5, 0.05,  0.6, 1.2],
-  ['alGlimpse', 'A bullet lifts the black: strength (0-1)',      0, 1, 0.01,    0.35, 0.5],
-  ['alGlimpseR','A bullet lifts the black: radius (world units)',0, 200, 1,     22, 30],
 ]);
 export const ARCH_KNOBS = rangeKnobs('arch', [
   ['arVines',   'Arched vine clusters per floor',      0, 40, 0.5,   9, 13],
@@ -559,58 +398,23 @@ export const FIRE_KNOBS = rangeKnobs('fire', [
   ['fireGrass',  'Grass burns for (s)',               0.05, 5, 0.05, 0.4, 1.5],
   ['fireMoss',   'Moss burns for (s)',                0.05, 8, 0.05, 1, 4],
   ['fireWood',   'Timber burns for (s)',              0.1, 20, 0.1,  3, 9],
-  ['fireBoom',   'Explosions light things (chance)',  0, 1, 0.05,    0.35, 0.6],
   ['fireBurn',   'A creature burns for (s)',          0, 20, 0.1,    3, 6],
   ['fireDps',    'Creature burn damage per s',        0, 20, 0.1,    1, 3],
   ['fireYou',    'You burn for (s)',                  0, 10, 0.1,    1.2, 2],
-  ['fireYouDps', 'Your burn damage per s',            0, 40, 0.5,    5, 8],
   ['firePlant',  'Vines burn up at (px/s)',           1, 200, 1,     3, 7],
   ['fireArch',   'Arched vines burn along at (px/s)', 1, 400, 1,     5, 9],
 ]);
 // The Carrot stat (an Exo Suit stat perk): one level, 0-5, stretching several reaches at once.
 // Each is a multiplier: min = no Carrot fitted, max = Carrot V, levels in between evenly (carrotAt).
 export const CARROT_KNOBS = rangeKnobs('carrot', [
-  ['caCam',   'Camera distance (×)',       0.3, 3, 0.05,  1, 3],
-  ['caTorch', 'Torchlight reach (×)',      0.3, 4, 0.05,  0.4, 1.5],
-  ['caAggro', 'Enemy aggro distance (×)',  0.3, 4, 0.05,  1, 2],
-  ['caAim',   'Aim line length (×)',       0.3, 4, 0.05,  0.5, 1.2],
 ]);
 // Aim Assist (the 'aimassist' mod, LIST3 #10): the right stick drives a pointer out from your gun that
 // snaps onto creatures and fires once it's on one (spells/assist.js, game/systems/gun.js aimAndCast)
-Object.assign(DEV_DEFAULTS, { aaStart: 0.12, aaReach: 1, aaSnapR: 40, aaPull: 0.45, aaHit: 10, aaHold: 1.5,
-  aaDelay: 0.08, aaSize: 26, aaLine: 1.25, aaDot: 2 });
-DEV_META.push(
-  { k: 'aaStart', g: 'aimassist', label: 'Stick push before the pointer comes out (of its reach)', min: 0, max: 0.9, step: 0.01 },
-  { k: 'aaReach', g: 'aimassist', label: 'Pointer reach (× distance from the gun to the far screen corner)', min: 0.2, max: 3, step: 0.05 },
-  { k: 'aaSnapR', g: 'aimassist', label: 'Snap reach (world units from a creature’s edge)', min: 0, max: 200, step: 1 },
-  { k: 'aaPull',  g: 'aimassist', label: 'Snap pull (0 none, 1 right onto its middle)', min: 0, max: 1, step: 0.01 },
-  { k: 'aaHit',   g: 'aimassist', label: 'Counts as on a creature within (world units of its edge)', min: 0, max: 80, step: 1 },
-  { k: 'aaHold',  g: 'aimassist', label: 'Stickiness: stays on its creature out to this × the snap-on distance', min: 1, max: 4, step: 0.05 },
-  { k: 'aaDelay', g: 'aimassist', label: 'Fires this long after snapping on (s)', min: 0, max: 1, step: 0.01 },
-  { k: 'aaSize',  g: 'aimassist', label: 'Ring size (px across)', min: 6, max: 80, step: 1 },
-  { k: 'aaLine',  g: 'aimassist', label: 'Ring line width (px)', min: 0.25, max: 4, step: 0.25 },
-  { k: 'aaDot',   g: 'aimassist', label: 'Centre dot when snapped (px, 0 none)', min: 0, max: 6, step: 0.5 });
-DEV_GROUPS.push(['aimassist', 'Aim Assist']);
 // CaveRunner Auto's economy (auto/run.js, AUTOBATTLER.md section 6): the machines' prices and scrap
 Object.assign(DEV_DEFAULTS, { autoGunBase: 100, autoGunGrow: 1.35, autoExoPrice: 175, autoScrap: 25,
   autoRed: 40, autoGreen: 150, autoModGold: 15 });
-DEV_META.push(
-  { k: 'autoGunBase',  g: 'auto', label: 'Gun machine: price at tier 1 (gold)', min: 5, max: 2000, step: 5 },
-  { k: 'autoGunGrow',  g: 'auto', label: 'Gun machine: price × each tier up', min: 1, max: 4, step: 0.05 },
-  { k: 'autoExoPrice', g: 'auto', label: 'Exo machine: price (% of the gun price)', min: 1, max: 300, step: 1 },
-  { k: 'autoScrap',    g: 'auto', label: 'Scrap: a gun, exo mod or perk gives (% of its price)', min: 0, max: 100, step: 1 },
-  { k: 'autoRed',      g: 'auto', label: 'Scrap: a red gem (gold × the tier’s gold scale)', min: 0, max: 1000, step: 1 },
-  { k: 'autoGreen',    g: 'auto', label: 'Scrap: a green gem (gold × the tier’s gold scale)', min: 0, max: 2000, step: 1 },
-  { k: 'autoModGold',  g: 'auto', label: 'Scrap: a gun mod (gold × the tier’s gold scale)', min: 0, max: 500, step: 1 });
-DEV_GROUPS.push(['auto', 'Auto: economy']);
 // CaveRunner Auto's hub (auto/hub.js, stage 3b): the team walking between the stops
 // (player 1 moves on the old game's own numbers, core/consts.js WALK / JET / GRAVITY, feedback round 1)
-Object.assign(DEV_DEFAULTS, { autoHubWalk: 150, autoHubSpace: 16, autoHubDemoNear: 100 });
-DEV_META.push(
-  { k: 'autoHubWalk',  g: 'autohub', label: 'The others’ walk speed to their place in line (world units / s)', min: 10, max: 400, step: 5 },
-  { k: 'autoHubSpace', g: 'autohub', label: 'Players line up this far apart (world units)', min: 4, max: 40, step: 1 },
-  { k: 'autoHubDemoNear', g: 'autohub', label: 'A crystal machine plays its demo with you this near (world units; the old shop’s 100)', min: 20, max: 240, step: 5 });
-DEV_GROUPS.push(['autohub', 'Auto: hub']);
 // Grem Mode (auto/grem.js): the unlocks' prices (each dearer than the last), how fast the creatures toughen, the gold, the dark
 Object.assign(DEV_DEFAULTS, { gremPrice: 100, gremGrow: 1.5, gremHard: 0.25, gremGold: 2, gremDark: 0.85, gremPickR: 40, gremChestSize: 2, gremChestGlow: 1, gremBossT: 3.2, gremGoT: 1.6, gremDmgScale: 1, gremGoldWait: 0.6, gremSeamW: 160, gremSeamJag: 1, gremWayT: 8, gremWayDone: 16, gremChestTapR: 30 });
 DEV_META.push(
@@ -636,11 +440,6 @@ DEV_META.push(
 DEV_GROUPS.push(['grem', 'Grem Mode']);
 // CaveRunner Auto's maps (auto/maps.js): the map machine's prices, and how much harder each map starts
 Object.assign(DEV_DEFAULTS, { autoMapPrice: 1000000, autoMapGrow: 1, autoMapStep: 5 });
-DEV_META.push(
-  { k: 'autoMapPrice', g: 'automaps', label: 'Map machine: the second map’s price (gold)', min: 1000, max: 10000000, step: 1000 },
-  { k: 'autoMapGrow',  g: 'automaps', label: 'Map machine: price × each map after the second', min: 1, max: 10, step: 0.1 },
-  { k: 'autoMapStep',  g: 'automaps', label: 'Each map starts this many tiers harder than the one before', min: 0, max: 50, step: 1 });
-DEV_GROUPS.push(['automaps', 'Auto: maps']);
 // CaveRunner Auto's level (auto/level.js, auto/pilot.js, stage 4a): its length and the team's pace
 Object.assign(DEV_DEFAULTS, { autoLvlMin: 2, autoLvlPace: 1, autoLvlPaceTop: 3, autoLvlPaceLv: 20, autoLvlHurry: 1.75, autoLvlSlow: 0.3, autoLvlElite: 0.4, autoLvlChest: 0.75,
   autoLvlEliteR: 120, autoLvlChestR: 50, autoLvlBossT: 120, autoLvlEase: 2, autoClearT: 3, autoClearWait: 4 });
@@ -679,18 +478,6 @@ DEV_META.push(
   { k: 'autoRoamBack', g: 'autolevel', label: 'Manual mode: he can roam back at most (screens behind the furthest point)', min: 0, max: 1.6, step: 0.05 });
 // CaveRunner Auto's blocked zones (auto/blocked.js, stage 6b)
 Object.assign(DEV_DEFAULTS, { autoBlockN: 2, autoBlockMin: 0.2, autoBlockMax: 1, autoBlockFull: 0.85, autoBlockThin: 16, autoBlockWide: 0.75, autoWebSlow: 0.2, autoWebHalt: 0.25, autoWallMin: 20, autoWallMax: 35 });
-DEV_META.push(
-  { k: 'autoWallMin',   g: 'autoblocks', label: 'The level’s first wall: at least this many seconds in at full hurry (normal pace: × the hurry knob)', min: 0, max: 120, step: 1 },
-  { k: 'autoWallMax',   g: 'autoblocks', label: '… and at most this many (each level picks between; both 0: no planted wall)', min: 0, max: 180, step: 1 },
-  { k: 'autoBlockN',    g: 'autoblocks', label: 'Blocked zones a level (a fraction: a chance of one more)', min: 0, max: 8, step: 0.1 },
-  { k: 'autoBlockMin',  g: 'autoblocks', label: 'Severity: at least (0 a low lump … 1 blocked all the way)', min: 0, max: 1, step: 0.05 },
-  { k: 'autoBlockMax',  g: 'autoblocks', label: 'Severity: at most', min: 0, max: 1, step: 0.05 },
-  { k: 'autoBlockFull', g: 'autoblocks', label: 'Severity from which it’s blocked all the way (no jetting over)', min: 0.1, max: 1, step: 0.05 },
-  { k: 'autoBlockThin', g: 'autoblocks', label: 'Thinnest blockage (world units)', min: 6, max: 80, step: 2 },
-  { k: 'autoBlockWide', g: 'autoblocks', label: 'Widest blockage (share of its zone)', min: 0.1, max: 1, step: 0.05 },
-  { k: 'autoWebSlow',   g: 'autoblocks', label: 'Each web line a player is caught in slows him by (× pace; they multiply)', min: 0, max: 0.9, step: 0.01 },
-  { k: 'autoWebHalt',   g: 'autoblocks', label: 'Slowed below this the team halts (clears the webs, or is blocked)', min: 0, max: 1, step: 0.01 });
-DEV_GROUPS.push(['autoblocks', 'Auto: blocks']);
 // (owner, after v1.0.74) orb webs in the spiders' zone (world/orbweb.js, placed by art/titlescene.js)
 Object.assign(DEV_DEFAULTS, { autoOrbChance: 0.25, autoOrbMax: 5, autoOrbSpokes: 9, autoOrbRMin: 30, autoOrbR: 150, autoOrbGap: 5 });
 DEV_META.push(
@@ -921,43 +708,14 @@ DEV_META.push(
 DEV_GROUPS.push(['autochests', 'Auto: chests']);
 // CaveRunner Auto's bag (ui/auto/AutoScreen.js, stage 8b): a touch grabs an item only this near its icon's centre
 Object.assign(DEV_DEFAULTS, { autoGrab: 0.45 });   // (owner, feedback round 2: was 0.35, too hard to pick up)
-DEV_META.push(
-  { k: 'autoGrab', g: 'autobag', label: 'Grab radius: a touch picks up an item this near its centre (× the tile width); elsewhere it scrolls', min: 0.1, max: 0.5, step: 0.01 });
 // the gun panel's firing window (auto/preview.js, owner round 2): the floor and walls a blast ate grow back this many cells a second
 Object.assign(DEV_DEFAULTS, { autoPvRegrow: 40 });
-DEV_META.push(
-  { k: 'autoPvRegrow', g: 'autobag', label: 'Gun preview: blasted floor and walls grow back this many cells (pixels) a second', min: 0, max: 400, step: 5 });
 // stage 9: hold a helmet this long for its gun arc; the arc's radius (px)
-Object.assign(DEV_DEFAULTS, { autoHoldMs: 350, autoArcR: 110 });
-DEV_META.push(
-  { k: 'autoHoldMs', g: 'autobag', label: 'Gun arc: hold a player’s helmet this long (ms) to fan out his 4 guns', min: 150, max: 1000, step: 10 },
-  { k: 'autoArcR', g: 'autobag', label: 'Gun arc: its radius (px) above the helmet', min: 70, max: 160, step: 2 });
+Object.assign(DEV_DEFAULTS, { autoHoldMs: 350 });
 // (owner, v1.0.71) a White Hole with Discriminate:Pn pulls that player this many units a second (auto/shotfx.js vacPull)
 Object.assign(DEV_DEFAULTS, { autoDiscPull: 70 });
-DEV_META.push({ k: 'autoDiscPull', g: 'autobag', label: 'Discriminate: a White Hole set on a player pulls him this fast (units/s)', min: 0, max: 400, step: 5 });
-DEV_GROUPS.push(['autobag', 'Auto: bag']);
 // stage 10a: throwing gold and gems into the hub's machines (auto/throw.js, ui/auto/AutoScreen.js)
-Object.assign(DEV_DEFAULTS, { autoThrowPull: 45, autoThrowSuck: 500, autoThrowBack: 3, autoPayReach: 30, autoPickReach: 22, autoPickMin: 1, autoPayHold: 300, autoPayK: 2,
-  autoStreamRate0: 2, autoStreamRate1: 14, autoStreamRamp: 1.5,
-  autoStreamMedT: 1, autoStreamMedN: 25, autoStreamBigT: 1, autoStreamBigN: 250, autoStreamGrow: 1 });
-DEV_META.push(
-  { k: 'autoThrowPull',   g: 'autothrow', label: 'A machine pulls in what it takes within (world units of its coin slot)', min: 5, max: 200, step: 1 },
-  { k: 'autoThrowSuck',   g: 'autothrow', label: 'Its pull’s strength', min: 50, max: 3000, step: 10 },
-  { k: 'autoPickReach',   g: 'autothrow', label: 'A machine’s item: picked up when a player walks within (world units)', min: 4, max: 80, step: 1 },
-  { k: 'autoPickMin',     g: 'autothrow', label: 'A machine’s item: not picked up before it’s this old (s)', min: 0, max: 5, step: 0.1 },
-  { k: 'autoThrowBack',   g: 'autothrow', label: 'Anything not taken flies back to the bag after (s)', min: 0.5, max: 20, step: 0.1 },
-  { k: 'autoPayReach',    g: 'autothrow', label: 'Pay with A: player 1 within this of a machine (world units)', min: 5, max: 80, step: 1 },
-  { k: 'autoPayHold',     g: 'autothrow', label: 'Pay with A: held this long (ms) starts the stream', min: 50, max: 1500, step: 10 },
-  { k: 'autoPayK',        g: 'autothrow', label: 'Pay with A: throw speed (world units / s) per px dragged from the press', min: 0.5, max: 12, step: 0.1 },
-  { k: 'autoStreamRate0', g: 'autothrow', label: 'Stream: nuggets a second at first', min: 0.5, max: 20, step: 0.5 },
-  { k: 'autoStreamRate1', g: 'autothrow', label: 'Stream: nuggets a second, ramped up', min: 1, max: 60, step: 1 },
-  { k: 'autoStreamRamp',  g: 'autothrow', label: 'Stream: ramps up over (s)', min: 0.1, max: 6, step: 0.1 },
-  { k: 'autoStreamMedT',  g: 'autothrow', label: 'Gold stream: at full speed this long, then medium nuggets (s)', min: 0, max: 6, step: 0.1 },
-  { k: 'autoStreamMedN',  g: 'autothrow', label: 'Gold stream: a medium nugget is worth', min: 2, max: 500, step: 1 },
-  { k: 'autoStreamBigT',  g: 'autothrow', label: 'Gold stream: medium this long, then big nuggets (s)', min: 0, max: 6, step: 0.1 },
-  { k: 'autoStreamBigN',  g: 'autothrow', label: 'Gold stream: a big nugget is worth at first', min: 10, max: 10000, step: 10 },
-  { k: 'autoStreamGrow',  g: 'autothrow', label: 'Gold stream: big nuggets double in worth every (s)', min: 0.2, max: 10, step: 0.1 });
-DEV_GROUPS.push(['autothrow', 'Auto: throw']);
+Object.assign(DEV_DEFAULTS, { autoThrowPull: 45, autoThrowBack: 3, autoPayReach: 30 });
 // (Part A of the purple trajectory mods) CaveRunner Auto's own sizes for Orbiting Arc, Spiral Arc, Boomerang and Ping-Pong Path
 // (auto/traj.js trajStep, flown by art/titlescene.js stepShots), each mod a group, and how its trail and glow look. The mod
 // card's dev-only Edit button (ui/auto/TrajEdit.js) lists its group: TRAJ_GROUP. Sizes in the scene's units (the window is ~160 wide)
@@ -1048,31 +806,18 @@ Object.assign(TRAJ_GROUP, { homing: 'trajhoming', seeker: 'trajseeker', nearhome
 DEV_GROUPS.push(['trajhoming', 'Trajectory: Homing'], ['trajseeker', 'Trajectory: Seeker'], ['trajnear', 'Trajectory: Short-range Homing'], ['trajaim', 'Trajectory: Auto-Aim'],
   ['trajgrav', 'Trajectory: Gravity'], ['trajfloat', 'Trajectory: Anti-Gravity'], ['trajflat', 'Trajectory: Horizontal Path']);
 DEV_GROUPS.push(['trajorbit', 'Trajectory: Orbiting Arc'], ['trajspiral', 'Trajectory: Spiral Arc'], ['trajboomer', 'Trajectory: Boomerang'], ['trajpong', 'Trajectory: Ping-Pong Path']);
-// one group's changed knobs, in Copy Dev settings' shape (the mod card's Edit → Copy)
-/** @param {string} g @param {string} name */
-export function devReportOf(g, name) {
-  const rows = DEV_META.filter(m => m.g === g), changed = rows.filter(m => DEV[m.k] !== DEV_DEFAULTS[m.k]);
-  const lines = ['CaveRunner ' + VERSION + ' dev settings (' + name + ') — please make these the new defaults:', ''];
-  if (!changed.length) lines.push('(nothing changed — everything is at its default)');
-  for (const m of changed)
-    lines.push('- ' + m.label + ' (DEV.' + m.k + '): ' + DEV[m.k] + '   [default ' + DEV_DEFAULTS[m.k] + ']');
-  return lines.join('\n');
-}
-// before the last tab: that one also takes any group in no tab
+// in front of the Fire sim tab, the last (it also takes any group in no tab)
 // (owner v1.0.56) every fire knob on its own page, under the fire sim's window (ui/firesim.js)
-DEV_TABS.splice(DEV_TABS.length - 1, 0, ['firesim', 'Fire sim', ['firelab', 'firefx', 'autofire', 'firesilk', 'fire']]);
-DEV_TABS.splice(DEV_TABS.length - 2, 0, ['traj', 'Trajectory', ['trajorbit', 'trajspiral', 'trajboomer', 'trajpong', 'trajhoming', 'trajseeker', 'trajnear', 'trajaim', 'trajgrav', 'trajfloat', 'trajflat']]);
+DEV_TABS.splice(DEV_TABS.length, 0, ['firesim', 'Fire sim', ['firelab', 'firefx', 'autofire', 'firesilk', 'fire']]);
+DEV_TABS.splice(DEV_TABS.length - 1, 0, ['traj', 'Trajectory', ['trajorbit', 'trajspiral', 'trajboomer', 'trajpong', 'trajhoming', 'trajseeker', 'trajnear', 'trajaim', 'trajgrav', 'trajfloat', 'trajflat']]);
 // (Dev → Zones) the level zones' preview (ui/zonesim.js) over their knobs
-DEV_TABS.splice(DEV_TABS.length - 2, 0, ['zones', 'Zones', ['autozones', 'autoorb', 'moss', 'webs', 'timber', 'paved', 'grove', 'winding', 'spider'].map(g => (g.startsWith('auto') ? g : 'zone_' + g))]);
+DEV_TABS.splice(DEV_TABS.length - 1, 0, ['zones', 'Zones', ['autozones', 'autoorb', 'moss', 'webs', 'timber', 'paved', 'grove', 'winding', 'spider'].map(g => (g.startsWith('auto') ? g : 'zone_' + g))]);
 // (Grem Mode) the gun presets library and Grem's own page (ui/auto/presetlib.js, gremkit.js; DevPanel's pages)
-DEV_TABS.splice(DEV_TABS.length - 2, 0, ['presets', 'Presets', []], ['grem', 'Grem', ['grem']]);
-DEV_TABS.splice(DEV_TABS.length - 2, 0, ['auto', 'Auto', ['auto', 'autohub', 'automaps', 'autolevel', 'autoblocks', 'autoguns', 'autoperks', 'autofoes', 'autodeath', 'autoloot', 'autochests', 'autobag', 'autothrow']]);
+DEV_TABS.splice(DEV_TABS.length - 1, 0, ['presets', 'Presets', []], ['grem', 'Grem', ['grem']]);
+DEV_TABS.splice(DEV_TABS.length - 1, 0, ['auto', 'Auto', ['autolevel', 'autoguns', 'autoperks', 'autofoes', 'autodeath', 'autoloot', 'autochests']]);
 export const DEV_KEY = 'caverunner-dev';
 /** @type {DevKnobs} */
 export const DEV = Object.assign({}, DEV_DEFAULTS);
-// how long you get to repay a level bought on credit (ms): floor 1's is the Dev knob, the rest an hour
-/** @param {number} floor */
-export const dueMs = floor => floor === 1 ? DEV.due1 * 60000 : DEADLINE_MS;
 (() => { try {
   const raw = localStorage.getItem(DEV_KEY);
   if (raw) { const o = JSON.parse(raw); for (const k in DEV_DEFAULTS) {
@@ -1087,4 +832,20 @@ export function devSet(k, v) {
   DEV[k] = v;
   // (v1.0.94) only the changed ones: a device follows every new default for the knobs it hasn't touched
   try { localStorage.setItem(DEV_KEY, JSON.stringify(devChanged())); } catch (_) {}
+}
+
+// (grem branch) values the game still reads whose Dev rows went with the Auto and old-game pages: fixed now
+Object.assign(DEV_DEFAULTS, { holoAlpha: 1, enemies: 50, l2Bg: '#0c0d11', l2Bg2: '#1c1e24', l2Rock1: '#2c2c32', l2Rock2: '#4a4a52', l2Moss1: '#2e4a34', l2Moss2: '#54744a', l2Brick1: '#403e42', l2Brick2: '#605c62', l2Mortar: '#262428', l2Bed1: '#18181c', l2Bed2: '#28282e', l2dFlkDrops: 0.9, alCountLo: 30, alCountHi: 60, alStraysLo: 2, alStraysHi: 4, alScaleLo: 0.6, alScaleHi: 2.4, alBiasLo: 3, alBiasHi: 4, alSpeedLo: 80, alSpeedHi: 240, alRoamOnLo: 0.15, alRoamOnHi: 0.9, alRoamOffLo: 0.3, alRoamOffHi: 2, alFleeSpdLo: 220, alFleeSpdHi: 320, alFleeRLo: 110, alFleeRHi: 140, alHuntLo: 120, alHuntHi: 200, alKeepLo: 50, alKeepHi: 80, alAggroLo: 0.9, alAggroHi: 1.1, alBoidRLo: 14, alBoidRHi: 20, alSepLo: 1.2, alSepHi: 1.6, alAliLo: 0.5, alAliHi: 0.8, alCohLo: 0.4, alCohHi: 0.6, alBiteLo: 3, alBiteHi: 5, alBiteCdLo: 0.6, alBiteCdHi: 1.2, alGlimpseLo: 0.35, alGlimpseHi: 0.5, alGlimpseRLo: 22, alGlimpseRHi: 30, caAggroLo: 1, caAggroHi: 2, autoGunBase: 100, autoGunGrow: 1.35, autoExoPrice: 175, autoScrap: 25, autoRed: 40, autoGreen: 150, autoModGold: 15, autoMapPrice: 1000000, autoMapGrow: 1, autoMapStep: 5, autoWallMin: 20, autoWallMax: 35, autoBlockN: 2, autoBlockMin: 0.2, autoBlockMax: 1, autoBlockFull: 0.85, autoBlockThin: 16, autoBlockWide: 0.75, autoWebSlow: 0.2, autoWebHalt: 0.25, autoGrab: 0.45, autoPvRegrow: 40, autoHoldMs: 350, autoDiscPull: 70, autoThrowPull: 45, autoThrowBack: 3, autoPayReach: 30 });
+Object.assign(DEV, { holoAlpha: DEV_DEFAULTS.holoAlpha, enemies: DEV_DEFAULTS.enemies, l2Bg: DEV_DEFAULTS.l2Bg, l2Bg2: DEV_DEFAULTS.l2Bg2, l2Rock1: DEV_DEFAULTS.l2Rock1, l2Rock2: DEV_DEFAULTS.l2Rock2, l2Moss1: DEV_DEFAULTS.l2Moss1, l2Moss2: DEV_DEFAULTS.l2Moss2, l2Brick1: DEV_DEFAULTS.l2Brick1, l2Brick2: DEV_DEFAULTS.l2Brick2, l2Mortar: DEV_DEFAULTS.l2Mortar, l2Bed1: DEV_DEFAULTS.l2Bed1, l2Bed2: DEV_DEFAULTS.l2Bed2, l2dFlkDrops: DEV_DEFAULTS.l2dFlkDrops, alCountLo: DEV_DEFAULTS.alCountLo, alCountHi: DEV_DEFAULTS.alCountHi, alStraysLo: DEV_DEFAULTS.alStraysLo, alStraysHi: DEV_DEFAULTS.alStraysHi, alScaleLo: DEV_DEFAULTS.alScaleLo, alScaleHi: DEV_DEFAULTS.alScaleHi, alBiasLo: DEV_DEFAULTS.alBiasLo, alBiasHi: DEV_DEFAULTS.alBiasHi, alSpeedLo: DEV_DEFAULTS.alSpeedLo, alSpeedHi: DEV_DEFAULTS.alSpeedHi, alRoamOnLo: DEV_DEFAULTS.alRoamOnLo, alRoamOnHi: DEV_DEFAULTS.alRoamOnHi, alRoamOffLo: DEV_DEFAULTS.alRoamOffLo, alRoamOffHi: DEV_DEFAULTS.alRoamOffHi, alFleeSpdLo: DEV_DEFAULTS.alFleeSpdLo, alFleeSpdHi: DEV_DEFAULTS.alFleeSpdHi, alFleeRLo: DEV_DEFAULTS.alFleeRLo, alFleeRHi: DEV_DEFAULTS.alFleeRHi, alHuntLo: DEV_DEFAULTS.alHuntLo, alHuntHi: DEV_DEFAULTS.alHuntHi, alKeepLo: DEV_DEFAULTS.alKeepLo, alKeepHi: DEV_DEFAULTS.alKeepHi, alAggroLo: DEV_DEFAULTS.alAggroLo, alAggroHi: DEV_DEFAULTS.alAggroHi, alBoidRLo: DEV_DEFAULTS.alBoidRLo, alBoidRHi: DEV_DEFAULTS.alBoidRHi, alSepLo: DEV_DEFAULTS.alSepLo, alSepHi: DEV_DEFAULTS.alSepHi, alAliLo: DEV_DEFAULTS.alAliLo, alAliHi: DEV_DEFAULTS.alAliHi, alCohLo: DEV_DEFAULTS.alCohLo, alCohHi: DEV_DEFAULTS.alCohHi, alBiteLo: DEV_DEFAULTS.alBiteLo, alBiteHi: DEV_DEFAULTS.alBiteHi, alBiteCdLo: DEV_DEFAULTS.alBiteCdLo, alBiteCdHi: DEV_DEFAULTS.alBiteCdHi, alGlimpseLo: DEV_DEFAULTS.alGlimpseLo, alGlimpseHi: DEV_DEFAULTS.alGlimpseHi, alGlimpseRLo: DEV_DEFAULTS.alGlimpseRLo, alGlimpseRHi: DEV_DEFAULTS.alGlimpseRHi, caAggroLo: DEV_DEFAULTS.caAggroLo, caAggroHi: DEV_DEFAULTS.caAggroHi, autoGunBase: DEV_DEFAULTS.autoGunBase, autoGunGrow: DEV_DEFAULTS.autoGunGrow, autoExoPrice: DEV_DEFAULTS.autoExoPrice, autoScrap: DEV_DEFAULTS.autoScrap, autoRed: DEV_DEFAULTS.autoRed, autoGreen: DEV_DEFAULTS.autoGreen, autoModGold: DEV_DEFAULTS.autoModGold, autoMapPrice: DEV_DEFAULTS.autoMapPrice, autoMapGrow: DEV_DEFAULTS.autoMapGrow, autoMapStep: DEV_DEFAULTS.autoMapStep, autoWallMin: DEV_DEFAULTS.autoWallMin, autoWallMax: DEV_DEFAULTS.autoWallMax, autoBlockN: DEV_DEFAULTS.autoBlockN, autoBlockMin: DEV_DEFAULTS.autoBlockMin, autoBlockMax: DEV_DEFAULTS.autoBlockMax, autoBlockFull: DEV_DEFAULTS.autoBlockFull, autoBlockThin: DEV_DEFAULTS.autoBlockThin, autoBlockWide: DEV_DEFAULTS.autoBlockWide, autoWebSlow: DEV_DEFAULTS.autoWebSlow, autoWebHalt: DEV_DEFAULTS.autoWebHalt, autoGrab: DEV_DEFAULTS.autoGrab, autoPvRegrow: DEV_DEFAULTS.autoPvRegrow, autoHoldMs: DEV_DEFAULTS.autoHoldMs, autoDiscPull: DEV_DEFAULTS.autoDiscPull, autoThrowPull: DEV_DEFAULTS.autoThrowPull, autoThrowBack: DEV_DEFAULTS.autoThrowBack, autoPayReach: DEV_DEFAULTS.autoPayReach });
+
+// ---- kept for the test suites (grem branch: the game no longer calls these; the suites set up with them) ----
+// one group's changed knobs, in Copy Dev settings' shape (the mod card's Edit → Copy)
+/** @param {string} g @param {string} name */
+export function devReportOf(g, name) {
+  const rows = DEV_META.filter(m => m.g === g), changed = rows.filter(m => DEV[m.k] !== DEV_DEFAULTS[m.k]);
+  const lines = ['CaveRunner ' + VERSION + ' dev settings (' + name + ') — please make these the new defaults:', ''];
+  if (!changed.length) lines.push('(nothing changed — everything is at its default)');
+  for (const m of changed)
+    lines.push('- ' + m.label + ' (DEV.' + m.k + '): ' + DEV[m.k] + '   [default ' + DEV_DEFAULTS[m.k] + ']');
+  return lines.join('\n');
 }

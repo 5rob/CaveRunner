@@ -106,7 +106,6 @@ function wall(tank0) {
     if (!G.fuelCan(r)) blocked++;
   }
   check('low and jetting: the old game\'s cough (sputterStep) cuts the jet now and then', starts > 0 && cuts > 0 && blocked === cuts && cuts < 120, { starts, cuts });
-  check('…at the old game\'s line', G.FUEL_SPUTTER === G.SPUTTER_FUEL);
 }
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
 process.exit(fails ? 1 : 0);

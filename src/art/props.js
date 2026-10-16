@@ -11,14 +11,6 @@ import { swings, tent, vinePt } from '../world/sway.js';
 export const rgbA = (c, a) => 'rgba(' + (c[0] | 0) + ',' + (c[1] | 0) + ',' + (c[2] | 0) + ',' + (a == null ? 1 : a) + ')';
 /** @type {(c: ArrayLike<number>) => string} */
 export const rgbS = c => (c[0] | 0) + ',' + (c[1] | 0) + ',' + (c[2] | 0);
-// the colour a prop breaks into
-/** @param {Prop} pr @param {Theme} T @returns {string} */
-export function propCol(pr, T) {
-  return { icicle: '#bfe6ff', icefall: '#bfe6ff', geode: '#c58cff', salt: '#e8e2cc', bone: '#e6dcc4',
-    obsidian: '#4a3050', cart: '#8a5a3a', statue: rgbA(T.rock[1]), pillar: rgbA(T.brick[1]),
-    monolith: rgbA(T.bg2), skulls: '#e6dcc4', stone: '#c58cff', shard: rgbA(T.moss[1]),
-    chain: '#8a7a6a', lantern: '#ffb050', crystal: '#d6a0ff', lava: '#ff7a2a' }[pr.st] || rgbA(T.moss[1]);
-}
 // An arched vine (v87): a few twisted stems along the curve, swaying a little in the middle
 // (never at the ends, which are held), thick with leaves. The strands hanging off it are
 // ordinary vine props. While it burns, the burnt stretch (u0..u1) is gone.

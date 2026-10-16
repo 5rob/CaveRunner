@@ -24,7 +24,7 @@ import { collideNuggets, spillGold, stepNugget } from '../world/nuggets.js';
 import { losClear } from '../world/vision.js';
 import { archCurve, archNear } from '../world/decorate.js';
 import { orbHeld, orbHubRest, orbPlace, orbSpring } from '../world/orbweb.js';
-import { bendPush, swingStep, swings, tailStep, vinePt, webAt, webNearU } from '../world/sway.js';
+import { bendPush, swingStep, tailStep, vinePt, webAt, webNearU } from '../world/sway.js';
 import { MODS, VAC_PULL } from '../spells/mods.js';
 import { gunPassives } from '../spells/cast.js';
 import { matchesTarget, targetsOf } from '../spells/discrim.js';
@@ -1230,7 +1230,6 @@ function orbSwing(S, dt) {
     L.ax = L.a0x; L.ay = L.a0y; L.bx = L.b0x; L.by = L.b0y;
   }
 }
-export const titleOrbSettle = orbSettle;   // (the orbweb suite)
 // can a title prop swing (a hanging vine, chain, root or strand; a cut piece)?
 /** @param {TProp} p */
 const canSwing = p => p.k === 'climb' && !p.arc && !!p.len;
@@ -1347,10 +1346,6 @@ export function titleSpill(S, x, y, items, up = 1) {
     (S.loot || (S.loot = [])).push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, it, col: S.lvl && S.lvl.lootCol ? S.lvl.lootCol(it) : '#ffffff', t: S.rnd() * 6, nopull: LOOT_WAIT + S.rnd() * 0.3 });
   }
 }
-
-// a creature killed outright (the logic suites: auto-loot)
-/** @param {TitleScene} S @param {Enemy} f */
-export const titleKill = (S, f) => killFoe(S, f);
 
 /** @param {TitleScene} S @param {Enemy} f @param {number} dmg @param {string} col @param {number} [by] the runner who did it (its damage dealt, r.dealt) */
 function hitFoe(S, f, dmg, col, by) {
@@ -2601,18 +2596,6 @@ function stepGold(S, dt) {
   collideNuggets(S.coins, solid);
 }
 
-// CaveRunner Auto stage 9: an item dropped out of the bag onto the play area lies on the ground a little in front of the
-// team (S.loot, `left`: never vacuumed back; in a level it scrolls away as any drop left behind)
-/** @param {TitleScene} S @param {BagItem} it @param {string} col @returns {TLoot} */
-export function leaveItem(S, it, col) {
-  const rs = S.runners.filter(r => !r.out), ru = rs.length ? rs.reduce((a, b) => (b.x > a.x ? b : a)) : S.runners[0];
-  const x = S.scroll + (ru ? ru.x + PW / 2 : 40) + 36, y = ru ? ru.y : S.top + 20;
-  /** @type {TLoot} */
-  const g = { x, y, vx: 30, vy: -110, it, col, t: 0, nopull: 0, left: true };
-  (S.loot || (S.loot = [])).push(g);
-  return g;
-}
-
 const LOOT_WAIT = 0.6;   // a drop flies to the team after this long (s), once it has been seen thrown up
 // CaveRunner Auto's drops (S.loot, killFoe): each falls and bounces as a nugget, then (once LOOT_WAIT is up) is vacuumed to
 // the nearest player still in, from anywhere, straight through rock, and goes into the bag (S.lvl.take) at 12. The bag
@@ -3109,3 +3092,9 @@ export function titleLetter(ctx, c, cx, cy, px, sh, red = false) {
 const titlePx = cw => Math.max(4, Math.floor(Math.min(cw * 0.92 / pixWidth('RUNNER', 1, 1), 15)));
 /** @param {number} cw css width @param {number} top the title's top @returns {number} */
 export const titleBottom = (cw, top) => top + titlePx(cw) * 16 + Math.ceil(titlePx(cw) * 2.2) + 20;
+
+// ---- kept for the test suites (grem branch: the game no longer calls these; the suites set up with them) ----
+export const titleOrbSettle = orbSettle;   // (the orbweb suite)
+// a creature killed outright (the logic suites: auto-loot)
+/** @param {TitleScene} S @param {Enemy} f */
+export const titleKill = (S, f) => killFoe(S, f);

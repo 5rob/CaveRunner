@@ -63,6 +63,13 @@ deploys both: main's build at the root, the branch's under `auto/` (the workflow
 the workflow file the same on both). The `github-pages` environment must allow deploys from `autobattler`
 (Settings → Environments → github-pages → Deployment branches).
 
+## The third app: CaveRunner Grem (branch `grem`)
+
+Grem Mode only (2026-10-16). Built with `-PcaveGrem=true`: package `com.caverunner.grem`, name "CaveRunner Grem", updates
+from **https://5rob.github.io/CaveRunner/grem/**. CI publishes the APK to
+**https://github.com/5rob/CaveRunner/releases/tag/app-grem** and deploys the branch's build under `grem/`. The
+`github-pages` environment must allow deploys from `grem` too.
+
 ## Notes
 
 - Updating the **game** never touches the shell. You only reinstall the APK if

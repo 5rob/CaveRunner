@@ -484,18 +484,6 @@ export const FAMILY_OF = {
   damper: 'dmg', hspread: 'pattern', blood: 'upkeep',   // owner (v1.0.35) colour sweep: Recoil with its Damper (both red since v1.0.73, owner), Heavy Spread with Reduce Spread, Wand Refresh a recharge mod
   addtrig: 'cast', addtimer: 'cast', adddeath: 'cast',
 };
-/** @type {Record<string, string>} */
-export const FIELD_WHAT = {
-  explode: 'blows up on the spot',
-  mine: 'waits, then detonates when something comes near',
-  dormant: 'detonates when another explosion reaches it',
-  slow: 'enemies inside crawl',
-  shield: 'swallows enemy fire crossing it',
-  heal: 'heals you while you stand in it',
-  storm: 'strikes random spots inside with lightning',
-  vacuum: 'pulls everything close by into its middle',
-  glitter: 'small blasts going off all over it',
-};
 export const famOf = (/** @type {string} */ id) => FAMILIES[FAMILY_OF[id]] || FAMILIES.shots;
 export const famCol = (/** @type {string} */ id) => famOf(id).col;
 
@@ -589,8 +577,6 @@ for (const [id, base, trig, extra] of TRIG_VARIANTS) {
   MOD_PRICE[id] = Math.round((MOD_PRICE[base] || 30) * 1.4 + 15);
   MOD_TIER[id] = Math.min(4, tierOf(base) + 1);
 }
-
-export const priceOf = (/** @type {string} */ id) => MOD_PRICE[id] || 30;
 
 for (const k of Object.keys(MODS)) MODS[k].id = k;
 

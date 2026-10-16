@@ -5,13 +5,11 @@
 // tank / refill: the player's playerStats fuel / refuel (perks and the exo Jetpack folded in). Pure: the scene calls it.
 import { FUEL_DRAIN, FUEL_REGEN, FUEL_RESTART } from '../core/consts.js';
 import { DEV } from '../dev/knobs.js';
-import { SPUTTER_FUEL, sputterStep } from '../core/util.js';
+import { sputterStep } from '../core/util.js';
 
 /** @typedef {{ fuel?: number, empty?: boolean, jetSt?: { cut: number, onT: number, start: boolean, gap?: number }, sputN?: number, dry?: boolean, id?: number }} FuelHolder */
 // the line under which the autopilot won't take off for a flight of its own (it runs on and refills first)
 export const FUEL_TAKEOFF = 0.6;
-// the line under which the jet coughs (the game's)
-export const FUEL_SPUTTER = SPUTTER_FUEL;
 
 // can he jet this frame? (dry: not till it's refilled to FUEL_RESTART; a cough: not for its blink)
 /** @param {FuelHolder} r */

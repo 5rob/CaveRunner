@@ -11,16 +11,7 @@
 // Since v0.0.142 one that hasn't had a real crystal yet this run (LO.fed) shows how while you stand near:
 // a hologram crystal blinks in on the floor beside it and is sucked into its slot, on a loop (stepDemo).
 
-import { SFX } from '../../audio/sfx.js';
-import { CELL, PH, PW, SHOP_FLOOR, SHOP_MACHINE_X, SHOP_Y } from '../../core/consts.js';
-import { PERKS } from '../../data/perks.js';
-import { saveCollection, savePerkCollection } from '../../save/save.js';
-import { perkRoll } from '../../spells/collection.js';
-import { MODS } from '../../spells/mods.js';
-import { rollMod } from '../../spells/spawn.js';
-import { NUG_GRAV, collideNuggets, shoveNugget, stepNugget } from '../../world/nuggets.js';
-import { burst, crystalMotes, toast } from './particles.js';
-import { solidAt } from './terrain.js';
+import { CELL, SHOP_FLOOR, SHOP_MACHINE_X } from '../../core/consts.js';
 
 export const MACHINE_W = 56, MACHINE_H = 84;                   // a machine's cabinet (world units)
 export const MACHINE_TOP = SHOP_FLOOR * CELL - MACHINE_H;      // its top
@@ -34,167 +25,9 @@ export const SHOPS = {                                   // left to right: guns,
   perks: { x: SHOP_MACHINE_X[2], icon: '✦', hue: '#3dff7a', label: 'Tap R to shop', takes: 'green' },
 };
 
-// the machine you're standing at, if any
-/** @param {World} W @param {number} pcx @param {number} pcy @returns {string | null} */
-export function shopNear(W, pcx, pcy) {
-  if (W.warp || W.repo || W.p.dead || pcy < SHOP_Y || pcy > SHOP_FLOOR * CELL) return null;
-  for (const k in SHOPS) if (!SHOPS[k].takes && Math.abs(pcx - SHOPS[k].x) < MACHINE_W / 2 + 2) return k;
-  return null;
-}
-
-// a tap at a machine: open its menu (App shows it and pauses the game)
-/** @param {GameCtx} G @param {string} kind */
-export function shopUse(G, kind) {
-  G.input.current.shopOpen = kind;
-  SFX.ui('mod');
-}
-
-// A part of stepPickups: something bought (input.current.dispense) pops out of its machine's
-// chute towards you, and anything popping flies and lands on the shop floor. It can't be
-// taken until it lands
-/** @param {World} W @param {GameCtx} G @param {StepFrame} F */
-export function stepShops(W, G, F) {
-  const d = G.input.current.dispense;
-  if (d) {
-    G.input.current.dispense = null;
-    const m = SHOPS[d.shop];
-    if (m) {
-      const side = F.pcx < m.x ? -1 : 1;
-      const fly = { x: m.x, y: CHUTE_Y, t: 0, vx: side * (95 + Math.random() * 30), vy: -200 - Math.random() * 40, cool: 1 };
-      W.pickups.push(d.gun ? { kind: 'gun', gun: d.gun, ...fly } : d.perk ? { kind: 'perk', id: d.perk, ...fly } : { kind: 'mod', id: d.id, ...fly });
-      SFX.fx('prompt');
-    }
-  }
-  stepCrystals(W, G, F);
-  // anything thrown (a bought thing) falls until it rests on rock, 9 above it
-  for (const q of W.pickups) {
-    if (q.vy === undefined || q.kind === 'crystal') continue;
-    q.vy = Math.min(600, q.vy + 900 * F.dt);
-    const nx = q.x + (q.vx || 0) * F.dt;
-    if (!solidAt(W, nx, q.y)) q.x = nx; else q.vx = 0;
-    q.y += q.vy * F.dt;
-    q.cool = 0.2;
-    if (q.vy > 0 && solidAt(W, q.x, q.y + 9)) {
-      for (let k = 0; k < 20 && solidAt(W, q.x, q.y + 8); k++) q.y -= 1;
-      if (q.vy > 120) { q.vy *= -0.35; q.vx = (q.vx || 0) * 0.6; }   // one little bounce
-      else { delete q.vy; delete q.vx; q.cool = 0; q.t = W.time; }
-    }
-  }
-}
-
-export const CRYS_R = 8;                                  // a crystal's body (world units; drawn ~9)
-export const CYCLE = 2.4;                                 // seconds a crystal machine shakes before it pops
 export const SLOT_Y = MACHINE_TOP + 52;                   // where a crystal goes into the machine
 const INTAKE_X = MACHINE_W / 2 + 26, INTAKE_TOP = MACHINE_TOP - 26;   // how close one must come to be sucked in
-const SHAKE_F0 = 3, SHAKE_F1 = 30;                        // the shake's frequency (Hz): F0 at the start, F0 + F1 at the pop
 
-// how far round its shake a machine is, t seconds in (the frequency rises from SHAKE_F0 to SHAKE_F0 + SHAKE_F1)
-/** @param {number} t */
-export const shakePhase = t => SHAKE_F0 * t + SHAKE_F1 * CYCLE * Math.pow(Math.min(1, t / CYCLE), 3) / 3;
-
-// the crystal machine that takes q, if it's near enough to be sucked in
-/** @param {Pickup} q @returns {string | null} */
-export function intakeOf(q) {
-  if (q.y < INTAKE_TOP || q.y > SHOP_FLOOR * CELL + 4) return null;
-  for (const k in SHOPS) {
-    const m = SHOPS[k];
-    if (m.takes && (m.takes === 'green') === !!q.green && Math.abs(q.x - m.x) < INTAKE_X) return k;
-  }
-  return null;
-}
-
-// what a machine pops out for a crystal (v0.0.139): any mod off the floor's drop table by its odds
-// (rollMod), whether you have it or not, so mods may repeat (a new one is unlocked); a perk is one of
-// a kind, never given twice: one you haven't unlocked (perkRoll), null once there are none left
-/** @param {World} W @param {GameCtx} G @param {string} k @returns {{ kind: 'mod' | 'perk', id: string, fresh: boolean } | null} */
-export function machineRoll(W, G, k) {
-  const inp = G.input.current;
-  if (SHOPS[k].takes === 'green') {
-    const id = perkRoll(Math.random, inp.perkCollection);
-    if (!id) return null;
-    inp.perkCollection.push(id); savePerkCollection(inp.perkCollection);
-    return { kind: 'perk', id, fresh: true };
-  }
-  const id = rollMod(Math.random, W.floor);
-  if (!id) return null;
-  const fresh = !inp.collection.includes(id);
-  if (fresh) { inp.collection.push(id); saveCollection(inp.collection); }
-  return { kind: 'mod', id, fresh };
-}
-
-// A part of stepShops: the crystals. Loose ones are rocks (world/nuggets.js: they fall, roll, bump
-// each other) that you shove about by walking into them; a White Hole holds them up (q.hold,
-// game/systems/fields.js). One that comes near its machine flies into it (through anything, like
-// gold to you), and each machine takes its crystals one at a time: CYCLE seconds of faster and
-// faster shaking and lights (W.machines[k].t, drawn by render/shops.js), then the pop
-/** @param {World} W @param {GameCtx} G @param {StepFrame} F */
-export function stepCrystals(W, G, F) {
-  const dt = F.dt;
-  stepDemo(W, G, F);
-  /** @param {number} x @param {number} y */
-  const solid = (x, y) => solidAt(W, x, y);
-  const free = [];
-  for (const q of W.pickups) {
-    if (q.kind !== 'crystal' || q.taken) continue;
-    if (q.into) {                            // being sucked in: straight to the slot
-      const m = SHOPS[q.into], dx = m.x - q.x, dy = SLOT_Y - q.y, d = Math.hypot(dx, dy) || 1;
-      const grab = 400 + 900 * Math.max(0, 1 - d / 80);
-      q.vx = (q.vx || 0) + dx / d * grab * dt * 6; q.fvy = (q.fvy || 0) + dy / d * grab * dt * 6;
-      q.vx *= 0.86; q.fvy *= 0.86;
-      const ox = q.x, oy = q.y;
-      q.x += q.vx * dt; q.y += q.fvy * dt;
-      crystalMotes(W, q.x, q.y, !!q.green, dt, Math.hypot(q.x - ox, q.y - oy), ox, oy);
-      if (d < 7) {
-        q.taken = true;
-        const LO = G.input.current.loadout;
-        if (!LO.fed) LO.fed = [];
-        if (!LO.fed.includes(q.into)) LO.fed.push(q.into);   // no more demo at this one
-        const M = W.machines[q.into] || (W.machines[q.into] = { n: 0, t: -1 });
-        M.n++;
-        burst(W, m.x, SLOT_Y, 8, q.green ? '#3dff7a' : '#ff4a5a');
-        SFX.ui(q.green ? 'perk' : 'mod');
-      }
-      continue;
-    }
-    if (q.nopull > 0) q.nopull -= dt;
-    if (q.hold > 0) { q.hold -= dt; q.vy = (q.vy || 0) - NUG_GRAV * dt; }   // held up: no gravity
-    stepNugget(q, dt, solid, CRYS_R);
-    if (!W.p.dead) shoveNugget(q, CRYS_R, { x: W.p.x, y: W.p.y, w: PW, h: PH }, W.p.vx, W.p.vy, solid);
-    const k = !(q.nopull > 0) && !W.warp ? intakeOf(q) : null;
-    if (k) { q.into = k; q.fvy = q.vy || 0; delete q.vy; q.hold = 0; SFX.fx('prompt'); continue; }
-    crystalMotes(W, q.x, q.y, !!q.green, dt, 0);
-    free.push(q);
-  }
-  collideNuggets(free, solid, () => CRYS_R);
-  // the machines: one crystal at a time, a shake, then the pop
-  for (const k in SHOPS) {
-    const m = SHOPS[k], M = W.machines[k];
-    if (!m.takes || !M) continue;
-    if (M.t < 0 && M.n > 0) { M.n--; M.t = 0; }
-    if (M.t < 0) continue;
-    const t0 = M.t;
-    M.t += dt;
-    if (Math.floor(shakePhase(M.t)) !== Math.floor(shakePhase(t0))) SFX.fx('reelTick');
-    if (M.t < CYCLE) continue;
-    M.t = -1;
-    const got = machineRoll(W, G, k);
-    if (!got) { toast(W, 'No perks left'); continue; }
-    const side = F.pcx < m.x ? -1 : 1;
-    W.pickups.push({ kind: got.kind, id: got.id, x: m.x, y: CHUTE_Y, t: 0,
-      vx: side * (95 + Math.random() * 30), vy: -200 - Math.random() * 40, cool: 1 });
-    toast(W, (got.fresh ? 'Unlocked ' : '') + (got.kind === 'perk' ? PERKS[got.id].name : MODS[got.id].name));
-    burst(W, m.x, CHUTE_Y, 14, m.hue);
-    SFX.fx('reelThud'); SFX.fx('prompt');
-    G.input.current.notify();
-  }
-}
-
-// ---- the demo (v0.0.142) ----
-// Stand within DEMO_NEAR of a crystal machine no real crystal has gone into this run and it projects,
-// in the guide's hologram blue (render/shops.js drawDemo): a crystal glitching in on the floor beside
-// it, on your side (DEMO_SIDE out), a beat, then sucked up into its slot like a real one, a flash, and
-// DEMO_GAP before the next. Walk off and it stops; come back and it starts over
-export const DEMO_NEAR = 100;
 export const DEMO_SIDE = MACHINE_W / 2 + 18;              // the crystal's x, out from the machine's middle
 export const DEMO_IN = 0.45, DEMO_SIT = 0.9, DEMO_SUCK = 0.55, DEMO_FLASH = 0.3, DEMO_GAP = 2;
 export const DEMO_LOOP = DEMO_IN + DEMO_SIT + DEMO_SUCK + DEMO_FLASH + DEMO_GAP;
@@ -213,30 +46,3 @@ export function demoAt(t) {
   return { ph: 'gap', u: r / DEMO_GAP };
 }
 
-// The demo crystal's middle at u through the suck (0 on the floor, 1 in the slot): it lifts off
-// and speeds up, curving in to the slot, shrinking as it goes in
-/** @param {number} mx the machine's middle @param {number} side -1 left, 1 right @param {number} u @returns {{ x: number, y: number, s: number }} */
-export function demoPos(mx, side, u) {
-  const k = u * u, x0 = mx + side * DEMO_SIDE, y0 = SHOP_FLOOR * CELL - CRYS_R - 1;
-  return { x: x0 + (mx - x0) * k, y: y0 + (SLOT_Y - y0) * Math.sqrt(k) - Math.sin(k * Math.PI) * 6, s: 1 - 0.55 * k };
-}
-
-// A part of stepCrystals: start, run or stop each machine's demo
-/** @param {World} W @param {GameCtx} G @param {StepFrame} F */
-export function stepDemo(W, G, F) {
-  const fed = G.input.current.loadout.fed || [];
-  const here = !W.p.dead && !W.warp && W.p.y + PH > SHOP_Y;
-  // only the nearest crystal machine plays (the red and green stand side by side)
-  let near = '';
-  for (const k in SHOPS) if (SHOPS[k].takes && (!near || Math.abs(F.pcx - SHOPS[k].x) < Math.abs(F.pcx - SHOPS[near].x))) near = k;
-  for (const k in SHOPS) {
-    const m = SHOPS[k];
-    if (!m.takes) continue;
-    if (!here || k !== near || fed.includes(k) || Math.abs(F.pcx - m.x) > DEMO_NEAR) { delete W.demo[k]; continue; }
-    const side = F.pcx < m.x ? -1 : 1;
-    const D = W.demo[k] || (W.demo[k] = { t: 0, side });
-    const t0 = D.t;
-    D.t += F.dt;
-    if (Math.floor(D.t / DEMO_LOOP) !== Math.floor(t0 / DEMO_LOOP)) D.side = side;   // each loop on your side
-  }
-}

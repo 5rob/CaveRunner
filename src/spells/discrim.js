@@ -9,13 +9,6 @@ import { FAMILY_OF, MODS, MOD_PRICE, MOD_TIER } from './mods.js';
 
 const PRE = 'discrim:';
 
-/** the id of a copy set on `t` (registered) @param {DiscrimTarget} t @returns {string} */
-export function discrimId(t) {
-  const id = PRE + t.kind + ':' + t.id;
-  ensureMod(id);
-  return id;
-}
-
 // Makes sure MODS has this id: a targeted Discriminate is made on first sight (a save, a new target).
 // True when MODS[id] exists afterwards
 /** @param {string | null | undefined} id @returns {boolean} */
@@ -43,9 +36,6 @@ export function ensureMod(id) {
 /** a copy's target, or null (unset, or not a Discriminate) @param {string | null | undefined} id */
 export const targetOf = id => (id && MODS[id] && MODS[id].tgt) || null;
 
-/** is this an unset Discriminate (one you can still aim)? @param {string | null | undefined} id */
-export const isUnsetDiscrim = id => id === 'discrim';
-
 // Does a thing match the target? `thing` is { kind, id } like a target (a creature: its kind's id;
 // you: 'player'; a prop: its k; a pickup: its kind). No target = everything matches
 /** @param {DiscrimTarget | null | undefined} t @param {{ kind: string, id: string }} thing */
@@ -64,6 +54,20 @@ export function addTarget(t, add) {
   return { kind: t.kind, id: t.id, or: [...(t.or || []), { kind: add.kind, id: add.id }] };
 }
 
+/** @param {DiscrimTarget} t @returns {string} */
+export function targetName(t) {
+  if (t.kind === 'player') return 'You';
+  if (t.kind === 'creature') { const c = CREATURES[t.id]; return c ? c.name : t.id; }
+  return t.id.charAt(0).toUpperCase() + t.id.slice(1);
+}
+
+// ---- kept for the test suites (grem branch: the game no longer calls these; the suites set up with them) ----
+/** the id of a copy set on `t` (registered) @param {DiscrimTarget} t @returns {string} */
+export function discrimId(t) {
+  const id = PRE + t.kind + ':' + t.id;
+  ensureMod(id);
+  return id;
+}
 // The little icon of a target, drawn inside the mod tile: a creature by its body, you the astronaut,
 // an object by what it is
 const BODY_ICON = { jelly: '🪼', drone: '🤖', spider: '🕷', alien: '👽', rat: '🐀', nest: '🪺',
@@ -78,10 +82,4 @@ export function targetIcon(t) {
     return (c && BODY_ICON[c.body]) || (c ? c.name.slice(0, 2) : '?');
   }
   return OBJ_ICON[t.id] || t.id.slice(0, 2);
-}
-/** @param {DiscrimTarget} t @returns {string} */
-export function targetName(t) {
-  if (t.kind === 'player') return 'You';
-  if (t.kind === 'creature') { const c = CREATURES[t.id]; return c ? c.name : t.id; }
-  return t.id.charAt(0).toUpperCase() + t.id.slice(1);
 }

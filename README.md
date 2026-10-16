@@ -1,5 +1,10 @@
 # CaveRunner
 
+## CaveRunner Grem (branch `grem`)
+
+Grem Mode on its own, as its own app: install it once from https://github.com/5rob/CaveRunner/releases/tag/app-grem
+(it sits beside the other two and updates itself). ▶ on the title starts Grem Mode.
+
 ## CaveRunner Auto (this branch): how to play
 
 Your team of jetpack runners plays the caves by itself; you kit them out.

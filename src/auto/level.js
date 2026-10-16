@@ -293,12 +293,6 @@ export function teleFx(S, cx, cy) {
   S.snd.push({ k: 'arc', x: cx, y: cy });
 }
 
-// is the team gathered on the exit pad (stage 4b: teleport to the hub)?
-/** @param {import('../art/titlescene.js').TitleScene} S */
-export function levelDone(S) {
-  const L = levelState(S);
-  return !!L && L.phase === 'exit' && L.doneT >= 0;
-}
 // each player's damage dealt this tick (the scene's r.dealt, added up since the last) and health, into its meters
 /** @param {import('../art/titlescene.js').TitleScene} S @param {LevelState} L @param {number} dt */
 export function levelMeters(S, L, dt) {
@@ -395,9 +389,6 @@ export function levelStep(S, dt) {
 // (bug round 2, semi-automatic) only while the stick is pushed: let go, the level's own pace again (eased) and he plays by himself
 // (v1.0.102) or heading for a tapped spot (r.goal): the view follows him too, the others behind him
 export const levelLead = S => S.runners.find(r => (ctlOn(r) || !!r.goal) && !r.out) || null;
-// the picked player (manual mode; the nav's crosshair), steered or not (none: null)
-/** @param {import('../art/titlescene.js').TitleScene} S */
-export const levelPicked = S => S.runners.find(r => !!r.ctl && !r.out) || null;
 // the scroll's pace (× LVL_SCROLL; negative: back) for a steered player off the middle by off (screen units, + right)
 /** @param {number} off */
 export const roamPace = off => DEV.autoRoamCam * off / LVL_SCROLL;
@@ -540,3 +531,14 @@ export function levelPads(S) {
   return [{ id: 'enter', x: L.plan.padX - S.scroll, fy: titleFloor(L.plan.padX, S) }, { id: 'exit', x: L.plan.exitX - S.scroll, fy: titleFloor(L.plan.exitX, S) }]
     .filter(p => p.x > -60 && p.x < TITLE_VW + 60 && !(p.id === 'exit' && (L.padGone || L.grem)));   // (Grem Mode: no exit pad)   // (the exit pad: gone in the end's nuke)
 }
+
+// ---- kept for the test suites (grem branch: the game no longer calls these; the suites set up with them) ----
+// is the team gathered on the exit pad (stage 4b: teleport to the hub)?
+/** @param {import('../art/titlescene.js').TitleScene} S */
+export function levelDone(S) {
+  const L = levelState(S);
+  return !!L && L.phase === 'exit' && L.doneT >= 0;
+}
+// the picked player (manual mode; the nav's crosshair), steered or not (none: null)
+/** @param {import('../art/titlescene.js').TitleScene} S */
+export const levelPicked = S => S.runners.find(r => !!r.ctl && !r.out) || null;

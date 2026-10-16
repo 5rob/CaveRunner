@@ -5,6 +5,16 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v2.0.0 — CaveRunner Grem: a Grem Mode only fork (branch `grem`)
+2026-10-16 (owner: a Grem Mode only branch; archive the regular mode and the bloated Dev menu). Its own app
+(`com.caverunner.grem`, release `app-grem`) updating from Pages' `grem/`; CI deploys all three builds.
+- The title's ▶ opens Grem Mode; the GREM MODE button and CaveRunner Auto's runs are gone on this branch.
+- Cut: the Auto play screen (Grem's pieces moved to `ui/auto/parts.js`), the old game's running game and screens, the old
+  level generator and its parts, and every function the build no longer reaches (page ~1.63 MB → ~1.0 MB; stylesheet halved).
+- Dev panel: only knobs Grem reads; Level 2, Auto economy / hub / maps / blocks / bag / throw, aim assist, guide, witness,
+  menu pointer, hologram groups gone; no colour key, no old run buttons, no audit button. Copy Dev settings lists only the
+  panel's knobs.
+
 ## v1.0.109 — Grem Mode's Dev panel trimmed to Grem; the creatures named for what they are (branch `autobattler`)
 Released 2026-10-16 (owner: implement and push).
 - Grem Mode's Dev panel shows only what Grem plays with (`ui/devpanel.js DevPanel`'s new `only`, Grem's list `GREM_DEV` in `ui/auto/GremScreen.js`): camera, torch and fog, player, Black Hole, sound, every creature group (elites and their flames too), the floor's layout rows Auto reads, arched vines, sway, all trajectories, zones, fire (all four), Grem, Presets, and Auto's level, guns, perks, enemies, jetpack and death, loot, chests. Gone there: hub, maps, bag, throw, economy, blocked zones, the old game's pages (Level 2, menus, Witness, Aim Assist, Carrot, hologram). In the mixed groups (camera, torch and fog, player, floor layout) only the rows Auto reads. Tabs with nothing left are hidden. Copy Dev settings still copies everything. Suite `grem-dev` checks it.

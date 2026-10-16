@@ -295,21 +295,9 @@ export function GremScreen() {
     h(GremHelms, { run: run.current, who, pick: pickWho }),
     h('div', { className: 'abtns gstick' }, h(PillStick, { onMove: steer })),
     flies.map(f => h(FlyTile, { key: f.k, f, done: () => setFlies(fs => fs.filter(q => q.k !== f.k)) })),
-    devOpen ? h(DevPanel, { input, refresh: () => {}, close: () => { SFX.fx('close'); setDevOpen(false); }, pages: DEV_PAGES, only: GREM_DEV }) : null,
+    devOpen ? h(DevPanel, { close: () => { SFX.fx('close'); setDevOpen(false); }, pages: DEV_PAGES }) : null,
     paused ? h(PauseMenu, { input, label: 'Grem Mode · Level ' + lvl, onNew: () => location.reload(), close: () => { SFX.fx('close'); setPaused(false); } }) : null);
 }
-
-// (owner v1.0.109) Grem Mode's Dev panel: only what Grem plays with (the looks and tweaks of its level, creatures, guns, fire,
-// zones, the Grem kit and presets); not the hub, machines, maps, bag, throwing, prices, blocked zones or the old game's pages.
-// In the mixed groups (auto) just the rows CaveRunner Auto reads. A new Dev group Grem uses goes in here
-/** @type {DevOnly} */
-const GREM_DEV = {
-  groups: new Set(['view', 'light', 'player', 'bh', 'sound', 'enemy', 'elite', 'elitefx', 'spider', 'rat', 'jelly', 'jellycol', 'level', 'arch', 'sway',
-    'trajhoming', 'trajseeker', 'trajnear', 'trajaim', 'trajgrav', 'trajfloat', 'trajflat', 'trajorbit', 'trajspiral', 'trajboomer', 'trajpong',
-    'autoorb', 'autozones', 'zone_moss', 'zone_webs', 'zone_timber', 'zone_paved', 'zone_grove', 'zone_winding', 'zone_spider',
-    'grem', 'autolevel', 'autoguns', 'autoperks', 'autofoes', 'autodeath', 'autoloot', 'autochests', 'fire', 'autofire', 'firelab', 'firefx', 'firesilk']),
-  auto: new Set(['view', 'light', 'player', 'level']),
-};
 
 // (v1.0.99) a mouse wheel scrolls the gun row sideways (its scroll bar is hidden: style.css .gguns)
 /** @param {any} e */

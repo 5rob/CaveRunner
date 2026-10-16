@@ -101,7 +101,6 @@ export const STAT_PERKS = {
             say: v => 'Carrot ' + ROMAN[v - 1] + ' of V: the camera pulls back, the torch reaches further, the aim line runs longer — and creatures notice you from further off.' },
 };
 export const STAT_KEYS = Object.keys(STAT_PERKS);
-export const STAT_PRICE = [60, 140, 260, 420, 650];   // gold at the perk machine, by level
 for (const s of STAT_KEYS) {
   const S = STAT_PERKS[s];
   S.vals.forEach((v, i) => {
@@ -117,23 +116,6 @@ export const SUIT_SLOTS = 6;
 // LO.suit: the SUIT_SLOTS general slots (any perk but a stat one), then one slot per STAT_KEYS
 // stat (only that stat's perks)
 export const SUIT_LEN = SUIT_SLOTS + STAT_KEYS.length;
-// can perk `id` go in suit slot `i`?
-/** @param {string} id @param {number} i */
-export function fitsSlot(id, i) {
-  const k = PERKS[id];
-  if (!k) return false;
-  return i < SUIT_SLOTS ? !k.stat : k.stat === STAT_KEYS[i - SUIT_SLOTS];
-}
-// what the perk machine asks for a copy of one (game/systems/shops.js, ui/modshop.js perkShop)
-export const PERK_PRICE = 200;
-/** @param {string} id */
-export const perkPrice = id => (PERKS[id] && PERKS[id].tier ? STAT_PRICE[PERKS[id].tier - 1] : PERK_PRICE);
-
-// The perks that count: the ones fitted to the suit, each once (no doubling up: v129)
-/** @param {{ suit?: (string | null)[] }} lo @returns {string[]} */
-export function activePerks(lo) {
-  return (lo.suit || []).filter((id, i, a) => id && PERKS[id] && a.indexOf(id) === i);
-}
 
 // Everything the perks you are carrying add up to. Multipliers multiply, flags stick,
 // `mana: 0` means unlimited and stays unlimited however many of them you find.

@@ -53,9 +53,6 @@ export function rollBlock(R, Z, variant) {
   return { variant: v.id, base: Z.z, sev, clears: v.clears, x0, x1: x0 + w, full: sev >= DEV.autoBlockFull,
     rl: ramp(), rr: ramp(), lean: (R() - 0.5) * 0.5, k: Math.floor(R() * 1000) };
 }
-// the zone kind for display and counting: 'blocked' for one with a blockage, else its own
-/** @param {import('../art/titlescene.js').TZone} Z */
-export const zoneKind = Z => (Z.blk ? 'blocked' : Z.z);
 
 // Pick the level's blocked zones among its random ones (zs: their indices in the plan), with their own random (the
 // rest of the level is the same as without). n: DEV.autoBlockN (a fraction is a chance of one more)
@@ -244,3 +241,8 @@ export function webSlow(S) {
   }
   return { k, i, halt: k < DEV.autoWebHalt };
 }
+
+// ---- kept for the test suites (grem branch: the game no longer calls these; the suites set up with them) ----
+// the zone kind for display and counting: 'blocked' for one with a blockage, else its own
+/** @param {import('../art/titlescene.js').TZone} Z */
+export const zoneKind = Z => (Z.blk ? 'blocked' : Z.z);

@@ -117,6 +117,7 @@ export function ragPush(R, x, y, rad, power) {
   if (hit) { R.still = false; R.rest = 0; }
 }
 
+// ---- kept for the test suites (grem branch: the game no longer calls these; the suites set up with them) ----
 // the ragdoll's middle (the hip), for the camera and everything else that follows "you"
 /** @param {Ragdoll} R */
 export const ragHip = R => R.joints[2];

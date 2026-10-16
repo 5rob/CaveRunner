@@ -12,8 +12,6 @@ const MM = MODS;
 
 // what can block the way: rock (walls, roofs, the ground), webs and fallen timber (stage 6b's blocked zones)
 
-export const CLEAR_BLOCKS = ['rock', 'web', 'timber'];
-
 // one mod's digging numbers: bore, eat, pit, explode (a blast field's radius counts as explode), fire
 /** @param {string} id @returns {{ bore: number, eat: number, pit: number, explode: number, fire: number }} */
 export function clearPower(id) {
@@ -67,3 +65,6 @@ export function teamClearer(team, block, me) {
   }
   return null;
 }
+
+// ---- kept for the test suites (grem branch: the game no longer calls these; the suites set up with them) ----
+export const CLEAR_BLOCKS = ['rock', 'web', 'timber'];

@@ -1,5 +1,7 @@
 # auto/ — layer 4: CaveRunner Auto (branch `autobattler`)
 
+**grem branch (CaveRunner Grem, v2.0.0):** cut from this folder as unused by Grem Mode: `fps.js`, `save.js`. Anything below that still names them describes `autobattler` / `main`, where they live on.
+
 The auto-battler's pure parts (`AUTOBATTLER.md`). **Layer 4**: `run.js` takes `TITLE_COLS` from
 `art/titlescene.js` (layer 4), so modules here may import layers 1–4 (core, dev, data, spells, world,
 art, …), never `game/`, `ui/` or `main.js`. Everything here is pure: the logic suites call it directly.

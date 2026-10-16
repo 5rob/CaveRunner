@@ -6,45 +6,19 @@
 // land), then flies into the bag as the level's loot does (S.loot, art/titlescene.js
 // stepLoot through S.hub's fits/take); the bag full, it waits on the floor. The change carries over.
 
-import { PW } from '../core/consts.js';
-import { DEV } from '../dev/knobs.js';
 import { PERKS } from '../data/perks.js';
 import { shopGun } from '../spells/gunshop.js';
 import { crystalRoll } from '../spells/collection.js';
 import { EXO_CATS, exoMod } from './run.js';
-import { hubPrice, hubState, hubStopX } from './hub.js';
-import { mapPrice, mapsOf, nextLocked } from './maps.js';
-import { lootCol } from './loot.js';
+import { hubPrice } from './hub.js';
 
 export const PAY_CYCLE = 1.6;        // a paid machine shakes this long before it spits the item out (s)
-const PAY_REST = 0.45;               // the item lands on the floor and lies this long before the player pulls it in (s)
-/** @type {import('./hub.js').HubStopId[]} */
-const PAY_IDS = ['gun', 'exo', 'mod', 'perk'];
 const SHAKE_F0 = 3, SHAKE_F1 = 30;   // the shake's frequency (Hz): F0 at the start, F0 + F1 at the pop (game/systems/shops.js)
 
 // how far round its shake a machine is, t s in (the old crystal machine's shakePhase, over PAY_CYCLE)
 /** @param {number} t */
 export const payPhase = t => SHAKE_F0 * t + SHAKE_F1 * PAY_CYCLE * Math.pow(Math.min(1, t / PAY_CYCLE), 3) / 3;
 
-// (owner, v1.0.45) what machine id still wants before its next payout, gold already on its way to it counted: the A
-// stream's bigger nuggets stop at it (none wanted: 0; no price: Infinity)
-/** @param {import('../art/titlescene.js').TitleScene} S @param {string} id @returns {number} */
-export function hubOwed(S, id) {
-  const H = hubState(S);
-  if (!H) return Infinity;
-  let p;
-  if (id === 'map') {
-    const run = H.run, i = run ? nextLocked(run) : -1;
-    if (!run || i < 0) return 0;
-    p = mapPrice(i) - (mapsOf(run)[i].paid || 0) - (H.paid.map || 0);
-  } else {
-    const m = machinePay({ paid: H.paid }, id, H.tier);
-    if (!m.price) return Infinity;
-    p = m.price - m.left;
-  }
-  for (const g of H.thrown) if (g.to === id || g.pull === id) p -= g.n;
-  return Math.max(0, p);
-}
 // what machine id owes at a tier: n items (whole prices paid) and the change left (paid − price × n)
 /** @param {{ paid?: Record<string, number> }} run @param {string} id @param {number} tier @returns {{ n: number, left: number, price: number }} */
 export function machinePay(run, id, tier) {
@@ -69,35 +43,3 @@ export function machineItem(id, tier, rnd) {
   return null;
 }
 
-// One step of the machines (hubStep calls it): a machine paid in full starts shaking (H.vend[id] = when); PAY_CYCLE
-// later the price comes off H.paid (the run's) and the item pops out of its tray into S.loot, thrown up and toward
-// the middle, then vacuumed into the bag. H.paidV + 1 whenever H.paid changes (the screen saves the run)
-/** @param {import('../art/titlescene.js').TitleScene} S @param {import('./hub.js').HubState} H */
-export function stepPay(S, H) {
-  for (const id of PAY_IDS) {
-    const at = H.vend[id];
-    if (at === undefined || at < 0) {
-      if (machinePay({ paid: H.paid }, id, H.tier).n > 0) { H.vend[id] = S.t; S.snd.push({ k: 'arc', x: hubStopX(id), y: H.fy - 40 }); }
-      continue;
-    }
-    if (S.t - at < PAY_CYCLE) continue;
-    H.vend[id] = -1;
-    const due = machinePay({ paid: H.paid }, id, H.tier);
-    if (due.n <= 0) continue;
-    H.paid[id] = due.left; H.paidV++;
-    const x = hubStopX(id);
-    for (let k = 0; k < due.n; k++) {
-      const it = machineItem(id, H.tier, S.rnd);
-      if (!it) continue;
-      // out toward player 1 (so it lands near him, on screen); he stands right at it: either way
-      const L1 = S.runners[0], dx = L1 ? L1.x + PW / 2 - x : 0, side = Math.abs(dx) > 6 ? Math.sign(dx) : (S.rnd() < 0.5 ? -1 : 1);
-      const vx = side * (35 + 35 * S.rnd());
-      // (feedback round 2) it pops out, bounces and lies there: picked up only once DEV.autoPickMin s old and a player walks
-      // within DEV.autoPickReach of it (it used to fly straight into a player standing at the machine)
-      (S.loot || (S.loot = [])).push({ x, y: H.fy - 14, vx, vy: -150 - 40 * S.rnd(), it, col: lootCol(it), t: 0, land: PAY_REST + 0.15 * k,
-        reach: DEV.autoPickReach, minT: DEV.autoPickMin });
-    }
-    S.flash = Math.max(S.flash, 0.25);
-    S.snd.push({ k: 'coin', x, y: H.fy - 14 });
-  }
-}

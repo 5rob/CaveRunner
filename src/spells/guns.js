@@ -2,8 +2,7 @@
 // Guns: making them (makeGun at a level 1-10, caveGun, startingGuns), their names,
 // colours and prices, and resetGun / shuffleOrder.
 
-import { COL } from '../core/consts.js';
-import { MODS, SEED_SHOTS, famCol } from './mods.js';
+import { MODS, SEED_SHOTS } from './mods.js';
 import { rollMod } from './spawn.js';
 
 // Every gun gets its own hue, fixed for the run so it works as an identifier.
@@ -20,21 +19,6 @@ export const hueFromName = (/** @type {string} */ name) => {
   return h % 360;
 };
 export const gunHue = (/** @type {Gun} */ g) => (g && g.hue != null) ? g.hue : hueFromName(g ? g.name : '');
-export const gunColor = (/** @type {Gun} */ g) => 'hsl(' + gunHue(g) + ', var(--gun-s), var(--gun-l))';
-
-// Guns are priced off what they actually do: slots to build in, how fast they
-// cycle, how much mana they hold, and whether they fire in the order you set.
-/** @param {Gun} g */
-export function gunPrice(g) {
-  const rate = 1 / Math.max(0.05, g.castDelay) + 1 / Math.max(0.1, g.recharge);
-  const v = g.cap * 20 + rate * 7 + g.manaMax * 0.1 + g.manaRegen * 0.3
-    + (g.multi - 1) * 45 + ((g.speedMul || 1) - 1) * 40 - g.spread * 3
-    + (g.shuffle ? -30 : 20);
-  return Math.max(45, Math.round(v / 5) * 5);
-}
-
-// Every second shop is a gun shop instead of a mod shop.
-export const isGunShop = (/** @type {number} */ floor) => floor % 2 === 0;
 
 // ---- guns ----
 export const GUN_A = ['Rusty', 'Bone', 'Cracked', 'Copper', 'Glass', 'Ivory', 'Molten', 'Static',
@@ -86,12 +70,6 @@ export function gunLevel(floor, rnd) {
   return base;
 }
 
-// a gun of level `lvl` (the Dev panel's Spawn gun uses it to try deeper floors' guns on floor 1)
-/** @param {number} lvl @param {Rnd} rnd @returns {Gun} */
-export function caveGun(lvl, rnd) {
-  return makeGun(rnd, Math.min(GUN_LV_MAX, Math.max(1, Math.floor(lvl))));
-}
-
 /** @param {Rnd} rnd @param {number} lvl 1-10 @returns {Gun} */
 export function makeGun(rnd, lvl) {
   const t = gunLvTier(lvl);
@@ -123,6 +101,11 @@ export function makeGun(rnd, lvl) {
   return resetGun(g);
 }
 
+// the colour a gun wears: its level's colour, or (starter guns, which have no level)
+// whatever family its first shot belongs to
+export const gunLvCol = (/** @type {Gun} */ g) => (g && g.lvl ? GUN_LV_COL[Math.min(GUN_LV_MAX, g.lvl) - 1] : null);
+
+// ---- kept for the test suites (grem branch: the game no longer calls these; the suites set up with them) ----
 // The Scratch Pistol is a weak backup on purpose: slow, thirsty and single-shot, so anything you find
 // on floor 1 is an upgrade over it. Since v0.0.142 a new run starts with no guns: the gun machine
 // gives this one away free while you have none (ui/gunshop.js)
@@ -130,31 +113,3 @@ export function makeGun(rnd, lvl) {
 export const scratchPistol = () => resetGun({ name: 'Scratch Pistol', cap: 3, castDelay: 0.32, recharge: 1.7,
     manaMax: 90, manaRegen: 22, spread: 5, multi: 1, shuffle: false, mana: 90, speedMul: 1,
     slots: ['bolt', null, null], hue: Math.floor(Math.random() * 360) });
-
-// The old starting guns (before v0.0.142 a new run started with these; now with none): the tests build loadouts from them
-/** @returns {(Gun | null)[]} */
-export function startingGuns() {
-  // [Scratch Pistol (selected), Pick Axe, Gravity Gun, empty]
-  const pistol = scratchPistol();
-  // The Pick Axe holds a Buzzsaw: no travel, a big circular slice right in front that chews
-  // rock and shreds anything close. Buzzsaw zeroes cast delay, so recharge (1s) sets the swing.
-  const pickaxe = resetGun({ name: 'Pick Axe', cap: 1, castDelay: 0.05, recharge: 1.0,
-    manaMax: 120, manaRegen: 60, spread: 0, multi: 1, shuffle: false, mana: 120, speedMul: 1,
-    slots: ['saw'], hue: 20 });
-  // The Gravity Gun (v0.0.137): Follow This (Follow Me until v0.0.155) then a White Hole, so the white hole hovers just ahead of
-  // your gun and drags whatever it holds wherever you aim; a fresh one about every second
-  const gravity = resetGun({ name: 'Gravity Gun', cap: 2, castDelay: 0.3, recharge: 0.6,
-    manaMax: 200, manaRegen: 70, spread: 0, multi: 1, shuffle: false, mana: 200, speedMul: 1,
-    slots: ['followaim', 'vacfield'], hue: 200 });
-  return [pistol, pickaxe, gravity, null];
-}
-
-// the colour a gun wears: its level's colour, or (starter guns, which have no level)
-// whatever family its first shot belongs to
-export const gunLvCol = (/** @type {Gun} */ g) => (g && g.lvl ? GUN_LV_COL[Math.min(GUN_LV_MAX, g.lvl) - 1] : null);
-/** @param {Gun} g */
-export function gunAccent(g) {
-  if (g && g.lvl) return gunLvCol(g);
-  if (g) for (const id of g.slots) if (id && MODS[id].kind === 'shot') return famCol(id);
-  return COL.bullet;
-}

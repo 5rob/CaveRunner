@@ -30,16 +30,6 @@ export function mapsOf(run) {
   return run.maps;
 }
 
-// the effective tier: the active map's level + its index × DEV.autoMapStep
-/** @param {AutoRun} run */
-export function mapTier(run) {
-  const m = mapsOf(run)[run.map || 0];
-  return m.level + (run.map || 0) * DEV.autoMapStep;
-}
-// run.tier from the active map (call after anything changes the map or its level)
-/** @param {AutoRun} run */
-export function syncTier(run) { run.tier = mapTier(run); return run.tier; }
-
 // what map i costs: 0 for map 0, DEV.autoMapPrice for map 1, × DEV.autoMapGrow each map after
 /** @param {number} i */
 export const mapPrice = i => (i <= 0 ? 0 : Math.round(DEV.autoMapPrice * Math.pow(DEV.autoMapGrow, i - 1)));
@@ -58,47 +48,6 @@ export function mapState(run, i) {
   if (i !== nextLocked(run)) return 'locked';
   return ms[i - 1] && ms[i - 1].beaten ? 'buy' : 'beat';
 }
-
-// n gold into the next locked map (only if it can be bought); full, it's owned. The change (all of n if nothing takes it)
-/** @param {AutoRun} run @param {number} n @returns {number} */
-export function payMap(run, n) {
-  const i = nextLocked(run);
-  if (i < 0 || mapState(run, i) !== 'buy' || n <= 0) return Math.max(0, n);
-  const m = run.maps[i], price = mapPrice(i), take = Math.min(n, price - m.paid);
-  m.paid += take;
-  if (m.paid >= price) { m.owned = true; m.paid = price; }
-  return n - take;
-}
-
-// make owned map i the active one (false: not owned)
-/** @param {AutoRun} run @param {number} i */
-export function selectMap(run, i) {
-  const m = mapsOf(run)[i];
-  if (!m || !m.owned) return false;
-  run.map = i;
-  syncTier(run);
-  return true;
-}
-
-// the end teleporter reached: the active map's level + 1, beaten, its best
-/** @param {AutoRun} run */
-export function mapCleared(run) {
-  const m = mapsOf(run)[run.map || 0];
-  m.best = Math.max(m.best, m.level);
-  m.level++;
-  m.beaten = true;
-  syncTier(run);
-}
-// everyone fell: the active map back to level 1
-/** @param {AutoRun} run */
-export function mapFailed(run) {
-  mapsOf(run)[run.map || 0].level = 1;
-  syncTier(run);
-}
-
-// the pause menu's label: "Mossy Caves Lv 3"
-/** @param {AutoRun} run */
-export const mapLabel = run => MAP_NAMES[run.map || 0] + ' Lv ' + mapsOf(run)[run.map || 0].level;
 
 // (owner, v1.0.97: the old game's themed floors back) which old floor a level plays as: level 1 is floor 1 (Mossy Caves,
 // today's level, untouched); from level 2 the old floors 2..12 in turn (Coal Seams, Frozen Deep, … Void Hollow), then round
@@ -121,3 +70,14 @@ export function floorLook(floor, seed) {
   const rnd = () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
   return { floor, theme: THEMES[floor - 1], name: floorName(floor), roster: rosterFor(floor, rnd) };
 }
+
+// ---- kept for the test suites (grem branch: the game no longer calls these; the suites set up with them) ----
+// the effective tier: the active map's level + its index × DEV.autoMapStep
+/** @param {AutoRun} run */
+export function mapTier(run) {
+  const m = mapsOf(run)[run.map || 0];
+  return m.level + (run.map || 0) * DEV.autoMapStep;
+}
+// run.tier from the active map (call after anything changes the map or its level)
+/** @param {AutoRun} run */
+export function syncTier(run) { run.tier = mapTier(run); return run.tier; }

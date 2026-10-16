@@ -1,6 +1,6 @@
 // Gun presets (save/presets.js, LIST4 #1): the Bag's 💾 saves a deep copy of the gun with its mods,
 // junk is dropped on the way in and out, and removePreset takes one out.
-const { addPreset, removePreset, cleanPresets, presetGun, caveGun, MODS } = require('../load');
+const { addPreset, removePreset, cleanPresets, presetGun, starterKit, MODS } = require('../load');
 
 let pass = 0, fail = 0;
 const check = (name, ok, got) => {
@@ -40,9 +40,10 @@ check('removePreset takes that one out', removed.length === 1 && removed[0].name
 const a = presetGun(list[0]), b = presetGun(list[0]);
 check('presetGun: a fresh copy each time', a && b && a !== b && a.slots !== b.slots && a.slots !== list[0].gun.slots && a.name === 'Zapper');
 
-const real = caveGun(3, Math.random);
+const real = starterKit().gun;
+real.slots = ['bolt', 'spark', null, 'slug'];
 const back = cleanPresets(addPreset([], 'r', real))[0].gun;
-check('a real cave gun saves and comes back the same', JSON.stringify(back.slots) === JSON.stringify(real.slots) &&
+check('a real starter gun saves and comes back the same', JSON.stringify(back.slots) === JSON.stringify(real.slots) &&
   back.name === real.name && back.hue === real.hue, { back, real });
 
 console.log(`\n${pass} passed, ${fail} failed`);

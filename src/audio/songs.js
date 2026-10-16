@@ -233,12 +233,6 @@ export const TRACKS = [TITLE_TRACK, ...SPECS.map(makeTrack)];
 export const BOSS_TRACK = makeTrack(BOSS_SPEC);
 /** @param {string} id @returns {Track} */
 export const trackById = id => (id === 'boss' ? BOSS_TRACK : TRACKS.find(t => t.id === id) || TITLE_TRACK);
-/** each recipe's lead, bar by bar, in 16ths (the tests: every bar 16) @returns {Record<string, number[]>} */
-export const leadBarLengths = () => Object.fromEntries([...SPECS, BOSS_SPEC].map(T => [T.id, (T.lead ? T.lead.phrases : []).flatMap(ph => ph.split('|'))
-  .map(bar => bar.trim().split(/\s+/).reduce((a, t) => a + Number(t.split(':')[1].replace(/[b~]/g, '')), 0))]));
-/** each recipe's patterns are a bar long @returns {string[]} the ones that aren't */
-export const badPatterns = () => [...SPECS, BOSS_SPEC].flatMap(T => [T.bass, T.kick, T.snare, T.hat, T.hat2].filter(B => B && B.pat.length !== 16).map(B => T.id + ' ' + (B && B.pat)))
-  .concat([...SPECS, BOSS_SPEC].filter(T => T.arp && T.arp.pat.length !== 16).map(T => T.id + ' arp'));
 
 // Which track plays (v1.0.94): the boss's while one is alive in a level; else the six in turn, the next one each time a
 // level's boss goes down. m: the picker's memory (the level it last saw, whether its boss was down, levels cleared).
@@ -250,3 +244,11 @@ export function musicPick(m, L) {
   m.L = L; m.dead = dead;
   return L && L.boss && !dead ? BOSS_TRACK.id : TRACKS[m.n % TRACKS.length].id;
 }
+
+// ---- kept for the test suites (grem branch: the game no longer calls these; the suites set up with them) ----
+/** each recipe's lead, bar by bar, in 16ths (the tests: every bar 16) @returns {Record<string, number[]>} */
+export const leadBarLengths = () => Object.fromEntries([...SPECS, BOSS_SPEC].map(T => [T.id, (T.lead ? T.lead.phrases : []).flatMap(ph => ph.split('|'))
+  .map(bar => bar.trim().split(/\s+/).reduce((a, t) => a + Number(t.split(':')[1].replace(/[b~]/g, '')), 0))]));
+/** each recipe's patterns are a bar long @returns {string[]} the ones that aren't */
+export const badPatterns = () => [...SPECS, BOSS_SPEC].flatMap(T => [T.bass, T.kick, T.snare, T.hat, T.hat2].filter(B => B && B.pat.length !== 16).map(B => T.id + ' ' + (B && B.pat)))
+  .concat([...SPECS, BOSS_SPEC].filter(T => T.arp && T.arp.pat.length !== 16).map(T => T.id + ' arp'));

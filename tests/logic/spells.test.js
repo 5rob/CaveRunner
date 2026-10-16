@@ -20,8 +20,6 @@ for (const id of G.ALL_IDS) {
     ok(id + ' shot has finite speed', isFinite(sh.speed), sh.speed);
     ok(id + ' shot has a usable life', isFinite(sh.life) && sh.life > 0, sh.life);
   }
-  try { prev = G.modPreview(id); } catch (e) { ok(id + ' previews', false, e.message); continue; }
-  ok(id + ' info card has rows', prev.rows.length > 0 || m.kind === 'mod', prev.rows.length);
 }
 
 // ---- the Greek letters actually copy ----
@@ -81,14 +79,6 @@ for (const [id, act] of [['refresh', 'refresh'], ['farcast', 'far'], ['telecast'
   const p = G.planCast(mk(['bpower', 'bolt', null, null]));
   ok('Blood To Power charges health', p.hp === 8, p.hp);
   ok('and it makes the shot hit harder', p.shots[0].dmg > 2.5, p.shots[0].dmg);
-}
-{
-  const bare = G.gunRate(mk(['bolt', 'bolt', null, null]));
-  const bled = G.gunRate(mk(['bpower', 'bolt', 'bpower', 'bolt']));
-  ok('the advisor discounts a build that bleeds you', bled.bleed < 1, bled.bleed);
-  ok('and says so', G.buildAdvice(mk(['bpower', 'bolt', 'bpower', 'bolt']), []).limit.key === 'blood',
-    G.buildAdvice(mk(['bpower', 'bolt', 'bpower', 'bolt']), []).limit);
-  ok('a plain gun is not accused of bleeding you', bare.bleed === 1, bare.bleed);
 }
 
 // ---- static projectiles are cast things, not modifiers ----
@@ -157,8 +147,7 @@ ok('Bloodlust can turn on you', shot(['lust', 'bolt']).friendly === 1);
 // ---- the whole table still groups and costs sensibly ----
 {
   const g = mk(['double', 'bolt', 'saw', 'heavy']);
-  ok('cast groups still work with the bigger table', (G.castGroups(g) || []).length > 0);
-  ok('group stats still work', G.groupStats(g, G.castGroups(g)[0]).length > 0);
+  ok('the whole table still plans', G.planCast(g).shots.length > 0);
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

@@ -16,7 +16,9 @@ G.devSet('zoom', 0.1 + 0.2);
 t = G.devCopyText();
 check('a zone check box (no panel row) is in it', t.includes('(DEV.' + zv + '): '), t.split('\n').slice(0, 5));
 check('slider float noise rounded', /\(DEV\.zoom\): 0\.3 /.test(t));
-check('every DEV key named once (changed or unchanged)', Object.keys(G.DEV_DEFAULTS).every(k => t.includes('(DEV.' + k + ')') || new RegExp('[ ,]' + k + '(,|\\n|$)').test(t)));
+// (grem branch) every knob the panel has: its rows and the zone check boxes (the fixed values left from cut pages are not)
+const panelKeys = [...new Set(G.DEV_META.map(m => m.k).concat(Object.keys(G.DEV_DEFAULTS).filter(k => k.startsWith('zv_'))))];
+check('every panel knob named once (changed or unchanged)', panelKeys.every(k => t.includes('(DEV.' + k + ')') || new RegExp('[ ,]' + k + '(,|\\n|$)').test(t)));
 check('a device keeps only what it changed', Object.keys(JSON.parse(store[G.DEV_KEY])).sort().join() === [zv, 'zoom'].sort().join(), store[G.DEV_KEY]);
 G.devSet('zoom', G.DEV_DEFAULTS.zoom); G.devSet(zv, G.DEV_DEFAULTS[zv]);
 check('…and nothing once they are back', store[G.DEV_KEY] === '{}', store[G.DEV_KEY]);

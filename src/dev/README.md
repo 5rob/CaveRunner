@@ -1,5 +1,7 @@
 # dev/ — layer 1: the Dev panel's knobs
 
+**grem branch (CaveRunner Grem, v2.0.0):** cut from this folder as unused by Grem Mode: `autouse.js`. Anything below that still names them describes `autobattler` / `main`, where they live on.
+
 `knobs.js` holds everything the ⚙️ Dev panel tweaks (the panel itself is `ui/devpanel.js`):
 
 - `DEV` — the live values; the game reads them every frame, so a change shows at once.

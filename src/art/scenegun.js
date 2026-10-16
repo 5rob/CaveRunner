@@ -22,18 +22,6 @@ export const SG_PIT_MAX = 10;
 export const SG_BEAM_MAX = 200;      // the longest beam (Plasma Beam's 320 is most of the screen)
 export const SG_PELLETS = 12;         // at most this many of one shot at once
 
-// Mods the bridge can't do yet: each fires (or is carried) as nothing, or as if it weren't there. Kept honest
-// by tests/logic/auto-guns.test.js (every mod changes something about the shots or the gun's clocks, or is here,
-// and everything here really changes nothing). The PM picks what to chase.
-/** @type {string[]} */
-export const GUN_TODO = [
-  // statics and fields (they don't fly: planShots leaves them out)
-  'boom', 'brim', 'crystal', 'dormant', 'stillc', 'shieldc', 'storm', 'glitter',
-  // modifiers whose effect the scene's shot model has no field for yet
-  // (Discriminate left it in v1.0.71: shotsOf / whiteHole carry `only`; an unset copy does nothing, by design)
-  'knock', 'damper', 'crit', 'gpower', 'cluster',
-];
-
 // One frame of a gun's clocks: mana back at its regen (to its max), cast delay and recharge counting down.
 /** @param {Gun} g @param {number} dt */
 export function gunTick(g, dt) {
@@ -138,3 +126,16 @@ export function vigourCircle(sh, x, y, by) {
     real: true, by: by == null ? -1 : by, trig: null, timer: 0, pay: null, age: 0, sid: mana ? 'manaspring' : 'vigour', light: mana ? '74,156,255' : '70,196,140', lightR: 30,
     beam: 0, ang: 0, pull: 0, heal: sh.r || 36, tick: 0, follow: sh.follow || 0, only: sh.only || null };
 }
+
+// ---- kept for the test suites (grem branch: the game no longer calls these; the suites set up with them) ----
+// Mods the bridge can't do yet: each fires (or is carried) as nothing, or as if it weren't there. Kept honest
+// by tests/logic/auto-guns.test.js (every mod changes something about the shots or the gun's clocks, or is here,
+// and everything here really changes nothing). The PM picks what to chase.
+/** @type {string[]} */
+export const GUN_TODO = [
+  // statics and fields (they don't fly: planShots leaves them out)
+  'boom', 'brim', 'crystal', 'dormant', 'stillc', 'shieldc', 'storm', 'glitter',
+  // modifiers whose effect the scene's shot model has no field for yet
+  // (Discriminate left it in v1.0.71: shotsOf / whiteHole carry `only`; an unset copy does nothing, by design)
+  'knock', 'damper', 'crit', 'gpower', 'cluster',
+];

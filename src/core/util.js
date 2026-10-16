@@ -53,12 +53,6 @@ export function angDiff(a, b) {
   while (d < -Math.PI) d += 2 * Math.PI;
   return d;
 }
-// swing a projectile's velocity without changing how fast it is going
-/** @param {{ vx: number, vy: number }} b @param {number} by */
-export function turn(b, by) {
-  const sp = Math.hypot(b.vx, b.vy), a = Math.atan2(b.vy, b.vx) + by;
-  b.vx = Math.cos(a) * sp; b.vy = Math.sin(a) * sp;
-}
 
 /** @type {(a: number[], b: number[], t: number) => number[]} */
 export const mix = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
@@ -78,17 +72,6 @@ export function mixHex(a, b, t) {
   const bl = Math.round((pa & 255) + ((pb & 255) - (pa & 255)) * t);
   return 'rgb(' + r + ',' + g + ',' + bl + ')';
 }
-
-// A countdown for a deadline: ms left -> "00:59:59" ("4d 23:59:59" past a day), "OVERDUE" once passed
-/** @param {number} ms */
-export function countdown(ms) {
-  if (ms <= 0) return 'OVERDUE';
-  const s = Math.floor(ms / 1000);
-  const d = Math.floor(s / 86400);
-  return (d ? d + 'd ' : '') + pad2(Math.floor(s / 3600) % 24) + ':' + pad2(Math.floor(s / 60) % 60) + ':' + pad2(s % 60);
-}
-/** @param {number} n */
-const pad2 = n => String(n).padStart(2, '0');
 
 // A fade shaped by a bezier curve (the hologram's flash): from (0, 1) to (1, 0), bent by two control
 // points (x1, y1) and (x2, y2) like CSS's cubic-bezier, the x's kept in 0..1. Returns the curve's

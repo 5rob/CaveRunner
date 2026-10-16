@@ -138,33 +138,6 @@ export function jellyStep(e, env, dt) {
   }
 }
 
-// Does the line from (ax, ay) to (bx, by) pass through the box x0..x1, y0..y1? Clips the
-// line to the box one edge at a time (Liang–Barsky) — exact, so a thin tentacle crossing
-// a corner of you counts, and one passing close by doesn't.
-/** @param {number} ax @param {number} ay @param {number} bx @param {number} by @param {number} x0 @param {number} y0 @param {number} x1 @param {number} y1 @returns {boolean} */
-export function segHitsBox(ax, ay, bx, by, x0, y0, x1, y1) {
-  const dx = bx - ax, dy = by - ay;
-  let t0 = 0, t1 = 1;
-  const clip = (p, q) => {
-    if (p === 0) return q >= 0;
-    const t = q / p;
-    if (p < 0) { if (t > t1) return false; if (t > t0) t0 = t; }
-    else { if (t < t0) return false; if (t < t1) t1 = t; }
-    return true;
-  };
-  return clip(-dx, ax - x0) && clip(dx, x1 - ax) && clip(-dy, ay - y0) && clip(dy, y1 - ay);
-}
-// where a jelly's tentacles cross the box (the middle of the first segment that does), or null
-/** @param {JellyBrain | undefined} S @param {number} x0 @param {number} y0 @param {number} x1 @param {number} y1 @returns {Pt | null} */
-export function tentacleTouch(S, x0, y0, x1, y1) {
-  if (!S || !S.tent) return null;
-  for (const T of S.tent) for (let j = 1; j < T.length; j++) {
-    const a = T[j - 1], b = T[j];
-    if (!isNaN(a.x) && segHitsBox(a.x, a.y, b.x, b.y, x0, y0, x1, y1)) return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
-  }
-  return null;
-}
-
 // ---- the jellyfish's plant glow ----
 // Green vegetation near a jelly glows and twinkles in its colour, built the way the owner
 // (a VFX compositor) laid it out: take the art round the jelly, pull the green channel,

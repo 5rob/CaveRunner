@@ -5,13 +5,12 @@
 
 import { PLAYER_HP } from '../core/consts.js';
 import { DEV } from '../dev/knobs.js';
-import { goldScale } from '../data/creatures.js';
-import { PERKS, STAT_PERKS, perkBag, perkPrice } from '../data/perks.js';
+import { STAT_PERKS, perkBag } from '../data/perks.js';
 import { stackKey } from '../spells/collection.js';
 import { TITLE_COLS } from '../art/titlescene.js';
 import { MODS, tierOf } from '../spells/mods.js';
-import { mapCleared, mapFailed, mapsOf } from './maps.js';
 import { resetGun } from '../spells/guns.js';
+import { mapsOf } from './maps.js';
 
 export const BAG_COLS = 7, BAG_ROWS = 10, BAG_SLOTS = BAG_COLS * BAG_ROWS;
 // (owner, v1.0.49) the bag grows: always BAG_EXTRA empty rows after the lowest row holding something (bagFit), up to
@@ -74,47 +73,11 @@ export function starterKit(rnd = Math.random) {
     mana: DEV.autoGunMana, slots: [shot, null, null], hue: Math.floor(rnd() * 360) });
   return { gun, saw: { kind: 'mod', id: 'saw', n: 1 } };
 }
-// a player gets its kit: the gun in its first slot (active), the Buzzsaw into the bag
-/** @param {AutoRun} run @param {RunPlayer} pl @param {() => number} [rnd] */
-function giveKit(run, pl, rnd) {
-  const k = starterKit(rnd);
-  pl.guns[0] = k.gun; pl.active = 0;
-  bagAdd(run, k.saw);
-}
-// a run saved before the starter kit existed (stage 5a): each player with no gun at all gets its kit (feedback round 1)
-/** @param {AutoRun} run @param {() => number} [rnd] @returns {AutoRun} */
-export function kitMissing(run, rnd) {
-  for (const pl of run.players) if (pl.guns.every(g => !g)) giveKit(run, pl, rnd);
-  return run;
-}
-
-/** tier 1, one player with its starter kit (its gun, a Buzzsaw in the bag); seed: the run's levels (levelSeed)
- * @param {number} [seed] @returns {AutoRun} */
-export function newRun(seed) {
-  /** @type {AutoRun} */
-  const run = { tier: 1, players: [newPlayer(0)], bag: Array(BAG_SLOTS).fill(null), seed: seed || 1 + Math.floor(Math.random() * 1e6) };
-  mapsOf(run);
-  giveKit(run, run.players[0]);
-  bagFit(run);
-  return run;
-}
 
 // ---- between levels (stage 4b) ----
 /** every player back to full health and alive (each level's start, and home to the hub) @param {AutoRun} run */
 export function healRun(run) {
   for (const p of run.players) { p.hp = playerStats(p).maxHp; p.alive = true; }
-}
-/** the run's level at its tier: the same run's tier n is always the same level @param {AutoRun} run */
-export const levelSeed = run => 1 + ((run.seed || 1) * 7919 + run.tier * 104729 + (run.map || 0) * 15485863) % 999983;
-/** every player fell in the level (stage 6): home, the active map back to level 1 (auto/maps.js), healed (the loot kept) @param {AutoRun} run */
-export function levelFailed(run) {
-  mapFailed(run);
-  healRun(run);
-}
-/** the level's end teleporter reached: the active map's level + 1 (run.tier with it: auto/maps.js), healed @param {AutoRun} run */
-export function levelCleared(run) {
-  mapCleared(run);
-  healRun(run);
 }
 
 // ---- the bag ----
@@ -149,361 +112,6 @@ export function bagAdd(run, item) {
   run.bag[i] = Object.assign({}, item, { n: 1 });
   bagFit(run);
   return item.n > 1 ? Object.assign({}, item, { n: item.n - 1 }) : null;
-}
-
-// the bag slot an item just added sits in (its stack's, or for a gun the slot holding that gun), or -1: where the
-// pickup's fly-copy lands (ui/auto/AutoScreen.js)
-/** @param {AutoRun} run @param {BagItem} item @returns {number} */
-export function bagSlotOf(run, item) {
-  const key = itemKey(item);
-  if (key) return run.bag.findIndex(it => !!it && itemKey(it) === key);
-  return run.bag.findIndex(it => !!it && it.kind === item.kind && !!item.gun && it.gun === item.gun);
-}
-
-// take one off bag slot i (the whole slot when it's the last): the single item taken, or null
-/** @param {AutoRun} run @param {number} i @returns {BagItem | null} */
-function takeOne(run, i) {
-  const it = run.bag[i];
-  if (!it) return null;
-  if (it.n > 1) { it.n--; return Object.assign({}, it, { n: 1 }); }
-  run.bag[i] = null;
-  return it;
-}
-
-// Pay n of gold / red / green out of the bag. Not enough: false, nothing taken.
-/** @param {AutoRun} run @param {ItemKind} kind @param {number} n @returns {boolean} */
-export function spend(run, kind, n) {
-  if (n <= 0) return true;
-  if (bagCount(run, kind) < n) return false;
-  for (let i = 0; i < run.bag.length && n > 0; i++) {
-    const it = run.bag[i];
-    if (!it || it.kind !== kind) continue;
-    const t = Math.min(n, it.n);
-    it.n -= t; n -= t;
-    if (it.n <= 0) run.bag[i] = null;
-  }
-  return true;
-}
-
-// ---- scrap ----
-// what an item (its whole stack) scraps for at a tier: autoScrap% of its price; gems and mods
-// have their own knobs (× goldScale(tier)); gold is just gold
-/** @param {BagItem} item @param {number} tier @returns {number} */
-export function scrap(item, tier) {
-  if (!item) return 0;
-  const share = DEV.autoScrap / 100, n = item.n || 1;
-  /** @type {number} */
-  let each;
-  switch (item.kind) {
-    case 'gold': return n;
-    case 'red': each = DEV.autoRed * goldScale(tier); break;
-    case 'green': each = DEV.autoGreen * goldScale(tier); break;
-    case 'mod': each = DEV.autoModGold * goldScale(tier); break;
-    case 'gun': each = autoGunPrice(tier) * share; break;
-    case 'exo': each = autoExoPrice(item.tier || tier) * share; break;
-    case 'perk': each = perkPrice(item.id || '') * share; break;
-    default: each = 0;
-  }
-  return Math.max(1, Math.round(each)) * n;
-}
-
-// Scrap bag slot i (the whole stack) onto the gold stack. False if it's empty or the gold itself.
-/** @param {AutoRun} run @param {number} i @returns {number} the gold it made (0: refused) */
-export function scrapAt(run, i) {
-  const it = run.bag[i];
-  if (!it || it.kind === 'gold') return 0;
-  const g = scrap(it, run.tier);
-  run.bag[i] = null;
-  bagAdd(run, { kind: 'gold', n: g });
-  return g;
-}
-
-// ---- fitting ----
-// A mod from bag slot i into a gun's mod slot (player p, gun slot gi, mod slot si). A mod
-// already there goes back to the bag; refused (false, nothing changed) if it can't fit.
-/** @param {AutoRun} run @param {number} i @param {number} p @param {number} gi @param {number} si @returns {boolean} */
-export function fitMod(run, i, p, gi, si) {
-  const it = run.bag[i], pl = run.players[p], g = pl && pl.guns[gi];
-  if (!it || it.kind !== 'mod' || !g || si < 0 || si >= g.slots.length) return false;
-  const old = g.slots[si];
-  const before = run.bag.slice(), n = it.n;
-  takeOne(run, i);
-  if (old && bagAdd(run, { kind: 'mod', id: old, n: 1 })) {
-    run.bag = before; it.n = n;
-    return false;
-  }
-  g.slots[si] = it.id || null;
-  return true;
-}
-
-// A gun's mod back into the bag. False if the slot's empty or the bag is full.
-/** @param {AutoRun} run @param {number} p @param {number} gi @param {number} si @returns {boolean} */
-export function unfitMod(run, p, gi, si) {
-  const pl = run.players[p], g = pl && pl.guns[gi], id = g && g.slots[si];
-  if (!id || !g) return false;
-  if (bagAdd(run, { kind: 'mod', id, n: 1 })) return false;
-  g.slots[si] = null;
-  return true;
-}
-
-// The gun in bag slot i into player p's gun slot gs; a gun there swaps into the bag slot.
-/** @param {AutoRun} run @param {number} i @param {number} p @param {number} gs @returns {boolean} */
-export function fitGun(run, i, p, gs) {
-  const it = run.bag[i], pl = run.players[p];
-  if (!it || it.kind !== 'gun' || !it.gun || !pl || gs < 0 || gs >= GUN_SLOTS) return false;
-  const old = pl.guns[gs];
-  pl.guns[gs] = it.gun;
-  run.bag[i] = old ? { kind: 'gun', gun: old, n: 1 } : null;
-  if (!pl.guns[pl.active]) pl.active = gs;
-  return true;
-}
-
-// An exo mod from bag slot i into player p's slot s of its own category (cat must match the
-// item's: an exo mod fits only its own category). One taken off a stack; one there swaps back.
-/** @param {AutoRun} run @param {number} i @param {number} p @param {ExoCat} cat @param {number} s @returns {boolean} */
-export function fitExo(run, i, p, cat, s) {
-  const it = run.bag[i], pl = run.players[p];
-  if (!it || it.kind !== 'exo' || it.cat !== cat || !pl || !pl.exo[cat] || s < 0 || s >= EXO_SLOTS) return false;
-  return fitInto(run, i, pl.exo[cat], s);
-}
-
-// A perk from bag slot i into player p's perk slot s (6). Stat perks (st_*) are exo mods now: refused.
-/** @param {AutoRun} run @param {number} i @param {number} p @param {number} s @returns {boolean} */
-export function fitPerk(run, i, p, s) {
-  const it = run.bag[i], pl = run.players[p];
-  if (!it || it.kind !== 'perk' || !it.id || !PERKS[it.id] || PERKS[it.id].stat || !pl || s < 0 || s >= PERK_SLOTS) return false;
-  return fitInto(run, i, pl.perks, s);
-}
-
-// one of bag slot i into arr[s]; what was there goes back to the bag (refused if it can't)
-/** @param {AutoRun} run @param {number} i @param {(BagItem | null)[]} arr @param {number} s */
-function fitInto(run, i, arr, s) {
-  const it = run.bag[i];
-  if (!it) return false;
-  const old = arr[s], before = run.bag.slice(), n = it.n;
-  const one = takeOne(run, i);
-  if (old && bagAdd(run, old)) { run.bag = before; it.n = n; return false; }
-  arr[s] = one;
-  return true;
-}
-
-// Take a fitted gun / exo mod / perk back into the bag. False if empty or the bag is full.
-/** @param {AutoRun} run @param {number} p @param {number} gs @returns {boolean} */
-export function unfitGun(run, p, gs) {
-  const pl = run.players[p], g = pl && pl.guns[gs];
-  if (!g || bagAdd(run, { kind: 'gun', gun: g, n: 1 })) return false;
-  pl.guns[gs] = null;
-  gunsActive(pl);
-  return true;
-}
-/** @param {AutoRun} run @param {number} p @param {ExoCat} cat @param {number} s @returns {boolean} */
-export function unfitExo(run, p, cat, s) {
-  const pl = run.players[p], it = pl && pl.exo[cat] && pl.exo[cat][s];
-  if (!it || bagAdd(run, it)) return false;
-  pl.exo[cat][s] = null;
-  return true;
-}
-/** @param {AutoRun} run @param {number} p @param {number} s @returns {boolean} */
-export function unfitPerk(run, p, s) {
-  const pl = run.players[p], it = pl && pl.perks[s];
-  if (!it || bagAdd(run, it)) return false;
-  pl.perks[s] = null;
-  return true;
-}
-
-// ---- things go where the player puts them (owner, feedback round 1: no auto-arranging) ----
-// bag slot i onto bag slot j: the same stack merges into j, anything else swaps
-/** @param {AutoRun} run @param {number} i @param {number} j @returns {boolean} */
-export function bagMove(run, i, j) {
-  const a = run.bag[i], b = run.bag[j];
-  if (i === j || !a || j < 0 || j >= run.bag.length) return false;
-  const k = itemKey(a);
-  if (b && k && k === itemKey(b)) { b.n += a.n; run.bag[i] = null; return true; }
-  run.bag[j] = a; run.bag[i] = b || null;
-  return true;
-}
-// a player's row of slots: a gun's mods (mod ids), an exo category's or the perks' (items)
-/** @typedef {{ gun?: number, cat?: ExoCat, perks?: boolean }} SlotRow */
-/** @param {RunPlayer} pl @param {SlotRow} row @returns {any[] | null} */
-function rowOf(pl, row) {
-  if (row.gun != null) { const g = pl.guns[row.gun]; return g ? g.slots : null; }
-  if (row.cat) return pl.exo[row.cat] || null;
-  return row.perks ? pl.perks : null;
-}
-// can bag item it go in this row?
-/** @param {SlotRow} row @param {BagItem | null} it */
-function rowFits(row, it) {
-  if (!it) return false;
-  if (row.gun != null) return it.kind === 'mod' && !!it.id;
-  if (row.cat) return it.kind === 'exo' && it.cat === row.cat;
-  return it.kind === 'perk' && !!it.id && !!PERKS[it.id] && !PERKS[it.id].stat;
-}
-// slot a onto slot b of the same row: they swap (a gun's mod order, an exo or perk slot)
-/** @param {AutoRun} run @param {number} p @param {SlotRow} row @param {number} a @param {number} b @returns {boolean} */
-export function rowMove(run, p, row, a, b) {
-  const pl = run.players[p], arr = pl && rowOf(pl, row);
-  if (!arr || a === b || a < 0 || b < 0 || a >= arr.length || b >= arr.length || !arr[a]) return false;
-  const t = arr[a]; arr[a] = arr[b]; arr[b] = t;
-  return true;
-}
-// (owner, bag-drag round) a mod dropped between two of a gun's mods: one from bag slot i goes in before mod slot b; the
-// mods from b on shift right into the first empty slot at or after b. No empty slot there: refused (nothing changed)
-/** @param {AutoRun} run @param {number} i @param {number} p @param {number} gi @param {number} b @returns {boolean} */
-export function insertMod(run, i, p, gi, b) {
-  const it = run.bag[i], pl = run.players[p], g = pl && pl.guns[gi];
-  if (!it || it.kind !== 'mod' || !it.id || !g || b < 0 || b >= g.slots.length) return false;
-  const k = g.slots.indexOf(null, b);
-  if (k < 0) return false;
-  for (let j = k; j > b; j--) g.slots[j] = g.slots[j - 1];
-  g.slots[b] = it.id;
-  takeOne(run, i);
-  return true;
-}
-// a gun's mod slot a moved to just before slot b (b = slots.length: the end) in the same gun: the ones between slide
-// over one (an insert, not a swap). False if a is empty or the move changes nothing
-/** @param {AutoRun} run @param {number} p @param {number} gi @param {number} a @param {number} b @returns {boolean} */
-export function modMoveTo(run, p, gi, a, b) {
-  const pl = run.players[p], g = pl && pl.guns[gi];
-  if (!g || a < 0 || a >= g.slots.length || b < 0 || b > g.slots.length || !g.slots[a] || b === a || b === a + 1) return false;
-  const s = g.slots, id = s[a];
-  if (a < b) { for (let j = a; j < b - 1; j++) s[j] = s[j + 1]; s[b - 1] = id; }
-  else { for (let j = a; j > b; j--) s[j] = s[j - 1]; s[b] = id; }
-  return true;
-}
-// (owner, bag-drag round) a group of bag slots moved together onto bag slot j: they leave their slots, then go (in bag
-// order) into the empty slots from j on (round to the top if the end is reached). Always fits: they freed as many.
-// (owner, after v1.0.74) with the grabbed slot (anchor): first tried keeping their layout, each at its rows and columns
-// from the grabbed one, the grabbed one at j (a 2×2 lands 2×2); only if that falls off the bag's sides or onto an item
-// not in the group, the plain fill. bagGroupPlan: where they'd go (from[i] → to[i]; the screen's green outlines)
-/** @param {AutoRun} run @param {number[]} idxs @param {number} j @param {number} [anchor] @returns {{ from: number[], to: number[], shape: boolean } | null} */
-export function bagGroupPlan(run, idxs, j, anchor) {
-  const from = [...new Set(idxs)].filter(i => i >= 0 && i < run.bag.length && !!run.bag[i]).sort((a, b) => a - b);
-  if (!from.length || j < 0 || j >= run.bag.length) return null;
-  const N = run.bag.length, a = anchor != null && from.includes(anchor) ? anchor : -1;   // (no grabbed one: just the fill)
-  const ar = Math.floor(a / BAG_COLS), ac = a % BAG_COLS, jr = Math.floor(j / BAG_COLS), jc = j % BAG_COLS;
-  const to = [];
-  if (a >= 0) for (const i of from) {
-    const r = jr + Math.floor(i / BAG_COLS) - ar, c = jc + i % BAG_COLS - ac, k = r * BAG_COLS + c;
-    if (c < 0 || c >= BAG_COLS || r < 0 || k >= N || (run.bag[k] && !from.includes(k))) break;
-    to.push(k);
-  }
-  if (a >= 0 && to.length === from.length) return { from, to, shape: true };
-  const busy = run.bag.map((it, i) => !!it && !from.includes(i));
-  to.length = 0;
-  let k = j;
-  for (let n = 0; n < from.length; n++) {
-    let t = 0;
-    while (busy[k] && t < N) { k = (k + 1) % N; t++; }
-    busy[k] = true; to.push(k);
-  }
-  return { from, to, shape: false };
-}
-/** @param {AutoRun} run @param {number[]} idxs @param {number} j @param {number} [anchor] @returns {boolean} */
-export function bagGroupMove(run, idxs, j, anchor) {
-  const P = bagGroupPlan(run, idxs, j, anchor);
-  if (!P) return false;
-  const items = P.from.map(i => run.bag[i]);
-  P.from.forEach(i => { run.bag[i] = null; });
-  P.to.forEach((k, n) => { run.bag[k] = items[n]; });
-  return true;
-}
-// a group of bag slots into a gun's mod slots: the mods (one per slot, a stack's copies one after another) fill the
-// gun's empty slots from s on, as many as fit; the rest (and anything not a mod) stay in the bag. Returns how many went in
-/** @param {AutoRun} run @param {number[]} idxs @param {number} p @param {number} gi @param {number} s @returns {number} */
-export function fitMods(run, idxs, p, gi, s) {
-  const pl = run.players[p], g = pl && pl.guns[gi];
-  if (!g || s < 0 || s >= g.slots.length) return 0;
-  const from = [...new Set(idxs)].sort((a, b) => a - b);
-  let n = 0, k = s;
-  for (const i of from) {
-    while (run.bag[i] && run.bag[i].kind === 'mod' && run.bag[i].id) {
-      k = g.slots.indexOf(null, k);
-      if (k < 0) return n;
-      g.slots[k] = run.bag[i].id;
-      takeOne(run, i);
-      n++;
-    }
-  }
-  return n;
-}
-
-// slot s of a row into bag slot j: an empty slot or the same stack takes it; a single item there that fits the row swaps
-// with it; anything else: false (the screen falls back to the first free bag slot)
-/** @param {AutoRun} run @param {number} p @param {SlotRow} row @param {number} s @param {number} j @returns {boolean} */
-export function rowToBag(run, p, row, s, j) {
-  const pl = run.players[p], arr = pl && rowOf(pl, row);
-  if (!arr || !arr[s] || j < 0 || j >= run.bag.length) return false;
-  const mod = row.gun != null, out = mod ? { kind: 'mod', id: arr[s], n: 1 } : arr[s], b = run.bag[j];
-  if (!b) { run.bag[j] = out; arr[s] = null; return true; }
-  if (itemKey(b) && itemKey(b) === itemKey(out)) { b.n += 1; arr[s] = null; return true; }
-  if (b.n === 1 && rowFits(row, b)) { arr[s] = mod ? b.id : b; run.bag[j] = out; return true; }
-  return false;
-}
-
-// (owner, after v1.0.74) a mod taken off a gun lying in the bag (bag slot b, its mod slot s; the screen's gun view) into
-// bag slot j: an empty one, or its own stack; else (j -1, or another item there) the first room (bagAdd). False: no mod
-// there, or no room for it
-/** @param {AutoRun} run @param {number} b @param {number} s @param {number} j @returns {boolean} */
-export function bagGunModOut(run, b, s, j) {
-  const it = run.bag[b], g = it && it.kind === 'gun' ? it.gun : null, id = g ? g.slots[s] : null;
-  if (!g || !id) return false;
-  /** @type {BagItem} */
-  const out = { kind: 'mod', id, n: 1 };
-  const t = j >= 0 && j < run.bag.length ? run.bag[j] : undefined;
-  if (t === null) run.bag[j] = out;
-  else if (t && itemKey(t) === itemKey(out)) t.n += 1;
-  else if (bagAdd(run, out)) return false;
-  g.slots[s] = null;
-  return true;
-}
-
-// (owner, v1.0.43) a fitted gun dragged out of the Guns row into bag slot j: an empty slot takes it, a gun there swaps
-// in; anything else: false (the screen falls back to the first free slot, unfitGun). The gun that fires moves to another
-// fitted one if it was this one
-/** @param {AutoRun} run @param {number} p @param {number} gs @param {number} j @returns {boolean} */
-export function gunToBag(run, p, gs, j) {
-  const pl = run.players[p], g = pl && pl.guns[gs], b = run.bag[j];
-  if (!g || j < 0 || j >= run.bag.length) return false;
-  if (b && !(b.kind === 'gun' && b.gun && b.n === 1)) return false;
-  run.bag[j] = { kind: 'gun', gun: g, n: 1 };
-  pl.guns[gs] = b && b.gun ? b.gun : null;
-  gunsActive(pl);
-  return true;
-}
-// two of a player's gun slots swap (the one firing stays the same gun)
-/** @param {AutoRun} run @param {number} p @param {number} a @param {number} b @returns {boolean} */
-export function gunMove(run, p, a, b) {
-  const pl = run.players[p];
-  if (!pl || a === b || a < 0 || b < 0 || a >= pl.guns.length || b >= pl.guns.length || !pl.guns[a]) return false;
-  const t = pl.guns[a]; pl.guns[a] = pl.guns[b]; pl.guns[b] = t;
-  if (pl.active === a) pl.active = b; else if (pl.active === b) pl.active = a;
-  return true;
-}
-// the gun that fires is a fitted one if he has any
-/** @param {RunPlayer} pl */
-function gunsActive(pl) {
-  if (pl.guns[pl.active]) return;
-  const k = pl.guns.findIndex(g => !!g);
-  if (k >= 0) pl.active = k;
-}
-
-// Which of player p's 4 guns fires. False if that slot holds no gun.
-/** @param {AutoRun} run @param {number} p @param {number} gs @returns {boolean} */
-export function setActive(run, p, gs) {
-  const pl = run.players[p];
-  if (!pl || !pl.guns[gs]) return false;
-  pl.active = gs;
-  return true;
-}
-
-// A new player (up to 4) for one green gem, with its starter kit: the player, or null (no green, or the team is full).
-/** @param {AutoRun} run @returns {RunPlayer | null} */
-export function addPlayer(run) {
-  if (run.players.length >= MAX_PLAYERS || !spend(run, 'green', 1)) return null;
-  const pl = newPlayer(run.players.length);
-  run.players.push(pl);
-  giveKit(run, pl);
-  return pl;
 }
 
 // ---- stats ----
@@ -543,4 +151,34 @@ export function playerStats(pl) {
   P.carrot = Math.min(CARROT_MAX, P.carrot + e.carrot);
   P.maxHp = Math.max(10, Math.round((PLAYER_HP + P.hpAdd) * P.hpMul));
   return P;
+}
+
+// ---- kept for the test suites (grem branch: the game no longer calls these; the suites set up with them) ----
+// a player gets its kit: the gun in its first slot (active), the Buzzsaw into the bag
+/** @param {AutoRun} run @param {RunPlayer} pl @param {() => number} [rnd] */
+function giveKit(run, pl, rnd) {
+  const k = starterKit(rnd);
+  pl.guns[0] = k.gun; pl.active = 0;
+  bagAdd(run, k.saw);
+}
+/** tier 1, one player with its starter kit (its gun, a Buzzsaw in the bag); seed: the run's levels (levelSeed)
+ * @param {number} [seed] @returns {AutoRun} */
+export function newRun(seed) {
+  /** @type {AutoRun} */
+  const run = { tier: 1, players: [newPlayer(0)], bag: Array(BAG_SLOTS).fill(null), seed: seed || 1 + Math.floor(Math.random() * 1e6) };
+  mapsOf(run);
+  giveKit(run, run.players[0]);
+  bagFit(run);
+  return run;
+}
+/** the run's level at its tier: the same run's tier n is always the same level @param {AutoRun} run */
+export const levelSeed = run => 1 + ((run.seed || 1) * 7919 + run.tier * 104729 + (run.map || 0) * 15485863) % 999983;
+// A new player (up to 4) with its starter kit: the player, or null (the team is full). (grem: free; it cost a green gem in Auto)
+/** @param {AutoRun} run @returns {RunPlayer | null} */
+export function addPlayer(run) {
+  if (run.players.length >= 4) return null;
+  const pl = newPlayer(run.players.length);
+  run.players.push(pl);
+  giveKit(run, pl);
+  return pl;
 }

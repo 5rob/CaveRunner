@@ -1,5 +1,5 @@
 const api = require('../load');
-const { MODS, planCast, resetGun, gunPassives, makeGun, startingGuns } = api;
+const { MODS, planCast, resetGun, gunPassives, makeGun } = api;
 
 let pass = 0, fail = 0;
 const check = (name, got, want) => {
@@ -79,14 +79,6 @@ for (let i = 0; i < 200; i++) {
   if (g.slots.some(id => id && MODS[id].kind === 'shot')) shooters++;
 }
 check('200 random guns can all shoot', shooters, 200);
-
-// a starting kit that works
-const st = startingGuns();
-check('starts with 3 guns, 1 empty slot', st.filter(Boolean).length, 3);
-check('starter pistol shoots', planCast(st[0]).shots.length, 1);
-check('starter pick axe cuts with a buzzsaw', planCast(st[1]).shots[0].bore, 12);
-const grav = planCast(st[2]).shots;
-check('the Gravity Gun casts one White Hole that follows you', grav.length === 1 && grav[0].field === 'vacuum' && grav[0].followAim > 0, true);
 
 // --- mechanics taken from the wiki: multicast wrapping, recoil, wand speed ---
 p = planCast(gun(['bolt', 'double', 'spark']));        // double sits last, needs 2 shots

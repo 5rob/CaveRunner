@@ -15,7 +15,6 @@ import { shieldSoak } from './perks.js';
 import { gremHardTier } from './grem.js';
 import { TCELL, TITLE_KINDS, TITLE_VW, lookAt, titleCeil, titleFloor, titleFoeAt, titleKind, titleSolid } from '../art/titlescene.js';
 
-export const FALL_FLICKER = 0.6;      // (retired, feedback round 2: a fallen player is a ragdoll now, auto/death.js)
 const BOSS_IN = 90;                   // the boss comes in this far right of the team (world units)
 
 // LevelFoe: a planned elite (L.elites: x its world x, the live one's while it lives), f the creature once it's in
@@ -32,7 +31,6 @@ export function elitePlan(plan, rnd, n = DEV.autoFoeElites) {
   }
   return out;
 }
-
 
 // (owner, v1.0.53: a level 10 team one-shot the boss for six levels; the old game's +35% health a floor is too gentle for
 // Auto's growing guns) a creature at the run's tier: the old game's kind at tier 1, its health × DEV.autoTierHp and its
@@ -74,9 +72,6 @@ export function levelFall(S, i) {
   deathFall(S, r);
   S.snd.push({ k: 'land', x: r.x + PW / 2, y: r.y + PH, a: 200 });
 }
-// is every player out?
-/** @param {import('../art/titlescene.js').TitleScene} S */
-export const allFallen = S => S.runners.length > 0 && S.runners.every(r => r.out);
 
 // (owner v1.0.103: a boss came in under the ground, out of the team's reach, and the level waited on it for good) a big creature
 // whose middle is in rock or under the floor's line is put back on the floor (its size above it; under the roof if the cave is
@@ -146,3 +141,8 @@ export function levelBoss(S) {
   if (!B || L.bossDead) return null;
   return { hp: Math.max(0, B.hp), max: B.hpMax, name: B.k.name };
 }
+
+// ---- kept for the test suites (grem branch: the game no longer calls these; the suites set up with them) ----
+// is every player out?
+/** @param {import('../art/titlescene.js').TitleScene} S */
+export const allFallen = S => S.runners.length > 0 && S.runners.every(r => r.out);
