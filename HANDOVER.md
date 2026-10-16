@@ -8,7 +8,9 @@ release loop, testing), then the README of the `src/` folder you're working in.
 **Start here (fresh session on `grem`):** **v2.0.3 is pushed to `grem`** (2026-10-17, owner OK'd the shots: minecart rails, coal heaps and chutes (ideas 1, 10), and the timber rebuilt as the old game's measured sets (`art/timber.js`, owner: "too copy and paste"); v2.0.2 step 2, burnable coal + smouldering seams; v2.0.1 step 1. The owner allowed `grem` in Settings → Environments → github-pages on 2026-10-17, so `grem` pushes deploy Pages now): Coal Seams build step 1
 (its own zones; Mossy's plants off, the old mine set on; CHANGELOG v2.0.1; art/README's Coal Seams note). Live check:
 `/CaveRunner/grem/version.txt` = `2000003 v2.0.3`. Step 2 (v2.0.2): coal seams (`TM.COAL`, art/README's Coal note), catch rate 0.2 × timber (the doc's 0.8 was far too fast; told
-the owner). **Next:** gas pockets (idea 3); then the Cavern dressing, Bats (owner's boids spec), Glow worms (inchworm gait spec). Each step: phone screenshots
+the owner). **Next: the rest of Coal Seams is run by a project-manager session from `COALSEAMS.md`** (chunks C1 gas pockets,
+C2 stalactites/stalagmites, C3 ladders + Cavern timber, C4 bats, C5 glow worms, C6 light check, C7 wrap; the agent brief,
+check-ins, release steps, keep-it-short rule; tick its Status as chunks ship). Each step: phone screenshots
 (`node tools/coalshots.js`, `tools/timbershots.js`, Grem started at level 2) → owner OK → bump, docs, push `grem`.
 The plan is the Claude Doc: read it with the docs tools (doc id `62f545c8-940a-4833-9ba9-ff20db771da5`, tab body node
 `64396f1a-182a`; last write rev 25) — never web-fetch it. Every open question is decided (its Decisions section, owner
