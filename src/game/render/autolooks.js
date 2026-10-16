@@ -65,18 +65,18 @@ export function drawSolidShot(c, s, W) {
     c.strokeStyle = '#ff8a1f'; c.lineWidth = 0.6;
     c.beginPath(); c.moveTo(-s.size * 0.4, -s.size * 0.2); c.lineTo(0, s.size * 0.1); c.lineTo(s.size * 0.3, -s.size * 0.3); c.stroke();
     c.restore();
-  } else if (s.sid === 'disc') {        // four afterimages under it, each a frame or two behind, fading
-    const t = s.tr || [];
+  } else if (s.sid === 'disc') {        // four afterimages under it, each a frame or two behind, fading; (owner v1.0.104) DISC_K × its size
+    const t = s.tr || [], sz = s.size * DISC_K;
     for (let k = 4; k >= 1; k--) {
       const i = k * 2 * 2 - 2;          // positions 1, 3, 5, 7 frames back
       if (t.length <= i + 1) continue;
       c.save(); c.globalAlpha = 0.55 - k * 0.11; c.translate(t[i], t[i + 1]); c.rotate((s.spin - k * 0.25) * 2.2);
       c.fillStyle = s.col; c.beginPath();
-      for (let q = 0; q < 16; q++) { const rr = q % 2 ? s.size * 0.78 : s.size * 1.12, u = q / 16 * 6.283; c.lineTo(Math.cos(u) * rr, Math.sin(u) * rr); }
+      for (let q = 0; q < 16; q++) { const rr = q % 2 ? sz * 0.78 : sz * 1.12, u = q / 16 * 6.283; c.lineTo(Math.cos(u) * rr, Math.sin(u) * rr); }
       c.fill(); c.restore();
     }
     c.globalAlpha = 1;
-    drawLook(w, g, b);
+    drawLook(w, g, Object.assign({}, b, { size: sz }));
   } else return false;
   c.globalAlpha = 1;
   return true;
@@ -84,6 +84,8 @@ export function drawSolidShot(c, s, W) {
 
 // the bright ones (added light)
 /** @param {CanvasRenderingContext2D} c @param {TShot} s @param {{ time: number }} W */
+// the Disc (a sawblade) drawn this many times its shot size, its hits unchanged (owner, v1.0.104: double)
+export const DISC_K = 2;
 // Black Hole drawn this many times its (capped) shot size (owner, v1.0.40: double)
 export const VOID_K = 2;
 

@@ -5,6 +5,11 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.104 — Grem Mode's bosses on screen every level; the Disc drawn twice its size (branch `autobattler`)
+Built 2026-10-16 (owner's notes); screenshot tests/build/autoshots/disc-x2.png (`node tools/discshots.js`).
+- Grem Mode: from level 2 on the boss was made off screen right and never slid in (`levelOnward` didn't reset `L.introDone`); jellies, spiders and chasers hunted their way in, but the old floors' shooters and turrets stayed out there. `levelOnward` now resets the entrance, so every boss slides in under its title. Suite `grem-boss` (failed on v1.0.103: x 247 of 220).
+- The Disc (sawblade) shot drawn `DISC_K` (2) × its size in a level, its afterimages too (`game/render/autolooks.js`); what it hits is unchanged.
+
 ## v1.0.103 — Boss under the ground fixed; target lock lost off screen; no wait at a tapped spot; elites' flames; the level's name (branch `autobattler`)
 Built 2026-10-16 (owner's notes); screenshots tests/build/autoshots/elite-fx.png (`node tools/eliteshots.js`), grem-hud-name.png (`node tests/run.js grem-tap`).
 - A boss could come in under the level's ground, out of reach, and the level waited on it for good. `auto/enemies.js unbury`: a creature whose middle is in rock or under the floor's line goes back onto the floor (half way up a cave lower than it is tall); `levelFoes` applies it to the boss in the arena and to the elites every frame. Suite `auto-unbury`.

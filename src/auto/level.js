@@ -440,6 +440,7 @@ export function levelOnward(S, L) {
   L.elites = elitePlan(P, S.rnd);
   L.chests = chestPlan(P);
   L.phase = 'run'; L.bossDead = false; L.boss = null; L.arenaT = -1;
+  L.introDone = false; L.introT = undefined;   // (owner v1.0.104) the next boss comes in too (it was left off screen right from level 2 on)
   S.gunsOff = false; S.huddle = false;
   // (owner, v1.0.98) the floor after this one starts past the new arena (this one's look began past the last: S.looks)
   if (S.looks) S.looks.push(Object.assign({ x0: a.x1 }, floorLook(levelFloor(tier + 1), P.seed + tier + 1)));

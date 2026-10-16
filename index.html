@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v1.0.103</title>
-<!-- VERSION = 'v1000103' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v1.0.104</title>
+<!-- VERSION = 'v1000104' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -1307,7 +1307,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v1.0.103';</script>
+<script>const VERSION = 'v1.0.104';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -26717,6 +26717,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     L.bossDead = false;
     L.boss = null;
     L.arenaT = -1;
+    L.introDone = false;
+    L.introT = void 0;
     S2.gunsOff = false;
     S2.huddle = false;
     if (S2.looks) S2.looks.push(Object.assign({ x0: a.x1 }, floorLook(levelFloor(tier + 1), P2.seed + tier + 1)));
@@ -31028,7 +31030,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       c.stroke();
       c.restore();
     } else if (s.sid === "disc") {
-      const t = s.tr || [];
+      const t = s.tr || [], sz = s.size * DISC_K;
       for (let k = 4; k >= 1; k--) {
         const i = k * 2 * 2 - 2;
         if (t.length <= i + 1) continue;
@@ -31039,18 +31041,19 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         c.fillStyle = s.col;
         c.beginPath();
         for (let q = 0; q < 16; q++) {
-          const rr2 = q % 2 ? s.size * 0.78 : s.size * 1.12, u = q / 16 * 6.283;
+          const rr2 = q % 2 ? sz * 0.78 : sz * 1.12, u = q / 16 * 6.283;
           c.lineTo(Math.cos(u) * rr2, Math.sin(u) * rr2);
         }
         c.fill();
         c.restore();
       }
       c.globalAlpha = 1;
-      drawLook(w, g, b);
+      drawLook(w, g, Object.assign({}, b, { size: sz }));
     } else return false;
     c.globalAlpha = 1;
     return true;
   }
+  var DISC_K = 2;
   var VOID_K = 2;
   function drawGlowShot(c, s, W) {
     const sp = Math.hypot(s.vx, s.vy) || 1, ux = s.vx / sp, uy = s.vy / sp;
@@ -33402,7 +33405,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
 
   // src/version.js
-  var VERSION2 = "v1.0.103";
+  var VERSION2 = "v1.0.104";
 
   // src/art/zonelab.js
   var ZLAB_LEAD = 60;
