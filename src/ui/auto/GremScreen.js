@@ -252,6 +252,10 @@ export function GremScreen() {
     paused ? h(PauseMenu, { input, label: 'Grem Mode · Level ' + lvl, onNew: () => location.reload(), close: () => { SFX.fx('close'); setPaused(false); } }) : null);
 }
 
+// (v1.0.99) a mouse wheel scrolls the gun row sideways (its scroll bar is hidden: style.css .gguns)
+/** @param {any} e */
+const wheelSideways = e => { if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) e.currentTarget.scrollLeft += e.deltaY; };
+
 // The unlocks in their order (the presets, the 3 extra players among them: auto/grem.js gremUnlocks), one row scrolling
 // sideways: unlocked ones bright (a gun: a tap gives it to the picked player, his has a white ring; a player: a tap picks
 // him), a fresh one with a glow pulsing behind it till it's used (owner v1.0.92: was a NEW badge), the next one's outline filling clockwise as the gold comes in (gremFill),
@@ -259,7 +263,7 @@ export function GremScreen() {
 /** @param {{ presets: GunPreset[], items: import('../../auto/grem.js').GremUnlock[], gold: number, sel: number, who: number, fresh: number[], pick: (k: number) => void, box: { current: any } }} props */
 function GremGuns({ presets, items, gold, sel, who, fresh, pick, box }) {
   const u = gremUnlocked(gold, items.length);
-  return h('div', { className: 'gguns', ref: box }, items.map((it, k) => {
+  return h('div', { className: 'gguns', ref: box, onWheel: wheelSideways }, items.map((it, k) => {
     const f = k < u ? 1 : k === u ? gremFill(gold, k) : 0, nu = k < u && fresh.includes(k);
     const cls = 'ggun' + (k < u ? ' open' : k === u ? ' next' : ' locked') + (nu ? ' fresh' : '');
     const common = { key: k, 'data-item': k, 'data-fill': f.toFixed(3), style: { '--f': (f * 360).toFixed(1) + 'deg' }, onClick: () => pick(k) };

@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v1.0.98</title>
-<!-- VERSION = 'v1000098' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v1.0.99</title>
+<!-- VERSION = 'v1000099' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -1219,8 +1219,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .ggicon{width:42px;height:42px;display:flex}
 .ggicon canvas{width:100%;height:100%;image-rendering:pixelated}
 .ggold b{font:900 38px ui-monospace,SFMono-Regular,Menlo,monospace;color:#ffc93c;text-shadow:0 0 12px rgba(255,180,40,0.6),0 2px 0 #6a3a00}
-.gguns{flex:none;overflow-x:auto;overflow-y:hidden;touch-action:pan-x;display:flex;gap:7px;padding:8px;scroll-padding:8px;
+.gguns{flex:none;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;touch-action:pan-x;display:flex;gap:7px;padding:8px;scroll-padding:8px;
   border-radius:14px;background:#0e091a;border:2px solid #3d2f5c}
+.gguns::-webkit-scrollbar{display:none}   /* (v1.0.99) no scroll bar on a PC browser: the mouse wheel scrolls it sideways (GremScreen) */
 /* a gun: its outline a ring that fills clockwise from the top as it's paid off (--f degrees), bright gold when it's open */
 .ggun{position:relative;flex:0 0 72px;height:72px;padding:4px;border:none;border-radius:12px;background:conic-gradient(#ffc93c var(--f,0deg),#2c2340 0)}
 .ggun.open{background:#ffc93c;box-shadow:0 0 10px rgba(255,201,60,0.5)}
@@ -1301,7 +1302,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v1.0.98';</script>
+<script>const VERSION = 'v1.0.99';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -33205,7 +33206,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
 
   // src/version.js
-  var VERSION2 = "v1.0.98";
+  var VERSION2 = "v1.0.99";
 
   // src/art/zonelab.js
   var ZLAB_LEAD = 60;
@@ -39547,9 +39548,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       } }) : null
     );
   }
+  var wheelSideways = (e) => {
+    if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) e.currentTarget.scrollLeft += e.deltaY;
+  };
   function GremGuns({ presets, items, gold, sel, who, fresh: fresh2, pick, box }) {
     const u = gremUnlocked(gold, items.length);
-    return h("div", { className: "gguns", ref: box }, items.map((it, k) => {
+    return h("div", { className: "gguns", ref: box, onWheel: wheelSideways }, items.map((it, k) => {
       const f = k < u ? 1 : k === u ? gremFill(gold, k) : 0, nu = k < u && fresh2.includes(k);
       const cls = "ggun" + (k < u ? " open" : k === u ? " next" : " locked") + (nu ? " fresh" : "");
       const common = { key: k, "data-item": k, "data-fill": f.toFixed(3), style: { "--f": (f * 360).toFixed(1) + "deg" }, onClick: () => pick(k) };

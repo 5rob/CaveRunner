@@ -5,6 +5,10 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.99 — Grem Mode: no scroll bar under the gun row on a PC (branch `autobattler`)
+Released 2026-10-16 (owner asked: Chrome on the PC showed an awkward horizontal scroll bar).
+- `.gguns` hides its scroll bar (`scrollbar-width: none`, `::-webkit-scrollbar`); a mouse wheel scrolls the row sideways (`GremScreen.js wheelSideways`). Touch is unchanged.
+
 ## v1.0.98 — Grem Mode: the next old floor each level cleared (branch `autobattler`)
 Released 2026-10-16 on the branch (owner OK'd); screenshots `node tools/gremseamshots.js`.
 - Grem Mode's endless level moves on to the next of the old floors each time a boss falls: Mossy Caves, then Coal Seams, Frozen Deep … Void Hollow, then round from Coal Seams, each with its colours, ambience and creatures (no damage still). The new floor starts just past the boss's arena (`S.looks`, a look per stretch; `auto/level.js levelOnward` adds the next).
