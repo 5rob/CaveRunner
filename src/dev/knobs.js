@@ -398,6 +398,7 @@ export const FIRE_KNOBS = rangeKnobs('fire', [
   ['fireGrass',  'Grass burns for (s)',               0.05, 5, 0.05, 0.4, 1.5],
   ['fireMoss',   'Moss burns for (s)',                0.05, 8, 0.05, 1, 4],
   ['fireWood',   'Timber burns for (s)',              0.1, 20, 0.1,  3, 9],
+  ['fireCoal',   'Coal burns for (s; Coal Seams)',    0.1, 40, 0.1,  4.5, 13.5],
   ['fireBurn',   'A creature burns for (s)',          0, 20, 0.1,    3, 6],
   ['fireDps',    'Creature burn damage per s',        0, 20, 0.1,    1, 3],
   ['fireYou',    'You burn for (s)',                  0, 10, 0.1,    1.2, 2],
@@ -454,6 +455,20 @@ DEV_META.push(
   { k: 'coalCartR',    g: 'coal', label: 'A minecart’s blast: radius (world units)', min: 4, max: 60, step: 1 },
   { k: 'coalCartDmg',  g: 'coal', label: 'A minecart’s blast: damage to creatures', min: 0, max: 200, step: 1 },
   { k: 'coalLampLight', g: 'coal', label: 'Rusted lanterns: light (× a Mossy lantern’s)', min: 0, max: 1.5, step: 0.05 });
+// (step 2) the burnable coal seams through its rock (art/titlescene.js coalCell): patches from seeded noise and long veins
+// wandering for screens; coal is a fourth fire fuel (world/fire.js), burnt coal is ash: open air. Its burn time is Fire's
+// "Coal burns for"
+Object.assign(DEV_DEFAULTS, { coalAmount: 0.15, coalPatch: 26, coalVeins: 3, coalCatch: 0.2, coalSmoulder: 0.01 });
+rangeKnobs('coal', [['coalVeinW', 'Coal veins: thickness (cells)', 1, 12, 1, 2, 5]]);
+DEV_META.push(
+  { k: 'coalAmount',   g: 'coal', label: 'Coal: patches, share of the rock (veins come on top)', min: 0, max: 0.6, step: 0.01 },
+  { k: 'coalPatch',    g: 'coal', label: 'Coal: patch size (world units)', min: 4, max: 120, step: 1 },
+  { k: 'coalVeins',    g: 'coal', label: 'Coal: long veins a screen (about)', min: 0, max: 12, step: 0.5 },
+  { k: 'coalCatch',    g: 'coal', label: 'Coal: catches fire at (× timber’s)', min: 0, max: 3, step: 0.05 },
+  { k: 'coalSmoulder', g: 'coal', label: 'Smouldering seams: chance a bare coal face is alight from the start', min: 0, max: 0.2, step: 0.002 });
+colourKnobs('coal', [['coalCol', 'Coal colours (dark, light)', '#101014', '#232838', 'c'], ['coalGlint', 'Coal glints (blue sheen)', '#5d6a86', '#a9bce0', 'g']]);
+Object.assign(DEV_DEFAULTS, { coalGlints: 0.05 });
+DEV_META.push({ k: 'coalGlints', g: 'coal', label: 'Coal: glints, share of its cells', min: 0, max: 0.4, step: 0.01 });
 DEV_GROUPS.push(['coal', 'Coal Seams']);
 // CaveRunner Auto's maps (auto/maps.js): the map machine's prices, and how much harder each map starts
 Object.assign(DEV_DEFAULTS, { autoMapPrice: 1000000, autoMapGrow: 1, autoMapStep: 5 });

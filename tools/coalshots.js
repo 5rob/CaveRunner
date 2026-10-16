@@ -46,6 +46,22 @@ require('../tests/build')();
     }
     await page.waitForTimeout(250);
   }
+  // (step 2) the coal seams: one lit near the middle of the view, a few seconds on, then the tunnel it burnt
+  const lit = await page.evaluate(() => {
+    const S = window.__gremScene, TC = TCELL;
+    S.lvl.step = null; S.pace = 0;   // (the view held still to watch it burn: the level's own steering off)
+    for (let k = 0; k < 400; k++) {
+      const sx = 70 + (k % 20) * 4, y = S.top + Math.floor(k / 20) * 6, c = Math.floor((sx + S.scroll) / TC), r = Math.floor(y / TC);
+      if (titleCell(S, c, r) === TM.COAL) { titleIgnite(S, sx, y, 3, 1); return [sx, y]; }
+    }
+    return null;
+  });
+  if (lit) {
+    await page.waitForTimeout(5000);
+    await save('f-coal-fire', 'a coal seam lit (5 s on): it creeps along, glowing');
+    await page.waitForTimeout(9000);
+    await save('g-coal-tunnel', 'later: the burnt coal is ash, open air, a tunnel through the rock');
+  }
   await browser.close();
   console.log(said.join('\n'));
 })();

@@ -9,8 +9,8 @@ export const FLAMMABLE = { vine: 1, myc: 1 };                  // the ones that 
 export const FIRE_COLS = ['#ffe07a', '#ff9a2e', '#f0561c', '#8a2a14'];   // bright, flame, deep, dying ember
 
 export const FIRE_TICK = 0.05;                 // the fire moves on 20 times a second, not every frame
-export const FIRE_CATCH = [0, 1, 0.6, 0.45];   // how readily each kind catches: grass, moss, timber
-export const FIRE_KNOB = [null, 'fireGrass', 'fireMoss', 'fireWood'];
+export const FIRE_CATCH = [0, 1, 0.6, 0.45, 0.45];   // how readily each kind catches: grass, moss, timber, coal (Grem's Coal Seams: × DEV.coalCatch)
+export const FIRE_KNOB = [null, 'fireGrass', 'fireMoss', 'fireWood', 'fireCoal'];
 // Fire climbs: a pixel above catches about three times as readily as one below, one beside
 // nearly as readily as above. FIRE_NB is every spot within two pixels as [pixel-index offset,
 // weight]; the ring two out is at 0.3 of that, so fire crosses a hairline gap but not open air.

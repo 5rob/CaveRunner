@@ -78,8 +78,8 @@ export const TITLE_AIM = 90;         // he shoots only at creatures this near (w
 // rub and rubM (a rubble mound, its mossy top)
 // STEEL, BWALL (a brick back wall, open) and SWALL (a steel back wall, open): the auto hub's room (auto/hub.js)
 export const TM = { AIR: 0, ROCK: 1, MOSS: 2, BRICK: 3, WOOD: 4, CHAR: 5, BEAM: 6, BEAMD: 7, GRASS: 8, RUB: 9, RUBM: 10, STEEL: 11, BWALL: 12, SWALL: 13,
-  ROOT: 14, SILT: 15, SILTD: 16, IRON: 17, IROND: 18, CRYS: 19, CRYSL: 20, NEST: 21, NESTD: 22 };   // 14 on: CaveRunner Auto's blocked zones (auto/blocked.js)
-export const TITLE_SOLID = [0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1];
+  ROOT: 14, SILT: 15, SILTD: 16, IRON: 17, IROND: 18, CRYS: 19, CRYSL: 20, NEST: 21, NESTD: 22, COAL: 23 };   // 14 on: CaveRunner Auto's blocked zones (auto/blocked.js); COAL: Grem's Coal Seams
+export const TITLE_SOLID = [0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1];
 const SOLID = TITLE_SOLID;
 // (Auto's level, owner v1.0.52: strong guns blasted the cave away down to the bottom edge) a blast bites less toward the
 // play area's bottom (a tall level: the old height's stay as they were): × 1 down to DEV.autoHardDeep above the hard line,
@@ -88,7 +88,10 @@ const SOLID = TITLE_SOLID;
 /** @param {{ lvl?: { hardY?: (S: any, wx: number) => number }, vh: number, top: number, bot: number }} S @param {number} y @param {number} [wx] */
 export const deepK = (S, y, wx) => (!S.lvl || DEV.autoHardDeep <= 0 || S.bot - S.top <= MINE_TALL ? 1
   : Math.max(0, Math.min(1, ((S.lvl.hardY && wx != null ? S.lvl.hardY(S, wx) : S.vh - DEV.autoHardEdge) - y) / DEV.autoHardDeep)));
-const FUEL = [0, 0, 2, 0, 3, 0, 3, 3, 1, 0, 1, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 1, 1];   // the fuel kind each burns as (world/fire.js: 1 grass, 2 moss, 3 timber)
+const FUEL = [0, 0, 2, 0, 3, 0, 3, 3, 1, 0, 1, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 1, 1, 4];   // the fuel kind each burns as (world/fire.js: 1 grass, 2 moss, 3 timber, 4 coal)
+// how readily a fuel kind catches (coal: × the Coal Seams knob)
+/** @param {number} kind */
+const catchOf = kind => FIRE_CATCH[kind] * (kind === 4 ? DEV.coalCatch : 1);
 export const FRAME_GAP = 72;          // the built-up layers: a timber frame every this far (world units)
 export const FRAME_W = 36;            // its width, post to post
 const SCROLL = 34;                    // the world's scroll speed (world units / s)
@@ -196,7 +199,7 @@ const CLASSIC = { shoot: 1, turret: 1, chase: 1, bomb: 1 };
 /** @typedef {{ t: number, vh: number, top: number, bot: number, seed: number, rnd: () => number, scroll: number, shake: number, spawn: number,
  *   kills: number, gold: number, got: number, runner: TRunner, runners: TRunner[], foes: Enemy[], shots: TShot[], parts: TPart[], coins: Coin[],
  *   booms: TBoom[], zaps: TZap[], flash: number, rows: number, ncol: number, cells: Uint8Array, gen: number, props: TProp[],
- *   fire: TFire[], dirty: number[][], dirtyAll: boolean, carved: number, burnt: number, swaps: number, groundT: number, flyT: number, kinds: Record<string, number>,
+ *   fire: TFire[], lightLater?: number[][], dirty: number[][], dirtyAll: boolean, carved: number, burnt: number, swaps: number, groundT: number, flyT: number, kinds: Record<string, number>,
  *   webs: WebLine[], orbN?: number, orbs?: Record<number, OrbRig>, mush?: MushCloud[], orbHub?: { x: number, y: number, r: number }[], orbT?: number, cut: number, lineT: number, silk: { x: number, y: number, ax: number, ay: number, vx: number, vy: number, life: number }[],
  *   nav: { F: any, fx: number, fy: number, t: number }, fireAcc: number, fireN: number, burning: Set<number>, gotN: number, pops: number, lampsPopped: number, kitNames: Set<string>,
  *   digT: number, digs: number, digWhy: Record<string, number>, still?: boolean, zp: TitlePlan, snd: TSnd[], hub?: TitleHub, lvl?: TitleLevel, lab?: boolean, back?: (ctx: CanvasRenderingContext2D, S: TitleScene) => void, pace?: number, team?: RunPlayer[], blocked?: number, blockedKind?: string, huddle?: boolean, gunsOff?: boolean, dmgMul?: number, coinWait?: number, hgoal?: number, hgoalT?: number, fuelWait?: number, tier?: number, loot?: TLoot[],
@@ -612,7 +615,7 @@ function genCol(S, c) {
   const cy = titleCeil(wx, S), fy = titleFloor(wx, S), base = ci(S, c, 0);
   // (Coal Seams, owner 2026-10-16) the old floor here has its own decoration set: none of Mossy's moss, grass, rubble, brick
   // ledges or plants; timber supports through the natural zones (coalSupport), and the old game's mine set (coalDeco)
-  const coal = coalAt(S, wx), sup = coal && z !== 'timber' && !Zn.flat ? coalSupport(wx, S) : null;
+  const coal = coalAt(S, wx), sup = coal && z !== 'timber' && !Zn.flat ? coalSupport(wx, S) : null, seam = coal && !Zn.flat;
   // the built-up layers' timber frames, as strata.js timberFrame makes them: two posts (lit on the
   // left), a cap beam two rows deep running a little past them, a knee brace inside each post's top,
   // a footing under each post
@@ -675,9 +678,13 @@ function genCol(S, c) {
     if (z === 'winding' && TITLE_SOLID[m] && windAir(wx, y, Zn, S)) m = TM.AIR;
     // (Auto's tall level) another zone's look here: its open air opens too, over this column's floor (DEV.autoZoneOpen; off: it upset the autopilot, auto-level and auto-tall)
     if (TITLE_SOLID[m] && zoneOpenAt(wx, y, S, Zn, fy, Zc)) { m = TM.AIR; carved = true; }
+    if (seam && m === TM.ROCK && coalCell(S, wx, y)) m = TM.COAL;
     if (bk) m = bk(bk0, wx, y, by0, by1, m);
     S.cells[base + r] = m;
   }
+  // (Coal Seams, smouldering seams) now and then a bare coal face is alight from the start (lit once the column is made)
+  if (seam && DEV.coalSmoulder > 0) for (let r = 1; r < S.rows - 1; r++)
+    if (S.cells[base + r] === TM.COAL && (!S.cells[base + r - 1] || !S.cells[base + r + 1]) && h2(c * 7 + 3, r * 13 + 977) < DEV.coalSmoulder) (S.lightLater || (S.lightLater = [])).push([c, r]);
   // where another zone opened the rock, the new floor gets its skin (moss; bricks in the brick works' look)
   if (carved && !coal) for (let r = 0; r < S.rows - 1; r++) if (S.cells[base + r] === TM.AIR && S.cells[base + r + 1] === TM.ROCK) {
     const brick = titleZoneAt(wx, (r + 1.5) * TCELL, S) === 'paved';
@@ -838,6 +845,31 @@ export const coalAt = (S, wx) => { const L = lookAt(S, wx); return !!L && floorD
 // them with one, where the roof over its span is between SUP_H[0] and SUP_H[1] above the floor. Column wx's part of it: uc (as
 // frameCell's), top (the cap's top, world y), or null
 const SUP_GAP = 96, SUP_H = [18, 70];
+// (Coal Seams, step 2) is the rock at (wx, y) coal? Big irregular patches (two octaves of noise over DEV.coalPatch, the top
+// DEV.coalAmount of it: COAL_Q maps a share to the noise's level) and long veins (DEV.coalVeins a screen, about: each wanders
+// up and down for screens and comes and goes, coalVeinW cells thick, swelling and thinning). Seeded by the scene's seed, so a
+// level always has the same seams; none in the bottom's hard band (deepK), so fire never digs out the floor's last rock
+const COAL_Q = [[0, 1.01], [0.05, 0.769], [0.1, 0.717], [0.15, 0.68], [0.2, 0.649], [0.3, 0.595], [0.4, 0.548], [0.5, 0.501], [0.6, 0.45], [1, -0.01]];
+/** @param {number} a the share @returns {number} the noise level over which that share lies */
+function coalQ(a) {
+  for (let k = 1; k < COAL_Q.length; k++) if (a <= COAL_Q[k][0]) { const [a0, q0] = COAL_Q[k - 1], [a1, q1] = COAL_Q[k]; return q0 + (q1 - q0) * (a - a0) / (a1 - a0); }
+  return -0.01;
+}
+/** @param {TitleScene} S @param {number} wx @param {number} y */
+export function coalCell(S, wx, y) {
+  if (deepK(S, y, wx) < 0.99) return false;
+  const sd = (S.seed % 997) * 3.17, ps = DEV.coalPatch;
+  if (titleNoise(wx / ps + sd, y / ps + 31) * 0.7 + titleNoise(wx / ps * 2.4 + 2 + sd, y / ps * 2.4 + 7) * 0.3 > coalQ(DEV.coalAmount)) return true;
+  // the veins: twice as many lines as wanted, each there about half the time
+  const n = Math.ceil(DEV.coalVeins * 2), span = S.bot - S.top + 120;
+  for (let k = 0; k < n; k++) {
+    if (titleNoise(wx / 260 + sd + k * 5.1, 90 + k * 7) < 0.5) continue;
+    const vy = S.top - 60 + span * (titleNoise(wx / 140 + sd + k * 3.3, 50 + k * 13) * 1.6 - 0.3);
+    const w = kru('coalVeinW', titleNoise(wx / 30 + sd + k, 70 + k * 11)) * TCELL;
+    if (Math.abs(y - vy) < w / 2) return true;
+  }
+  return false;
+}
 const SOOT_GAP = 30;                  // (Coal Seams) a soot fall's spot on the roof every this far (world units)
 /** @param {number} wx @param {TitleScene} S @returns {{ uc: number, top: number } | null} */
 function coalSupport(wx, S) {
@@ -1005,6 +1037,7 @@ const snd = (S, k, x, y, a) => { if (S.snd.length < 80) S.snd.push({ k, x, y, a 
 function genTo(S) {
   if (S.hub) return;
   while (S.gen * TCELL < S.scroll + TITLE_VW + (S.lvl ? AHEAD_LVL : AHEAD)) { genCol(S, S.gen); S.gen++; }
+  if (S.lightLater) { for (const [c, r] of S.lightLater) light(S, c, r); S.lightLater = undefined; }
 }
 
 // the terrain as the creatures' brains see it (the game's terrain cells, world coordinates): out
@@ -2924,7 +2957,7 @@ function stepFire(S, dt) {
         const c = f.c + dx, r = f.r + dy;
         if (r < 0 || r >= S.rows || c < S.gen - S.ncol || c >= S.gen) continue;
         const kind = FUEL[S.cells[ci(S, c, r)]];
-        if (kind && !S.burning.has(c * S.rows + r) && R() < sp * FIRE_UPW(dy) * (Math.max(Math.abs(dx), Math.abs(dy)) === 2 ? 0.3 : 1) * FIRE_CATCH[kind]) light(S, c, r);
+        if (kind && !S.burning.has(c * S.rows + r) && R() < sp * FIRE_UPW(dy) * (Math.max(Math.abs(dx), Math.abs(dy)) === 2 ? 0.3 : 1) * catchOf(kind)) light(S, c, r);
       }
       if (--f.t > 0) { keep.push(f); continue; }
       const i = ci(S, f.c, f.r);

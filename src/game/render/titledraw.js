@@ -68,6 +68,9 @@ function cellRGB(m, c, r, up) {
   if (m === TM.BEAM || m === TM.WOOD) return J(mixc(TIMBER, TIMBER, 0, 0.95));
   if (m === TM.BEAMD) return J(mixc(TIMBER, TIMBER, 0, 0.7));
   if (m === TM.CHAR) return mixc([30, 26, 26], [52, 44, 40], h);
+  // (Coal Seams) coal: near-black mottled in its two colours, a faint sheen, small bright glints (Dev → Grem → Coal Seams)
+  if (m === TM.COAL) return hash(c * 7 + 1, r * 3 + 2) < DEV.coalGlints ? mixc(hexArr(DEV.coalGlintLo), hexArr(DEV.coalGlintHi), hash(c, r * 5))
+    : J(mixc(hexArr(DEV.coalColLo), hexArr(DEV.coalColHi), fbm(c / 3 + 40, r / 3 + 60)));
   // CaveRunner Auto's blocked zones (auto/blocked.js): roots, silt (two bands), a cart's iron, crystal (and its light core), a nest's resin
   if (m === TM.ROOT) return J(mixc([92, 64, 40], [120, 86, 52], h));
   if (m === TM.SILT) return J(mixc([118, 104, 78], [128, 112, 84], h));

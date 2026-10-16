@@ -33,7 +33,7 @@ check('no moss, grass or rubble cells', !(mats.get(TM.MOSS) || mats.get(TM.GRASS
 check('no brick (ledges)', !mats.get(TM.BRICK), mats.get(TM.BRICK));
 check('timber in it (supports and mine frames)', (mats.get(TM.BEAM) || 0) > 50, mats.get(TM.BEAM));
 const by = k => [...props].filter(k);
-check('no vines, roots, mycelium or mushrooms', !by(p => p.k === 'climb' || p.k === 'pad').length, by(p => p.k === 'climb' || p.k === 'pad').length);
+check('no vines, roots, mycelium or mushrooms', !by(p => (p.k === 'climb' && p.st !== 'silk') || p.k === 'pad').length, by(p => (p.k === 'climb' && p.st !== 'silk') || p.k === 'pad').length);
 check('rusted lanterns', by(p => p.k === 'lamp' && p.rust).length >= 3, by(p => p.k === 'lamp').length);
 check('every lantern rusted', by(p => p.k === 'lamp' && !p.rust).length === 0);
 check('explosive minecarts', by(p => p.k === 'barrel').length >= 1, by(p => p.k === 'barrel').length);

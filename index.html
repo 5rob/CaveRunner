@@ -1243,6 +1243,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ["fireGrass", "Grass burns for (s)", 0.05, 5, 0.05, 0.4, 1.5],
     ["fireMoss", "Moss burns for (s)", 0.05, 8, 0.05, 1, 4],
     ["fireWood", "Timber burns for (s)", 0.1, 20, 0.1, 3, 9],
+    ["fireCoal", "Coal burns for (s; Coal Seams)", 0.1, 40, 0.1, 4.5, 13.5],
     ["fireBurn", "A creature burns for (s)", 0, 20, 0.1, 3, 6],
     ["fireDps", "Creature burn damage per s", 0, 20, 0.1, 1, 3],
     ["fireYou", "You burn for (s)", 0, 10, 0.1, 1.2, 2],
@@ -1295,6 +1296,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "coalCartDmg", g: "coal", label: "A minecart’s blast: damage to creatures", min: 0, max: 200, step: 1 },
     { k: "coalLampLight", g: "coal", label: "Rusted lanterns: light (× a Mossy lantern’s)", min: 0, max: 1.5, step: 0.05 }
   );
+  Object.assign(DEV_DEFAULTS, { coalAmount: 0.15, coalPatch: 26, coalVeins: 3, coalCatch: 0.2, coalSmoulder: 0.01 });
+  rangeKnobs("coal", [["coalVeinW", "Coal veins: thickness (cells)", 1, 12, 1, 2, 5]]);
+  DEV_META.push(
+    { k: "coalAmount", g: "coal", label: "Coal: patches, share of the rock (veins come on top)", min: 0, max: 0.6, step: 0.01 },
+    { k: "coalPatch", g: "coal", label: "Coal: patch size (world units)", min: 4, max: 120, step: 1 },
+    { k: "coalVeins", g: "coal", label: "Coal: long veins a screen (about)", min: 0, max: 12, step: 0.5 },
+    { k: "coalCatch", g: "coal", label: "Coal: catches fire at (× timber’s)", min: 0, max: 3, step: 0.05 },
+    { k: "coalSmoulder", g: "coal", label: "Smouldering seams: chance a bare coal face is alight from the start", min: 0, max: 0.2, step: 2e-3 }
+  );
+  colourKnobs("coal", [["coalCol", "Coal colours (dark, light)", "#101014", "#232838", "c"], ["coalGlint", "Coal glints (blue sheen)", "#5d6a86", "#a9bce0", "g"]]);
+  Object.assign(DEV_DEFAULTS, { coalGlints: 0.05 });
+  DEV_META.push({ k: "coalGlints", g: "coal", label: "Coal: glints, share of its cells", min: 0, max: 0.4, step: 0.01 });
   DEV_GROUPS.push(["coal", "Coal Seams"]);
   Object.assign(DEV_DEFAULTS, { autoMapPrice: 1e6, autoMapGrow: 1, autoMapStep: 5 });
   Object.assign(DEV_DEFAULTS, {
@@ -7210,8 +7223,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var FLAMMABLE = { vine: 1, myc: 1 };
   var FIRE_COLS = ["#ffe07a", "#ff9a2e", "#f0561c", "#8a2a14"];
   var FIRE_TICK = 0.05;
-  var FIRE_CATCH = [0, 1, 0.6, 0.45];
-  var FIRE_KNOB = [null, "fireGrass", "fireMoss", "fireWood"];
+  var FIRE_CATCH = [0, 1, 0.6, 0.45, 0.45];
+  var FIRE_KNOB = [null, "fireGrass", "fireMoss", "fireWood", "fireCoal"];
   var FIRE_UPW = (dy) => dy < 0 ? 1 : dy === 0 ? 0.9 : 0.35;
   var FIRE_NB = [];
   for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++)
@@ -11077,12 +11090,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     CRYS: 19,
     CRYSL: 20,
     NEST: 21,
-    NESTD: 22
+    NESTD: 22,
+    COAL: 23
   };
-  var TITLE_SOLID = [0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1];
+  var TITLE_SOLID = [0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1];
   var SOLID = TITLE_SOLID;
   var deepK = (S, y, wx) => !S.lvl || DEV.autoHardDeep <= 0 || S.bot - S.top <= MINE_TALL ? 1 : Math.max(0, Math.min(1, ((S.lvl.hardY && wx != null ? S.lvl.hardY(S, wx) : S.vh - DEV.autoHardEdge) - y) / DEV.autoHardDeep));
-  var FUEL = [0, 0, 2, 0, 3, 0, 3, 3, 1, 0, 1, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 1, 1];
+  var FUEL = [0, 0, 2, 0, 3, 0, 3, 3, 1, 0, 1, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 1, 1, 4];
+  var catchOf = (kind) => FIRE_CATCH[kind] * (kind === 4 ? DEV.coalCatch : 1);
   var FRAME_GAP = 72;
   var FRAME_W = 36;
   var SCROLL = 34;
@@ -11469,7 +11484,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function genCol(S, c) {
     const wx = c * TCELL, Zn = titleZoneSpan(wx, S), z = Zn.z, b = built(wx, S), R = S.rnd;
     const cy = titleCeil(wx, S), fy = titleFloor(wx, S), base = ci(S, c, 0);
-    const coal = coalAt(S, wx), sup = coal && z !== "timber" && !Zn.flat ? coalSupport(wx, S) : null;
+    const coal = coalAt(S, wx), sup = coal && z !== "timber" && !Zn.flat ? coalSupport(wx, S) : null, seam = coal && !Zn.flat;
     const u = (wx % FRAME_GAP + FRAME_GAP) % FRAME_GAP;
     const M = z === "timber" ? Zn.mine : void 0, bands = M ? mineBands(M, S) : [];
     const tun = bands.map((q, k) => {
@@ -11528,8 +11543,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         m = TM.AIR;
         carved = true;
       }
+      if (seam && m === TM.ROCK && coalCell(S, wx, y)) m = TM.COAL;
       if (bk) m = bk(bk0, wx, y, by0, by1, m);
       S.cells[base + r] = m;
+    }
+    if (seam && DEV.coalSmoulder > 0) {
+      for (let r = 1; r < S.rows - 1; r++)
+        if (S.cells[base + r] === TM.COAL && (!S.cells[base + r - 1] || !S.cells[base + r + 1]) && h2(c * 7 + 3, r * 13 + 977) < DEV.coalSmoulder) (S.lightLater || (S.lightLater = [])).push([c, r]);
     }
     if (carved && !coal) {
       for (let r = 0; r < S.rows - 1; r++) if (S.cells[base + r] === TM.AIR && S.cells[base + r + 1] === TM.ROCK) {
@@ -11701,6 +11721,27 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return !!L && floorDeco(L.floor || 1) === "coal";
   };
   var SUP_GAP = 96, SUP_H = [18, 70];
+  var COAL_Q = [[0, 1.01], [0.05, 0.769], [0.1, 0.717], [0.15, 0.68], [0.2, 0.649], [0.3, 0.595], [0.4, 0.548], [0.5, 0.501], [0.6, 0.45], [1, -0.01]];
+  function coalQ(a) {
+    for (let k = 1; k < COAL_Q.length; k++) if (a <= COAL_Q[k][0]) {
+      const [a0, q0] = COAL_Q[k - 1], [a1, q1] = COAL_Q[k];
+      return q0 + (q1 - q0) * (a - a0) / (a1 - a0);
+    }
+    return -0.01;
+  }
+  function coalCell(S, wx, y) {
+    if (deepK(S, y, wx) < 0.99) return false;
+    const sd = S.seed % 997 * 3.17, ps = DEV.coalPatch;
+    if (titleNoise(wx / ps + sd, y / ps + 31) * 0.7 + titleNoise(wx / ps * 2.4 + 2 + sd, y / ps * 2.4 + 7) * 0.3 > coalQ(DEV.coalAmount)) return true;
+    const n = Math.ceil(DEV.coalVeins * 2), span = S.bot - S.top + 120;
+    for (let k = 0; k < n; k++) {
+      if (titleNoise(wx / 260 + sd + k * 5.1, 90 + k * 7) < 0.5) continue;
+      const vy = S.top - 60 + span * (titleNoise(wx / 140 + sd + k * 3.3, 50 + k * 13) * 1.6 - 0.3);
+      const w = kru("coalVeinW", titleNoise(wx / 30 + sd + k, 70 + k * 11)) * TCELL;
+      if (Math.abs(y - vy) < w / 2) return true;
+    }
+    return false;
+  }
   var SOOT_GAP = 30;
   function coalSupport(wx, S) {
     const k = Math.floor(wx / SUP_GAP), fx = k * SUP_GAP + 8 + h2(k, 41) * (SUP_GAP - FRAME_W - 16), uc = wx - fx;
@@ -11969,6 +12010,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     while (S.gen * TCELL < S.scroll + TITLE_VW + (S.lvl ? AHEAD_LVL : AHEAD)) {
       genCol(S, S.gen);
       S.gen++;
+    }
+    if (S.lightLater) {
+      for (const [c, r] of S.lightLater) light(S, c, r);
+      S.lightLater = void 0;
     }
   }
   var titleSolidCell = (S) => csolid(S);
@@ -14328,7 +14373,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           const c = f.c + dx, r = f.r + dy;
           if (r < 0 || r >= S.rows || c < S.gen - S.ncol || c >= S.gen) continue;
           const kind = FUEL[S.cells[ci(S, c, r)]];
-          if (kind && !S.burning.has(c * S.rows + r) && R() < sp * FIRE_UPW(dy) * (Math.max(Math.abs(dx), Math.abs(dy)) === 2 ? 0.3 : 1) * FIRE_CATCH[kind]) light(S, c, r);
+          if (kind && !S.burning.has(c * S.rows + r) && R() < sp * FIRE_UPW(dy) * (Math.max(Math.abs(dx), Math.abs(dy)) === 2 ? 0.3 : 1) * catchOf(kind)) light(S, c, r);
         }
         if (--f.t > 0) {
           keep.push(f);
@@ -20307,6 +20352,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (m === TM.BEAM || m === TM.WOOD) return J(mixc(TIMBER, TIMBER, 0, 0.95));
     if (m === TM.BEAMD) return J(mixc(TIMBER, TIMBER, 0, 0.7));
     if (m === TM.CHAR) return mixc([30, 26, 26], [52, 44, 40], h3);
+    if (m === TM.COAL) return hash4(c * 7 + 1, r * 3 + 2) < DEV.coalGlints ? mixc(hexArr(DEV.coalGlintLo), hexArr(DEV.coalGlintHi), hash4(c, r * 5)) : J(mixc(hexArr(DEV.coalColLo), hexArr(DEV.coalColHi), fbm2(c / 3 + 40, r / 3 + 60)));
     if (m === TM.ROOT) return J(mixc([92, 64, 40], [120, 86, 52], h3));
     if (m === TM.SILT) return J(mixc([118, 104, 78], [128, 112, 84], h3));
     if (m === TM.SILTD) return J(mixc([92, 80, 60], [100, 88, 66], h3));
