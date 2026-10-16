@@ -13,7 +13,7 @@ import { plantGlowFill, plantWhite } from '../../creatures/jelly.js';
 import { THEMES } from '../../data/themes.js';
 import { drawEnemy } from '../../creatures/draw.js';
 import { drawBats } from '../../creatures/bats.js';
-import { drawGlowWorm, wormBox } from '../../creatures/glowworm.js';
+import { drawGlowFace, drawGlowWorm, wormBox } from '../../creatures/glowworm.js';
 import { coinR } from '../../world/nuggets.js';
 import { FIRE_COLS } from '../../world/fire.js';
 import { vinePt } from '../../world/sway.js';
@@ -241,12 +241,13 @@ export function titleDraw(ctx, S, cw, ch, cam) {
   for (const w of S.worms || []) {
     const b = wormBox(w, S.scroll);
     if (b.x + b.w > -10 && b.x < TITLE_VW + 10) pixelSprite(ctx, b.x, b.y, b.w, b.h, 1, false, c => drawGlowWorm(c, w, S.scroll));
+    drawGlowFace(ctx, w, S.scroll, S.t);
   }
   // floor 1's creatures, drawn by the game's own drawEnemy (they live in world coordinates), each in the players'
   // pixel look (v0.0.170) on a grid pinned to it, as the players' is
   for (const f of S.foes) {
     const sx = f.x - S.scroll;
-    if (sx < -60 || sx > TITLE_VW + 60 || f.bat) continue;   // (a bat's stand-in: drawBats draws it)
+    if (sx < -60 || sx > TITLE_VW + 60 || f.bat || f.worm) continue;   // (a bat's stand-in: drawBats draws it)
     if (S.hub && S.hub.pv && f === S.hub.pv.foe) continue;   // the gun panel's target: the panel paints its hologram (auto/preview.js)
     // (owner v1.0.103) an elite: a soft glow behind it in its tint, pulsing (the old game's drawEnemies; Dev → Elites)
     if (f.k.elite) {

@@ -570,6 +570,23 @@ DEV_META.push(
   { k: 'glowSporeDrag', g: 'glow', label: 'Spore puff drag (settles)', min: 0, max: 20, step: 0.1 },
   { k: 'glowSporeSpread', g: 'glow', label: 'Spore puff spread (± deg)', min: 0, max: 180, step: 1 },
   { k: 'glowAmbient',   g: 'glow', label: 'Green spores drifting in Coal Seams (a second, a screen)', min: 0, max: 30, step: 0.5 });
+// (C5b) their behaviour: agro, the strike, and the blast when one is killed
+Object.assign(DEV_DEFAULTS, { glowAgroR: 60, glowStrikeR: 14, glowStrikeT: 0.3, glowStrikeCd: 0.9, glowStrikeDmg: 12, glowVib: 0.35, glowVibSpd: 70, glowMouthSpd: 18,
+  glowBlastR: 16, glowBlastDmg: 6, glowHole: 7, glowTeam: 0.5, glowHp: 4 });
+DEV_META.push(
+  { k: 'glowHp',        g: 'glow', label: 'Health (the players shoot them)', min: 0.5, max: 40, step: 0.5 },
+  { k: 'glowAgroR',     g: 'glow', label: 'Agro: stands up at a player within (units)', min: 0, max: 200, step: 1 },
+  { k: 'glowStrikeR',   g: 'glow', label: 'Strike: at a player within (units, from its back foot)', min: 0, max: 60, step: 0.5 },
+  { k: 'glowStrikeT',   g: 'glow', label: 'Strike: how long (s)', min: 0.05, max: 2, step: 0.05 },
+  { k: 'glowStrikeCd',  g: 'glow', label: 'Strike: wait before the next (s)', min: 0, max: 5, step: 0.05 },
+  { k: 'glowStrikeDmg', g: 'glow', label: 'Strike damage', min: 0, max: 60, step: 0.5 },
+  { k: 'glowVib',       g: 'glow', label: 'Agro: vibration (units, at the head)', min: 0, max: 3, step: 0.05 },
+  { k: 'glowVibSpd',    g: 'glow', label: 'Agro: vibration speed', min: 0, max: 200, step: 1 },
+  { k: 'glowMouthSpd',  g: 'glow', label: 'Agro: mouth pulse speed', min: 0, max: 60, step: 0.5 },
+  { k: 'glowBlastR',    g: 'glow', label: 'Killed: blast radius (hurts creatures, other worms: a chain)', min: 0, max: 80, step: 1 },
+  { k: 'glowBlastDmg',  g: 'glow', label: 'Killed: blast damage', min: 0, max: 60, step: 0.5 },
+  { k: 'glowHole',      g: 'glow', label: 'Killed: hole blasted in the rock (radius)', min: 0, max: 40, step: 0.5 },
+  { k: 'glowTeam',      g: 'glow', label: 'Killed: the team takes this share of the blast damage', min: 0, max: 1, step: 0.05 });
 DEV_GROUPS.push(['glow', 'Glow worms']);
 // CaveRunner Auto's maps (auto/maps.js): the map machine's prices, and how much harder each map starts
 Object.assign(DEV_DEFAULTS, { autoMapPrice: 1000000, autoMapGrow: 1, autoMapStep: 5 });

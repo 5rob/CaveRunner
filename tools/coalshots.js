@@ -1,6 +1,6 @@
 // Screenshots for the owner (Coal Seams, grem branch): Grem Mode started at level 2 (Dev "Start at level"), phone size, a few
 // moments along the level, and close-ups of its decorations.
-//   node tools/coalshots.js [outdir] [prefix] [gas|stal|ladder|bats|worm]   (default tests/build/autoshots, coal; one of those: its shots only)
+//   node tools/coalshots.js [outdir] [prefix] [gas|stal|ladder|bats|worm|wormb]   (default tests/build/autoshots, coal; one of those: its shots only)
 const { launch } = require('../tests/chromium');
 const path = require('path');
 const fs = require('fs');
@@ -68,7 +68,7 @@ require('../tests/build')();
     await browser.close(); console.log(said.join(String.fromCharCode(10))); return;
   }
   // (C1) a gas pocket on screen set off: the whoomph mid-flash, then just after, the fire round it (each also a close-up)
-  for (let i = 0; ONLY !== 'stal' && ONLY !== 'ladder' && ONLY !== 'bats' && ONLY !== 'worm' && i < 400; i++) {
+  for (let i = 0; ONLY !== 'stal' && ONLY !== 'ladder' && ONLY !== 'bats' && ONLY !== 'worm' && ONLY !== 'wormb' && i < 400; i++) {
     const g = await page.evaluate(() => {
       const S = window.__gremScene, cv = document.querySelector('canvas');
       const g = S && cv && (S.gas || []).find(q => !q.gone && q.wx - S.scroll > 70 && q.wx - S.scroll < 150);
@@ -199,8 +199,8 @@ require('../tests/build')();
   }
   // (C5a) the glow worms: the view held on a worm on a floor; close-ups (darkness lifted) at four points of its gait, then one
   // on a wall or the roof
-  if (ONLY === 'worm') {
-    await page.evaluate(() => { DEV.autoLvlPace = 3; });
+  if (ONLY === 'worm' || ONLY === 'wormb') {
+    await page.evaluate(() => { DEV.autoLvlPace = 3; DEV.glowPerScreen = 2; DEV.glowAmbient = 4; });   // (the worms are off by default till the owner OKs them)
     const find = (/** @type {string} */ k) => page.evaluate(k => {
       const S = window.__gremScene; if (!S || !S.worms) return false;
       const w = S.worms.find(w => w.r.x - S.scroll > 60 && w.r.x - S.scroll < 160 && (k === 'floor' ? w.r.ny < -0.8 && w.f.ny < -0.8 : Math.abs(w.r.ny) < 0.6 || w.r.ny > 0.8));
@@ -221,6 +221,36 @@ require('../tests/build')();
       await page.evaluate(c => { DEV.glowCrank = c; }, crank);
     };
     for (let i = 0; i < 2000 && !(await find('floor')); i++) await page.waitForTimeout(60);
+    // (C5b) its behaviour: a player near (agro: stood up, facing him), nearer (a strike), then it's killed (the green blast)
+    if (ONLY === 'wormb') {
+      const put = (/** @type {number} */ dx, /** @type {number} */ dy) => page.evaluate(([dx, dy]) => {
+        const S = window.__gremScene, w = window.__worm, ru = S.runners[0];
+        S.still = true; ru.out = false; ru.x = w.r.x + dx - S.scroll - PW / 2; ru.y = w.r.y + dy - PH / 2;
+        for (const r of S.runners) if (r !== ru) r.out = true;
+      }, [dx, dy]);
+      const wide = () => page.evaluate(() => {
+        const S = window.__gremScene, w = window.__worm, cv = document.querySelector('canvas'), b = cv.getBoundingClientRect(), k = b.width / TITLE_VW;
+        const x = w.r.x - S.scroll, y = w.r.y;
+        return { x: Math.max(b.left, b.left + x * k - 70), y: Math.max(b.top, b.top + y * k - 80), width: 140, height: 110 };
+      });
+      await page.evaluate(() => { DEV.gremDark = 0; DEV.autoFoeDmg = 0; });
+      await put(26, -14);
+      await page.waitForTimeout(600);
+      await save('j-agro', 'close up (darkness lifted): a player near: the worm stood up on its back foot, facing him, vibrating, mouth pulsing', await wide());
+      await page.evaluate(() => { DEV.glowStrikeT = 1.2; });   // (slowed for the shot only, so it can be caught mid-strike)
+      await put(9, -9);
+      await page.waitForFunction(() => window.__worm.st === 'strike' && window.__worm.sk > 0.45, undefined, { polling: 'raf', timeout: 20000 });
+      await save('k-strike', 'close up (darkness lifted): nearer: the strike, the head snapped round at him (strike slowed for the shot)', await wide());
+      await page.evaluate(() => { DEV.glowStrikeT = DEV_DEFAULTS.glowStrikeT; const S = window.__gremScene; for (const r of S.runners) { r.out = true; r.x = -300; } const w = window.__worm; if (w.foe) w.foe.k.gold = 0; });   // (the player and the gold out of the shot)
+      const box = await wide();
+      await page.evaluate(() => { const S = window.__gremScene, w = window.__worm; if (w.foe) titleKill(S, w.foe); });
+      await page.waitForTimeout(70);
+      await save('l-blast', 'close up (darkness lifted): shot dead: the bright green burst', box);
+      await page.waitForTimeout(700);
+      await save('m-hole', 'close up (darkness lifted): after: the hole it blasted in the rock', box);
+      await page.evaluate(() => { DEV.gremDark = DEV_DEFAULTS.gremDark; });
+      await browser.close(); console.log(said.join(String.fromCharCode(10))); return;
+    }
     await page.waitForTimeout(200);
     await save('a-screen', 'Coal Seams with a glow worm on the floor near the middle (as played, dark: no glow yet, stage a)');
     await page.evaluate(() => { DEV.gremDark = 0; });

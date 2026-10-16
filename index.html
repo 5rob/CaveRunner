@@ -1448,6 +1448,36 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "glowSporeSpread", g: "glow", label: "Spore puff spread (± deg)", min: 0, max: 180, step: 1 },
     { k: "glowAmbient", g: "glow", label: "Green spores drifting in Coal Seams (a second, a screen)", min: 0, max: 30, step: 0.5 }
   );
+  Object.assign(DEV_DEFAULTS, {
+    glowAgroR: 60,
+    glowStrikeR: 14,
+    glowStrikeT: 0.3,
+    glowStrikeCd: 0.9,
+    glowStrikeDmg: 12,
+    glowVib: 0.35,
+    glowVibSpd: 70,
+    glowMouthSpd: 18,
+    glowBlastR: 16,
+    glowBlastDmg: 6,
+    glowHole: 7,
+    glowTeam: 0.5,
+    glowHp: 4
+  });
+  DEV_META.push(
+    { k: "glowHp", g: "glow", label: "Health (the players shoot them)", min: 0.5, max: 40, step: 0.5 },
+    { k: "glowAgroR", g: "glow", label: "Agro: stands up at a player within (units)", min: 0, max: 200, step: 1 },
+    { k: "glowStrikeR", g: "glow", label: "Strike: at a player within (units, from its back foot)", min: 0, max: 60, step: 0.5 },
+    { k: "glowStrikeT", g: "glow", label: "Strike: how long (s)", min: 0.05, max: 2, step: 0.05 },
+    { k: "glowStrikeCd", g: "glow", label: "Strike: wait before the next (s)", min: 0, max: 5, step: 0.05 },
+    { k: "glowStrikeDmg", g: "glow", label: "Strike damage", min: 0, max: 60, step: 0.5 },
+    { k: "glowVib", g: "glow", label: "Agro: vibration (units, at the head)", min: 0, max: 3, step: 0.05 },
+    { k: "glowVibSpd", g: "glow", label: "Agro: vibration speed", min: 0, max: 200, step: 1 },
+    { k: "glowMouthSpd", g: "glow", label: "Agro: mouth pulse speed", min: 0, max: 60, step: 0.5 },
+    { k: "glowBlastR", g: "glow", label: "Killed: blast radius (hurts creatures, other worms: a chain)", min: 0, max: 80, step: 1 },
+    { k: "glowBlastDmg", g: "glow", label: "Killed: blast damage", min: 0, max: 60, step: 0.5 },
+    { k: "glowHole", g: "glow", label: "Killed: hole blasted in the rock (radius)", min: 0, max: 40, step: 0.5 },
+    { k: "glowTeam", g: "glow", label: "Killed: the team takes this share of the blast damage", min: 0, max: 1, step: 0.05 }
+  );
   DEV_GROUPS.push(["glow", "Glow worms"]);
   Object.assign(DEV_DEFAULTS, { autoMapPrice: 1e6, autoMapGrow: 1, autoMapStep: 5 });
   Object.assign(DEV_DEFAULTS, {
@@ -7764,7 +7794,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (!n) return null;
     const r = { x, y, nx: n.x, ny: n.y };
     if (!seat(r, solid) || solid(r.x, r.y)) return null;
-    const w = { r, f: r, rl: { x, y }, fl: { x, y }, th: 0, dir, pts: [], ph: rnd2() * 6.28 };
+    const w = { r, f: r, rl: { x, y }, fl: { x, y }, th: 0, dir, pts: [], ph: rnd2() * 6.28, st: "roam", ag: 0, sk: 0, cd: 0, vt: 0, ux: n.x, uy: n.y, hit: false };
     const g = (DEV.glowDMin + DEV.glowDMax) / 2 - DEV.glowStride / 2;
     let f = wormCrawl(r, g, dir, solid);
     if (!f) {
@@ -7783,27 +7813,81 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     w.dir = -w.dir;
     if (w.th >= Math.PI) w.th = 2 * Math.PI - w.th;
   }
-  function stepWorm(w, dt, solid, rnd2) {
-    const D = DEV, A = D.glowStride / 2, dMid = (D.glowDMin + D.glowDMax) / 2, was = w.th < Math.PI;
-    w.th += D.glowCrank * dt;
-    let plant = was !== w.th < Math.PI;
-    if (w.th >= 2 * Math.PI) {
-      w.th -= 2 * Math.PI;
-      plant = true;
-      if (rnd2() < D.glowTurn) turn(w);
-    }
-    for (let k = 0; k < 2; k++) {
-      const gap = dMid - A * Math.cos(w.th), ext = w.th < Math.PI;
-      const p = ext ? wormCrawl(w.r, gap, w.dir, solid) : wormCrawl(w.f, gap, -w.dir, solid);
-      if (p) {
-        if (ext) w.f = p;
-        else w.r = p;
-        break;
+  function stepWorm(w, dt, solid, rnd2, tgt) {
+    const D = DEV, A = D.glowStride / 2, dMid = (D.glowDMin + D.glowDMax) / 2;
+    const d = tgt ? Math.hypot(tgt.x - w.r.x, tgt.y - w.r.y) : Infinity;
+    let ev = "";
+    w.cd -= dt;
+    w.vt += dt;
+    if (w.st === "strike") {
+      const was = w.sk;
+      w.sk += dt;
+      if (was < D.glowStrikeT * 0.5 && w.sk >= D.glowStrikeT * 0.5 && d < D.glowStrikeR) ev = "strike";
+      if (w.sk >= D.glowStrikeT) {
+        w.st = "agro";
+        w.cd = D.glowStrikeCd;
       }
-      turn(w);
+    } else if (d < D.glowStrikeR && w.cd <= 0 && w.ag > 0.8) {
+      w.st = "strike";
+      w.sk = 0;
+    } else if (d < D.glowAgroR) w.st = "agro";
+    else if (w.st === "agro" && d > D.glowAgroR * 1.15) {
+      w.st = "roam";
+      w.th = 0;
+    }
+    const up = w.st !== "roam";
+    w.ag = Math.max(0, Math.min(1, w.ag + (up ? dt : -dt) / 0.2));
+    if (!up) {
+      const was = w.th < Math.PI;
+      w.th += D.glowCrank * dt;
+      if (was !== w.th < Math.PI) ev = "plant";
+      if (w.th >= 2 * Math.PI) {
+        w.th -= 2 * Math.PI;
+        ev = "plant";
+        if (rnd2() < D.glowTurn) turn(w);
+      }
+      for (let k = 0; k < 2; k++) {
+        const gap = dMid - A * Math.cos(w.th), ext = w.th < Math.PI;
+        const p = ext ? wormCrawl(w.r, gap, w.dir, solid) : wormCrawl(w.f, gap, -w.dir, solid);
+        if (p) {
+          if (ext) w.f = p;
+          else w.r = p;
+          break;
+        }
+        turn(w);
+      }
     }
     wormBody(w, solid);
-    return plant;
+    if (w.ag > 0) wormStand(w, tgt);
+    return ev;
+  }
+  function wormStand(w, tgt) {
+    const D = DEV, b = D.glowLen / 5, nx = w.r.nx, ny = w.r.ny;
+    let px = nx, py = ny;
+    if (tgt) {
+      const dx = tgt.x - w.r.x, dy = tgt.y - w.r.y, l = Math.hypot(dx, dy) || 1;
+      px = dx / l;
+      py = dy / l;
+    }
+    let ux = nx + 0.35 * px, uy = ny + 0.35 * py, lunge = 1;
+    if (w.st === "strike") {
+      const q = Math.min(1, w.sk / (D.glowStrikeT * 0.3));
+      ux = ux * (1 - q) + px * q;
+      uy = uy * (1 - q) + py * q;
+      lunge = 1 + 0.5 * Math.sin(Math.PI * Math.min(1, w.sk / D.glowStrikeT));
+    }
+    const ul = Math.hypot(ux, uy) || 1;
+    ux /= ul;
+    uy /= ul;
+    w.ux = ux;
+    w.uy = uy;
+    const vib = D.glowVib * Math.sin(w.vt * D.glowVibSpd) * (w.st === "strike" ? 0 : 1), qx = -uy, qy = ux;
+    const ax = w.r.x + nx * D.glowFoot, ay = w.r.y + ny * D.glowFoot, k = w.ag;
+    const mix2 = (p, x, y) => ({ x: p.x + (x - p.x) * k, y: p.y + (y - p.y) * k });
+    w.rl = mix2(w.rl, w.r.x, w.r.y);
+    w.pts = w.pts.map((p, i) => mix2(p, ax + ux * b * i * lunge + qx * vib * i / 5, ay + uy * b * i * lunge + qy * vib * i / 5));
+    const e = w.pts[5];
+    w.fl = mix2(w.fl, e.x + ux * D.glowFoot, e.y + uy * D.glowFoot);
   }
   function wormBody(w, solid) {
     const D = DEV, A = D.glowStride / 2, s = Math.sin(w.th), ext = w.th < Math.PI;
@@ -7894,8 +7978,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return out2.map((p, i) => ({ x: p.x, y: p.y, s: L > 0 ? d[i] / L : 0 }));
   }
   function drawGlowWorm(c, w, ox) {
-    const Q = wormLine(w, ox), W = DEV.glowW, tp = DEV.glowTaper;
-    const th = (s) => W * (tp + (1 - tp) * Math.sin(Math.PI * s));
+    const Q = wormLine(w, ox), W = DEV.glowW, tp = DEV.glowTaper, hp = tp + (1 - tp) * w.ag;
+    const th = (s) => {
+      const t0 = s > 0.5 ? hp : tp;
+      return W * (t0 + (1 - t0) * Math.sin(Math.PI * s));
+    };
     for (const { col, add } of [{ col: EDGE2, add: 1 }, { col: BODY2, add: 0 }]) {
       c.fillStyle = col;
       for (let i = 0; i < Q.length; i++) {
@@ -7925,6 +8012,20 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     const e = DEV.glowW + 3;
     return { x: Math.floor(x0 - ox - e), y: Math.floor(y0 - e), w: Math.ceil(x1 - x0 + 2 * e) + 1, h: Math.ceil(y1 - y0 + 2 * e) + 1 };
+  }
+  function drawGlowFace(c, w, ox, t) {
+    if (w.ag < 0.6) return;
+    const W = DEV.glowW, x = w.fl.x - ox - w.ux * W * 0.15, y = w.fl.y - w.uy * W * 0.15, qx = -w.uy, qy = w.ux;
+    c.fillStyle = "#0d2a10";
+    c.beginPath();
+    c.arc(x, y, W * 0.22 * (1 + 0.45 * Math.sin(t * DEV.glowMouthSpd + w.ph)), 0, 6.29);
+    c.fill();
+    c.fillStyle = "#000";
+    for (const sd of [-1, 1]) {
+      c.beginPath();
+      c.arc(x + w.ux * W * 0.42 + qx * sd * W * 0.26, y + w.uy * W * 0.42 + qy * sd * W * 0.26, W * 0.1, 0, 6.29);
+      c.fill();
+    }
   }
 
   // src/world/fire.js
@@ -12871,12 +12972,31 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (S.worms.some((w) => w.r.x < x0)) S.worms = S.worms.filter((w) => w.r.x >= x0);
     const solid = rockAt(S);
     const R = S.wormRnd ||= wormRng(S.seed), D = DEV;
+    if (S.worms.some((w) => w.foe && w.foe.hp <= 0)) S.worms = S.worms.filter((w) => !(w.foe && w.foe.hp <= 0));
+    const live = S.runners.filter((r) => !r.out), inF = new Set(S.foes);
     for (const w of S.worms) {
-      if (!stepWorm(w, dt, solid, R) || S.parts.length >= TITLE_PARTS - 20) continue;
-      const a0 = Math.atan2(w.r.ny + w.f.ny, w.r.nx + w.f.nx), m = w.pts[2], m2 = w.pts[3];
+      let tgt = null, td = Infinity, ti = -1;
+      for (let i = 0; i < live.length; i++) {
+        const x = S.scroll + live[i].x + PW / 2, y = live[i].y + PH / 2, q = Math.hypot(x - w.r.x, y - w.r.y);
+        if (q < td) {
+          td = q;
+          tgt = { x, y };
+          ti = i;
+        }
+      }
+      const ev = stepWorm(w, dt, solid, R, tgt);
+      if (ev === "strike" && ti >= 0 && S.lvl && S.lvl.hurt) S.lvl.hurt(S, live[ti].id, D.glowStrikeDmg);
+      const f = w.foe || (w.foe = wormFoe(S, w)), j2 = w.pts[2], j3 = w.pts[3];
+      f.x = f.hx = (j2.x + j3.x) / 2;
+      f.y = f.ty = f.hy = (j2.y + j3.y) / 2;
+      f.r = D.glowW + 1.5;
+      const sx = f.x - S.scroll;
+      if (!inF.has(f) && f.hp > 0 && sx > -40 && sx < TITLE_VW + 40) S.foes.push(f);
+      if (ev !== "plant" || S.parts.length >= TITLE_PARTS - 20) continue;
+      const a0 = Math.atan2(w.r.ny + w.f.ny, w.r.nx + w.f.nx);
       for (let i = 0, k = Math.round(D.glowSpores); i < k; i++) {
         const a = a0 + (R() * 2 - 1) * D.glowSporeSpread * Math.PI / 180, v = D.glowSporeSpd * (0.6 + 0.4 * R()), l = 4 + R() * 3;
-        S.parts.push({ x: (m.x + m2.x) / 2 - S.scroll, y: (m.y + m2.y) / 2, vx: (R() - 0.5) * 4, vy: -1 - R() * 2, life: l, max: l, r: 0.8, col: WORM_SPORE, kind: "wspore", kx: Math.cos(a) * v, ky: Math.sin(a) * v });
+        S.parts.push({ x: f.x - S.scroll, y: f.y, vx: (R() - 0.5) * 4, vy: -1 - R() * 2, life: l, max: l, r: 0.8, col: WORM_SPORE, kind: "wspore", kx: Math.cos(a) * v, ky: Math.sin(a) * v });
       }
     }
     if (S.parts.length < TITLE_PARTS - 40 && R() < dt * D.glowAmbient) {
@@ -12897,6 +13017,26 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
   }
   var WORM_SPORE = "#7dff3a";
+  function wormFoe(S, w) {
+    const base = S.lvl && S.lvl.kind ? S.lvl.kind("hamahakki", 1) : enemyFor("hamahakki", 1), x = w.r.x, y = w.r.y;
+    const k = { ...base, id: "glowworm", name: "Glow worm", act: "worm", kp: void 0, elite: false, boss: false, dmg: 0, r: 2, hp: DEV.glowHp, gold: 2, col: { ...base.col, a: WORM_SPORE } };
+    return { x, y, ty: y, r: DEV.glowW + 1.5, phase: 0, hp: DEV.glowHp, hpMax: DEV.glowHp, cd: 1e9, flash: 0, lx: 0, ly: 1, hx: x, hy: y, tgt: null, rest: 0, k, touch: 1e9, charge: 0, worm: true };
+  }
+  function wormBlast(S, f) {
+    const x = f.x - S.scroll, y = f.ty, r = DEV.glowBlastR, D = DEV;
+    snd(S, "boom", x, y, r * 1.6);
+    S.booms.push({ x, y, r: r * 1.3, t: 0, max: 0.4, sid: "worm" });
+    burst(S, x, y, 22, WORM_SPORE, 120, "spark", 0.5);
+    burst(S, x, y, 14, "#d8ffc0", 70, "spark", 0.35);
+    burst(S, x, y, 10, "#2fd23a", 50, "chunk", 0.8);
+    S.shake = Math.min(7, S.shake + 1.5);
+    S.flash = Math.min(0.3, S.flash + 0.06);
+    if (D.glowHole > 0) titleCarve(S, x, y, D.glowHole);
+    for (const g of S.foes) if (g !== f && g.hp > 0 && Math.hypot(g.x - S.scroll - x, g.ty - y) < r + g.r) hitFoe(S, g, D.glowBlastDmg, WORM_SPORE);
+    if (S.lvl && S.lvl.hurt && D.glowTeam > 0) {
+      for (const ru of S.runners) if (!ru.out && Math.hypot(ru.x + PW / 2 - x, ru.y + PH / 2 - y) < r + 6) S.lvl.hurt(S, ru.id, D.glowBlastDmg * D.glowTeam);
+    }
+  }
   function coalDeco(S, c, wx, Zn, cap, rcy, fy, tuns) {
     const R = S.rnd, base = ci(S, c, 0);
     if (cap != null && R() < 0.5) lamp(S, c, wx, (cap + 2.5) * TCELL, 3 + R() * 5, true);
@@ -13671,9 +13811,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function killFoe(S, f) {
     f.hp = 0;
     S.kills++;
-    const big = f.k.id !== "rotta" && !f.bat, x = f.x - S.scroll, y = f.ty;
+    const big = f.k.id !== "rotta" && !f.bat && !f.worm, x = f.x - S.scroll, y = f.ty;
     snd(S, "die", x, y, f.k);
-    if (f.bat) {
+    if (f.worm) wormBlast(S, f);
+    else if (f.bat) {
       burst(S, x, y, 5, "#8a7a90", 40, "smoke", 0.5);
       burst(S, x, y, 4, "#ffffff", 90, "spark", 0.2);
       if (S.parts.length < TITLE_PARTS) S.parts.push({ x, y, vx: (S.rnd() - 0.5) * 10, vy: 10, life: 3, max: 3, r: 1.2 * DEV.batSize, col: "#2a2230", kind: "lump" });
@@ -13780,7 +13921,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     S.flash = Math.max(0, S.flash - dt * 1.6);
     S.spawn -= dt;
     const sp = S.lvl && S.lvl.spawn ? S.lvl.spawn(S) : { gap: 0.4, cap: TITLE_FOES - 10 };
-    if (S.spawn <= 0 && !S.hub && S.foes.filter((f) => !f.bat).length < sp.cap) {
+    if (S.spawn <= 0 && !S.hub && S.foes.filter((f) => !f.bat && !f.worm).length < sp.cap) {
       addFoe(S, void 0, sp.cap);
       S.spawn = sp.gap * (1 + R() * 1.5);
     }
@@ -14961,7 +15102,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function stepFoes(S, dt) {
     const R = S.rnd, CS = csolid(S), sees = 1 / DEV.zoom;
     for (const e of S.foes) {
-      if (e.bat) continue;
+      if (e.bat || e.worm) continue;
       const k = e.k, ru = nearestRunner(S, e.x - S.scroll, e.ty);
       const pcx = S.scroll + ru.x + PW / 2, pcy = ru.y + PH / 2, goal = { x: pcx, y: pcy };
       e.flash -= dt;
@@ -20722,7 +20863,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function levelBars(ctx, S) {
     const L = levelState(S), boss = L && L.boss;
     for (const f of S.foes) {
-      if (f === boss || !(f.hp > 0) || !(f.hpMax > 0) || f.bat && f.hp >= f.hpMax) continue;
+      if (f === boss || !(f.hp > 0) || !(f.hpMax > 0) || (f.bat || f.worm) && f.hp >= f.hpMax) continue;
       const x = f.x - S.scroll;
       if (x < -30 || x > TITLE_VW + 30) continue;
       const w = Math.max(10, Math.min(22, f.r * 2.4)), bx = Math.round(x - w / 2), by = Math.round(f.ty - f.r - 7);
@@ -21791,10 +21932,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     for (const w of S.worms || []) {
       const b = wormBox(w, S.scroll);
       if (b.x + b.w > -10 && b.x < TITLE_VW + 10) pixelSprite(ctx, b.x, b.y, b.w, b.h, 1, false, (c) => drawGlowWorm(c, w, S.scroll));
+      drawGlowFace(ctx, w, S.scroll, S.t);
     }
     for (const f of S.foes) {
       const sx2 = f.x - S.scroll;
-      if (sx2 < -60 || sx2 > TITLE_VW + 60 || f.bat) continue;
+      if (sx2 < -60 || sx2 > TITLE_VW + 60 || f.bat || f.worm) continue;
       if (S.hub && S.hub.pv && f === S.hub.pv.foe) continue;
       if (f.k.elite) {
         const u = f.k.eu || 0, a = Math.max(0, Math.min(1, kru("elGlow", u) * (1 + 0.45 * Math.sin(S.t * 4 + f.x)))), R = f.r + kru("elGlowR", u);

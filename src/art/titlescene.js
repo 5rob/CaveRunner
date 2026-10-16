@@ -1177,13 +1177,25 @@ function wormsStep(S, dt) {
   if (S.worms.some(w => w.r.x < x0)) S.worms = S.worms.filter(w => w.r.x >= x0);
   const solid = rockAt(S);
   const R = S.wormRnd ||= wormRng(S.seed), D = DEV;
+  if (S.worms.some(w => w.foe && w.foe.hp <= 0)) S.worms = S.worms.filter(w => !(w.foe && w.foe.hp <= 0));   // (killed: killFoe blew it up)
+  const live = S.runners.filter(r => !r.out), inF = new Set(S.foes);
   for (const w of S.worms) {
-    if (!stepWorm(w, dt, solid, R) || S.parts.length >= TITLE_PARTS - 20) continue;
+    // the nearest player's middle: agro, strike (a strike at its height hurts him: DEV.glowStrikeDmg)
+    let tgt = null, td = Infinity, ti = -1;
+    for (let i = 0; i < live.length; i++) { const x = S.scroll + live[i].x + PW / 2, y = live[i].y + PH / 2, q = Math.hypot(x - w.r.x, y - w.r.y); if (q < td) { td = q; tgt = { x, y }; ti = i; } }
+    const ev = stepWorm(w, dt, solid, R, tgt);
+    if (ev === 'strike' && ti >= 0 && S.lvl && S.lvl.hurt) S.lvl.hurt(S, live[ti].id, D.glowStrikeDmg);
+    // its stand-in among the foes (as a bat's): the guns aim at it and hit it; killed, it blows up (killFoe → wormBlast)
+    const f = w.foe || (w.foe = wormFoe(S, w)), j2 = w.pts[2], j3 = w.pts[3];
+    f.x = f.hx = (j2.x + j3.x) / 2; f.y = f.ty = f.hy = (j2.y + j3.y) / 2; f.r = D.glowW + 1.5;
+    const sx = f.x - S.scroll;
+    if (!inF.has(f) && f.hp > 0 && sx > -40 && sx < TITLE_VW + 40) S.foes.push(f);
+    if (ev !== 'plant' || S.parts.length >= TITLE_PARTS - 20) continue;
     // a foot down: a puff of green spores off the middle of its back, out from the rock (the jellyfish's puff, devpanel.js JellyPreview)
-    const a0 = Math.atan2(w.r.ny + w.f.ny, w.r.nx + w.f.nx), m = w.pts[2], m2 = w.pts[3];
+    const a0 = Math.atan2(w.r.ny + w.f.ny, w.r.nx + w.f.nx);
     for (let i = 0, k = Math.round(D.glowSpores); i < k; i++) {
       const a = a0 + (R() * 2 - 1) * D.glowSporeSpread * Math.PI / 180, v = D.glowSporeSpd * (0.6 + 0.4 * R()), l = 4 + R() * 3;
-      S.parts.push({ x: (m.x + m2.x) / 2 - S.scroll, y: (m.y + m2.y) / 2, vx: (R() - 0.5) * 4, vy: -1 - R() * 2, life: l, max: l, r: 0.8, col: WORM_SPORE, kind: 'wspore', kx: Math.cos(a) * v, ky: Math.sin(a) * v });
+      S.parts.push({ x: f.x - S.scroll, y: f.y, vx: (R() - 0.5) * 4, vy: -1 - R() * 2, life: l, max: l, r: 0.8, col: WORM_SPORE, kind: 'wspore', kx: Math.cos(a) * v, ky: Math.sin(a) * v });
     }
   }
   // the green spores drifting through Coal Seams, where the worms live (the natural caves' luminescent spores, in the worms' green)
@@ -1194,6 +1206,28 @@ function wormsStep(S, dt) {
   }
 }
 const WORM_SPORE = '#7dff3a';   // (the worms' neon green)
+// a worm's stand-in foe: a spider's kind made over (no brain: stepFoes skips it; creatures/glowworm.js moves it), DEV.glowHp health
+/** @param {TitleScene} S @param {import('../creatures/glowworm.js').GlowWorm} w @returns {Enemy} */
+function wormFoe(S, w) {
+  const base = S.lvl && S.lvl.kind ? S.lvl.kind('hamahakki', 1) : enemyFor('hamahakki', 1), x = w.r.x, y = w.r.y;
+  const k = { ...base, id: 'glowworm', name: 'Glow worm', act: 'worm', kp: undefined, elite: false, boss: false, dmg: 0, r: 2, hp: DEV.glowHp, gold: 2, col: { ...base.col, a: WORM_SPORE } };
+  return { x, y, ty: y, r: DEV.glowW + 1.5, phase: 0, hp: DEV.glowHp, hpMax: DEV.glowHp, cd: 1e9, flash: 0, lx: 0, ly: 1, hx: x, hy: y, tgt: null, rest: 0, k, touch: 1e9, charge: 0, worm: true };
+}
+// (C5b) a glow worm killed: a burst of bright green, a hole blasted in the rock (DEV.glowHole), the creatures in DEV.glowBlastR hurt
+// (DEV.glowBlastDmg: other worms too, so a patch of them goes off in a chain), and the team at DEV.glowTeam of it
+/** @param {TitleScene} S @param {Enemy} f */
+function wormBlast(S, f) {
+  const x = f.x - S.scroll, y = f.ty, r = DEV.glowBlastR, D = DEV;
+  snd(S, 'boom', x, y, r * 1.6);
+  S.booms.push({ x, y, r: r * 1.3, t: 0, max: 0.4, sid: 'worm' });
+  burst(S, x, y, 22, WORM_SPORE, 120, 'spark', 0.5);
+  burst(S, x, y, 14, '#d8ffc0', 70, 'spark', 0.35);
+  burst(S, x, y, 10, '#2fd23a', 50, 'chunk', 0.8);
+  S.shake = Math.min(7, S.shake + 1.5); S.flash = Math.min(0.3, S.flash + 0.06);
+  if (D.glowHole > 0) titleCarve(S, x, y, D.glowHole);
+  for (const g of S.foes) if (g !== f && g.hp > 0 && Math.hypot(g.x - S.scroll - x, g.ty - y) < r + g.r) hitFoe(S, g, D.glowBlastDmg, WORM_SPORE);
+  if (S.lvl && S.lvl.hurt && D.glowTeam > 0) for (const ru of S.runners) if (!ru.out && Math.hypot(ru.x + PW / 2 - x, ru.y + PH / 2 - y) < r + 6) S.lvl.hurt(S, ru.id, D.glowBlastDmg * D.glowTeam);
+}
 // Coal Seams' mine set in column c (the old game's floor 2 decorations): rusted lanterns hung off whatever rock or timber is over a
 // spot in the open (the roof, a boulder's underside) and under a support's cap now and then; explosive minecarts (the floor flat
 // under the whole cart) and pickaxes lying on the floors: a natural zone's, a mine's tunnels' (tuns: those open here)
@@ -1815,9 +1849,10 @@ function stepSway(S, dt) {
 function killFoe(S, f) {
   f.hp = 0;
   S.kills++;
-  const big = f.k.id !== 'rotta' && !f.bat, x = f.x - S.scroll, y = f.ty;
+  const big = f.k.id !== 'rotta' && !f.bat && !f.worm, x = f.x - S.scroll, y = f.ty;
   snd(S, 'die', x, y, f.k);
-  if (f.bat) {   // (a bat: a small puff, and it drops, a little dark lump falling till it lands)
+  if (f.worm) wormBlast(S, f);
+  else if (f.bat) {   // (a bat: a small puff, and it drops, a little dark lump falling till it lands)
     burst(S, x, y, 5, '#8a7a90', 40, 'smoke', 0.5);
     burst(S, x, y, 4, '#ffffff', 90, 'spark', 0.2);
     if (S.parts.length < TITLE_PARTS) S.parts.push({ x, y, vx: (S.rnd() - 0.5) * 10, vy: 10, life: 3, max: 3, r: 1.2 * DEV.batSize, col: '#2a2230', kind: 'lump' });
@@ -1932,7 +1967,7 @@ export function titleStep(S, dt) {
   S.spawn -= dt;
   // (CaveRunner Auto's level: S.lvl.spawn sets the gap and how many at once, a trickle that builds: auto/level.js levelSpawn)
   const sp = S.lvl && S.lvl.spawn ? S.lvl.spawn(S) : { gap: 0.4, cap: TITLE_FOES - 10 };
-  if (S.spawn <= 0 && !S.hub && S.foes.filter(f => !f.bat).length < sp.cap) { addFoe(S, undefined, sp.cap); S.spawn = sp.gap * (1 + R() * 1.5); }
+  if (S.spawn <= 0 && !S.hub && S.foes.filter(f => !f.bat && !f.worm).length < sp.cap) { addFoe(S, undefined, sp.cap); S.spawn = sp.gap * (1 + R() * 1.5); }
   if (!S.still) { for (const r of S.runners) if (!r.out) stepRunner(S, r, dt); separate(S, dt); }
   stepFoes(S, dt);
   batsStep(S, dt);
@@ -2857,7 +2892,7 @@ export function titleClearWebs(S, r, fire, rad) {
 function stepFoes(S, dt) {
   const R = S.rnd, CS = csolid(S), sees = 1 / DEV.zoom;
   for (const e of S.foes) {
-    if (e.bat) continue;   // (a bat's stand-in: creatures/bats.js moves it, batsStep)
+    if (e.bat || e.worm) continue;   // (a bat's or a worm's stand-in: creatures/bats.js, glowworm.js move it)
     const k = e.k, ru = nearestRunner(S, e.x - S.scroll, e.ty);
     const pcx = S.scroll + ru.x + PW / 2, pcy = ru.y + PH / 2, goal = { x: pcx, y: pcy };
     e.flash -= dt; e.cd -= dt; e.touch -= dt;

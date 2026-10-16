@@ -85,5 +85,44 @@ check('… never inside rock', lv === 0, lv);
 const sp = S.parts.filter(p => p.kind === 'wspore');
 check('green spores: puffed by the worms and drifting in Coal Seams', sp.length > 5 && sp.every(p => p.col === sp[0].col), sp.length);
 
+// (C5b) agro: a player within glowAgroR stands it up on its back foot, straight out from the floor; within glowStrikeR it strikes
+const w3 = G.newWorm(0, 99.5, 1, solid, rnd), far2 = { x: 30, y: 80 };
+for (let i = 0; i < 30; i++) G.stepWorm(w3, dt, solid, rnd, far2);
+const top = w3.pts[5], bot = w3.pts[0];
+check('agro: a player near, it stands up on its back foot (head well over its base)', w3.st === 'agro' && w3.ag === 1 && bot.y - top.y > D.glowLen * 0.7 && Math.abs(w3.rl.y - w3.r.y) < 1e-9, { st: w3.st, ag: w3.ag, rise: +(bot.y - top.y).toFixed(1) });
+const fx0 = w3.r.x; let strikes = 0, reach = 0;
+const near = { x: 6, y: 92 };
+for (let i = 0; i < 120; i++) { if (G.stepWorm(w3, dt, solid, rnd, near) === 'strike') { strikes++; reach = Math.max(reach, Math.hypot(w3.fl.x - near.x, w3.fl.y - near.y)); } }
+check('strike: a player within strike range is struck, again after its wait', strikes >= 2 && w3.r.x === fx0, { strikes });
+for (let i = 0; i < 60; i++) G.stepWorm(w3, dt, solid, rnd, { x: 500, y: 0 });
+check('… the player gone, it walks on', w3.st === 'roam' && w3.ag === 0, { st: w3.st, ag: w3.ag });
+// in the scene: a strike hurts the player it hits; a kill blasts a hole, hurts a creature near, sets off a worm near (a chain),
+// and hurts the team at glowTeam of the blast
+S.still = true;
+// a worm put on a floor in view (only creatures in view are foes)
+let WA = null;
+for (let x = S.scroll + 80; x < S.scroll + 160 && !WA; x += 2) for (let y = 20; y < S.vh - 4 && !WA; y += 1) if (!rock(x, y - 8) && !rock(x, y) && rock(x, y + 1)) { WA = G.newWorm(x, y + 0.5, 1, rock, rnd); }
+S.worms.push(WA);
+const ru2 = S.runners[0]; ru2.out = false;
+const hits = []; S.lvl.hurt = (_S, id, d) => { hits.push(d); };
+ru2.x = WA.r.x - S.scroll - G.PW / 2 + 3; ru2.y = WA.r.y - G.PH / 2 - 4;
+for (let i = 0; i < 90; i++) G.titleStep(S, dt);
+check('in the level: a strike hurts the near player (glowStrikeDmg)', hits.includes(D.glowStrikeDmg), hits);
+D.glowAgroR = 0; hits.length = 0;
+const B2 = G.newWorm(WA.r.x, WA.r.y, -WA.dir, rock, rnd);
+if (B2) S.worms.push(B2);
+G.titleStep(S, dt);
+const dummy = { ...WA.foe, worm: false, bat: true, hp: 100, hpMax: 100, x: WA.foe.x - 4 }; S.foes.push(dummy);
+const cx = WA.foe.x, cy = WA.foe.y;
+let rock0 = 0; for (let dx = -10; dx <= 10; dx += 1) for (let dy = -10; dy <= 10; dy += 1) if (rock(cx + dx, cy + dy)) rock0++;
+G.titleKill(S, WA.foe);
+let rock1 = 0; for (let dx = -10; dx <= 10; dx += 1) for (let dy = -10; dy <= 10; dy += 1) if (rock(cx + dx, cy + dy)) rock1++;
+check('a kill blasts a hole in the rock', rock1 < rock0 - 10, { rock0, rock1 });
+check('… hurts a creature near (glowBlastDmg)', dummy.hp <= 100 - D.glowBlastDmg + 1e-9, dummy.hp);
+check('… sets off a worm near it (a chain)', !!B2 && !!B2.foe && B2.foe.hp <= 0, B2 && B2.foe && B2.foe.hp);
+check('… and hurts the team at glowTeam (half) of the blast', hits.length > 0 && hits.every(d => Math.abs(d - D.glowBlastDmg * D.glowTeam) < 1e-9), hits);
+G.titleStep(S, dt);
+check('… the killed worms gone from the scene', !S.worms.includes(WA) && !S.worms.includes(B2));
+
 console.log(fails ? `\n${fails} FAILED` : '\nall ok');
 process.exit(fails ? 1 : 0);
