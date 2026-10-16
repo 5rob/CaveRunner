@@ -297,6 +297,7 @@ export const AUTO_KNOBS = new Set([
   'gremPrice',
   'gremSeamJag',
   'gremSeamW',
+  'gremWayDone',
   'gremWayT',
   'jeAimTolHi',
   'jeAimTolLo',

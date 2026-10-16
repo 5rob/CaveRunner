@@ -1618,7 +1618,7 @@ const boxRock = (S, x, y, feet = true) => {
 };
 // (Grem Mode, owner v1.0.102: "it should work just like the auto movement, but with a temporary position goal") a tapped spot
 // (r.goal, world x, y: auto/level.js levelWaypoint): he flies there on the autopilot (flyStep's thrust and steering, rock in his
-// way risen over, dipped under or sawn through as ever: pickTarget aims only at it). GOAL_R from it he's there: the goal's gone
+// way risen over, dipped under or sawn through as ever: pickTarget aims only at it). DEV.gremWayDone from it he's there (v1.0.107: was 8, he fussed over the last few): the goal's gone
 // and he plays by himself again at once (v1.0.103: it held the spot for the idle wait first); not there in DEV.gremWayT s, the same
 /** @param {TitleScene} S @param {TRunner} r */
 function goalAim(S, r) {
@@ -1626,13 +1626,12 @@ function goalAim(S, r) {
   if (!g) return;
   r.tx = Math.max(8, Math.min(TITLE_VW - PW - 8, g.x - S.scroll - PW / 2)); r.ty = g.y - PH / 2; r.retarget = 0.25;
 }
-const GOAL_R = 8;
 /** @param {TitleScene} S @param {TRunner} r @param {number} dt */
 function goalStep(S, r, dt) {
   const g = r.goal;
   if (!g) return;
   // (owner v1.0.103: no wait) there, or not there in DEV.gremWayT s: the goal's gone and he plays on at once
-  if (Math.hypot(g.x - (S.scroll + r.x + PW / 2), g.y - (r.y + PH / 2)) < GOAL_R || S.t - g.t > DEV.gremWayT) { r.goal = null; r.retarget = 0; return; }
+  if (Math.hypot(g.x - (S.scroll + r.x + PW / 2), g.y - (r.y + PH / 2)) < DEV.gremWayDone || S.t - g.t > DEV.gremWayT) { r.goal = null; r.retarget = 0; return; }
   // in the air for it (a run along the floor can't reach a height): off the floor as a flight starts, unless the tank's low
   if (r.mode === 'run' && !r.dig && !(fuelOn(S) && fuelOf(r) < FUEL_TAKEOFF)) { setMode(S, r, 'fly', 1); r.vy = -40; r.ground = false; r.burst = false; r.jet = false; }
   if (r.mode === 'fly' && !(fuelOn(S) && r.empty)) r.modeT = Math.max(r.modeT, 0.5);   // no landing on the way (dry: he lands to refill)

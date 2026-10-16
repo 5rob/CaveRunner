@@ -5,6 +5,10 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v1.0.107 — Grem Mode: a tapped spot reached sooner (branch `autobattler`)
+Released 2026-10-16 (owner: too strict; they fussed over the last 10 pixels).
+- A tapped spot counts as reached within `DEV.gremWayDone` (16 units, about his height; Dev → Grem Mode) of his middle, was 8 (`titlescene.js goalStep`, `GOAL_R` gone).
+
 ## v1.0.106 — Back to the autopilot sooner (branch `autobattler`)
 Released 2026-10-16 (owner: reduce the return to auto movement timer by 2/3).
 - `DEV.autoCtlWait` 3 → 1 s: a player let go of the stick plays by himself again after 1 s (Dev → Auto: player's "Manual mode: seconds of the stick at rest…"; a device that changed it keeps its own).

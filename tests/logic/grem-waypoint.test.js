@@ -16,7 +16,7 @@ until(S, () => L.phase === 'run', 600);
 const r = S.runners[0], mid = () => ({ x: S.scroll + r.x + G.PW / 2, y: r.y + G.PH / 2 });
 
 const goal = () => r.goal;
-const near = (gx, gy) => Math.hypot(mid().x - gx, mid().y - gy) < 9;
+const near = (gx, gy) => Math.hypot(mid().x - gx, mid().y - gy) < D.gremWayDone + 1;   // (v1.0.107) as near as counts
 
 // a spot ahead, on the floor (as a tap on the ground): the autopilot flies him there
 const m0 = mid(), gx = m0.x + 70, gy = G.titleFloor(gx, S) - G.PH / 2 - 2;
