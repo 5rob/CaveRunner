@@ -31,6 +31,8 @@ check('its zones are the Mines, the Digging zone and the Cavern only', [...kinds
 check('no spider zone with the vines look, no heavy vegetation', L.plan.zp.z.filter(z => z.x1 < L.plan.arena.x0).every(z => z.sv !== 'vines' && !z.veg));
 check('no moss, grass or rubble cells', !(mats.get(TM.MOSS) || mats.get(TM.GRASS) || mats.get(TM.RUB) || mats.get(TM.RUBM)), { moss: mats.get(TM.MOSS), grass: mats.get(TM.GRASS), rub: mats.get(TM.RUB) });
 check('no brick (ledges)', !mats.get(TM.BRICK), mats.get(TM.BRICK));
+check('minecart rails along the Mines\' tunnels', (mats.get(TM.RAIL) || 0) > 40, mats.get(TM.RAIL));
+check('coal chutes spill lumps of coal', (seen.get('lump') || 0) > 0, seen.get('lump'));
 check('timber in it (supports and mine frames)', (mats.get(TM.BEAM) || 0) > 50, mats.get(TM.BEAM));
 const by = k => [...props].filter(k);
 check('no vines, roots, mycelium or mushrooms', !by(p => (p.k === 'climb' && p.st !== 'silk') || p.k === 'pad').length, by(p => (p.k === 'climb' && p.st !== 'silk') || p.k === 'pad').length);

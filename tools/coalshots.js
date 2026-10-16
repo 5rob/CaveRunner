@@ -34,6 +34,12 @@ require('../tests/build')();
     await save(String.fromCharCode(97 + got.size - 1) + '-' + z, 'Coal Seams, the ' + ({ timber: 'Mines', winding: 'Digging zone', spider: 'Cavern' }[z] || z) + ' (zone ' + z + ')');
     if (got.size === 3) break;
   }
+  // a coal chute on screen (ideas 1, 10: rails, coal heaps, chutes are in the Mines)
+  for (let i = 0; i < 200; i++) {
+    const on = await page.evaluate(() => { const S = window.__gremScene; return !!S && (S.chutes || []).some(q => q.x > S.scroll + 70 && q.x < S.scroll + 150); });
+    if (on) { await save('h-chute', 'the Mines: a coal chute down a hole between tunnels, rails on the floors'); break; }
+    await page.waitForTimeout(250);
+  }
   // a minecart on screen (then lit: its blast)
   for (let i = 0; i < 240; i++) {
     const on = await page.evaluate(() => { const S = window.__gremScene; return !!S && S.props.some(p => p.k === 'barrel' && !p.gone && p.x > 40 && p.x < 200); });

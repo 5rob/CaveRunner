@@ -1307,6 +1307,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   );
   colourKnobs("coal", [["coalCol", "Coal colours (dark, light)", "#101014", "#232838", "c"], ["coalGlint", "Coal glints (blue sheen)", "#5d6a86", "#a9bce0", "g"]]);
   Object.assign(DEV_DEFAULTS, { coalGlints: 0.05 });
+  Object.assign(DEV_DEFAULTS, { coalRails: 0.6, coalPiles: 0.5, coalChutes: 0.6, coalSpill: 0.5 });
+  DEV_META.push(
+    { k: "coalRails", g: "coal", label: "Minecart rails: share of the Mines’ tunnel floors", min: 0, max: 1, step: 0.05 },
+    { k: "coalPiles", g: "coal", label: "Coal heaps: chance at each tunnel end", min: 0, max: 1, step: 0.05 },
+    { k: "coalChutes", g: "coal", label: "Coal chutes: chance down each hole between tunnels", min: 0, max: 1, step: 0.05 },
+    { k: "coalSpill", g: "coal", label: "Coal chutes: lumps spilled a second", min: 0, max: 5, step: 0.1 }
+  );
   DEV_META.push({ k: "coalGlints", g: "coal", label: "Coal: glints, share of its cells", min: 0, max: 0.4, step: 0.01 });
   DEV_GROUPS.push(["coal", "Coal Seams"]);
   Object.assign(DEV_DEFAULTS, { autoMapPrice: 1e6, autoMapGrow: 1, autoMapStep: 5 });
@@ -11091,12 +11098,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     CRYSL: 20,
     NEST: 21,
     NESTD: 22,
-    COAL: 23
+    COAL: 23,
+    RAIL: 24
   };
-  var TITLE_SOLID = [0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1];
+  var TITLE_SOLID = [0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0];
   var SOLID = TITLE_SOLID;
   var deepK = (S, y, wx) => !S.lvl || DEV.autoHardDeep <= 0 || S.bot - S.top <= MINE_TALL ? 1 : Math.max(0, Math.min(1, ((S.lvl.hardY && wx != null ? S.lvl.hardY(S, wx) : S.vh - DEV.autoHardEdge) - y) / DEV.autoHardDeep));
-  var FUEL = [0, 0, 2, 0, 3, 0, 3, 3, 1, 0, 1, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 1, 1, 4];
+  var FUEL = [0, 0, 2, 0, 3, 0, 3, 3, 1, 0, 1, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 1, 1, 4, 0];
   var catchOf = (kind) => FIRE_CATCH[kind] * (kind === 4 ? DEV.coalCatch : 1);
   var FRAME_GAP = 72;
   var FRAME_W = 36;
@@ -11492,6 +11500,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const fx0 = wx - uc - 4, fx1 = wx - uc + FRAME_W + 4;
       const dn = dig(wx, k).dn, up = Math.min(dig(wx, k).up, k < bands.length - 1 ? M.sh[k] - dig(wx, k + 1).dn - 4 : 99);
       const open = !!M && wx > M.L[k] - 14 && wx < M.Rx[k] + 14;
+      const rail = coal && open && titleNoise(wx / 90 + k * 3.7 + 11, 210 + k * 9) > 1 - DEV.coalRails;
+      let pile = 0;
+      if (coal && M) {
+        for (const [e, d] of [[0, wx - M.L[k]], [1, M.Rx[k] - wx]]) if (d < PILE_W && h2(Math.floor(e ? M.Rx[k] : M.L[k]) + k * 7, 77 + e) < DEV.coalPiles)
+          pile = Math.max(pile, PILE_H * (0.6 + 0.4 * h2(k, 78 + e)) * Math.pow(1 - Math.max(0, d) / PILE_W, 1.4) + (titleNoise(wx / 3, 79 + k) - 0.5) * 2);
+      }
       return {
         c: q.c,
         f: q.f,
@@ -11501,12 +11515,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         open,
         uc,
         v,
+        rail,
+        pile,
         frame: open && !!M && uc < FRAME_W + 4 && built(fx0, S) > 0.95 && built(fx1, S) > 0.95 && fx0 > M.L[k] + 12 && fx1 < M.Rx[k] - 12
       };
     });
     const inside = (t, y) => !!M && wx > M.L[t.k] + (titleNoise(y / 9, 71 + t.k * 3) - 0.5) * 18 + (titleNoise(y / 3, 73 + t.k * 3) - 0.5) * 6 && wx < M.Rx[t.k] + (titleNoise(y / 9, 79 + t.k * 3) - 0.5) * 18 + (titleNoise(y / 3, 83 + t.k * 3) - 0.5) * 6;
     const near = M ? M.holes.filter((h3) => h3.k + 1 < bands.length && Math.abs(wx - h3.x) < h3.w / 2 + 4) : [];
     const inHole = (y) => near.some((h3) => y >= bands[h3.k + 1].f - 0.5 && y < bands[h3.k].c + 0.5 && Math.abs(wx - h3.x) < h3.w / 2 + (titleNoise(y / 5, h3.x) - 0.5) * 8);
+    const chutes = coal && M ? M.holes.map((h3) => chuteOf(h3, bands, wx)).filter((q) => !!q) : [];
     const patch = !coal && titleNoise(wx / 14, 11) > 0.52, tuft = patch && h2(c, 5) < 0.4 ? h2(c, 6) < 0.4 ? 2 : 1 : 0;
     const mossDeep = 2 + (patch ? 1 + Math.floor(h2(c, 7) * 3) : 0);
     const rk = Math.floor(wx / 60), rcx = rk * 60 + 10 + h2(rk, 1) * 40, rw = 6 + h2(rk, 2) * 6, rd = (wx - rcx) / rw;
@@ -11525,6 +11542,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (M && !t && y < cy && !inHole(y)) m = TM.ROCK;
       else if (M && t) {
         if (t.frame && y >= t.c) m = frameCell(t.uc, y - t.c, t.f - y);
+        if (t.rail && y >= t.f) m = TM.ROCK;
+        else if (t.rail && y >= t.f - TCELL) m = c % 3 ? m : TM.BEAMD;
+        else if (t.rail && y >= t.f - 2 * TCELL) m = TM.RAIL;
+        if (t.pile > 0 && y >= (t.rail ? t.f : t.rf) - t.pile) m = TM.COAL;
       } else if (M && inHole(y)) m = TM.AIR;
       else if (y < cy) m = TM.ROCK;
       else if (y >= fy) {
@@ -11542,6 +11563,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (TITLE_SOLID[m] && zoneOpenAt(wx, y, S, Zn, fy, Zc)) {
         m = TM.AIR;
         carved = true;
+      }
+      if (m === TM.AIR) {
+        for (const q of chutes) if (y >= q.y - 1 && y < q.y + 5) m = y < q.y + 1 ? TM.BEAMD : TM.BEAM;
       }
       if (seam && m === TM.ROCK && coalCell(S, wx, y)) m = TM.COAL;
       if (bk) m = bk(bk0, wx, y, by0, by1, m);
@@ -11597,6 +11621,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const L = { ax: wx, ay: rcy + 0.5, bx, by, a0x: wx, a0y: rcy + 0.5, b0x: bx, b0y: by, ain: { x: wx, y: rcy - 1 }, bin: { x: bx, y: down ? by + 1.5 : by - 1.5 }, owner: null, sag: 0 };
       L.sag = DEV.webSag * Math.abs(L.b0x - L.a0x) * (down ? 1 : 2.5);
       S.webs.push(L);
+    }
+    if (coal && M) for (const h3 of M.holes) {
+      const q = chuteOf(h3, bands, wx);
+      if (q && q.end) (S.chutes || (S.chutes = [])).push({ x: wx, y: q.y - 1.5, s: q.s });
     }
     if (coal) {
       coalDeco(S, c, wx, Zn, sup, rcy, fy, tun.filter((t) => t.open && inside(t, t.rf - 3)));
@@ -11721,6 +11749,16 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return !!L && floorDeco(L.floor || 1) === "coal";
   };
   var SUP_GAP = 96, SUP_H = [18, 70];
+  var PILE_W = 22, PILE_H = 9;
+  var CHUTE_W = 40, CHUTE_D = 24;
+  function chuteOf(h3, bands, wx) {
+    if (h3.k + 1 >= bands.length || h2(Math.floor(h3.x), 88 + h3.k) >= DEV.coalChutes) return null;
+    const s = h2(Math.floor(h3.x), 89) < 0.5 ? 1 : -1, xa = h3.x - s * (h3.w / 2 + 2), xb = xa + s * CHUTE_W;
+    const u = (wx - xa) / (xb - xa);
+    if (u < 0 || u > 1) return null;
+    const ya = bands[h3.k + 1].f - 3, yb = ya + CHUTE_D;
+    return { y: ya + (yb - ya) * u, s, end: (wx + TCELL - xa) / (xb - xa) > 1 };
+  }
   var COAL_Q = [[0, 1.01], [0.05, 0.769], [0.1, 0.717], [0.15, 0.68], [0.2, 0.649], [0.3, 0.595], [0.4, 0.548], [0.5, 0.501], [0.6, 0.45], [1, -0.01]];
   function coalQ(a) {
     for (let k = 1; k < COAL_Q.length; k++) if (a <= COAL_Q[k][0]) {
@@ -11761,11 +11799,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (!HOLDS[S.cells[base + Math.floor(y0 / TCELL)]]) lamp(S, c, wx, y0, 4 + R() * 14, true);
     }
     if (c % 3) return;
-    for (const f of Zn.z === "timber" ? tuns.map((t) => t.rf) : [fy]) {
+    for (const { f, rail } of Zn.z === "timber" ? tuns.map((t) => ({ f: t.rail ? t.f : t.rf, rail: t.rail })) : [{ f: fy, rail: false }]) {
       const r = Math.ceil(f / TCELL - 0.5);
       if (r <= 8 || r >= S.rows || !SOLID[S.cells[base + r]] || SOLID[S.cells[base + r - 1]]) continue;
       const p = R(), y = r * TCELL;
-      if (p < DEV.coalCarts) {
+      const cp = DEV.coalCarts * (rail ? 3 : 1);
+      if (p < cp) {
         let flat2 = true;
         for (let k = 0; k <= 8 && flat2; k++) {
           const b = ci(S, c - k, 0);
@@ -11773,7 +11812,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           for (let q = r - 7; q < r && flat2; q++) if (SOLID[S.cells[b + q]]) flat2 = false;
         }
         if (flat2) S.props.push({ k: "barrel", st: "cart", ox: (c - 3.5) * TCELL, x: 0, y, len: 0, seed: R(), side: 1, burn: 0, ac: c - 4, ar: r });
-      } else if (p < DEV.coalCarts + DEV.coalPicks) {
+      } else if (p < cp + DEV.coalPicks) {
         S.props.push({ k: "bake", st: "pickaxe", ox: wx + 1, x: 0, y, len: 0, seed: R(), side: R() < 0.5 ? 1 : -1, burn: 0, ac: c, ar: r });
       }
     }
@@ -12588,6 +12627,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     stepEliteFx(S, dt);
     stepShots(S, dt);
     stepFire(S, dt);
+    if (S.chutes && S.chutes.length) {
+      S.chutes = S.chutes.filter((q) => q.x > S.scroll - TITLE_BACK - 50);
+      for (const q of S.chutes) if (q.x > S.scroll - 10 && q.x < S.scroll + TITLE_VW + 10 && S.parts.length < TITLE_PARTS && S.rnd() < dt * DEV.coalSpill) {
+        const l = 3;
+        S.parts.push({ x: q.x - S.scroll, y: q.y, vx: q.s * (6 + S.rnd() * 10), vy: 4, life: l, max: l, r: 0.8 + S.rnd() * 0.7, col: S.rnd() < 0.5 ? "#16161c" : "#2c2e38", kind: "lump" });
+      }
+    }
     if (S.parts.length < TITLE_PARTS - 40 && !S.hub) {
       if (R() < dt * 3) {
         const x = R() * TITLE_VW, wx = x + S.scroll;
@@ -12667,6 +12713,16 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         p.x += p.vx * dt;
         p.y += p.vy * dt;
         if (d < 2.5 || p.to.life <= 0) p.life = 0;
+        continue;
+      }
+      if (p.kind === "lump") {
+        p.vy += GRAV * dt;
+        p.y += p.vy * dt;
+        p.x += (p.vx - sv(S)) * dt;
+        if (titleSolid(S, p.x, p.y + 0.5)) {
+          p.life = 0;
+          burst(S, p.x, p.y, 2, "#2c2e38", 20, "chunk", 0.3);
+        }
         continue;
       }
       if (p.kind === "soot") {
@@ -20352,6 +20408,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (m === TM.BEAM || m === TM.WOOD) return J(mixc(TIMBER, TIMBER, 0, 0.95));
     if (m === TM.BEAMD) return J(mixc(TIMBER, TIMBER, 0, 0.7));
     if (m === TM.CHAR) return mixc([30, 26, 26], [52, 44, 40], h3);
+    if (m === TM.RAIL) return J(r % 2 ? [92, 84, 80] : mixc([120, 118, 122], [150, 146, 146], h3));
     if (m === TM.COAL) return hash4(c * 7 + 1, r * 3 + 2) < DEV.coalGlints ? mixc(hexArr(DEV.coalGlintLo), hexArr(DEV.coalGlintHi), hash4(c, r * 5)) : J(mixc(hexArr(DEV.coalColLo), hexArr(DEV.coalColHi), fbm2(c / 3 + 40, r / 3 + 60)));
     if (m === TM.ROOT) return J(mixc([92, 64, 40], [120, 86, 52], h3));
     if (m === TM.SILT) return J(mixc([118, 104, 78], [128, 112, 84], h3));
@@ -20680,7 +20737,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         continue;
       }
       const q = p.life / p.max;
-      ctx.globalAlpha = p.kind === "spore" ? Math.sin(Math.PI * q) * 0.8 : p.kind === "drip" ? 0.8 : p.kind === "soot" ? 0.9 : q;
+      ctx.globalAlpha = p.kind === "spore" ? Math.sin(Math.PI * q) * 0.8 : p.kind === "drip" ? 0.8 : p.kind === "soot" ? 0.9 : p.kind === "lump" ? 1 : q;
       ctx.fillStyle = p.kind === "fire" ? q > 0.6 ? "#fff0b0" : q > 0.3 ? "#ff9a2e" : "#c8301a" : p.col;
       const rr2 = p.kind === "fire" ? p.r * (0.5 + q) : p.r;
       ctx.fillRect(p.x - rr2 / 2, p.y - rr2 / 2, rr2, rr2);

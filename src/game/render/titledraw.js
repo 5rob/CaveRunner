@@ -69,6 +69,7 @@ function cellRGB(m, c, r, up) {
   if (m === TM.BEAMD) return J(mixc(TIMBER, TIMBER, 0, 0.7));
   if (m === TM.CHAR) return mixc([30, 26, 26], [52, 44, 40], h);
   // (Coal Seams) coal: near-black mottled in its two colours, a faint sheen, small bright glints (Dev → Grem → Coal Seams)
+  if (m === TM.RAIL) return J(r % 2 ? [92, 84, 80] : mixc([120, 118, 122], [150, 146, 146], h));   // (Coal Seams) a rusty rail
   if (m === TM.COAL) return hash(c * 7 + 1, r * 3 + 2) < DEV.coalGlints ? mixc(hexArr(DEV.coalGlintLo), hexArr(DEV.coalGlintHi), hash(c, r * 5))
     : J(mixc(hexArr(DEV.coalColLo), hexArr(DEV.coalColHi), fbm(c / 3 + 40, r / 3 + 60)));
   // CaveRunner Auto's blocked zones (auto/blocked.js): roots, silt (two bands), a cart's iron, crystal (and its light core), a nest's resin
@@ -351,7 +352,7 @@ export function titleDraw(ctx, S, cw, ch, cam) {
     }
     const q = p.life / p.max;
     // spores fade in and out (the level's luminescent spores); drips are solid water
-    ctx.globalAlpha = p.kind === 'spore' ? Math.sin(Math.PI * q) * 0.8 : p.kind === 'drip' ? 0.8 : p.kind === 'soot' ? 0.9 : q;
+    ctx.globalAlpha = p.kind === 'spore' ? Math.sin(Math.PI * q) * 0.8 : p.kind === 'drip' ? 0.8 : p.kind === 'soot' ? 0.9 : p.kind === 'lump' ? 1 : q;
     ctx.fillStyle = p.kind === 'fire' ? (q > 0.6 ? '#fff0b0' : q > 0.3 ? '#ff9a2e' : '#c8301a') : p.col;
     const rr = p.kind === 'fire' ? p.r * (0.5 + q) : p.r;
     ctx.fillRect(p.x - rr / 2, p.y - rr / 2, rr, rr);

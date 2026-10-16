@@ -468,6 +468,14 @@ DEV_META.push(
   { k: 'coalSmoulder', g: 'coal', label: 'Smouldering seams: chance a bare coal face is alight from the start', min: 0, max: 0.2, step: 0.002 });
 colourKnobs('coal', [['coalCol', 'Coal colours (dark, light)', '#101014', '#232838', 'c'], ['coalGlint', 'Coal glints (blue sheen)', '#5d6a86', '#a9bce0', 'g']]);
 Object.assign(DEV_DEFAULTS, { coalGlints: 0.05 });
+// (ideas 1, 10) minecart rails along the Mines' tunnel floors (carts × 3 as likely on them); heaps of loose coal against tunnel
+// ends; wooden chutes down the holes between tunnels, spilling a lump of coal now and then
+Object.assign(DEV_DEFAULTS, { coalRails: 0.6, coalPiles: 0.5, coalChutes: 0.6, coalSpill: 0.5 });
+DEV_META.push(
+  { k: 'coalRails',  g: 'coal', label: 'Minecart rails: share of the Mines’ tunnel floors', min: 0, max: 1, step: 0.05 },
+  { k: 'coalPiles',  g: 'coal', label: 'Coal heaps: chance at each tunnel end', min: 0, max: 1, step: 0.05 },
+  { k: 'coalChutes', g: 'coal', label: 'Coal chutes: chance down each hole between tunnels', min: 0, max: 1, step: 0.05 },
+  { k: 'coalSpill',  g: 'coal', label: 'Coal chutes: lumps spilled a second', min: 0, max: 5, step: 0.1 });
 DEV_META.push({ k: 'coalGlints', g: 'coal', label: 'Coal: glints, share of its cells', min: 0, max: 0.4, step: 0.01 });
 DEV_GROUPS.push(['coal', 'Coal Seams']);
 // CaveRunner Auto's maps (auto/maps.js): the map machine's prices, and how much harder each map starts

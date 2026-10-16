@@ -78,8 +78,8 @@ export const TITLE_AIM = 90;         // he shoots only at creatures this near (w
 // rub and rubM (a rubble mound, its mossy top)
 // STEEL, BWALL (a brick back wall, open) and SWALL (a steel back wall, open): the auto hub's room (auto/hub.js)
 export const TM = { AIR: 0, ROCK: 1, MOSS: 2, BRICK: 3, WOOD: 4, CHAR: 5, BEAM: 6, BEAMD: 7, GRASS: 8, RUB: 9, RUBM: 10, STEEL: 11, BWALL: 12, SWALL: 13,
-  ROOT: 14, SILT: 15, SILTD: 16, IRON: 17, IROND: 18, CRYS: 19, CRYSL: 20, NEST: 21, NESTD: 22, COAL: 23 };   // 14 on: CaveRunner Auto's blocked zones (auto/blocked.js); COAL: Grem's Coal Seams
-export const TITLE_SOLID = [0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1];
+  ROOT: 14, SILT: 15, SILTD: 16, IRON: 17, IROND: 18, CRYS: 19, CRYSL: 20, NEST: 21, NESTD: 22, COAL: 23, RAIL: 24 };   // 14 on: CaveRunner Auto's blocked zones (auto/blocked.js); COAL, RAIL (open: a minecart rail): Grem's Coal Seams
+export const TITLE_SOLID = [0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0];
 const SOLID = TITLE_SOLID;
 // (Auto's level, owner v1.0.52: strong guns blasted the cave away down to the bottom edge) a blast bites less toward the
 // play area's bottom (a tall level: the old height's stay as they were): × 1 down to DEV.autoHardDeep above the hard line,
@@ -88,7 +88,7 @@ const SOLID = TITLE_SOLID;
 /** @param {{ lvl?: { hardY?: (S: any, wx: number) => number }, vh: number, top: number, bot: number }} S @param {number} y @param {number} [wx] */
 export const deepK = (S, y, wx) => (!S.lvl || DEV.autoHardDeep <= 0 || S.bot - S.top <= MINE_TALL ? 1
   : Math.max(0, Math.min(1, ((S.lvl.hardY && wx != null ? S.lvl.hardY(S, wx) : S.vh - DEV.autoHardEdge) - y) / DEV.autoHardDeep)));
-const FUEL = [0, 0, 2, 0, 3, 0, 3, 3, 1, 0, 1, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 1, 1, 4];   // the fuel kind each burns as (world/fire.js: 1 grass, 2 moss, 3 timber, 4 coal)
+const FUEL = [0, 0, 2, 0, 3, 0, 3, 3, 1, 0, 1, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 1, 1, 4, 0];   // the fuel kind each burns as (world/fire.js: 1 grass, 2 moss, 3 timber, 4 coal)
 // how readily a fuel kind catches (coal: × the Coal Seams knob)
 /** @param {number} kind */
 const catchOf = kind => FIRE_CATCH[kind] * (kind === 4 ? DEV.coalCatch : 1);
@@ -199,7 +199,7 @@ const CLASSIC = { shoot: 1, turret: 1, chase: 1, bomb: 1 };
 /** @typedef {{ t: number, vh: number, top: number, bot: number, seed: number, rnd: () => number, scroll: number, shake: number, spawn: number,
  *   kills: number, gold: number, got: number, runner: TRunner, runners: TRunner[], foes: Enemy[], shots: TShot[], parts: TPart[], coins: Coin[],
  *   booms: TBoom[], zaps: TZap[], flash: number, rows: number, ncol: number, cells: Uint8Array, gen: number, props: TProp[],
- *   fire: TFire[], lightLater?: number[][], dirty: number[][], dirtyAll: boolean, carved: number, burnt: number, swaps: number, groundT: number, flyT: number, kinds: Record<string, number>,
+ *   fire: TFire[], lightLater?: number[][], chutes?: { x: number, y: number, s: number }[], dirty: number[][], dirtyAll: boolean, carved: number, burnt: number, swaps: number, groundT: number, flyT: number, kinds: Record<string, number>,
  *   webs: WebLine[], orbN?: number, orbs?: Record<number, OrbRig>, mush?: MushCloud[], orbHub?: { x: number, y: number, r: number }[], orbT?: number, cut: number, lineT: number, silk: { x: number, y: number, ax: number, ay: number, vx: number, vy: number, life: number }[],
  *   nav: { F: any, fx: number, fy: number, t: number }, fireAcc: number, fireN: number, burning: Set<number>, gotN: number, pops: number, lampsPopped: number, kitNames: Set<string>,
  *   digT: number, digs: number, digWhy: Record<string, number>, still?: boolean, zp: TitlePlan, snd: TSnd[], hub?: TitleHub, lvl?: TitleLevel, lab?: boolean, back?: (ctx: CanvasRenderingContext2D, S: TitleScene) => void, pace?: number, team?: RunPlayer[], blocked?: number, blockedKind?: string, huddle?: boolean, gunsOff?: boolean, dmgMul?: number, coinWait?: number, hgoal?: number, hgoalT?: number, fuelWait?: number, tier?: number, loot?: TLoot[],
@@ -630,7 +630,13 @@ function genCol(S, c) {
     // tunnel above), the floor down 0–4, the walled ends crooked (±12 by height); the frames stay straight in it
     const dn = dig(wx, k).dn, up = Math.min(dig(wx, k).up, k < bands.length - 1 ? M.sh[k] - dig(wx, k + 1).dn - 4 : 99);
     const open = !!M && wx > M.L[k] - 14 && wx < M.Rx[k] + 14;
-    return { c: q.c, f: q.f, rc: q.c - up, rf: q.f + dn, k, open, uc, v,
+    // (Coal Seams) minecart rails along stretches of a tunnel's floor (the floor flat under them), heaps of loose coal against
+    // its walled ends (DEV.coalRails, coalPiles)
+    const rail = coal && open && titleNoise(wx / 90 + k * 3.7 + 11, 210 + k * 9) > 1 - DEV.coalRails;
+    let pile = 0;
+    if (coal && M) for (const [e, d] of [[0, wx - M.L[k]], [1, M.Rx[k] - wx]]) if (d < PILE_W && h2(Math.floor(e ? M.Rx[k] : M.L[k]) + k * 7, 77 + e) < DEV.coalPiles)
+      pile = Math.max(pile, PILE_H * (0.6 + 0.4 * h2(k, 78 + e)) * Math.pow(1 - Math.max(0, d) / PILE_W, 1.4) + (titleNoise(wx / 3, 79 + k) - 0.5) * 2);
+    return { c: q.c, f: q.f, rc: q.c - up, rf: q.f + dn, k, open, uc, v, rail, pile,
       frame: open && !!M && uc < FRAME_W + 4 && built(fx0, S) > 0.95 && built(fx1, S) > 0.95 && fx0 > M.L[k] + 12 && fx1 < M.Rx[k] - 12 };
   });
   /** @param {{ k: number }} t @param {number} y the end walls, crooked */
@@ -640,6 +646,8 @@ function genCol(S, c) {
   const near = M ? M.holes.filter(h => h.k + 1 < bands.length && Math.abs(wx - h.x) < h.w / 2 + 4) : [];
   /** @param {number} y */
   const inHole = y => near.some(h => y >= bands[h.k + 1].f - 0.5 && y < bands[h.k].c + 0.5 && Math.abs(wx - h.x) < h.w / 2 + (titleNoise(y / 5, h.x) - 0.5) * 8);
+  // (Coal Seams) wooden chutes down some of the holes: from the tunnel above, across the hole, into the one below (chuteOf)
+  const chutes = coal && M ? M.holes.map(h => chuteOf(h, bands, wx)).filter(q => !!q) : [];
   // moss patches on the floor (thicker moss, bright grass tufts on top), as decorate.js bakes them
   const patch = !coal && titleNoise(wx / 14, 11) > 0.52, tuft = patch && h2(c, 5) < 0.4 ? (h2(c, 6) < 0.4 ? 2 : 1) : 0;
   const mossDeep = 2 + (patch ? 1 + Math.floor(h2(c, 7) * 3) : 0);
@@ -662,6 +670,10 @@ function genCol(S, c) {
     if (M && !t && y < cy && !inHole(y)) m = TM.ROCK;
     else if (M && t) {
       if (t.frame && y >= t.c) m = frameCell(t.uc, y - t.c, t.f - y);
+      if (t.rail && y >= t.f) m = TM.ROCK;   // (the rails: on sleepers, the floor flat under them)
+      else if (t.rail && y >= t.f - TCELL) m = c % 3 ? m : TM.BEAMD;
+      else if (t.rail && y >= t.f - 2 * TCELL) m = TM.RAIL;
+      if (t.pile > 0 && y >= (t.rail ? t.f : t.rf) - t.pile) m = TM.COAL;
     } else if (M && inHole(y)) m = TM.AIR;
     else if (y < cy) m = TM.ROCK;
     else if (y >= fy) {
@@ -678,6 +690,7 @@ function genCol(S, c) {
     if (z === 'winding' && TITLE_SOLID[m] && windAir(wx, y, Zn, S)) m = TM.AIR;
     // (Auto's tall level) another zone's look here: its open air opens too, over this column's floor (DEV.autoZoneOpen; off: it upset the autopilot, auto-level and auto-tall)
     if (TITLE_SOLID[m] && zoneOpenAt(wx, y, S, Zn, fy, Zc)) { m = TM.AIR; carved = true; }
+    if (m === TM.AIR) for (const q of chutes) if (y >= q.y - 1 && y < q.y + 5) m = y < q.y + 1 ? TM.BEAMD : TM.BEAM;   // (the trough's inside, its boards under it)
     if (seam && m === TM.ROCK && coalCell(S, wx, y)) m = TM.COAL;
     if (bk) m = bk(bk0, wx, y, by0, by1, m);
     S.cells[base + r] = m;
@@ -741,6 +754,7 @@ function genCol(S, c) {
     L.sag = DEV.webSag * Math.abs(L.b0x - L.a0x) * (down ? 1 : 2.5);
     S.webs.push(L);
   }
+  if (coal && M) for (const h of M.holes) { const q = chuteOf(h, bands, wx); if (q && q.end) (S.chutes || (S.chutes = [])).push({ x: wx, y: q.y - 1.5, s: q.s }); }
   if (coal) { coalDeco(S, c, wx, Zn, sup, rcy, fy, tun.filter(t => t.open && inside(t, t.rf - 3))); return; }
   // plants: vines, mycelium and roots under the roof, bouncy mushrooms on the floor
   // the grove: a curtain of long vines, every other column, some down near the floor (thick in its
@@ -845,6 +859,19 @@ export const coalAt = (S, wx) => { const L = lookAt(S, wx); return !!L && floorD
 // them with one, where the roof over its span is between SUP_H[0] and SUP_H[1] above the floor. Column wx's part of it: uc (as
 // frameCell's), top (the cap's top, world y), or null
 const SUP_GAP = 96, SUP_H = [18, 70];
+const PILE_W = 22, PILE_H = 9;
+const CHUTE_W = 40, CHUTE_D = 24;   // (Coal Seams) a coal chute's run and drop (world units)        // (Coal Seams) a heap of coal against a tunnel's end: this far out from the wall, up to this high
+// (Coal Seams) the wooden chute down hole h (if it has one: DEV.coalChutes of them), at column wx: from the tunnel above's floor at
+// one edge of the hole, sloping down (CHUTE_W across, CHUTE_D down) through it into the tunnel below, either way. → its top edge's y here, its way (s), and whether wx is its lower lip (end), or null where it isn't
+/** @param {{ k: number, x: number, w: number }} h @param {{ c: number, f: number }[]} bands @param {number} wx */
+function chuteOf(h, bands, wx) {
+  if (h.k + 1 >= bands.length || h2(Math.floor(h.x), 88 + h.k) >= DEV.coalChutes) return null;
+  const s = h2(Math.floor(h.x), 89) < 0.5 ? 1 : -1, xa = h.x - s * (h.w / 2 + 2), xb = xa + s * CHUTE_W;
+  const u = (wx - xa) / (xb - xa);
+  if (u < 0 || u > 1) return null;
+  const ya = bands[h.k + 1].f - 3, yb = ya + CHUTE_D;
+  return { y: ya + (yb - ya) * u, s, end: (wx + TCELL - xa) / (xb - xa) > 1 };   // (the last column before it ends)
+}
 // (Coal Seams, step 2) is the rock at (wx, y) coal? Big irregular patches (two octaves of noise over DEV.coalPatch, the top
 // DEV.coalAmount of it: COAL_Q maps a share to the noise's level) and long veins (DEV.coalVeins a screen, about: each wanders
 // up and down for screens and comes and goes, coalVeinW cells thick, swelling and thinning). Seeded by the scene's seed, so a
@@ -883,7 +910,7 @@ function coalSupport(wx, S) {
 // spot in the open (the roof, a boulder's underside) and under a support's cap now and then; explosive minecarts (the floor flat
 // under the whole cart) and pickaxes lying on the floors: a natural zone's, a mine's tunnels' (tuns: those open here)
 /** @param {TitleScene} S @param {number} c @param {number} wx @param {TZone} Zn @param {{ uc: number, top: number } | null} sup
- * @param {number} rcy @param {number} fy @param {{ rf: number }[]} tuns */
+ * @param {number} rcy @param {number} fy @param {{ rf: number, f: number, rail: boolean }[]} tuns */
 function coalDeco(S, c, wx, Zn, sup, rcy, fy, tuns) {
   const R = S.rnd, base = ci(S, c, 0);
   if (sup && Math.abs(sup.uc - FRAME_W / 2) < 1 && R() < 0.6) lamp(S, c, wx, sup.top + 6, 3 + R() * 5, true);
@@ -892,11 +919,12 @@ function coalDeco(S, c, wx, Zn, sup, rcy, fy, tuns) {
     if (!HOLDS[S.cells[base + Math.floor(y0 / TCELL)]]) lamp(S, c, wx, y0, 4 + R() * 14, true);
   }
   if (c % 3) return;
-  for (const f of Zn.z === 'timber' ? tuns.map(t => t.rf) : [fy]) {
+  for (const { f, rail } of Zn.z === 'timber' ? tuns.map(t => ({ f: t.rail ? t.f : t.rf, rail: t.rail })) : [{ f: fy, rail: false }]) {
     const r = Math.ceil(f / TCELL - 0.5);   // the floor's top rock row
     if (r <= 8 || r >= S.rows || !SOLID[S.cells[base + r]] || SOLID[S.cells[base + r - 1]]) continue;
     const p = R(), y = r * TCELL;
-    if (p < DEV.coalCarts) {
+    const cp = DEV.coalCarts * (rail ? 3 : 1);   // (carts mostly on the rails)
+    if (p < cp) {
       // the cart's 9 columns back from here (made: the ones ahead aren't yet) all floor at row r with open air over it
       let flat = true;
       for (let k = 0; k <= 8 && flat; k++) {
@@ -905,7 +933,7 @@ function coalDeco(S, c, wx, Zn, sup, rcy, fy, tuns) {
         for (let q = r - 7; q < r && flat; q++) if (SOLID[S.cells[b + q]]) flat = false;
       }
       if (flat) S.props.push({ k: 'barrel', st: 'cart', ox: (c - 3.5) * TCELL, x: 0, y, len: 0, seed: R(), side: 1, burn: 0, ac: c - 4, ar: r });
-    } else if (p < DEV.coalCarts + DEV.coalPicks) {
+    } else if (p < cp + DEV.coalPicks) {
       S.props.push({ k: 'bake', st: 'pickaxe', ox: wx + 1, x: 0, y, len: 0, seed: R(), side: R() < 0.5 ? 1 : -1, burn: 0, ac: c, ar: r });
     }
   }
@@ -1570,6 +1598,14 @@ export function titleStep(S, dt) {
   stepEliteFx(S, dt);
   stepShots(S, dt);
   stepFire(S, dt);
+  // (Coal Seams) a lump of coal off a chute's lower lip now and then (DEV.coalSpill a second each), falling till it lands
+  if (S.chutes && S.chutes.length) {
+    S.chutes = S.chutes.filter(q => q.x > S.scroll - TITLE_BACK - 50);
+    for (const q of S.chutes) if (q.x > S.scroll - 10 && q.x < S.scroll + TITLE_VW + 10 && S.parts.length < TITLE_PARTS && S.rnd() < dt * DEV.coalSpill) {
+      const l = 3;
+      S.parts.push({ x: q.x - S.scroll, y: q.y, vx: q.s * (6 + S.rnd() * 10), vy: 4, life: l, max: l, r: 0.8 + S.rnd() * 0.7, col: S.rnd() < 0.5 ? '#16161c' : '#2c2e38', kind: 'lump' });
+    }
+  }
   // the natural caves' ambience, as the level has it: water dripping from the roof, luminescent spores drifting
   if (S.parts.length < TITLE_PARTS - 40 && !S.hub) {
     if (R() < dt * 3) {
@@ -1623,6 +1659,11 @@ export function titleStep(S, dt) {
       if (sp > top) { p.vx *= top / sp; p.vy *= top / sp; }
       p.x += p.vx * dt; p.y += p.vy * dt;
       if (d < 2.5 || p.to.life <= 0) p.life = 0;
+      continue;
+    }
+    if (p.kind === 'lump') {            // (Coal Seams) a coal lump off a chute: falls, gone where it lands
+      p.vy += GRAV * dt; p.y += p.vy * dt; p.x += (p.vx - sv(S)) * dt;
+      if (titleSolid(S, p.x, p.y + 0.5)) { p.life = 0; burst(S, p.x, p.y, 2, '#2c2e38', 20, 'chunk', 0.3); }
       continue;
     }
     if (p.kind === 'soot') {            // (Coal Seams) falls slowly with the rock, gone where it lands
