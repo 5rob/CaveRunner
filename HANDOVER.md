@@ -14,7 +14,7 @@ everything; nothing there changed except the shared CI file.
   three builds (root, `auto/`, `grem/`) on any push: **keep it identical on main, autobattler and grem**. The `github-pages`
   environment must allow `grem` (Settings → Environments → github-pages → Deployment branches) — if the first deploy fails
   there, the owner adds it.
-- **The title (owner, after the fork):** under CAVE RUNNER, AUTO (silver blocks, glitching) and GREM MODE (green, slanted, swelling letters, goo drips, spores, glow): , laid out by  (GREM_TOP, BOTTOM). Shots: the probe in this session;  grem-a-title.
+- **The title (owner, after the fork):** under CAVE RUNNER, AUTO (silver blocks, glitching) and GREM MODE (green, slanted, swelling letters, goo drips, spores, glow): `art/gremtitle.js`, laid out by `ui/title.js` (GREM_TOP, BOTTOM). Shots: `tools/gremshots.js` grem-a-title.
 - **What was cut:** the title's ▶ opens Grem (no GREM MODE button, no Auto run); the Auto play screen (`ui/auto/AutoScreen.js`;
   the pieces Grem uses moved to `ui/auto/parts.js`: DEV_PAGES, PillStick, GunPanel, ItemIcon, FlyTile); the old game's files
   (Game, its systems and render passes, old creature brains, the old level generator `makeLevel` with tomb / dark zones /
