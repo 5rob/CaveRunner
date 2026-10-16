@@ -553,8 +553,8 @@ const blurBox = () => {
 // (DEV_TABS), each a page of collapsible groups of the saved, persisted variables.
 // pages: a tab's own page over its knobs, by tab id (Presets: the gun presets library; Grem: player 1's kit)
 // (grem branch) the tables hold only what Grem Mode uses (dev/knobs.js), so every group and row shows
-/** @param {{ close: () => void, pages?: Record<string, () => any> }} props */
-export function DevPanel({ close, pages }) {
+/** @param {{ close: () => void, pages?: Record<string, () => any>, bats?: boolean }} props */
+export function DevPanel({ close, pages, bats }) {
   const tabs = DEV_TABS;
   const [copied, setCopied] = useState(null);     // null, or the text + whether it copied
   const [q, setQ] = useState('');
@@ -617,8 +617,8 @@ export function DevPanel({ close, pages }) {
           h('button', { className: 'done', onPointerDown: e => { e.preventDefault(); close(); } }, 'Done')),
         h('div', { className: 'devbtns' },
           act('devcopy', 'Copy Dev settings', () => copyText(devCopyText)),
-          act('batreset', 'Reset bats', () => { BAT_CMD.reset = true; }),   // (C4a, creatures/bats.js)
-          act('batscare', 'Scare all bats', () => { BAT_CMD.scare = true; })),   // (v1.0.94) everything Dev keeps: auto/devcopy.js
+          bats ? act('batreset', 'Reset bats', () => { BAT_CMD.reset = true; }) : null,   // (C4, creatures/bats.js: Grem's panel only, prop bats)
+          bats ? act('batscare', 'Scare all bats', () => { BAT_CMD.scare = true; }) : null),   // (v1.0.94) everything Dev keeps: auto/devcopy.js
         copied ? h('p', { className: 'devnote devcopied' + (copied.ok ? ' ok' : '') }, copied.empty
           ? 'Nothing audited yet — pin, trash or give feedback on a mod or perk card first.'
           : copied.ok ? (copied.what === 'audit' ? 'Audit copied — paste it into Claude Code.' : 'Copied — paste it to Claude.')

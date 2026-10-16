@@ -295,7 +295,7 @@ export function GremScreen() {
     h(GremHelms, { run: run.current, who, pick: pickWho }),
     h('div', { className: 'abtns gstick' }, h(PillStick, { onMove: steer })),
     flies.map(f => h(FlyTile, { key: f.k, f, done: () => setFlies(fs => fs.filter(q => q.k !== f.k)) })),
-    devOpen ? h(DevPanel, { close: () => { SFX.fx('close'); setDevOpen(false); }, pages: DEV_PAGES }) : null,
+    devOpen ? h(DevPanel, { close: () => { SFX.fx('close'); setDevOpen(false); }, pages: DEV_PAGES, bats: true }) : null,
     paused ? h(PauseMenu, { input, label: 'Grem Mode · Level ' + lvl, onNew: () => location.reload(), close: () => { SFX.fx('close'); setPaused(false); } }) : null);
 }
 

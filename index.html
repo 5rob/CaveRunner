@@ -25553,7 +25553,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var blurBox = () => {
     if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
   };
-  function DevPanel({ close, pages }) {
+  function DevPanel({ close, pages, bats }) {
     const tabs = DEV_TABS;
     const [copied, setCopied] = useState(null);
     const [q, setQ] = useState("");
@@ -25646,13 +25646,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             "div",
             { className: "devbtns" },
             act("devcopy", "Copy Dev settings", () => copyText(devCopyText)),
-            act("batreset", "Reset bats", () => {
+            bats ? act("batreset", "Reset bats", () => {
               BAT_CMD.reset = true;
-            }),
-            // (C4a, creatures/bats.js)
-            act("batscare", "Scare all bats", () => {
+            }) : null,
+            // (C4, creatures/bats.js: Grem's panel only, prop bats)
+            bats ? act("batscare", "Scare all bats", () => {
               BAT_CMD.scare = true;
-            })
+            }) : null
           ),
           // (v1.0.94) everything Dev keeps: auto/devcopy.js
           copied ? h("p", { className: "devnote devcopied" + (copied.ok ? " ok" : "") }, copied.empty ? "Nothing audited yet — pin, trash or give feedback on a mod or perk card first." : copied.ok ? copied.what === "audit" ? "Audit copied — paste it into Claude Code." : "Copied — paste it to Claude." : "Could not reach the clipboard — press and hold the text below to copy it.") : null,
@@ -26050,7 +26050,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       devOpen ? h(DevPanel, { close: () => {
         SFX.fx("close");
         setDevOpen(false);
-      }, pages: DEV_PAGES }) : null,
+      }, pages: DEV_PAGES, bats: true }) : null,
       paused ? h(PauseMenu, { input, label: "Grem Mode · Level " + lvl, onNew: () => location.reload(), close: () => {
         SFX.fx("close");
         setPaused(false);
