@@ -2,6 +2,8 @@
 
 **grem branch (CaveRunner Grem, v2.0.0):** cut from this folder as unused by Grem Mode: `autouse.js`. Anything below that still names them describes `autobattler` / `main`, where they live on.
 
+**Coal Seams (grem, v2.0.1, step 1 of the design doc):** group `coal` "Coal Seams" on the Grem tab (`coalSupports`, `coalLamps`, `coalCarts`, `coalPicks`, `coalSoot`, `coalCartR`, `coalCartDmg`, `coalLampLight`); Grem's `gremStartLv` (start a Grem run at that level: 2 = Coal Seams). Both reach Copy Dev settings through DEV_META.
+
 `knobs.js` holds everything the ⚙️ Dev panel tweaks (the panel itself is `ui/devpanel.js`):
 
 - `DEV` — the live values; the game reads them every frame, so a change shows at once.

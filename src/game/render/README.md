@@ -2,6 +2,8 @@
 
 **grem branch (CaveRunner Grem, v2.0.0):** cut from this folder as unused by Grem Mode: `actors.js`, `cave.js`, `dark.js`, `draw.js`, `effects.js`, `fx.js`, `holo.js`, `light.js`, `overlay.js`, `pads.js`, `shops.js`, `vend.js`. Anything below that still names them describes `autobattler` / `main`, where they live on.
 
+**Coal Seams (grem, v2.0.1, step 1 of the design doc):** `titledraw.js` draws a rusted lantern's light pool dimmer and the soot falls.
+
 `draw(W, G)` (in `draw.js`) makes the frame object `F` and calls its parts back to front, each
 `(W, G, F)`. The death replay runs the same `draw()` with a recorded moment swapped into `W`.
 

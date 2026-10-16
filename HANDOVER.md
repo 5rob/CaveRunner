@@ -5,15 +5,19 @@ release loop, testing), then the README of the `src/` folder you're working in.
 
 ## BRANCH `grem` (2026-10-16): CaveRunner Grem — Grem Mode only (the owner's focus)
 
-**Start here (fresh session on `grem`):** v2.0.0 is **live** (2026-10-16, owner OK'd the screenshots): `/CaveRunner/grem/version.txt`
-shows `2000000 v2.0.0`, the app is at release `app-grem`. Nothing waiting on the owner. **Next: Coal Seams** (still planning;
-nothing built). The plan is the Claude Doc (below): read it with the docs tools (doc id `62f545c8-940a-4833-9ba9-ff20db771da5`,
-tab body node `64396f1a-182a`, prose; last write rev 20) — never web-fetch it. Its "Decisions and open questions" section holds
-what's open (which of the 10 decoration ideas, do spider webs stay, burnt coal open or scorched, ladders/stalactites solid or
-background, bat/glow worm damage); one doc comment asks to confirm the zones. The owner answers in chat or the doc; record
-answers in the doc, republish the HTML copy (`Artifact` publish to https://claude.ai/artifact/BZCnJDP93NEcB1fd99JPXM; the
-page's source is that artifact: `read` it first in a new session). Build order once agreed: decorations off/on → coal (a
-fourth fire fuel, world/fire.js) → Cavern dressing → Bats → Glow worms, each shown as phone screenshots before release.
+**Start here (fresh session on `grem`):** **v2.0.1 is released** (2026-10-17, owner OK'd the shots): Coal Seams build step 1
+(its own zones; Mossy's plants off, the old mine set on; CHANGELOG v2.0.1; art/README's Coal Seams note). Live check:
+`/CaveRunner/grem/version.txt` = `2000001 v2.0.1`. **Next: step 2, burnable coal seams** (a fourth fire fuel: world/fire.js and
+titlescene's FUEL table, a new TM material, patches + veins from seeded noise, burnt coal = ash = open tunnel; Dev knobs per the
+doc's table) with smouldering seams (idea 2); minecart rails (1) and coal piles/chutes (10) fit there too; gas pockets (3) later.
+Then the Cavern dressing, Bats (owner's boids spec), Glow worms (inchworm gait spec). Each step: phone screenshots
+(`node tools/coalshots.js`, Grem started at level 2) → owner OK → bump, docs, push `grem`.
+The plan is the Claude Doc: read it with the docs tools (doc id `62f545c8-940a-4833-9ba9-ff20db771da5`, tab body node
+`64396f1a-182a`; last write rev 23) — never web-fetch it. Every open question is decided (its Decisions section, owner
+2026-10-16): ideas 1, 2, 3, 10 picked; spider webs stay; burnt coal → open; ladders background, stalactites solid; bats harmless
+(Dev bite 0), glow worms ≈ spider health/strike, their blast hurts the team at half (Dev); Digging zone = `winding`, Cavern =
+`spider`; only light: lanterns and glow worms. Its HTML review copy https://claude.ai/artifact/BZCnJDP93NEcB1fd99JPXM (republish
+when the doc changes; `read` it first in a new session). Known failing before this: logic `auto-zonelab`.
 
 Forked from `autobattler` at v1.0.109 (owner: "git branch a Grem Mode only version and just work on that, so we can properly
 archive out the regular mode legacy content and bloated dev menu"). **v2.0.0** is the fork. `autobattler` and `main` keep

@@ -5,6 +5,13 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v2.0.1 — Coal Seams, step 1: its own zones and the old mine set (branch `grem`)
+2026-10-17 (owner OK'd the screenshots; design doc "Coal Seams", build step 1).
+- Level 2 (Coal Seams) plays only the Mines, the Digging zone and the Cavern (the spider zone's boulders), from its start on.
+- Mossy Caves' moss, grass, rubble, brick ledges, vines, mushrooms, blue drips and spores are off there; rock tops are coal dust grey.
+- On instead, the old game's mine set: timber supports floor to roof, rusted lanterns (dimmer, warmer), explosive minecarts (a shot, blast or fire sets one off: a hole, fire, hurt creatures, nearby carts go too), pickaxes, soot falling from the roof.
+- Dev → Grem: a Coal Seams group (how many of each, the cart blast's size and damage, lantern light) and Start at level (2 = Coal Seams).
+
 ## v2.0.0 — CaveRunner Grem: a Grem Mode only fork (branch `grem`)
 2026-10-16 (owner: a Grem Mode only branch; archive the regular mode and the bloated Dev menu). Its own app
 (`com.caverunner.grem`, release `app-grem`) updating from Pages' `grem/`; CI deploys all three builds.

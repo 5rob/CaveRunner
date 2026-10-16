@@ -2,6 +2,8 @@
 
 **grem branch (CaveRunner Grem, v2.0.0):** cut from this folder as unused by Grem Mode: `levels.js`. Anything below that still names them describes `autobattler` / `main`, where they live on.
 
+**Coal Seams (grem, v2.0.1, step 1 of the design doc):** `THEMES[1].moss` (Coal Seams' rock tops) is coal dust grey, not moss green.
+
 | File | Holds |
 |---|---|
 | `themes.js` | `THEMES` (the 12 floor palettes), `themeFor(floor)`, `DECOR`/`decorFor` (five decorations per theme, indexed like `THEMES`), `AMBIENCE` (per theme *name*: noise bed, drone, one-shot rates) |

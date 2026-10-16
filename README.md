@@ -15,6 +15,7 @@ Your team of jetpack runners plays the caves by itself; you kit them out.
 - **Levels:** the team runs right on its own, shooting what it meets: elites, then the boss at the end.
   Reach the exit pad: home, healed, and the next tier (bigger prices, bigger loot). Everyone down: home, same tier.
   Level 1 is the Mossy Caves; after it the levels cycle the old themed caves (Coal Seams, Frozen Deep, Ember Halls, …),
+  (CaveRunner Grem: Coal Seams has its own mine caves: timber supports, rusty lanterns, exploding minecarts, pickaxes, soot)
   each with its own colours and creatures: gunners, snipers, chasers and bombers; after the last (Void Hollow) it starts
   again at the Mossy Caves. Drops fly into the bag. Near a **chest**, press **A** to open it (gold, mods, exo mods, gems, now and then a perk).
 - **The nav row** (under the play area): tap a player's helmet for his guns, stats and perks; **B** goes back.

@@ -2,6 +2,8 @@
 
 **grem branch (CaveRunner Grem, v2.0.0):** cut from this folder as unused by Grem Mode: `fps.js`, `save.js`. Anything below that still names them describes `autobattler` / `main`, where they live on.
 
+**Coal Seams (grem, v2.0.1, step 1 of the design doc):** `level.js` `levelPlan(…, floor)` and `levelScene` / `levelOnward` push the floor's zone set into the plan (`fk`, `floorFrom`, art/titlescene.js `floorZones` / `floorDeco`) at each look's seam (`plan.arena.x1`), and set the scene's looks before its first columns. `grem.js gremRun` starts at `DEV.gremStartLv`.
+
 The auto-battler's pure parts (`AUTOBATTLER.md`). **Layer 4**: `run.js` takes `TITLE_COLS` from
 `art/titlescene.js` (layer 4), so modules here may import layers 1–4 (core, dev, data, spells, world,
 art, …), never `game/`, `ui/` or `main.js`. Everything here is pure: the logic suites call it directly.
