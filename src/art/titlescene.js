@@ -503,12 +503,12 @@ export function spiderRock(wx, y, Z, cy, fy, bare) {
 }
 // (Coal Seams, chunk C2) the Cavern's stalactites (hanging off every underside: the roof, the boulders' bottoms) and
 // stalagmites (rising off the floor and the boulders' tops, shorter and blunter), in clusters of mixed lengths. One point
-// per slot along x (7 units stalactites, 9 stalagmites), there by DEV.coal{Stal,Mite}Dense where a noise field is over
+// per slot along x (10 units stalactites, 13 stalagmites), there by DEV.coal{Stal,Mite}Dense where a noise field is over
 // DEV.coal{Stal,Mite}Clus (the bare gaps between clusters), its length in DEV.coal{Stal,Mite}Len{Lo,Hi} (shorter at a
 // cluster's edge). At column wx: [this column's length, the point's whole length] (0s: none). Pure
 /** @param {number} wx @param {boolean} up a stalagmite @param {number} ph the zone's phase */
 export function stalLen(wx, up, ph) {
-  const sp = up ? 9 : 7, s = up ? 41 : 47, k0 = Math.floor(wx / sp);
+  const sp = up ? 13 : 10, s = up ? 41 : 47, k0 = Math.floor(wx / sp);
   const dense = up ? DEV.coalMiteDense : DEV.coalStalDense, clus = up ? DEV.coalMiteClus : DEV.coalStalClus;
   const lo = up ? DEV.coalMiteLenLo : DEV.coalStalLenLo, hi = up ? DEV.coalMiteLenHi : DEV.coalStalLenHi;
   let best = 0, whole = 0;
@@ -517,9 +517,9 @@ export function stalLen(wx, up, ph) {
     const cl = titleNoise(sx / 70 + ph, s);
     if (cl <= clus || h2(k, s + 3) >= dense) continue;
     const L = (lo + (hi - lo) * h2(k, s + 2)) * Math.min(1, (cl - clus) / 0.1);
-    const w = up ? 1.6 + L * 0.32 : 1 + L * 0.13, d = Math.abs(wx - sx) / w;
+    const w = up ? 3 + L * 0.42 : 2 + L * 0.2, d = Math.abs(wx - sx) / w;
     if (d >= 1) continue;
-    const h = up ? L * (1 - d * d) : L * (1 - d);
+    const h = up ? L * (1 - Math.pow(d, 1.6)) : L * Math.pow(1 - d, 1.3);   // (tapering to a point; a stalagmite blunter)
     if (h > best) { best = h; whole = L; }
   }
   return [best, whole];

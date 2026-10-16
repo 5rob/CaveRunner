@@ -505,7 +505,7 @@ DEV_META.push(
   { k: 'coalMiteClus',  g: 'coal', label: 'Stalagmites: clustering (bare share between clusters)', min: 0, max: 0.95, step: 0.05 });
 rangeKnobs('coal', [
   ['coalStalLen', 'Stalactites: length (units)', 0, 60, 1, 6, 22],
-  ['coalMiteLen', 'Stalagmites: length (units)', 0, 40, 1, 3, 10]]);
+  ['coalMiteLen', 'Stalagmites: length (units)', 0, 40, 1, 5, 14]]);
 DEV_GROUPS.push(['coal', 'Coal Seams']);
 // CaveRunner Auto's maps (auto/maps.js): the map machine's prices, and how much harder each map starts
 Object.assign(DEV_DEFAULTS, { autoMapPrice: 1000000, autoMapGrow: 1, autoMapStep: 5 });

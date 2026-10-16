@@ -52,7 +52,7 @@ require('../tests/build')();
   if (ONLY === 'stal') {
     await page.evaluate(() => { DEV.autoLvlPace = 4; });
     for (let i = 0; i < 3000; i++) {
-      const on = await page.evaluate(() => { const S = window.__gremScene; return !!S && titleZoneSpan(S.scroll + 40, S).z === 'spider' && titleZoneSpan(S.scroll + TITLE_VW - 40, S).z === 'spider' && coalAt(S, S.scroll + 100); });
+      const on = await page.evaluate(() => { const S = window.__gremScene; return !!S && titleZoneSpan(S.scroll + 40, S).z === 'spider' && titleZoneSpan(S.scroll + TITLE_VW - 40, S).z === 'spider' && coalAt(S, S.scroll + 100) && titleCeil(S.scroll + 100, S) > 30; });
       if (on) break;
       await page.waitForTimeout(100);
     }
@@ -74,8 +74,10 @@ require('../tests/build')();
     });
     await page.waitForTimeout(300);
     await save('q-stal', 'the Cavern on Coal Seams: stalactites off the roof and the boulders, stalagmites on the floor');
-    await save('r-stal-roof', 'close up: a cluster hanging off the roof', box.up);
-    await save('s-stal-floor', 'close up: a cluster on the floor', box.dn);
+    await page.evaluate(() => { DEV.gremDark = 0; });   // (the close-ups: the darkness lifted)
+    await page.waitForTimeout(200);
+    await save('r-stal-roof', 'close up (darkness lifted): a cluster hanging off the roof', box.up);
+    await save('s-stal-floor', 'close up (darkness lifted): a cluster on the floor', box.dn);
     await browser.close(); console.log(said.join(String.fromCharCode(10))); return;
   }
   if (ONLY === 'gas') { await browser.close(); console.log(said.join('\n')); return; }
