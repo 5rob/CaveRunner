@@ -254,6 +254,12 @@ export function drawBoom(ctx, b) {
     ctx.globalAlpha = 1;
     return;
   }
+  if (b.sid === 'worm') {               // (Coal Seams) a glow worm's blast: a neon green flash swelling out, white-green at its heart
+    const q = b.t / b.max, rad = b.r * (0.4 + 0.6 * Math.sqrt(q)), gr = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, rad);
+    gr.addColorStop(0, 'rgba(240,255,225,' + (1 - q) + ')'); gr.addColorStop(0.3, 'rgba(125,255,58,' + (1 - q) * 0.9 + ')'); gr.addColorStop(0.75, 'rgba(47,210,58,' + (1 - q) * 0.45 + ')'); gr.addColorStop(1, 'rgba(20,90,20,0)');
+    ctx.globalAlpha = 1; ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(b.x, b.y, rad, 0, 6.283); ctx.fill();
+    return;
+  }
   if (b.sid === 'manaburst') {          // (owner, after v1.0.83) Mana Burst: a blue flash and a ring out to its reach
     const q = b.t / b.max, gr = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r * 0.5);
     gr.addColorStop(0, 'rgba(230,245,255,' + (1 - q) + ')'); gr.addColorStop(1, 'rgba(74,156,255,0)');

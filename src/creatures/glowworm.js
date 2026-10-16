@@ -252,14 +252,16 @@ export function wormBox(w, ox) {
   return { x: Math.floor(x0 - ox - e), y: Math.floor(y0 - e), w: Math.ceil(x1 - x0 + 2 * e) + 1, h: Math.ceil(y1 - y0 + 2 * e) + 1 };
 }
 
-// the face, once it stands up (smooth, over the pixel layer, so it reads): a dark mouth in the middle of the head, growing and
-// shrinking fast (DEV.glowMouthSpd), two black dot eyes above it (out along the body)
+// the head, once it stands up (smooth, over the pixel layer, bigger than the body's scale so the face reads): a white-green
+// disc with the green outline, a dark mouth in its middle growing and shrinking fast (DEV.glowMouthSpd), two black dot eyes above
 /** @param {CanvasRenderingContext2D} c @param {GlowWorm} w @param {number} ox @param {number} t seconds */
 export function drawGlowFace(c, w, ox, t) {
-  if (w.ag < 0.6) return;
-  const W = DEV.glowW, x = w.fl.x - ox - w.ux * W * 0.15, y = w.fl.y - w.uy * W * 0.15, qx = -w.uy, qy = w.ux;
+  if (w.ag < 0.3) return;
+  const k = Math.min(1, (w.ag - 0.3) / 0.5), H = 2.2 * k, x = w.fl.x - ox - w.ux * 0.6, y = w.fl.y - w.uy * 0.6, qx = -w.uy, qy = w.ux;
+  c.fillStyle = '#2fd23a'; c.beginPath(); c.arc(x, y, H + 0.5, 0, 6.29); c.fill();
+  c.fillStyle = '#e6ffd8'; c.beginPath(); c.arc(x, y, H, 0, 6.29); c.fill();
   c.fillStyle = '#0d2a10';
-  c.beginPath(); c.arc(x, y, W * 0.22 * (1 + 0.45 * Math.sin(t * DEV.glowMouthSpd + w.ph)), 0, 6.29); c.fill();
+  c.beginPath(); c.arc(x - w.ux * H * 0.15, y - w.uy * H * 0.15, H * 0.36 * (1 + 0.4 * Math.sin(t * DEV.glowMouthSpd + w.ph)), 0, 6.29); c.fill();
   c.fillStyle = '#000';
-  for (const sd of [-1, 1]) { c.beginPath(); c.arc(x + w.ux * W * 0.42 + qx * sd * W * 0.26, y + w.uy * W * 0.42 + qy * sd * W * 0.26, W * 0.1, 0, 6.29); c.fill(); }
+  for (const sd of [-1, 1]) { c.beginPath(); c.arc(x + w.ux * H * 0.5 + qx * sd * H * 0.38, y + w.uy * H * 0.5 + qy * sd * H * 0.38, H * 0.16, 0, 6.29); c.fill(); }
 }

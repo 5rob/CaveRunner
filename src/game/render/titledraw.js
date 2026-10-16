@@ -726,7 +726,7 @@ function titleDark(ctx, S) {
     lc.save(); fan(p.x, ly, TITLE_LAMPR, 72); lc.clip(); pool(p.x, ly, TITLE_LAMPR * Math.min(1, 0.6 + 0.4 * k), 0.95 * Math.min(1, k), 0.25); lc.restore();
   }
   // (Coal Seams) a gas whoomph lights the cave round it for a moment
-  for (const o of S.booms) if (o.sid === 'gas') pool(o.x, o.y, o.r * 2.2, 0.95 * (1 - o.t / o.max), 0.3);
+  for (const o of S.booms) if (o.sid === 'gas' || o.sid === 'worm') pool(o.x, o.y, o.r * 2.2, 0.95 * (1 - o.t / o.max), 0.3);
   // fire (a few of its cells, as the game's glows sample it), burning creatures and plants, and the jellyfish
   if (S.fire.length) {
     // (owner: the old big pools summed into one disc) a small light at each of up to 80 of its cells, hugging the flames

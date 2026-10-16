@@ -204,7 +204,7 @@ const CLASSIC = { shoot: 1, turret: 1, chase: 1, bomb: 1 };
 /** @typedef {{ t: number, vh: number, top: number, bot: number, seed: number, rnd: () => number, scroll: number, shake: number, spawn: number,
  *   kills: number, gold: number, got: number, runner: TRunner, runners: TRunner[], foes: Enemy[], shots: TShot[], parts: TPart[], coins: Coin[],
  *   booms: TBoom[], zaps: TZap[], flash: number, rows: number, ncol: number, cells: Uint8Array, gen: number, props: TProp[],
- *   fire: TFire[], lightLater?: number[][], tim?: Record<number, { x: number, sets: import('./timber.js').TSet[] }>, timCol?: Map<number, Uint8Array>, chutes?: { x: number, y: number, s: number }[], gas?: TGas[], gasNext?: number, bats?: import('../creatures/bats.js').Bats, batNext?: number, worms?: import('../creatures/glowworm.js').GlowWorm[], wormNext?: number, wormRnd?: () => number, dirty: number[][], dirtyAll: boolean, carved: number, burnt: number, swaps: number, groundT: number, flyT: number, kinds: Record<string, number>,
+ *   fire: TFire[], lightLater?: number[][], tim?: Record<number, { x: number, sets: import('./timber.js').TSet[] }>, timCol?: Map<number, Uint8Array>, chutes?: { x: number, y: number, s: number }[], gas?: TGas[], gasNext?: number, bats?: import('../creatures/bats.js').Bats, batNext?: number, worms?: import('../creatures/glowworm.js').GlowWorm[], wormNext?: number, wormRnd?: () => number, lootLater?: { f: Enemy, t: number }[], dirty: number[][], dirtyAll: boolean, carved: number, burnt: number, swaps: number, groundT: number, flyT: number, kinds: Record<string, number>,
  *   webs: WebLine[], orbN?: number, orbs?: Record<number, OrbRig>, mush?: MushCloud[], orbHub?: { x: number, y: number, r: number }[], orbT?: number, cut: number, lineT: number, silk: { x: number, y: number, ax: number, ay: number, vx: number, vy: number, life: number }[],
  *   nav: { F: any, fx: number, fy: number, t: number }, fireAcc: number, fireN: number, burning: Set<number>, gotN: number, pops: number, lampsPopped: number, kitNames: Set<string>,
  *   digT: number, digs: number, digWhy: Record<string, number>, still?: boolean, zp: TitlePlan, snd: TSnd[], hub?: TitleHub, lvl?: TitleLevel, lab?: boolean, back?: (ctx: CanvasRenderingContext2D, S: TitleScene) => void, pace?: number, team?: RunPlayer[], blocked?: number, blockedKind?: string, huddle?: boolean, gunsOff?: boolean, dmgMul?: number, coinWait?: number, hgoal?: number, hgoalT?: number, fuelWait?: number, tier?: number, loot?: TLoot[],
@@ -1177,6 +1177,7 @@ function wormsStep(S, dt) {
   if (S.worms.some(w => w.r.x < x0)) S.worms = S.worms.filter(w => w.r.x >= x0);
   const solid = rockAt(S);
   const R = S.wormRnd ||= wormRng(S.seed), D = DEV;
+  if (S.lootLater) { for (const q of S.lootLater) if ((q.t -= dt) <= 0) dropLoot(S, q.f); S.lootLater = S.lootLater.filter(q => q.t > 0); }
   if (S.worms.some(w => w.foe && w.foe.hp <= 0)) S.worms = S.worms.filter(w => !(w.foe && w.foe.hp <= 0));   // (killed: killFoe blew it up)
   const live = S.runners.filter(r => !r.out), inF = new Set(S.foes);
   for (const w of S.worms) {
@@ -1219,10 +1220,10 @@ function wormFoe(S, w) {
 function wormBlast(S, f) {
   const x = f.x - S.scroll, y = f.ty, r = DEV.glowBlastR, D = DEV;
   snd(S, 'boom', x, y, r * 1.6);
-  S.booms.push({ x, y, r: r * 1.3, t: 0, max: 0.4, sid: 'worm' });
-  burst(S, x, y, 22, WORM_SPORE, 120, 'spark', 0.5);
-  burst(S, x, y, 14, '#d8ffc0', 70, 'spark', 0.35);
-  burst(S, x, y, 10, '#2fd23a', 50, 'chunk', 0.8);
+  S.booms.push({ x, y, r: r * 1.6, t: 0, max: 0.55, sid: 'worm' });
+  burst(S, x, y, 40, WORM_SPORE, 170, 'spark', 0.8);
+  burst(S, x, y, 20, '#eaffd8', 90, 'spark', 0.5);
+  burst(S, x, y, 16, '#2fd23a', 110, 'chunk', 1);
   S.shake = Math.min(7, S.shake + 1.5); S.flash = Math.min(0.3, S.flash + 0.06);
   if (D.glowHole > 0) titleCarve(S, x, y, D.glowHole);
   for (const g of S.foes) if (g !== f && g.hp > 0 && Math.hypot(g.x - S.scroll - x, g.ty - y) < r + g.r) hitFoe(S, g, D.glowBlastDmg, WORM_SPORE);
@@ -1868,12 +1869,18 @@ function killFoe(S, f) {
   // its gold as the game drops it (systems/enemies.js damageEnemy): its kind's gold and up to 2 more,
   // split into big, medium and small nuggets (world/nuggets.js spillGold), thrown up out of it
   // CaveRunner Auto: the level's drops (auto/loot.js killLoot): the gold as nuggets, the rest as pickups (S.loot) thrown up
-  const items = S.lvl && S.lvl.loot ? S.lvl.loot(S, f) : null;
-  if (items) titleSpill(S, f.x, f.ty, items);
-  else { const amount = Math.round(f.k.gold + Math.floor(S.rnd() * 3)); spillWait(S, f.x, f.ty, amount); S.gold += amount; }
+  if (f.worm) (S.lootLater ||= []).push({ f, t: 0.35 });   // (a glow worm: its loot after the burst, wormsStep)
+  else dropLoot(S, f);
   if (S.coins.length > TITLE_GOLD) S.coins.splice(0, S.coins.length - TITLE_GOLD);
 }
 
+// a killed creature's loot: the level's drops, else its gold
+/** @param {TitleScene} S @param {Enemy} f */
+function dropLoot(S, f) {
+  const items = S.lvl && S.lvl.loot ? S.lvl.loot(S, f) : null;
+  if (items) titleSpill(S, f.x, f.ty, items);
+  else { const amount = Math.round(f.k.gold + Math.floor(S.rnd() * 3)); spillWait(S, f.x, f.ty, amount); S.gold += amount; }
+}
 // gold thrown out as nuggets; (Grem Mode, owner v1.0.92) S.coinWait: they bounce that long before they fly to the team
 /** @param {TitleScene} S @param {number} x @param {number} y @param {number} amount */
 function spillWait(S, x, y, amount) {

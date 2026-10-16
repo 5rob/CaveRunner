@@ -234,7 +234,7 @@ require('../tests/build')();
         return { x: Math.max(b.left, b.left + x * k - 70), y: Math.max(b.top, b.top + y * k - 80), width: 140, height: 110 };
       });
       await page.evaluate(() => { DEV.gremDark = 0; DEV.autoFoeDmg = 0; });
-      await put(26, -14);
+      await put(40, -22);
       await page.waitForTimeout(600);
       await save('j-agro', 'close up (darkness lifted): a player near: the worm stood up on its back foot, facing him, vibrating, mouth pulsing', await wide());
       await page.evaluate(() => { DEV.glowStrikeT = 1.2; });   // (slowed for the shot only, so it can be caught mid-strike)
@@ -246,7 +246,7 @@ require('../tests/build')();
       await page.evaluate(() => { const S = window.__gremScene, w = window.__worm; if (w.foe) titleKill(S, w.foe); });
       await page.waitForTimeout(70);
       await save('l-blast', 'close up (darkness lifted): shot dead: the bright green burst', box);
-      await page.waitForTimeout(700);
+      await page.waitForTimeout(1600);
       await save('m-hole', 'close up (darkness lifted): after: the hole it blasted in the rock', box);
       await page.evaluate(() => { DEV.gremDark = DEV_DEFAULTS.gremDark; });
       await browser.close(); console.log(said.join(String.fromCharCode(10))); return;

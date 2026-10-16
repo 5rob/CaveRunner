@@ -572,7 +572,7 @@ DEV_META.push(
   { k: 'glowAmbient',   g: 'glow', label: 'Green spores drifting in Coal Seams (a second, a screen)', min: 0, max: 30, step: 0.5 });
 // (C5b) their behaviour: agro, the strike, and the blast when one is killed
 Object.assign(DEV_DEFAULTS, { glowAgroR: 60, glowStrikeR: 14, glowStrikeT: 0.3, glowStrikeCd: 0.9, glowStrikeDmg: 12, glowVib: 0.35, glowVibSpd: 70, glowMouthSpd: 18,
-  glowBlastR: 16, glowBlastDmg: 6, glowHole: 7, glowTeam: 0.5, glowHp: 4 });
+  glowBlastR: 16, glowBlastDmg: 6, glowHole: 10, glowTeam: 0.5, glowHp: 4 });
 DEV_META.push(
   { k: 'glowHp',        g: 'glow', label: 'Health (the players shoot them)', min: 0.5, max: 40, step: 0.5 },
   { k: 'glowAgroR',     g: 'glow', label: 'Agro: stands up at a player within (units)', min: 0, max: 200, step: 1 },
