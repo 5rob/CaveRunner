@@ -97,12 +97,11 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   check('× goes back to ▶ and ⚙', !!(await page.$('.title .tstart')) && !(await page.$('.tvol')));
   await page.evaluate(() => localStorage.removeItem('caverunner-vol-fx'));
 
-  // ▶ opens CaveRunner Auto (a new run, saved at once)
+  // ▶ opens Grem Mode (grem branch: the only game here)
   await down('.tstart');
   let on = false;
-  for (let i = 0; i < 40 && !(on = !!(await page.$('.auto'))); i++) await page.waitForTimeout(50);
-  check('▶ opens the auto screen, not the old game', on && !(await page.$('.title')) && await page.evaluate(() => !window.__lvl));
-  check('a new run is made and saved', await page.evaluate(() => { const v = JSON.parse(localStorage.getItem('caverunner-auto-run') || 'null'); return !!v && v.run.players.length === 1; }));
+  for (let i = 0; i < 40 && !(on = !!(await page.$('.grem'))); i++) await page.waitForTimeout(50);
+  check('▶ opens Grem Mode', on && !(await page.$('.title')) && !(await page.$('.tgrem')));
 
   await browser.close();
   console.log(fails ? `\n${fails} FAILED` : '\nall passed');

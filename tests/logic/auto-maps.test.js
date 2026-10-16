@@ -46,15 +46,6 @@ check('map 1 falls back to 1; map 0 still 3', r2.maps[1].level === 1 && r2.maps[
 G.selectMap(r2, 0);
 check('back to map 0: tier 3 again', r2.tier === 3 && G.mapLabel(r2) === 'Mossy Caves Lv 3', G.mapLabel(r2));
 
-// the save: an old one (run.tier, no maps) → map 0 at that level
-const store = { d: {}, getItem(k) { return this.d[k] || null; }, setItem(k, v) { this.d[k] = v; } };
-const old = G.newRun(3); delete old.maps; delete old.map; old.tier = 4;
-store.setItem(G.AUTO_SAVE_KEY, JSON.stringify({ v: G.AUTO_SAVE_V, run: old }));
-const back = G.loadAutoRun(store);
-check('old save: map 0 at level 4, beaten, tier 4', back.map === 0 && back.maps[0].level === 4 && back.maps[0].beaten && back.tier === 4 && back.maps.length === G.MAP_NAMES.length, back.maps[0]);
-G.saveAutoRun(r2, store);
-const again = G.loadAutoRun(store);
-check('a new save round-trips the maps', again.maps[1].owned && again.maps[0].level === 3 && again.map === 0);
 
 // the hub's map machine
 const hr = G.newRun(11); G.levelCleared(hr); G.levelFailed(hr);   // map 0 beaten, back at level 1

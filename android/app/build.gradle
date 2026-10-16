@@ -4,21 +4,23 @@ plugins {
 
 // -PcaveAuto=true (CI, on the autobattler branch) builds the second app, CaveRunner Auto: its own
 // package id (installs beside the main app, its own save) and its own update address (Pages' auto/).
-// Without it the build is the main app as always.
+// -PcaveGrem=true (CI, on the grem branch) builds the third app, CaveRunner Grem, the same way (Pages' grem/).
+// Without either the build is the main app as always.
 def caveAuto = project.findProperty('caveAuto') == 'true'
+def caveGrem = project.findProperty('caveGrem') == 'true'
 
 android {
     namespace 'com.caverunner.app'
     compileSdk 34
 
     defaultConfig {
-        applicationId caveAuto ? 'com.caverunner.auto' : 'com.caverunner.app'
+        applicationId caveGrem ? 'com.caverunner.grem' : caveAuto ? 'com.caverunner.auto' : 'com.caverunner.app'
         minSdk 26
         targetSdk 34
         versionCode 1
         versionName '1.0'
-        resValue 'string', 'app_name', caveAuto ? 'CaveRunner Auto' : 'CaveRunner'
-        buildConfigField 'String', 'PAGES_BASE', caveAuto ? '"https://5rob.github.io/CaveRunner/auto/"' : '"https://5rob.github.io/CaveRunner/"'
+        resValue 'string', 'app_name', caveGrem ? 'CaveRunner Grem' : caveAuto ? 'CaveRunner Auto' : 'CaveRunner'
+        buildConfigField 'String', 'PAGES_BASE', caveGrem ? '"https://5rob.github.io/CaveRunner/grem/"' : caveAuto ? '"https://5rob.github.io/CaveRunner/auto/"' : '"https://5rob.github.io/CaveRunner/"'
     }
 
     signingConfigs {

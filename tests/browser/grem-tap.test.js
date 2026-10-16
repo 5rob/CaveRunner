@@ -18,7 +18,7 @@ fs.mkdirSync(OUT, { recursive: true });
   await page.goto('file://' + path.join(__dirname, '..', 'build', 'test.html'));
   await page.waitForTimeout(400);
   await page.evaluate(() => { DEV.autoFoeGap0 = 999; DEV.autoFoeCap0 = 0; DEV.autoFoeCap1 = 0; DEV.autoFoeElites = 0; });
-  await page.locator('.tgrem').dispatchEvent('pointerdown');
+  await page.locator('.tstart').dispatchEvent('pointerdown');
   let ok = false;
   for (let i = 0; i < 60 && !ok; i++) { ok = await page.evaluate(() => { const S = window.__gremScene; return !!S && S.lvl.data.phase === 'run'; }); if (!ok) await page.waitForTimeout(200); }
   check('Grem level running', ok);

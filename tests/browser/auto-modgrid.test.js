@@ -17,7 +17,7 @@ const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FA
   await page.locator('.tstart').dispatchEvent('pointerdown');
   let on = false;
   for (let i = 0; i < 60 && !(on = !!(await page.$('.adevbtn'))); i++) await page.waitForTimeout(50);
-  check('the auto screen is up, Dev button there', on);
+  check('Grem is up, Dev button there', on);
   await page.locator('.adevbtn').dispatchEvent('pointerdown');
   await page.waitForTimeout(300);
   await page.locator('.modgridbtn').dispatchEvent('pointerdown');

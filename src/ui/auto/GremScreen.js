@@ -34,7 +34,7 @@ import { GunIcon } from '../editor.js';
 import { PauseMenu } from '../pause.js';
 import { runScene } from '../scenecanvas.js';
 import { HelmetIcon, NuggetIcon } from './icons.js';
-import { DEV_PAGES, FlyTile, PillStick } from './AutoScreen.js';
+import { DEV_PAGES, FlyTile, PillStick } from './parts.js';
 import { DevPanel } from '../devpanel.js';
 import { DEV_HOLD_MS, devShown, setDevShown } from '../devmode.js';
 import { h, useEffect, useRef, useState } from '../h.js';
@@ -91,7 +91,7 @@ export function GremScreen() {
   };
 
   // a pickup: its tile flies into the gold counter's nugget (as AutoScreen's flyIn to a bag slot)
-  /** @type {import('./AutoScreen.js').Fly[]} */
+  /** @type {import('./parts.js').Fly[]} */
   const noFlies = [];
   const [flies, setFlies] = useState(noFlies);
   const flyN = useRef(0);
@@ -216,7 +216,7 @@ export function GremScreen() {
   }, []);
 
   // the stick: the picked player by hand at once (past the dead zone), the camera on him; let go, he plays himself after a moment
-  /** @param {import('./AutoScreen.js').PillState} st */
+  /** @param {import('./parts.js').PillState} st */
   const steer = st => {
     const S = scene.current, C = cam.current, w = whoRef.current, r = S && S.runners.find(q => q.id === w);
     if (!S || !S.lvl || !r || r.out) return;

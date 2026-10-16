@@ -1,16 +1,15 @@
 // @ts-check
 // The title screen (LIST4 #4): the page opens on it. A full-screen canvas runs the action scene
 // (art/titlescene.js, through ui/scenecanvas.js runScene: the loop, the sound and the camera's gestures)
-// under the big CAVE RUNNER and a menu window. On the CaveRunner Auto branch the window holds only
-// ⚙ (the window turns into the settings: master, FX and music volume, × back; v0.0.174) and ▶ (one save:
-// AutoScreen opens the run, or starts one). Root picks the title or the auto screen.
+// under the big CAVE RUNNER and a menu window. On the grem branch (CaveRunner Grem) the window holds only
+// ⚙ (the window turns into the settings: master, FX and music volume, × back; v0.0.174) and ▶ (Grem Mode,
+// ui/auto/GremScreen.js). Root picks the title or Grem.
 // The scene's camera (v0.0.168): pinch to zoom, drag to pan, tap a player to follow them, again to let go
 // (art/titlescene.js titleCam); each visit its own seed, so its own zones.
 // Its sound (v0.0.174): everything on screen with the game's own sounds (ui/titlesound.js).
 
 import { SFX } from '../audio/sfx.js';
 import { TITLE_VW, titleBottom, titleCam, titleScene, titleText } from '../art/titlescene.js';
-import { AutoScreen } from './auto/AutoScreen.js';
 import { GremScreen } from './auto/GremScreen.js';
 import { runScene } from './scenecanvas.js';
 import { Volumes } from './volume.js';
@@ -20,9 +19,8 @@ import { h, useEffect, useRef, useState } from './h.js';
 /** @param {number} hh the screen's height */
 const TOP = hh => Math.max(28, hh * 0.05);
 
-// (owner, Grem Mode) GREM MODE under the two buttons: the toddler's game (ui/auto/GremScreen.js)
-/** @param {{ onStart: () => void, onGrem?: () => void }} props */
-export function Title({ onStart, onGrem }) {
+/** @param {{ onStart: () => void }} props */
+export function Title({ onStart }) {
   const cvs = useRef(null);
   const menu = useRef(null);
   const [setup, setSetup] = useState(false);   // the window shows the settings
@@ -41,7 +39,6 @@ export function Title({ onStart, onGrem }) {
     });
   }, []);
   const start = () => { SFX.unlock(); SFX.fx('portalIn'); onStart(); };
-  const grem = () => { SFX.unlock(); SFX.fx('portalIn'); if (onGrem) onGrem(); };
   /** @param {boolean} on */
   const gear = on => { SFX.unlock(); SFX.fx(on ? 'open' : 'close'); setSetup(on); };
   /** @param {(e: any) => void} fn */
@@ -53,7 +50,6 @@ export function Title({ onStart, onGrem }) {
       setup ? h(Settings, { close: () => gear(false) }) :
         h('div', { key: 'b', className: 'tbtns' },
           h('button', { className: 'tbig tgear', title: 'Settings', onPointerDown: tap(() => gear(true)) }, h(Cog)),
-          onGrem ? h('button', { className: 'tgrem', title: 'Grem Mode', onPointerDown: tap(grem) }, 'GREM MODE') : null,
           h('button', { className: 'tbig tstart', title: 'Play', onPointerDown: tap(start) }, h(PlayIcon)))));
 }
 
@@ -75,9 +71,9 @@ function Settings({ close }) {
     h(Volumes, { key: 'v' })];
 }
 
-// The page: the title first (every load), then CaveRunner Auto (AutoScreen; its ⏸ → Exit reloads to the
-// title). Stage 13: the old game (ui/app.js App: sticks, HUD, shops) is no longer in this branch's build.
+// The page: the title first (every load), then Grem Mode (its ⏸ → Exit reloads to the title). On the grem branch the
+// old game and CaveRunner Auto's runs are cut (they stay on main and autobattler).
 export function Root() {
-  const [play, setPlay] = useState('');   // '' the title, 'auto' CaveRunner Auto, 'grem' Grem Mode
-  return play === 'auto' ? h(AutoScreen) : play === 'grem' ? h(GremScreen) : h(Title, { onStart: () => setPlay('auto'), onGrem: () => setPlay('grem') });
+  const [play, setPlay] = useState(false);
+  return play ? h(GremScreen) : h(Title, { onStart: () => setPlay(true) });
 }

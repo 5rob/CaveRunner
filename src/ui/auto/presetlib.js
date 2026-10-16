@@ -2,7 +2,7 @@
 // Dev → Presets (owner, Grem Mode): the gun presets library (save/presets.js, shared with the old game's Spawn gun). A grid of
 // every saved gun in its order (Grem Mode unlocks them in a random order since v1.0.92: auto/grem.js); 💾 on a gun's panel in the nav
 // (dev mode) adds one. (owner, v1.0.89) The ⠿ handle in a tile's corner drags it onto another tile's place (the order). A tap
-// opens the gun editor (PresetEdit): the gun panel (AutoScreen GunPanel: its stats and the firing window simulating it), its
+// opens the gun editor (PresetEdit): the gun panel (parts.js GunPanel: its stats and the firing window simulating it), its
 // mod slots (tap one to pick it; tap another to swap them; ✕ empties it), the Dev mod grid (a tap on a mod puts it in the
 // picked slot, else the first empty one), its name, ◀ ▶ to move it in the order, 🗑️ (twice) to delete it, and Save changes
 // (writes it back; nothing is saved until then). (owner) The editor takes the whole window (over the Dev panel, as the grown
@@ -17,7 +17,7 @@ import { newPlayer } from '../../auto/run.js';
 import { GunIcon } from '../editor.js';
 import { GunArtPicker } from '../gunart.js';
 import { ModGrid } from '../modgrid.js';
-import { GunPanel, ItemIcon, itemEdge } from './AutoScreen.js';
+import { GunPanel, ItemIcon, itemEdge } from './parts.js';
 import { h, useRef, useState } from '../h.js';
 
 /** @param {() => void} fn @returns {(e: any) => void} */

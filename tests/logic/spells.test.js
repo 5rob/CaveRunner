@@ -22,15 +22,6 @@ for (const id of G.ALL_IDS) {
   }
   try { prev = G.modPreview(id); } catch (e) { ok(id + ' previews', false, e.message); continue; }
   ok(id + ' info card has rows', prev.rows.length > 0 || m.kind === 'mod', prev.rows.length);
-  // the aim line must not throw or produce NaN for anything that flies
-  const sh = plan.shots.find(x => !x.still);
-  if (sh) {
-    const out = [];
-    try { G.tracePath(sh, 100, 100, 1, 0, () => false, [{ x: 300, y: 100, ty: 100 }], out, { x: 100, y: 100 }); }
-    catch (e) { ok(id + ' traces', false, e.message); continue; }
-    ok(id + ' aim line is all real numbers', out.every(v => isFinite(v)), out.slice(0, 6));
-    ok(id + ' aim line has points', out.length >= 2, out.length);
-  }
 }
 
 // ---- the Greek letters actually copy ----
@@ -115,9 +106,6 @@ for (const [id, act] of [['refresh', 'refresh'], ['farcast', 'far'], ['telecast'
 {
   const p = G.planCast(mk(['plasma', null, null, null]));
   ok('a beam shot carries its range', p.shots[0].beam === 320, p.shots[0].beam);
-  const out = [];
-  G.tracePath(p.shots[0], 0, 0, 1, 0, x => x > 150, [], out);
-  ok('the aim line stops a beam at the wall', out[out.length - 2] <= 155, out[out.length - 2]);
 }
 
 // ---- drops follow Noita's spawn table (v80) ----

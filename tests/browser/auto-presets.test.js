@@ -30,7 +30,7 @@ fs.mkdirSync(OUT, { recursive: true });
   await page.locator('.tstart').dispatchEvent('pointerdown');
   let on = false;
   for (let i = 0; i < 40 && !(on = !!(await page.$('.adevbtn'))); i++) await page.waitForTimeout(50);
-  check('the auto screen is up', on);
+  check('Grem is up', on);
   await page.locator('.adevbtn').dispatchEvent('pointerdown');
   await page.waitForTimeout(300);
   await page.locator('.devtab[data-t="presets"]').click();

@@ -26,9 +26,8 @@ module.exports = {
     'autoknobs',      // the Dev panel's Auto colours are current
   ],
   browser: [
-    'title',          // the title screen, ▶ into Auto
-    'auto-screen',    // the screen's four sections, pause
-    'auto-save',      // quit and resume
-    'auto-loop',      // the whole loop: hub → gun → level → boss → back
+    'title',          // the title screen, ▶ into Grem
+    'grem-tap',       // Grem plays: a tap sends the team
+    'grem-dev',       // ⏸ held: the Dev panel, Grem's groups only
   ],
 };

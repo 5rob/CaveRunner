@@ -17,7 +17,7 @@ fs.mkdirSync(OUT, { recursive: true });
   page.on('pageerror', e => { fails++; console.log('PAGEERROR', e.message); });
   await page.goto('file://' + path.join(__dirname, '..', 'build', 'test.html'));
   await page.waitForTimeout(400);
-  await page.locator('.tgrem').dispatchEvent('pointerdown');
+  await page.locator('.tstart').dispatchEvent('pointerdown');
   await page.waitForTimeout(800);
   check('no ⚙️ before dev mode', !(await page.$('.grem .adevbtn')));
   const box = await page.locator('.grem .pausebtn').boundingBox();
