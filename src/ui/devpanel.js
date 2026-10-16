@@ -20,6 +20,7 @@ import {
 import { devCopyText } from '../auto/devcopy.js';
 import { BAT_CMD } from '../creatures/bats.js';
 import { FireSim } from './firesim.js';
+import { BatPreview } from './batpreview.js';
 import { ZoneSim } from './zonesim.js';
 import { h, useEffect, useRef, useState } from './h.js';
 
@@ -497,7 +498,8 @@ export function DevRow({ meta }) {
     let v;
     if (s === '') v = DEV_DEFAULTS[meta.k];
     else { v = parseFloat(s); if (!isFinite(v)) { setVal(String(DEV[meta.k])); return; } }
-    v = Math.max(meta.min, Math.min(meta.max, v));
+    if (meta.min != null) v = Math.max(meta.min, v);   // (a row with no min / max: unclamped, Bats' (owner))
+    if (meta.max != null) v = Math.min(meta.max, v);
     devSet(meta.k, v);
     setVal(String(v));
   };
@@ -526,7 +528,8 @@ export function DevGroupHead({ g, name, shut, toggle, n, changed, tab }) {
 // what a group draws besides its rows: the previews and editors that shape its knobs
 /** @param {string} g */
 const groupExtras = g => [
-  g === 'jellycol' ? h(JellyPreview, { key: 'jp' }) : null,        // the live jelly its colours paint
+  g === 'jellycol' ? h(JellyPreview, { key: 'jp' }) : null,
+  g === 'bats' ? h(BatPreview, { key: 'bp' }) : null,             // (C4) a cave of bats, a player walking past (ui/batpreview.js)        // the live jelly its colours paint
   g === 'holoflash' ? h(FadeCurve, { key: 'fc' }) : null,
   ...CURVES.filter(c => c.g === g).map(c => h(CurveEdit, { key: c.p, p: c.p, label: c.label, lo: c.lo, hi: c.hi })),
   ...(g === 'elitefx' ? [h(FlamePreview, { key: 'fp' }), h('p', { key: 'gl', className: 'devlbl' }, 'Colour over life'), h(GradEditor, { key: 'ge' }),

@@ -1381,27 +1381,27 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     batBite: 0
   });
   DEV_META.push(
-    { k: "batRoosts", g: "bats", label: "Bat roosts: about this many a screen (under the roof, under boulders)", min: 0, max: 5, step: 0.1 },
-    { k: "batsPerRoost", g: "bats", label: "Bats per roost", min: 1, max: 40, step: 1 },
-    { k: "batSlotSpacing", g: "bats", label: "Roost: slot spacing along the rock (units)", min: 4, max: 20, step: 1 },
-    { k: "batTakeoff", g: "bats", label: "Take off on its own: chance a second", min: 0, max: 0.2, step: 5e-3 },
-    { k: "batFlightMin", g: "bats", label: "Flight time: shortest (s)", min: 1, max: 30, step: 0.5 },
-    { k: "batFlightMax", g: "bats", label: "Flight time: longest (s)", min: 1, max: 40, step: 0.5 },
-    { k: "batMaxSpeed", g: "bats", label: "Top speed", min: 40, max: 300, step: 5 },
-    { k: "batMaxForce", g: "bats", label: "Steering force: most", min: 50, max: 800, step: 10 },
-    { k: "batPerception", g: "bats", label: "Flock: sees others within", min: 10, max: 150, step: 1 },
-    { k: "batSepDist", g: "bats", label: "Flock: keeps apart within", min: 4, max: 60, step: 1 },
-    { k: "batSep", g: "bats", label: "Flock: separation", min: 0, max: 5, step: 0.05 },
-    { k: "batAli", g: "bats", label: "Flock: alignment", min: 0, max: 2, step: 0.01 },
-    { k: "batCoh", g: "bats", label: "Flock: cohesion", min: 0, max: 3, step: 0.05 },
-    { k: "batWander", g: "bats", label: "Wander jitter", min: 0, max: 3, step: 0.05 },
-    { k: "batZonePull", g: "bats", label: "Pull back inside the roost’s area", min: 0, max: 5, step: 0.1 },
-    { k: "batWallAvoid", g: "bats", label: "Steer away from rock ahead", min: 0, max: 8, step: 0.1 },
-    { k: "batScareR", g: "bats", label: "A player scares bats within", min: 10, max: 250, step: 5 },
-    { k: "batClearMult", g: "bats", label: "Calm again past (× the scare reach)", min: 1, max: 3, step: 0.05 },
-    { k: "batScare", g: "bats", label: "Players scare bats (1 on, 0 off)", min: 0, max: 1, step: 1 },
-    { k: "batDebug", g: "bats", label: "Debug draw: areas, reaches; scared red, returning blue (1 on)", min: 0, max: 1, step: 1 },
-    { k: "batBite", g: "bats", label: "Bat bite damage (0: harmless)", min: 0, max: 20, step: 0.5 }
+    { k: "batRoosts", g: "bats", label: "Bat roosts: about this many a screen (under the roof, under boulders)", step: 0.1 },
+    { k: "batsPerRoost", g: "bats", label: "Bats per roost", step: 1 },
+    { k: "batSlotSpacing", g: "bats", label: "Roost: slot spacing along the rock (units)", step: 1 },
+    { k: "batTakeoff", g: "bats", label: "Take off on its own: chance a second", step: 5e-3 },
+    { k: "batFlightMin", g: "bats", label: "Flight time: shortest (s)", step: 0.5 },
+    { k: "batFlightMax", g: "bats", label: "Flight time: longest (s)", step: 0.5 },
+    { k: "batMaxSpeed", g: "bats", label: "Top speed", step: 5 },
+    { k: "batMaxForce", g: "bats", label: "Steering force: most", step: 10 },
+    { k: "batPerception", g: "bats", label: "Flock: sees others within", step: 1 },
+    { k: "batSepDist", g: "bats", label: "Flock: keeps apart within", step: 1 },
+    { k: "batSep", g: "bats", label: "Flock: separation", step: 0.05 },
+    { k: "batAli", g: "bats", label: "Flock: alignment", step: 0.01 },
+    { k: "batCoh", g: "bats", label: "Flock: cohesion", step: 0.05 },
+    { k: "batWander", g: "bats", label: "Wander jitter", step: 0.05 },
+    { k: "batZonePull", g: "bats", label: "Pull back inside the roost’s area", step: 0.1 },
+    { k: "batWallAvoid", g: "bats", label: "Steer away from rock ahead", step: 0.1 },
+    { k: "batScareR", g: "bats", label: "A player scares bats within", step: 5 },
+    { k: "batClearMult", g: "bats", label: "Calm again past (× the scare reach)", step: 0.05 },
+    { k: "batScare", g: "bats", label: "Players scare bats (1 on, 0 off)", step: 1 },
+    { k: "batDebug", g: "bats", label: "Debug draw: areas, reaches; scared red, returning blue (1 on)", step: 1 },
+    { k: "batBite", g: "bats", label: "Bat bite damage (0: harmless)", step: 0.5 }
   );
   DEV_GROUPS.push(["bats", "Bats"]);
   Object.assign(DEV_DEFAULTS, { glowPerScreen: 2, glowStride: 8, glowDMin: 5, glowDMax: 13, glowLiftF: 0.6, glowLiftR: 0.4, glowCrank: 4.5, glowLen: 18, glowW: 3.4, glowFoot: 2, glowTurn: 0.1 });
@@ -7404,8 +7404,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (!b.placed) {
         let p = slotPos(b.ro, b.slot, solid);
         for (let k = 0; k < 20 && (isNaN(p.y) || solid(p.x, p.y + 0.5)); k++) p = slotPos(b.ro, b.slot = b.ro.n++, solid);
+        if (isNaN(p.y) || solid(p.x, p.y + 0.5)) {
+          b.placed = true;
+          b.gone = true;
+          continue;
+        }
         b.x = p.x;
-        b.y = isNaN(p.y) ? b.ro.y : p.y;
+        b.y = p.y;
         b.placed = true;
       }
       b.bite -= dt;
@@ -7546,6 +7551,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         onBite(pi, D.batBite);
       }
     }
+    if (B.list.some((b) => b.gone)) B.list = B.list.filter((b) => !b.gone);
   }
   function dropBats(B, x0) {
     if (!B.roosts.some((r) => r.x1 < x0)) return;
@@ -7612,6 +7618,37 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       c.fillRect(x + s * 0.4 - 0.25, y - 1.5, 0.5, 0.6);
       c.fillRect(x - s * 0.2 - 0.25, y - 1.5, 0.5, 0.6);
     }
+  }
+  var BAT_LAB_W = 180, BAT_LAB_H = 100;
+  function batLab() {
+    const roof = (x) => 12 + 5 * Math.sin(x * 0.07) + 3 * Math.sin(x * 0.19 + 1);
+    const floor = BAT_LAB_H - 10;
+    const boulder = (x, y) => Math.hypot((x - 132) / 16, (y - roof(132) - 8) / 10) < 1;
+    const solid = (x, y) => x < 0 || x >= BAT_LAB_W || y < roof(x) || y >= floor || boulder(x, y);
+    const L = { B: newBats(), solid, roof, floor, px: -20, dir: 1, wait: 2, key: "", t: 0 };
+    return L;
+  }
+  function batLabStep(L, dt, rnd2 = Math.random) {
+    L.t += dt;
+    const key = DEV.batsPerRoost + "," + DEV.batSlotSpacing;
+    if (key !== L.key) {
+      L.key = key;
+      L.B = newBats();
+      for (const x of [50, 132]) {
+        let y = Math.floor(L.roof(x));
+        while (L.solid(x, y + 0.5) && y < L.floor) y++;
+        addRoost(L.B, x, y, rnd2, L.floor - 6);
+      }
+    }
+    if (L.wait > 0) L.wait -= dt;
+    else {
+      L.px += L.dir * 32 * dt;
+      if (L.px > BAT_LAB_W + 20 || L.px < -20) {
+        L.dir = -L.dir;
+        L.wait = 1.5;
+      }
+    }
+    stepBats(L.B, dt, [{ x: L.px, y: L.floor - 6 }], L.solid, rnd2);
   }
 
   // src/creatures/glowworm.js
@@ -24682,6 +24719,49 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     );
   }
 
+  // src/ui/batpreview.js
+  function BatPreview() {
+    const ref = useRef(null);
+    useEffect(() => {
+      const c = ref.current;
+      if (!c || !c.getContext) return;
+      const ctx = c.getContext("2d");
+      const L = batLab();
+      let raf, last = performance.now();
+      const tick = (now) => {
+        raf = requestAnimationFrame(tick);
+        const dt = Math.min(0.05, (now - last) / 1e3);
+        last = now;
+        batLabStep(L, dt);
+        window.__batLabScared = L.px > 30 && L.px < 150 ? L.B.list.filter((b) => b.scared).length : 0;
+        const dpr = window.devicePixelRatio || 1, cw = Math.round(c.clientWidth * dpr), ch2 = Math.round(c.clientHeight * dpr);
+        if (!cw || !ch2) return;
+        if (c.width !== cw || c.height !== ch2) {
+          c.width = cw;
+          c.height = ch2;
+        }
+        const sc = Math.min(cw / BAT_LAB_W, ch2 / BAT_LAB_H);
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.fillStyle = "#0d0f14";
+        ctx.fillRect(0, 0, cw, ch2);
+        ctx.setTransform(sc, 0, 0, sc, (cw - BAT_LAB_W * sc) / 2, (ch2 - BAT_LAB_H * sc) / 2);
+        ctx.fillStyle = "#3a3a44";
+        for (let x = 0; x < BAT_LAB_W; x += 2) for (let y = 0; y < BAT_LAB_H; y += 2) if (L.solid(x + 1, y + 1)) ctx.fillRect(x, y, 2.05, 2.05);
+        const px = L.px, fy = L.floor;
+        ctx.fillStyle = "#d9d2c0";
+        ctx.fillRect(px - 2, fy - 9, 4, 5);
+        ctx.fillStyle = "#6a8fd0";
+        ctx.fillRect(px - 2, fy - 4, 4, 4);
+        ctx.fillStyle = "#20242c";
+        ctx.fillRect(px + (L.dir > 0 ? 0.5 : -1.5), fy - 8, 1, 1);
+        drawBats(ctx, L.B, 0, L.t, [{ x: px, y: fy - 6 }]);
+      };
+      raf = requestAnimationFrame(tick);
+      return () => cancelAnimationFrame(raf);
+    }, []);
+    return h("canvas", { ref, className: "jellyprev batprev" });
+  }
+
   // src/version.js
   var VERSION2 = "v2.0.6";
 
@@ -25705,7 +25785,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           return;
         }
       }
-      v = Math.max(meta.min, Math.min(meta.max, v));
+      if (meta.min != null) v = Math.max(meta.min, v);
+      if (meta.max != null) v = Math.min(meta.max, v);
       devSet(meta.k, v);
       setVal(String(v));
     };
@@ -25747,7 +25828,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   var groupExtras = (g) => [
     g === "jellycol" ? h(JellyPreview, { key: "jp" }) : null,
-    // the live jelly its colours paint
+    g === "bats" ? h(BatPreview, { key: "bp" }) : null,
+    // (C4) a cave of bats, a player walking past (ui/batpreview.js)        // the live jelly its colours paint
     g === "holoflash" ? h(FadeCurve, { key: "fc" }) : null,
     ...CURVES.filter((c) => c.g === g).map((c) => h(CurveEdit, { key: c.p, p: c.p, label: c.label, lo: c.lo, hi: c.hi })),
     ...g === "elitefx" ? [

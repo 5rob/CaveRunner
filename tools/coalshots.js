@@ -26,6 +26,29 @@ require('../tests/build')();
   await page.locator('.tstart').dispatchEvent('pointerdown');
   const save = async (n, what, clip) => { await page.screenshot({ path: path.join(OUT, PRE + '-' + n + '.png'), clip }); said.push(`${PRE}-${n}.png  ${what}`); };
   const zone = () => page.evaluate(() => { const S = window.__gremScene; return S ? titleZoneSpan(S.scroll + 110, S).z : '?'; });
+  // (C4) Dev → Grem → Bats: the live preview (a cave of bats, a player walking past); then the player under a roost, scaring it
+  if (ONLY === 'batdev') {
+    await page.waitForTimeout(600);
+    // (dev mode is on by default on the test page: the ⚙️ is there)
+    await page.locator('.grem .adevbtn').dispatchEvent('pointerdown');
+    await page.waitForTimeout(500);
+    await page.locator('.devtab[data-t="grem"]').click();
+    await page.waitForTimeout(300);
+    const gh = page.locator('.devghead[data-g="bats"]');
+    if ((await gh.getAttribute('aria-expanded')) !== 'true') await gh.click();
+    await gh.scrollIntoViewIfNeeded();
+    await page.evaluate(() => { const g = document.querySelector('.devghead[data-g="bats"]'); g.scrollIntoView({ block: 'start' }); });
+    await page.waitForTimeout(1500);
+    await save('f-dev', 'Dev → Grem → Bats: the live preview at the top of the group, the knobs (no min/max) below');
+    for (let i = 0; i < 100; i++) {
+      const hit = await page.evaluate(() => [...document.querySelectorAll('.batprev')].length > 0 && window.__batLabScared > 0);
+      if (hit) break;
+      await page.waitForTimeout(100);
+    }
+    const cb = await page.locator('.batprev').boundingBox();
+    await save('g-dev-scare', 'the preview a moment later: the player walking under a roost, its bats scared into flight', cb ? { x: cb.x, y: cb.y, width: cb.width, height: cb.height } : undefined);
+    await browser.close(); console.log(said.join(String.fromCharCode(10))); return;
+  }
   // (C1) a gas pocket on screen set off: the whoomph mid-flash, then just after, the fire round it (each also a close-up)
   for (let i = 0; ONLY !== 'stal' && ONLY !== 'ladder' && ONLY !== 'bats' && ONLY !== 'worm' && i < 400; i++) {
     const g = await page.evaluate(() => {

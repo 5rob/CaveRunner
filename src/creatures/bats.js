@@ -8,7 +8,7 @@
 import { DEV } from '../dev/knobs.js';
 
 /** @typedef {{ x: number, y: number, x0: number, x1: number, y0: number, y1: number, n: number, hy: (number | undefined)[] }} BatRoost */
-/** @typedef {{ x: number, y: number, vx: number, vy: number, ro: BatRoost, slot: number, st: 'roost' | 'fly' | 'return', t: number, scared: boolean, wa: number, ph: number, bite: number, placed: boolean }} Bat */
+/** @typedef {{ x: number, y: number, vx: number, vy: number, ro: BatRoost, slot: number, st: 'roost' | 'fly' | 'return', t: number, scared: boolean, wa: number, ph: number, bite: number, placed: boolean, gone?: boolean }} Bat */
 /** @typedef {{ roosts: BatRoost[], list: Bat[] }} Bats */
 /** @typedef {(x: number, y: number) => boolean} BatSolid */
 
@@ -78,7 +78,8 @@ export function stepBats(B, dt, preds, solid, rnd, onBite) {
     if (!b.placed) {
       let p = slotPos(b.ro, b.slot, solid);
       for (let k = 0; k < 20 && (isNaN(p.y) || solid(p.x, p.y + 0.5)); k++) p = slotPos(b.ro, b.slot = b.ro.n++, solid);
-      b.x = p.x; b.y = isNaN(p.y) ? b.ro.y : p.y; b.placed = true;
+      if (isNaN(p.y) || solid(p.x, p.y + 0.5)) { b.placed = true; b.gone = true; continue; }   // (no rock to hang from near: this one never was)
+      b.x = p.x; b.y = p.y; b.placed = true;
     }
     b.bite -= dt;
     // 1-2. the nearest player: inside scareR it scares; scared and past scareR × clearMult, it calms
@@ -151,6 +152,7 @@ export function stepBats(B, dt, preds, solid, rnd, onBite) {
     // a bite (harmless by default: DEV.batBite 0)
     if (onBite && D.batBite > 0 && pi >= 0 && d < 5 && b.bite <= 0) { b.bite = 1; onBite(pi, D.batBite); }
   }
+  if (B.list.some(b => b.gone)) B.list = B.list.filter(b => !b.gone);
 }
 
 // the roosts far behind the view, and their bats, dropped
@@ -199,4 +201,34 @@ export function drawBats(c, B, ox, t, preds) {
     c.beginPath(); c.ellipse(x, y + 0.2, 1, 1.3, 0, 0, 6.29); c.fill();
     c.fillRect(x + s * 0.4 - 0.25, y - 1.5, 0.5, 0.6); c.fillRect(x - s * 0.2 - 0.25, y - 1.5, 0.5, 0.6);   // (ears)
   }
+}
+
+// ---- the Dev preview's cave (ui/batpreview.js; the owner: "a cave of bats with a player walking past periodically") ----
+// A small room WU across with a bumpy roof, a boulder hanging off it, and a floor; two roosts under the roof; a player walking
+// across and back every few seconds. Rebuilt when a knob that shapes the roosts changes; every other knob is read live.
+export const BAT_LAB_W = 180, BAT_LAB_H = 100;
+/** @typedef {{ B: Bats, solid: BatSolid, roof: (x: number) => number, floor: number, px: number, dir: number, wait: number, key: string, t: number }} BatLab */
+/** @returns {BatLab} */
+export function batLab() {
+  const roof = (/** @type {number} */ x) => 12 + 5 * Math.sin(x * 0.07) + 3 * Math.sin(x * 0.19 + 1);
+  const floor = BAT_LAB_H - 10;
+  const boulder = (/** @type {number} */ x, /** @type {number} */ y) => Math.hypot((x - 132) / 16, (y - roof(132) - 8) / 10) < 1;
+  /** @type {BatSolid} */
+  const solid = (x, y) => x < 0 || x >= BAT_LAB_W || y < roof(x) || y >= floor || boulder(x, y);
+  /** @type {BatLab} */
+  const L = { B: newBats(), solid, roof, floor, px: -20, dir: 1, wait: 2, key: '', t: 0 };
+  return L;
+}
+/** @param {BatLab} L @param {number} dt @param {() => number} [rnd] */
+export function batLabStep(L, dt, rnd = Math.random) {
+  L.t += dt;
+  const key = DEV.batsPerRoost + ',' + DEV.batSlotSpacing;
+  if (key !== L.key) {   // (the roosts' own knobs changed: hung afresh)
+    L.key = key; L.B = newBats();
+    for (const x of [50, 132]) { let y = Math.floor(L.roof(x)); while (L.solid(x, y + 0.5) && y < L.floor) y++; addRoost(L.B, x, y, rnd, L.floor - 6); }
+  }
+  // the player: waits off one side, walks across, waits off the other, walks back
+  if (L.wait > 0) L.wait -= dt;
+  else { L.px += L.dir * 32 * dt; if (L.px > BAT_LAB_W + 20 || L.px < -20) { L.dir = -L.dir; L.wait = 1.5; } }
+  stepBats(L.B, dt, [{ x: L.px, y: L.floor - 6 }], L.solid, rnd);
 }

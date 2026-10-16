@@ -80,5 +80,23 @@ check('in the level: a player under a roost scares its bats', mine.some(b => b.s
 check('… flying bats never inside rock', bad === 0, bad);
 check('… bite 0 (the default): nobody hurt', D.batBite === 0 && hurt === 0, hurt);
 
+// (owner) the Bats knobs have no min / max: a typed value past the old ranges stands (ui/devpanel.js DevRow clamps only rows that have them)
+const DP = require('fs').readFileSync(require('path').join(__dirname, '../../src/ui/devpanel.js'), 'utf8');
+const rows = G.DEV_META.filter(m => m.g === 'bats');
+check('Bats knobs: no min or max on any row', rows.length >= 20 && rows.every(m => m.min == null && m.max == null), rows.filter(m => m.min != null || m.max != null).map(m => m.k));
+check('… DevRow clamps only when a row has them', DP.includes('if (meta.min != null)') && DP.includes('if (meta.max != null)'));
+// the Dev preview's cave (batLab): steps without errors, the walking player scares a roost, past-range knobs too
+{
+  const Lb = G.batLab(); let err = null, flew = 0, inR = 0;
+  try { for (let i = 0; i < 60 * 12; i++) { G.batLabStep(Lb, 1 / 60, rnd); if (Lb.B.list.some(b => b.st === 'fly' && b.scared)) flew++; for (const b of Lb.B.list) if (b.st !== 'roost' && Lb.solid(b.x, b.y)) inR++; } } catch (e) { err = e.message; }
+  check('Dev preview: steps without errors, two roosts', !err && Lb.B.roosts.length === 2, err || Lb.B.roosts.length);
+  check('… the walking player scares them', flew > 0, flew);
+  check('… no bat inside its rock', inR === 0, inR);
+  const keep = { ...D }, n0 = Lb.B.list.length; D.batsPerRoost = 60; D.batMaxSpeed = 600; D.batScareR = 400;
+  try { for (let i = 0; i < 120; i++) G.batLabStep(Lb, 1 / 60, rnd); } catch (e) { err = e.message; }
+  check('… knobs past the old ranges: rebuilt (60 a roost: more, as many as the rock holds) and stepping', !err && Lb.B.list.length > n0 && Lb.B.list.every(b => isFinite(b.x) && isFinite(b.y)), err || Lb.B.list.length);
+  Object.assign(D, keep);
+}
+
 console.log(fails ? `\n${fails} FAILED` : '\nall ok');
 process.exit(fails ? 1 : 0);
