@@ -6,7 +6,7 @@ Names are as they were at the time (before the refactor Game's state had loose n
 `W.mat`, and so on). Versions before v39: `git log`.
 
 ## v1.0.97 — CaveRunner Auto: the old game's themed floors as levels 2+ (branch `autobattler`)
-Built 2026-10-16; screenshots sent (`node tools/floorshots.js`), **waiting on the owner's OK before the push**.
+Released 2026-10-16 on the branch; owner OK'd the screenshots (`node tools/floorshots.js`).
 - Level 1 is unchanged (checked: the same run, frame for frame, with the randomness pinned). From level 2 the levels cycle the old game's floors 2..12 as they were before main's custom Level 2 (the Tombs): Coal Seams, Frozen Deep, Ember Halls, Fungal Grotto, Salt Flats, Amethyst Vein, Rustworks, Bone Garden, Drowned Halls, Ash Wastes, Void Hollow, then round again from Coal Seams (`auto/maps.js levelFloor`, by the active map's level; a wipe still sends it back to level 1).
 - Each brings its palette (`THEMES`, the scene's `S.theme`, `game/render/titledraw.js`), its ambience, and its creatures: the old `ROSTERS` (floors 2-10 fixed, 11-12 rolled off the level's seed), each as likely, jellyfish only in the natural zones, as the old makeLevel (`S.roster`, `titleKind`); the elites and the boss come off the roster too. The top left names the floor (was the map's name).
 - The old classic creatures work in Auto's level (`titlescene.js classicAct`, ported from `game/creatures/classic.js`): shooters (Hiisi, Tappurahiisi, Chaingunner) patrol and fire balls, turrets (Snipuhiisi, Kärpässieni, Jäätiö, Elävät luut) hold station and fire (wind-up first where they had one), chasers (Lohkare, Mato, Hurtta, Kobold, Konna) hunt and bite, bombers (Limanuljaska, Stendari: fire) burst on contact. Their sounds as the old game's (fuse, charge).
