@@ -3036,8 +3036,8 @@ export function camTap(C, S, x, y, reach) {
 
 // The big title: CAVE over RUNNER in the game's blocky pixel font, each letter bobbing on its own
 // beat, a deep 3D extrusion, a hot gradient face, a glow, and a shine sweeping across now and then.
-/** @param {CanvasRenderingContext2D} ctx @param {number} t seconds @param {number} cw css width @param {number} top css y of the title's top */
-export function titleText(ctx, t, cw, top) {
+/** @param {CanvasRenderingContext2D} ctx @param {number} t seconds @param {number} cw css width @param {number} top css y of the title's top @param {number} [tagY] */
+export function titleText(ctx, t, cw, top, tagY) {
   const lines = ['CAVE', 'RUNNER'];
   const px = titlePx(cw), ph = px;
   let y = top + 7 * ph;
@@ -3055,8 +3055,8 @@ export function titleText(ctx, t, cw, top) {
     });
     y += 7 * ph + Math.ceil(px * 2.2);
   });
-  // the tagline under it
-  const ty = titleBottom(cw, top) - 4;
+  // the tagline under it (tagY: lower, under the Grem lines, art/gremtitle.js)
+  const ty = tagY === undefined ? titleBottom(cw, top) - 4 : tagY;
   ctx.font = '800 12px ui-monospace,SFMono-Regular,Menlo,monospace';
   ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
   if ('letterSpacing' in ctx) ctx.letterSpacing = '4px';
@@ -3089,9 +3089,12 @@ export function titleLetter(ctx, c, cx, cy, px, sh, red = false) {
 }
 // the title's pixel size, and where it and its tagline end (css px), for a screen cw wide
 /** @param {number} cw */
-const titlePx = cw => Math.max(4, Math.floor(Math.min(cw * 0.92 / pixWidth('RUNNER', 1, 1), 15)));
+export const titlePx = cw => Math.max(4, Math.floor(Math.min(cw * 0.92 / pixWidth('RUNNER', 1, 1), 15)));
 /** @param {number} cw css width @param {number} top the title's top @returns {number} */
 export const titleBottom = (cw, top) => top + titlePx(cw) * 16 + Math.ceil(titlePx(cw) * 2.2) + 20;
+// RUNNER's left edge (css px): the Grem lines' AUTO lines up under it
+/** @param {number} cw */
+export const titleLeft = cw => (cw - pixWidth('RUNNER', titlePx(cw), 1)) / 2;
 
 // ---- kept for the test suites (grem branch: the game no longer calls these; the suites set up with them) ----
 export const titleOrbSettle = orbSettle;   // (the orbweb suite)

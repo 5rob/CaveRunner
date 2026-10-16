@@ -14464,7 +14464,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (C.lock >= 0 && C.z < TITLE_ZLOCK * 0.8) C.zt = TITLE_ZLOCK;
     return best;
   }
-  function titleText(ctx, t, cw, top) {
+  function titleText(ctx, t, cw, top, tagY) {
     const lines = ["CAVE", "RUNNER"];
     const px = titlePx(cw), ph = px;
     let y = top + 7 * ph;
@@ -14481,7 +14481,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       });
       y += 7 * ph + Math.ceil(px * 2.2);
     });
-    const ty = titleBottom(cw, top) - 4;
+    const ty = tagY === void 0 ? titleBottom(cw, top) - 4 : tagY;
     ctx.font = "800 12px ui-monospace,SFMono-Regular,Menlo,monospace";
     ctx.textAlign = "center";
     ctx.textBaseline = "alphabetic";
@@ -14527,8 +14527,210 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   var titlePx = (cw) => Math.max(4, Math.floor(Math.min(cw * 0.92 / pixWidth("RUNNER", 1, 1), 15)));
   var titleBottom = (cw, top) => top + titlePx(cw) * 16 + Math.ceil(titlePx(cw) * 2.2) + 20;
+  var titleLeft = (cw) => (cw - pixWidth("RUNNER", titlePx(cw), 1)) / 2;
   var titleOrbSettle = orbSettle;
   var titleKill = (S, f) => killFoe(S, f);
+
+  // src/art/gremtitle.js
+  var GREM_SLANT = -8 * Math.PI / 180;
+  var WORD = "GREM MODE";
+  var AUTO = "AUTO";
+  var DRIP_RATE = 10;
+  var SPORE_RATE = 9;
+  var DRIP_MAX = 60, SPORE_MAX = 110;
+  var DRIP_FALL = 0.6;
+  var gremTitleNew = () => ({ drips: [], spores: [], t: -1, dripAcc: 0, sporeAcc: 0 });
+  function gremLayout(cw, px) {
+    const apx = Math.max(3, Math.round(px * 0.5)), th = 9 * apx;
+    const gpx = Math.max(3, Math.floor(Math.min(cw * 0.86 / pixWidth(WORD, 1, 0), px * 0.85)));
+    const gw = pixWidth(WORD, gpx, 0), rise = Math.abs(Math.sin(GREM_SLANT)) * gw;
+    const cy = th + 6 * gpx + rise * 0.15;
+    return { apx, th, gpx, gw, cy, h: cy + rise / 2 + 2 * gpx };
+  }
+  var hash = (n) => {
+    const s = Math.sin(n * 127.1 + 311.7) * 43758.5453;
+    return s - Math.floor(s);
+  };
+  function gremTitleDraw(ctx, G, t, cw, y0, left, px) {
+    const L = gremLayout(cw, px);
+    const dt = G.t < 0 ? 0 : Math.max(0, Math.min(0.05, t - G.t));
+    G.t = t;
+    const P2 = jellyPal(0.5);
+    const cx = cw / 2, cy = y0 + L.cy, cs = Math.cos(GREM_SLANT), sn = Math.sin(GREM_SLANT);
+    const at = (u2, v) => ({ x: cx + u2 * cs - v * sn, y: cy + u2 * sn + v * cs });
+    const spans = [];
+    let u = -L.gw / 2;
+    for (const ch2 of WORD) {
+      const w = pixWidth(ch2, L.gpx, 0);
+      if (ch2 !== " ") spans.push({ ch: ch2, u, w });
+      u += w + L.gpx;
+    }
+    const pulse = 0.75 + 0.25 * Math.sin(t * 2.2);
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    ctx.translate(cx, cy - 3 * L.gpx);
+    ctx.rotate(GREM_SLANT);
+    const ry = L.gpx * 11 * (0.92 + 0.08 * pulse);
+    ctx.scale(L.gw * 0.62 / ry, 1);
+    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, ry);
+    g.addColorStop(0, "rgba(150,255,150," + (0.34 * pulse).toFixed(3) + ")");
+    g.addColorStop(0.5, "rgba(90,230,110," + (0.14 * pulse).toFixed(3) + ")");
+    g.addColorStop(1, "rgba(60,200,90,0)");
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(0, 0, ry, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    for (G.sporeAcc += SPORE_RATE * dt; G.sporeAcc >= 1; G.sporeAcc--) {
+      if (G.spores.length >= SPORE_MAX) break;
+      const p = at((Math.random() - 0.5) * L.gw * 1.15, (Math.random() - 0.7) * L.gpx * 14), life = 3 + Math.random() * 3;
+      G.spores.push({ x: p.x, y: p.y, vx: (Math.random() - 0.5) * 10, vy: -4 - Math.random() * 9, r: 1 + Math.random() * 1.3, life, max: life, wob: Math.random() * 9 });
+    }
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    for (let i = G.spores.length - 1; i >= 0; i--) {
+      const s = G.spores[i];
+      s.life -= dt;
+      if (s.life <= 0) {
+        G.spores.splice(i, 1);
+        continue;
+      }
+      s.x += (s.vx + Math.sin(t * 1.7 + s.wob) * 4) * dt;
+      s.y += s.vy * dt;
+      const a = Math.sin(Math.PI * s.life / s.max);
+      const gr = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, s.r * 4);
+      gr.addColorStop(0, "rgba(200,255,170," + (0.9 * a).toFixed(3) + ")");
+      gr.addColorStop(0.3, "rgba(110,255,90," + (0.45 * a).toFixed(3) + ")");
+      gr.addColorStop(1, "rgba(110,255,90,0)");
+      ctx.fillStyle = gr;
+      ctx.fillRect(s.x - s.r * 4, s.y - s.r * 4, s.r * 8, s.r * 8);
+    }
+    ctx.restore();
+    for (G.dripAcc += DRIP_RATE * dt; G.dripAcc >= 1; G.dripAcc--) {
+      if (G.drips.length >= DRIP_MAX || !spans.length) break;
+      const sp = spans[Math.floor(Math.random() * spans.length)];
+      const p = at(sp.u + L.gpx * 0.5 + Math.random() * (sp.w - L.gpx), -L.gpx * 0.6);
+      const r0 = L.gpx * (0.45 + Math.random() * 0.4);
+      G.drips.push({ x: p.x, y: p.y, vy: 0, r: 0, r0, hang: 0.4 + Math.random() * 0.8, age: 0, c: Math.random() < 0.35 ? P2.drip2 : P2.drip });
+    }
+    for (let i = G.drips.length - 1; i >= 0; i--) {
+      const d = G.drips[i];
+      d.age += dt;
+      if (d.age < d.hang) d.r = d.r0 * Math.min(1, d.age / d.hang * 1.3);
+      else {
+        d.vy += 520 * dt;
+        d.y += d.vy * dt;
+      }
+      if (d.age > d.hang + DRIP_FALL) {
+        G.drips.splice(i, 1);
+        continue;
+      }
+      const fade = Math.min(1, (d.hang + DRIP_FALL - d.age) / 0.3), st = 1 + Math.min(1.2, d.vy / 260);
+      ctx.save();
+      ctx.globalAlpha = fade;
+      ctx.translate(d.x, d.y);
+      ctx.fillStyle = P2.spitEdge;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, d.r * 1.25 / Math.sqrt(st), d.r * 1.25 * st, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = d.c;
+      ctx.beginPath();
+      ctx.ellipse(0, -d.r * 0.08, d.r / Math.sqrt(st), d.r * st, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = P2.spitShine;
+      ctx.beginPath();
+      ctx.arc(d.r * 0.3, -d.r * 0.3 * st, d.r * 0.3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+    spans.forEach((sp, i) => {
+      const ph = ((t * 0.8 - i * 0.07) % 1 + 1) % 1, amp = ph < 0.25 ? Math.sin(ph / 0.25 * Math.PI) : 0, k = 1 + 0.2 * amp;
+      const m = at(sp.u + sp.w / 2, -3.5 * L.gpx);
+      ctx.save();
+      ctx.translate(m.x, m.y);
+      ctx.rotate(GREM_SLANT);
+      ctx.scale(k, k);
+      const x = -sp.w / 2, y = 3.5 * L.gpx, gp = L.gpx;
+      for (let e = Math.ceil(gp * 0.9); e > 0; e--) {
+        ctx.fillStyle = e > gp * 0.45 ? "#04200b" : "#0b4a1a";
+        pixText(ctx, sp.ch, x + e * 0.5, y + e, gp, gp, 0, 8);
+      }
+      const fg = ctx.createLinearGradient(0, y - 7 * gp, 0, y);
+      fg.addColorStop(0, "#f2ffd8");
+      fg.addColorStop(0.35, "#9dff5c");
+      fg.addColorStop(0.7, "#36dc4c");
+      fg.addColorStop(1, "#0f9a2e");
+      ctx.shadowColor = "rgba(90,255,110," + (0.7 + 0.3 * amp).toFixed(2) + ")";
+      ctx.shadowBlur = gp * (2 + 2 * amp);
+      ctx.fillStyle = fg;
+      pixText(ctx, sp.ch, x, y, gp, gp, 0, 8);
+      ctx.restore();
+    });
+    const cyc = Math.floor(t / 2.6), start = cyc * 2.6 + hash(cyc) * 2, glitch = t >= start && t < start + 0.18 + hash(cyc + 0.5) * 0.2;
+    const f = Math.floor(t * 30);
+    const drawAuto = (dx) => {
+      let x = left + dx;
+      [...AUTO].forEach((ch2, i) => {
+        const w = pixWidth(ch2, L.apx, 1) + 2 * L.apx, h3 = L.th, jx = glitch && hash(f * 4 + i) < 0.3 ? (hash(f * 9 + i) - 0.5) * L.apx * 4 : 0;
+        const dark = glitch && hash(f * 13 + i) < 0.15;
+        const bx = x + jx, by = y0, rr2 = L.apx * 0.8;
+        const sg = ctx.createLinearGradient(0, by, 0, by + h3);
+        if (dark) {
+          sg.addColorStop(0, "#2a2e34");
+          sg.addColorStop(1, "#0c0d10");
+        } else {
+          sg.addColorStop(0, "#f6f8fa");
+          sg.addColorStop(0.45, "#c6ccd3");
+          sg.addColorStop(0.55, "#aab2bc");
+          sg.addColorStop(1, "#7e8792");
+        }
+        ctx.fillStyle = "#3c424a";
+        ctx.beginPath();
+        ctx.roundRect(bx, by + L.apx * 0.5, w, h3, rr2);
+        ctx.fill();
+        ctx.fillStyle = sg;
+        ctx.beginPath();
+        ctx.roundRect(bx, by, w, h3, rr2);
+        ctx.fill();
+        ctx.fillStyle = dark ? "#d8dde3" : "#0b0c10";
+        pixText(ctx, ch2, bx + L.apx, by + 8 * L.apx, L.apx, L.apx, 1, 8);
+        x += w + L.apx;
+      });
+    };
+    if (!glitch) {
+      drawAuto(0);
+      return;
+    }
+    ctx.save();
+    ctx.globalAlpha = 0.55;
+    ctx.globalCompositeOperation = "lighter";
+    const ghosts = [[-L.apx * 0.8, "rgba(255,40,60,1)"], [L.apx * 0.8, "rgba(40,230,255,1)"]];
+    for (const [off, col] of ghosts) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, y0 - L.apx, cw, L.th + 2 * L.apx);
+      ctx.clip();
+      ctx.fillStyle = col;
+      let x = left + off;
+      for (const ch2 of AUTO) {
+        const w = pixWidth(ch2, L.apx, 1) + 2 * L.apx;
+        ctx.fillRect(x, y0, w, L.th);
+        x += w + L.apx;
+      }
+      ctx.restore();
+    }
+    ctx.restore();
+    const n = 3 + Math.floor(hash(f) * 3);
+    for (let s = 0; s < n; s++) {
+      const a = y0 + L.th * s / n, b = y0 + L.th * (s + 1) / n + (s === n - 1 ? L.apx : 0);
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, a, cw, b - a);
+      ctx.clip();
+      drawAuto(hash(f * 7 + s) < 0.5 ? (hash(f * 3 + s) - 0.5) * L.apx * 6 : 0);
+      ctx.restore();
+    }
+  }
 
   // src/art/cleared.js
   var CLEARED_LINES = ["LEVEL", "CLEARED"];
@@ -14546,7 +14748,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const b = u < 0.55 ? (u / 0.55) ** 2 : u < 0.82 ? 1 - 0.18 * Math.sin(Math.PI * (u - 0.55) / 0.27) : 1 - 0.05 * Math.sin(Math.PI * (u - 0.82) / 0.18);
     return 1 - b;
   }
-  var hash = (n) => {
+  var hash2 = (n) => {
     const v = Math.sin(n * 127.1 + 311.7) * 43758.5453;
     return v - Math.floor(v);
   };
@@ -14583,7 +14785,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     for (const L of lands) {
       const k = L.t / SPARK_T;
       for (let j = 0; j < 12; j++) {
-        const h1 = hash(L.n * 31 + j), h23 = hash(L.n * 57 + j * 3 + 1);
+        const h1 = hash2(L.n * 31 + j), h23 = hash2(L.n * 57 + j * 3 + 1);
         const ang = Math.PI + h1 * Math.PI, sp = px * (5 + h23 * 9);
         const sx = L.x + Math.cos(ang) * sp * L.t * 2.2, sy = L.y + Math.sin(ang) * sp * L.t * 2.2 + px * 30 * L.t * L.t;
         const r = Math.max(1, px * 0.35 * (1 - k));
@@ -15406,7 +15608,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
 
   // src/game/render/guide.js
-  var hash2 = (n) => {
+  var hash3 = (n) => {
     const v = Math.sin(n * 12.9898 + 4.1414) * 43758.5453;
     return v - Math.floor(v);
   };
@@ -15420,11 +15622,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         const dy = Math.abs(y - b);
         if (dy < 2.5) {
           lift = Math.max(lift, 1 - dy / 2.5);
-          shift += Math.round((hash2(fr + y) - 0.5) * 3);
+          shift += Math.round((hash3(fr + y) - 0.5) * 3);
         }
       }
-      if (gl > 0 && hash2(fr * 3 + Math.floor(y / 3)) < gl * 0.6) shift += Math.round((hash2(fr * 7 + y) - 0.5) * 14 * gl);
-      const drop = gl > 0 && hash2(fr * 5 + y * 3) < gl * 0.25;
+      if (gl > 0 && hash3(fr * 3 + Math.floor(y / 3)) < gl * 0.6) shift += Math.round((hash3(fr * 7 + y) - 0.5) * 14 * gl);
+      const drop = gl > 0 && hash3(fr * 5 + y * 3) < gl * 0.25;
       const thin = (y + scan) % 2 ? 0.75 : 1;
       for (let xx = 0; xx < cw; xx++) {
         const sx = xx - shift;
@@ -15439,7 +15641,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
     }
     if (gl > 0.3) {
-      const k = Math.round((hash2(fr + 77) - 0.5) * 6 * gl);
+      const k = Math.round((hash3(fr + 77) - 0.5) * 6 * gl);
       for (let y = 0; y < ch2; y++) for (let xx = 0; xx < cw; xx++) {
         const sx = xx - k, j = (y * cw + xx) * 4;
         if (sx < 0 || sx >= cw || o[j + 3]) continue;
@@ -19914,7 +20116,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var LOOT_TILE = 13;
   var T = THEMES[0];
   var CACHE = /* @__PURE__ */ new WeakMap();
-  var hash3 = (c, r) => {
+  var hash4 = (c, r) => {
     const s = Math.sin(c * 12.9898 + r * 78.233) * 43758.5453;
     return s - Math.floor(s);
   };
@@ -19922,18 +20124,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var TIMBER = [112, 80, 50];
   var fbm2 = (x, y) => titleNoise(x, y) * 0.65 + titleNoise(x * 2.1 + 17, y * 2.1 + 5) * 0.35;
   function cellRGB(m, c, r, up) {
-    const h3 = hash3(c, r), j = (h3 - 0.5) * 10;
+    const h3 = hash4(c, r), j = (h3 - 0.5) * 10;
     const J = (q) => [q[0] + j, q[1] + j, q[2] + j];
     if (m === TM.ROCK) return J(up ? mixc(T.moss[0], T.moss[1], h3) : mixc(T.rock[0], T.rock[1], fbm2(c / 6 + 100, r / 6 + 100)));
     if (m === TM.MOSS) return J(mixc(T.moss[0], T.moss[1], h3));
     if (m === TM.BRICK) {
       const k = c + r % 2 * 3;
       if (k % 6 === 0) return J(T.mortar);
-      const q = mixc(T.brick[0], T.brick[1], hash3(Math.floor(k / 6), r));
+      const q = mixc(T.brick[0], T.brick[1], hash4(Math.floor(k / 6), r));
       return J(up ? q.map((v) => v * 1.18) : q);
     }
     if (m === TM.GRASS || m === TM.RUBM) return mixc(T.moss[1], T.moss[1], 0, 0.9 + h3 * 0.25);
-    if (m === TM.RUB) return J(h3 < 0.2 ? T.mortar : mixc(T.brick[0], T.brick[1], hash3(c * 3, r * 5)));
+    if (m === TM.RUB) return J(h3 < 0.2 ? T.mortar : mixc(T.brick[0], T.brick[1], hash4(c * 3, r * 5)));
     if (m === TM.BEAM || m === TM.WOOD) return J(mixc(TIMBER, TIMBER, 0, 0.95));
     if (m === TM.BEAMD) return J(mixc(TIMBER, TIMBER, 0, 0.7));
     if (m === TM.CHAR) return mixc([30, 26, 26], [52, 44, 40], h3);
@@ -19949,7 +20151,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (m === TM.STEEL) return c % 8 === 0 || r % 6 === 0 ? [34, 38, 46] : c % 8 === 1 && r % 6 === 1 ? [96, 104, 118] : mixc([62, 68, 80], [74, 80, 92], h3);
     if (m === TM.BWALL) {
       const k = c + r % 2 * 3;
-      return k % 6 === 0 || r % 3 === 0 ? [22, 20, 22] : mixc(T.brick[0], T.brick[1], hash3(Math.floor(k / 6), r), 0.5);
+      return k % 6 === 0 || r % 3 === 0 ? [22, 20, 22] : mixc(T.brick[0], T.brick[1], hash4(Math.floor(k / 6), r), 0.5);
     }
     if (m === TM.SWALL) return c % 10 === 0 ? [20, 23, 28] : r % 14 === 0 ? [58, 64, 76] : mixc([36, 40, 48], [42, 46, 54], h3);
     const bx = c / 4, by = r / 4, t = Math.pow(fbm2(bx / 10 + 300, by / 10 + 300), 1.6);
@@ -19976,7 +20178,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     for (let i = 1; i < S.looks.length; i++) {
       const b = S.looks[i];
       if (Math.abs(wx - b.x0) > reach2) continue;
-      const u = (wx - b.x0) / W + (fbm2(c / 14 + 50, r / 14 + 90) - 0.5) * J + (hash3(c, r) - 0.5) * 0.12;
+      const u = (wx - b.x0) / W + (fbm2(c / 14 + 50, r / 14 + 90) - 0.5) * J + (hash4(c, r) - 0.5) * 0.12;
       const t = Math.max(0, Math.min(1, u + 0.5)), s = t * t * (3 - 2 * t);
       return blendTheme(S.looks[i - 1].theme, b.theme, s);
     }
@@ -23041,26 +23243,26 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
 
   // src/game/render/firelabdraw.js
-  var hash4 = (a, b) => {
+  var hash5 = (a, b) => {
     const v = Math.sin(a * 127.1 + b * 311.7) * 43758.5453;
     return v - Math.floor(v);
   };
   function labBack(ctx, S) {
     const y0 = LAB_ROOF, y1 = S.vh - LAB_FLOOR, x0 = Math.floor(S.scroll), sx = S.scroll;
     for (let px = Math.floor(x0 / 40) * 40; px < x0 + TITLE_VW + 40; px += 40) {
-      const h3 = hash4(px, 1), g = 52 + Math.round(h3 * 10);
+      const h3 = hash5(px, 1), g = 52 + Math.round(h3 * 10);
       ctx.fillStyle = `rgb(${g},${g - 3},${g - 8})`;
       ctx.fillRect(px - sx, y0, 40, y1 - y0);
       ctx.fillStyle = "rgba(0,0,0,0.35)";
       ctx.fillRect(px - sx, y0, 1, y1 - y0);
       ctx.fillRect(px - sx, y0 + (y1 - y0) * 0.5, 40, 1);
       for (let i = 0; i < 6; i++) {
-        const bx = px + Math.floor(hash4(px, i + 3) * 38), by2 = y0 + Math.floor(hash4(px + i, 7) * (y1 - y0 - 4)), d = hash4(i, px) < 0.6;
+        const bx = px + Math.floor(hash5(px, i + 3) * 38), by2 = y0 + Math.floor(hash5(px + i, 7) * (y1 - y0 - 4)), d = hash5(i, px) < 0.6;
         ctx.fillStyle = d ? "rgba(20,16,12,0.25)" : "rgba(255,240,220,0.06)";
-        ctx.fillRect(bx - sx, by2, 2 + Math.floor(hash4(bx, by2) * 4), 1 + Math.floor(hash4(by2, bx) * 3));
+        ctx.fillRect(bx - sx, by2, 2 + Math.floor(hash5(bx, by2) * 4), 1 + Math.floor(hash5(by2, bx) * 3));
       }
-      if (hash4(px, 9) < 0.35) {
-        const cx = px + 10 + hash4(px, 10) * 20, cy = y1 - 8 - hash4(px, 11) * 20;
+      if (hash5(px, 9) < 0.35) {
+        const cx = px + 10 + hash5(px, 10) * 20, cy = y1 - 8 - hash5(px, 11) * 20;
         for (let r = 9; r > 0; r -= 2) {
           ctx.fillStyle = `rgba(10,8,6,${0.06 + (9 - r) * 0.025})`;
           ctx.fillRect(cx - r - sx, cy - r * 0.8, r * 2, r * 1.6);
@@ -23069,7 +23271,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     const bh = 4, by = y1 - 7;
     for (let x = Math.floor(x0 / 4) * 4; x < x0 + TITLE_VW + 4; x += 4) {
-      const worn = hash4(x, 21) < 0.25;
+      const worn = hash5(x, 21) < 0.25;
       ctx.fillStyle = x / 4 % 2 ? worn ? "rgba(40,36,30,0.6)" : "rgba(30,26,22,0.85)" : worn ? "rgba(150,120,40,0.35)" : "rgba(190,150,40,0.6)";
       ctx.fillRect(x - sx, by, 4, bh);
     }
@@ -23086,7 +23288,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         ctx.stroke();
       }
       ctx.fillStyle = "rgba(15,10,8,0.7)";
-      for (let i = 0; i < 7; i++) ctx.fillRect(tx - 7 + hash4(tx, i) * 14 - sx, cy - 9 + hash4(i, tx) * 18, 1, 1);
+      for (let i = 0; i < 7; i++) ctx.fillRect(tx - 7 + hash5(tx, i) * 14 - sx, cy - 9 + hash5(i, tx) * 18, 1, 1);
     }
     for (const { kind, x0: x02 } of LAB_SPOTS) {
       if (x02 + LAB_SPOT < sx - 10 || x02 > sx + TITLE_VW + 10) continue;
@@ -24846,6 +25048,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 
   // src/ui/title.js
   var TOP = (hh2) => Math.max(28, hh2 * 0.05);
+  var GREM_TOP = (w, hh2) => titleBottom(w, TOP(hh2)) - 18;
+  var BOTTOM = (w, hh2) => GREM_TOP(w, hh2) + gremLayout(w, titlePx(w)).h + 24;
   function Title({ onStart }) {
     const cvs = useRef(null);
     const menu = useRef(null);
@@ -24853,14 +25057,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     useEffect(() => {
       const c = cvs.current;
       if (!c) return void 0;
+      const GT = gremTitleNew();
       return runScene(c, {
         size: () => ({ w: window.innerWidth, hh: window.innerHeight }),
         make: (w, hh2, seed) => {
           const k = w / TITLE_VW, mt = menu.current ? menu.current.getBoundingClientRect().top : hh2 * 0.6;
-          const S = titleScene(hh2 / k, seed, (titleBottom(w, TOP(hh2)) + 14) / k, (mt - 10) / k);
+          const S = titleScene(hh2 / k, seed, (BOTTOM(w, hh2) + 14) / k, (mt - 10) / k);
           return { S, C: titleCam((S.top + S.bot) / 2, S.bot + 10 / k) };
         },
-        over: (ctx, S, w, hh2) => titleText(ctx, S.t, w, TOP(hh2))
+        over: (ctx, S, w, hh2) => {
+          titleText(ctx, S.t, w, TOP(hh2), BOTTOM(w, hh2) - 4);
+          gremTitleDraw(ctx, GT, S.t, w, GREM_TOP(w, hh2), titleLeft(w), titlePx(w));
+        }
       });
     }, []);
     const start = () => {

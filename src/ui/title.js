@@ -9,7 +9,8 @@
 // Its sound (v0.0.174): everything on screen with the game's own sounds (ui/titlesound.js).
 
 import { SFX } from '../audio/sfx.js';
-import { TITLE_VW, titleBottom, titleCam, titleScene, titleText } from '../art/titlescene.js';
+import { TITLE_VW, titleBottom, titleCam, titleLeft, titlePx, titleScene, titleText } from '../art/titlescene.js';
+import { gremLayout, gremTitleDraw, gremTitleNew } from '../art/gremtitle.js';
 import { GremScreen } from './auto/GremScreen.js';
 import { runScene } from './scenecanvas.js';
 import { Volumes } from './volume.js';
@@ -18,6 +19,11 @@ import { h, useEffect, useRef, useState } from './h.js';
 // the title's top (css px)
 /** @param {number} hh the screen's height */
 const TOP = hh => Math.max(28, hh * 0.05);
+// (grem branch v2.0.0) the Grem lines (AUTO, GREM MODE: art/gremtitle.js) sit where the tagline was; the tagline goes under them
+/** @param {number} w @param {number} hh */
+const GREM_TOP = (w, hh) => titleBottom(w, TOP(hh)) - 18;
+/** @param {number} w @param {number} hh the title block's bottom, tagline included */
+const BOTTOM = (w, hh) => GREM_TOP(w, hh) + gremLayout(w, titlePx(w)).h + 24;
 
 /** @param {{ onStart: () => void }} props */
 export function Title({ onStart }) {
@@ -27,15 +33,19 @@ export function Title({ onStart }) {
   useEffect(() => {
     const c = cvs.current;
     if (!c) return undefined;
+    const GT = gremTitleNew();
     return runScene(c, {
       size: () => ({ w: window.innerWidth, hh: window.innerHeight }),
       make: (w, hh, seed) => {
         // the action keeps between the title and the menu window
         const k = w / TITLE_VW, mt = menu.current ? menu.current.getBoundingClientRect().top : hh * 0.6;
-        const S = titleScene(hh / k, seed, (titleBottom(w, TOP(hh)) + 14) / k, (mt - 10) / k);
+        const S = titleScene(hh / k, seed, (BOTTOM(w, hh) + 14) / k, (mt - 10) / k);
         return { S, C: titleCam((S.top + S.bot) / 2, S.bot + 10 / k) };
       },
-      over: (ctx, S, w, hh) => titleText(ctx, S.t, w, TOP(hh)),
+      over: (ctx, S, w, hh) => {
+        titleText(ctx, S.t, w, TOP(hh), BOTTOM(w, hh) - 4);
+        gremTitleDraw(ctx, GT, S.t, w, GREM_TOP(w, hh), titleLeft(w), titlePx(w));
+      },
     });
   }, []);
   const start = () => { SFX.unlock(); SFX.fx('portalIn'); onStart(); };

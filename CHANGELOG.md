@@ -8,7 +8,7 @@ Names are as they were at the time (before the refactor Game's state had loose n
 ## v2.0.0 — CaveRunner Grem: a Grem Mode only fork (branch `grem`)
 2026-10-16 (owner: a Grem Mode only branch; archive the regular mode and the bloated Dev menu). Its own app
 (`com.caverunner.grem`, release `app-grem`) updating from Pages' `grem/`; CI deploys all three builds.
-- The title's ▶ opens Grem Mode; the GREM MODE button and CaveRunner Auto's runs are gone on this branch.
+- The title's ▶ opens Grem Mode; the GREM MODE button and CaveRunner Auto's runs are gone on this branch. Under CAVE RUNNER: AUTO on silver blocks that glitch now and then, and GREM MODE in big green letters on a slant, swelling in turn, dripping green goo, spores drifting and a soft green glow pulsing behind (; the tagline moved under them).
 - Cut: the Auto play screen (Grem's pieces moved to `ui/auto/parts.js`), the old game's running game and screens, the old
   level generator and its parts, and every function the build no longer reaches (page ~1.63 MB → ~1.0 MB; stylesheet halved).
 - Dev panel: only knobs Grem reads; Level 2, Auto economy / hub / maps / blocks / bag / throw, aim assist, guide, witness,
