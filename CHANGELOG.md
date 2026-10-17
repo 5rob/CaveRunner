@@ -5,6 +5,12 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v2.0.12 — Dev: slice preview for bats and glow worms (branch `grem`)
+2026-10-17 (the owner's request; owner OK'd the shots).
+- The Bats and Glow worms Dev pages share one live preview (`src/auto/slicelab.js`): a random slice of a real Coal Seams level with that enemy, the game's zoom, lighting, decorations and effects; tap-drag to pan, double-tap for full screen.
+- One auto player comes in from the left and makes his own way to a random height past the right edge, as in the game; then, after `slicePrevWait` (2 s, in Copy Dev settings), the slice resets for the next run. A "New slice" button picks another.
+- The old room previews (`ui/batpreview.js`, `ui/glowpreview.js`) are gone; suite `slice-prev` checks the loop and that it doesn't slow down.
+
 ## v2.0.11 — Bats rewritten: spawners and five states (branch `grem`)
 2026-10-17 (the owner's new bat spec; the boids/roost/slot model and its knobs are gone).
 - Spawners scattered under downward-facing rock (`batSpawners` per screen), each releasing its own group.
