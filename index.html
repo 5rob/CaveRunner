@@ -346,11 +346,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .devsides{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:3px;margin-bottom:8px;border-radius:12px;background:rgba(0,0,0,0.35)}
 .devside{height:36px;border:0;border-radius:9px;background:none;color:var(--muted);font:800 13px system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase}
 .devside.on{background:#2a3442;color:var(--text)}
-.devlvls{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:0 -12px 4px;padding:0 12px}
-.devlvls::-webkit-scrollbar{display:none}
-.devlv{flex:0 0 auto;height:32px;padding:0 14px;border-radius:16px;border:1px solid var(--ring);background:var(--pad);
-  color:var(--muted);font:700 12px system-ui,sans-serif;white-space:nowrap}
-.devlv.on{background:var(--acc);border-color:var(--acc);color:#0b1220}
+.devlvls{display:block;margin:0 0 4px}
+.devlv{width:100%;height:40px;padding:0 12px;border-radius:10px;border:1px solid var(--ring);background:#1b2230;
+  color:var(--text);font:700 15px system-ui,sans-serif}
 .devpanel .devtabs{margin:0 -12px}
 .devpanel .devtab{flex:0 0 auto}
 .devpin{flex:0 0 auto;padding:8px 10px 6px;border-bottom:1px solid var(--ring);background:#11151c}
@@ -982,13 +980,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ["sway", "Vines & webs: sway"],
     ["fire", "Fire"]
   ];
-  var DEV_TABS = [
-    ["look", "Look", ["view", "light"]],
-    ["player", "Player", ["player", "bh", "sound"]],
-    ["creatures", "Creatures", ["enemy", "elite", "elitefx", "spider", "rat", "jelly", "jellycol"]],
-    ["world", "World", ["level", "arch", "sway"]]
-  ];
-  var devTabOf = (g) => (DEV_TABS.find((t) => t[2].includes(g)) || DEV_TABS[DEV_TABS.length - 1])[0];
   var shown = (v) => typeof v === "number" ? +v.toFixed(6) : v;
   function devReport() {
     const label = new Map(DEV_META.map((m) => [m.k, m.label]));
@@ -1941,12 +1932,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ["trajflat", "Trajectory: Horizontal Path"]
   );
   DEV_GROUPS.push(["trajorbit", "Trajectory: Orbiting Arc"], ["trajspiral", "Trajectory: Spiral Arc"], ["trajboomer", "Trajectory: Boomerang"], ["trajpong", "Trajectory: Ping-Pong Path"]);
-  DEV_TABS.splice(DEV_TABS.length, 0, ["firesim", "Fire sim", ["firelab", "firefx", "autofire", "firesilk", "fire"]]);
-  DEV_TABS.splice(DEV_TABS.length - 1, 0, ["traj", "Trajectory", ["trajorbit", "trajspiral", "trajboomer", "trajpong", "trajhoming", "trajseeker", "trajnear", "trajaim", "trajgrav", "trajfloat", "trajflat"]]);
-  DEV_TABS.splice(DEV_TABS.length - 1, 0, ["zones", "Zones", ["autozones", "autoorb", "moss", "webs", "timber", "paved", "grove", "winding", "spider"].map((g) => g.startsWith("auto") ? g : "zone_" + g)]);
-  DEV_TABS.splice(DEV_TABS.length - 1, 0, ["presets", "Presets", []], ["grem", "Grem", ["grem", "coal", "bats", "glow"]]);
-  DEV_TABS.splice(DEV_TABS.length - 1, 0, ["auto", "Auto", ["autolevel", "autoguns", "autoperks", "autofoes", "autodeath", "autoloot", "autochests"]]);
-  var DEV_LEVELS = [["caves", "Caves (level 1)"], ["coal", "Coal Seams"]];
+  var DEV_LEVELS = [["caves", 1, "Mossy Caves"], ["coal", 2, "Coal Seams"]];
   var DEV_PLACES = [
     { id: "grem", side: "global", name: "Grem", groups: ["grem"], page: "grem" },
     { id: "players", side: "global", name: "Players", groups: ["player", "autodeath", "bh"] },
@@ -26393,7 +26379,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   };
   var PLACE_OF = new Map(DEV_META.map((m) => [m.k, devPlaceOf(m)]));
   var placeById = (id) => DEV_PLACES.find((p) => p.id === id) || DEV_PLACES[0];
-  var placePath = (p) => (p.side === "global" ? "Global" : (DEV_LEVELS.find((l) => l[0] === p.lv) || ["", ""])[1]) + " · " + p.name;
+  var lvName = (lv) => {
+    const l = DEV_LEVELS.find((x) => x[0] === lv);
+    return l ? l[1] + " · " + l[2] : "";
+  };
+  var placePath = (p) => (p.side === "global" ? "Global" : lvName(p.lv || "")) + " · " + p.name;
   var pageGroups = (id) => DEV_GROUPS.filter(([g]) => !g.startsWith("zone_")).map(([g, name]) => {
     const all = DEV_META.filter((m) => m.g === g), rows = all.filter((m) => PLACE_OF.get(m.k) === id);
     const split = rows.length > 0 && rows.length < all.length;
@@ -26509,16 +26499,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             btn("devside", place.side === "level", { "data-s": "level" }, "Level", () => goTo("level", place.lv || DEV_LEVELS[0][0]), false)
           ),
           needle || place.side !== "level" ? null : h(
-            "div",
+            "label",
             { className: "devlvls" },
-            DEV_LEVELS.map(([lv, name]) => btn(
-              "devlv",
-              place.lv === lv,
-              { key: lv, "data-lv": lv },
-              name,
-              () => goTo("level", lv),
-              DEV_PLACES.some((p) => p.lv === lv && chgOf(p.id))
-            ))
+            // (owner) the level: a drop-down, number first, then its name
+            h(
+              "select",
+              { className: "devlv", value: place.lv, onChange: (e) => goTo("level", e.target.value) },
+              DEV_LEVELS.map(([lv]) => h(
+                "option",
+                { key: lv, value: lv },
+                lvName(lv) + (DEV_PLACES.some((p) => p.lv === lv && chgOf(p.id)) ? "  •" : "")
+              ))
+            )
           ),
           needle ? null : h(
             "div",

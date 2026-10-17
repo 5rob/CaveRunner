@@ -1,5 +1,5 @@
 // @ts-check
-// The Dev panel (the gear button): tabs (DEV_TABS) of collapsible groups of live-tweak knob rows (DevRow, DevPanel), the
+// The Dev panel (the gear button): pages (DEV_PLACES) of collapsible groups of live-tweak knob rows (DevRow, DevPanel), the
 // live jellyfish box at the top of the jelly colours group (JellyPreview), the group headers
 // that open and shut on a tap (DevGroupHead), the hologram flash's fade curve
 // (FadeCurve), any curve knob (CurveEdit), the elites' flames (FlamePreview, GradEditor, RampEditor), and the Spawn gun box (SpawnGun).
@@ -558,8 +558,10 @@ const blurBox = () => {
 const PLACE_OF = new Map(DEV_META.map(m => [m.k, devPlaceOf(m)]));
 /** @param {string} id */
 const placeById = id => DEV_PLACES.find(p => p.id === id) || DEV_PLACES[0];
+/** @param {string} lv @returns {string} "2 · Coal Seams" */
+const lvName = lv => { const l = DEV_LEVELS.find(x => x[0] === lv); return l ? l[1] + ' · ' + l[2] : ''; };
 /** @param {import('../dev/knobs.js').DevPlace} p */
-const placePath = p => (p.side === 'global' ? 'Global' : (DEV_LEVELS.find(l => l[0] === p.lv) || ['', ''])[1]) + ' · ' + p.name;
+const placePath = p => (p.side === 'global' ? 'Global' : lvName(p.lv || '')) + ' · ' + p.name;
 // the groups (each cut to this page's rows) a page shows; a group split over pages takes the page's name
 /** @param {string} id */
 const pageGroups = id => DEV_GROUPS.filter(([g]) => !g.startsWith('zone_')).map(([g, name]) => {   // (a zone's own group: in its card, ui/zonesim.js)
@@ -644,9 +646,10 @@ export function DevPanel({ close, pages, bats }) {
         needle ? null : h('div', { className: 'devsides' },
           btn('devside', place.side === 'global', { 'data-s': 'global' }, 'Global', () => goTo('global'), false),
           btn('devside', place.side === 'level', { 'data-s': 'level' }, 'Level', () => goTo('level', place.lv || DEV_LEVELS[0][0]), false)),
-        needle || place.side !== 'level' ? null : h('div', { className: 'devlvls' },
-          DEV_LEVELS.map(([lv, name]) => btn('devlv', place.lv === lv, { key: lv, 'data-lv': lv }, name, () => goTo('level', lv),
-            DEV_PLACES.some(p => p.lv === lv && chgOf(p.id))))),
+        needle || place.side !== 'level' ? null : h('label', { className: 'devlvls' },   // (owner) the level: a drop-down, number first, then its name
+          h('select', { className: 'devlv', value: place.lv, onChange: e => goTo('level', e.target.value) },
+            DEV_LEVELS.map(([lv]) => h('option', { key: lv, value: lv },
+              lvName(lv) + (DEV_PLACES.some(p => p.lv === lv && chgOf(p.id)) ? '  •' : ''))))),
         needle ? null : h('div', { className: 'devtabs', role: 'tablist' },
           tabs.map(p => btn('devtab', p.id === tab, { key: p.id, 'data-t': p.id, role: 'tab', 'aria-selected': p.id === tab }, p.name, () => setTab(p.id), chgOf(p.id))))),
       // the page's live preview: pinned here, the controls scroll under it

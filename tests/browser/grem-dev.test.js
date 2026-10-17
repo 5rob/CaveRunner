@@ -46,7 +46,7 @@ fs.mkdirSync(OUT, { recursive: true });
   const full = await page.evaluate(() => { const r = document.querySelector('.devpanel').getBoundingClientRect(); return r.width >= innerWidth - 1 && r.height >= innerHeight - 1; });
   check('… the menu fills the screen', full);
   await page.locator('.devside[data-s=level]').click();
-  await page.locator('.devlv[data-lv=coal]').click();
+  await page.locator('select.devlv').selectOption('coal');
   await page.waitForTimeout(200);
   const coalTabs = await page.evaluate(() => [...document.querySelectorAll('.devtab')].map(b => b.getAttribute('data-t')));
   check('Level → Coal Seams: coal, props, gas, stalactites, timber, bats, glow worms', ['coal', 'coalprops', 'coalgas', 'coalstal', 'coaltimber', 'bats', 'glow'].every(t => coalTabs.includes(t)), coalTabs);

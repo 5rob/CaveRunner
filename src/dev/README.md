@@ -8,8 +8,14 @@
 
 - `DEV` — the live values; the game reads them every frame, so a change shows at once.
 - `DEV_DEFAULTS` (plain knobs), `DEV_META` (one row each: key, group `g`, label, min/max/step,
-  optional `type: 'color' | 'slider'`), `DEV_GROUPS` (the collapsible sections, in order), `DEV_TABS` (the panel's tabs: `[id, name, groups]`;
-  `devTabOf(g)` = a group's tab; **a new group goes in a tab too**, `devsettings.test.js` checks it).
+  optional `type: 'color' | 'slider'`), `DEV_GROUPS` (the collapsible sections, in order).
+- **Where a knob shows (the Dev menu rebuild, not released; `DEV_TABS`/`devTabOf` are gone):** `DEV_PLACES` is every page of the
+  full-screen menu: `{ id, side: 'global' | 'level', lv, name, groups, pin?, page? }` (`lv` a `DEV_LEVELS` id; `pin` 'fire' / 'bats' /
+  'zones' = the live preview kept still over the page; `page` = the panel's own page, `presets` / `grem`). `DEV_LEVELS` =
+  `[id, level number, name]` (the name must be `auto/maps.js floorName`'s; the drop-down shows "2 · Coal Seams"). A group's
+  knobs go to the page listing it; `DEV_KNOB_PLACE` (key regex → page) sends single knobs elsewhere (Coal Seams is split that
+  way: Coal, Props, Gas, Stalactites, Timber & ladders). `devPlaceOf(m)` = a knob's page. **A new group goes in one page's
+  `groups` (a new level: a `DEV_LEVELS` row and its pages)**; `tests/logic/dev-layout.test.js` checks every knob lands on exactly one page.
 - `devSet(k, v)` writes through to localStorage (`DEV_KEY` = `caverunner-dev`): since v1.0.94 only the keys that
   differ from `DEV_DEFAULTS` (`devChanged()`), so a device follows every new default for knobs it hasn't touched
   (a store from before v1.0.94 holds every key; it thins out on its next change). `devReport()` lists every
@@ -87,7 +93,7 @@
 - **Aim (v1.0.59, `autoguns`):** `autoAimR` 400, `autoAimEdge` 24 (the right-hand strip), `autoAimLeft` 20 (the hail mary off the left).
 - **Fire sim (v1.0.58):** group `firelab` (`labJetGap` 0.35, `labJetH` 50, `labJetT` 0.7) at the top of the Fire sim tab; `fireTwinkle` 1 / `fireFlare` 0.06 in `autofire`.
 - **Auto colours (v1.0.57):** `autouse.js` is generated (don't edit): `tools/autoknobs.js`, run by every build, lists the knobs Auto's tree-shaken bundle reads (`AUTO_KNOBS`); the panel colours by it. A knob read only through a computed name (`DEV[x]` with x built at run time) shows grey: pass its name as a string somewhere, or accept it. `autoBurnCut` 0.015 / `autoBurnSpin` 2.5 (v1.0.57, `autofire`).
-- **Fire sim tab (v1.0.56):** every fire knob on one page under the sim (`DEV_TABS` `firesim`: `autofire`, the old `fire` group); not on World or Auto any more. New: `autoFireSpread` 0.1, `autoWebFire` 3, `autoVineCatch` 0.25, `autoLeafReach` 5, `autoLeafLight` 0.15.
+- **Fire sim tab (v1.0.56):** every fire knob on one page under the sim (page `firesim`: `autofire`, the old `fire` group); not on World or Auto any more. New: `autoFireSpread` 0.1, `autoWebFire` 3, `autoVineCatch` 0.25, `autoLeafReach` 5, `autoLeafLight` 0.15.
 - CaveRunner Auto's vine fire (group `autofire` since v1.0.56, was `'autodeath'`, v1.0.50; v1.0.53: `autoVineSpread` 5, the flames climb that × faster than it burns away; `autoFireJump` 14 / `autoFireJumpP` 0.3 (0.5 since v1.0.55; v1.0.55: `autoVineSpread` 24, `autoVineJitter` 0.8, `autoVineAsh` 6 the charred end; `autoNavCut` 0.8 / `autoNavGive` 1.2 s, rock steeper than that the autopilot saws, else goes round), the burning stretch lights vines and webs that near at that chance a fire tick): `autoVineFire`, vines and silk burn up in a level at this × the old game's speed (3 since v1.0.51, owner: 1 was still too slow; the title menu keeps `TITLE_FIRESPEED` 0.1).
 - CaveRunner Auto's zones by noise ("Auto: level", v1.0.50, `art/titlescene.js titleZoneLook`): `autoZoneWarp` (170, how far x is pushed), `autoZoneScale` (150), `autoZoneRag` (0.8), `autoZoneIsle` (0.12, islands of the next zone), `autoZoneOpen` (1 since v1.0.51: the caves' shapes follow the curves; 0: by x); `autoHardDeep` (90, v1.0.52: blasts bite less over this far above a level's bottom edge; 0 off), `autoHardEdge` (8: none at all there).
 - CaveRunner Auto's maps (`g: 'automaps'`, "Auto: maps"; `auto/maps.js`): `autoMapPrice` (the second map's price, 1,000,000 gold), `autoMapGrow` (× each map after, 1), `autoMapStep` (each map starts this many tiers harder, 5).

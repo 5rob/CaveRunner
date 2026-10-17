@@ -78,16 +78,6 @@ export const DEV_META = [
 ];
 export const DEV_GROUPS = [['view', 'Camera & aim'], ['light', 'Torch & fog'], ['player', 'Player'],
   ['enemy', 'Enemies'], ['elite', 'Elites'], ['elitefx', 'Elites: flames'], ['spider', 'Spider'], ['rat', 'Rats & nests'], ['jelly', 'Jellyfish'], ['jellycol', 'Jellyfish colours'], ['bh', 'Black Hole tweaks'], ['sound', 'Sound'], ['level', 'Level layout (floor 1)'], ['arch', 'Arched vines'], ['sway', 'Vines & webs: sway'], ['fire', 'Fire'], ];
-// The Dev panel's tabs: each a page of DEV_GROUPS, in this order (a group in no tab lands on the last)
-/** @type {[string, string, string[]][]} */
-export const DEV_TABS = [
-  ['look', 'Look', ['view', 'light']],
-  ['player', 'Player', ['player', 'bh', 'sound']],
-  ['creatures', 'Creatures', ['enemy', 'elite', 'elitefx', 'spider', 'rat', 'jelly', 'jellycol']],
-  ['world', 'World', ['level', 'arch', 'sway']],
-];
-/** @param {string} g @returns {string} the tab a group sits on */
-export const devTabOf = g => (DEV_TABS.find(t => t[2].includes(g)) || DEV_TABS[DEV_TABS.length - 1])[0];
 // The dev values that differ from their defaults, as text to paste back to Claude so they
 // can become the new defaults. Every DEV key, rows or not (v1.0.94: the Zones page's check boxes,
 // zv_*, have no row); numbers rounded (a slider's float noise). The whole Copy Dev settings, with
@@ -979,19 +969,16 @@ DEV_GROUPS.push(['trajhoming', 'Trajectory: Homing'], ['trajseeker', 'Trajectory
 DEV_GROUPS.push(['trajorbit', 'Trajectory: Orbiting Arc'], ['trajspiral', 'Trajectory: Spiral Arc'], ['trajboomer', 'Trajectory: Boomerang'], ['trajpong', 'Trajectory: Ping-Pong Path']);
 // in front of the Fire sim tab, the last (it also takes any group in no tab)
 // (owner v1.0.56) every fire knob on its own page, under the fire sim's window (ui/firesim.js)
-DEV_TABS.splice(DEV_TABS.length, 0, ['firesim', 'Fire sim', ['firelab', 'firefx', 'autofire', 'firesilk', 'fire']]);
-DEV_TABS.splice(DEV_TABS.length - 1, 0, ['traj', 'Trajectory', ['trajorbit', 'trajspiral', 'trajboomer', 'trajpong', 'trajhoming', 'trajseeker', 'trajnear', 'trajaim', 'trajgrav', 'trajfloat', 'trajflat']]);
 // (Dev → Zones) the level zones' preview (ui/zonesim.js) over their knobs
-DEV_TABS.splice(DEV_TABS.length - 1, 0, ['zones', 'Zones', ['autozones', 'autoorb', 'moss', 'webs', 'timber', 'paved', 'grove', 'winding', 'spider'].map(g => (g.startsWith('auto') ? g : 'zone_' + g))]);
 // (Grem Mode) the gun presets library and Grem's own page (ui/auto/presetlib.js, gremkit.js; DevPanel's pages)
-DEV_TABS.splice(DEV_TABS.length - 1, 0, ['presets', 'Presets', []], ['grem', 'Grem', ['grem', 'coal', 'bats', 'glow']]);
-DEV_TABS.splice(DEV_TABS.length - 1, 0, ['auto', 'Auto', ['autolevel', 'autoguns', 'autoperks', 'autofoes', 'autodeath', 'autoloot', 'autochests']]);
 // (Dev menu rebuild) where every knob sits in the full-screen Dev menu: a side (Global, or Level with one entry per level), then a
 // tab along the top. A group lands on its place's page (groups); a knob matching a DEV_KNOB_PLACE rule goes to that place instead
 // (a big group split over tabs: Coal Seams). pin: the live preview pinned over the page's scrolling controls; page: DevPanel's
 // own page (pages prop). Every DEV_META row lands in exactly one place (tests/logic/dev-layout.test.js).
-/** @type {[string, string][]} */
-export const DEV_LEVELS = [['caves', 'Caves (level 1)'], ['coal', 'Coal Seams']];
+// the levels with pages of their own: [id, the game's level number, its name (auto/maps.js floorName; dev-layout checks they match)];
+// the Level side's drop-down shows them as "1 · Mossy Caves"
+/** @type {[string, number, string][]} */
+export const DEV_LEVELS = [['caves', 1, 'Mossy Caves'], ['coal', 2, 'Coal Seams']];
 /** @typedef {{ id: string, side: 'global' | 'level', lv?: string, name: string, groups: string[], pin?: 'fire' | 'zones' | 'bats', page?: string }} DevPlace */
 /** @type {DevPlace[]} */
 export const DEV_PLACES = [

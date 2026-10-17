@@ -13,6 +13,7 @@ check('page ids unique', new Set(ids).size === ids.length, ids);
 const lvIds = G.DEV_LEVELS.map(l => l[0]);
 check('every page on a real side and level', G.DEV_PLACES.every(p => (p.side === 'global' && !p.lv) || (p.side === 'level' && lvIds.includes(p.lv))),
   G.DEV_PLACES.filter(p => !(p.side === 'global' || lvIds.includes(p.lv))).map(p => p.id));
+check('the levels: the game\'s own numbers and names (auto/maps.js floorName)', G.DEV_LEVELS.every(([, n, name]) => G.floorName(G.levelFloor(n)) === name), G.DEV_LEVELS);
 check('both sides have pages; every level has a page', ['global', 'level'].every(s => G.DEV_PLACES.some(p => p.side === s)) && lvIds.every(l => G.DEV_PLACES.some(p => p.lv === l)));
 // each group listed on one page at most, and every group with rows is on one
 const groupPages = {};

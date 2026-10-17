@@ -337,11 +337,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .devsides{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:3px;margin-bottom:8px;border-radius:12px;background:rgba(0,0,0,0.35)}
 .devside{height:36px;border:0;border-radius:9px;background:none;color:var(--muted);font:800 13px system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase}
 .devside.on{background:#2a3442;color:var(--text)}
-.devlvls{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:0 -12px 4px;padding:0 12px}
-.devlvls::-webkit-scrollbar{display:none}
-.devlv{flex:0 0 auto;height:32px;padding:0 14px;border-radius:16px;border:1px solid var(--ring);background:var(--pad);
-  color:var(--muted);font:700 12px system-ui,sans-serif;white-space:nowrap}
-.devlv.on{background:var(--acc);border-color:var(--acc);color:#0b1220}
+.devlvls{display:block;margin:0 0 4px}
+.devlv{width:100%;height:40px;padding:0 12px;border-radius:10px;border:1px solid var(--ring);background:#1b2230;
+  color:var(--text);font:700 15px system-ui,sans-serif}
 .devpanel .devtabs{margin:0 -12px}
 .devpanel .devtab{flex:0 0 auto}
 .devpin{flex:0 0 auto;padding:8px 10px 6px;border-bottom:1px solid var(--ring);background:#11151c}
