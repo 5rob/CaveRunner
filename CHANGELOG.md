@@ -5,6 +5,13 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v2.0.11 — Bats rewritten: spawners and five states (branch `grem`)
+2026-10-17 (the owner's new bat spec; the boids/roost/slot model and its knobs are gone).
+- Spawners scattered under downward-facing rock (`batSpawners` per screen), each releasing its own group.
+- States: hanging (random takeoff and wing-flutter chances), roaming (random flight time, targets in open air within `batRoamDist`, random pauses), fleeing (faster, away from the player and rock; may turn into an attack), attacking (one fast bite dash; ends on a bite, rock or `batAttackT`), returning (to rock near its spawner; placed after `batReturnT` so none gets stuck). Flight: straight lines + wiggle + bob, wings down on the bob up.
+- Bats stay foes with small health bars; new Dev knobs for every random range, chance and the look (size, wingspan, colours); all in Copy Dev settings.
+- Fixed: bats could hang where rock appeared later (columns not yet made count as rock).
+
 ## v2.0.10 — Bats fly in the open, land cleanly, preview stays fast (branch `grem`)
 2026-10-17 (the owner's notes on v2.0.9's bats).
 - They no longer hug the rock: gravity 132 balances the wingbeat lift, a pull toward the open air (`batOpen` 1.5), a bigger roost area; ~74% of flight in the open middle of the preview cave.
