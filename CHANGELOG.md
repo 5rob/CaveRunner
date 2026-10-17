@@ -5,6 +5,14 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v2.0.9 — Coal Seams: glow worms (branch `grem`)
+2026-10-17 (owner OK'd the look, asked for clusters and a size range; chunk C5).
+- Glow worms (`creatures/glowworm.js`): a rope body with IK feet, the two-crank inchworm walk, FABRIK into an Ω, roaming floors, walls and roofs; tapered ends, pixel filter; green spores puffed at each step.
+- Foes (4 health): in agro they rear up rigid, face the player, vibrate, mouth pulsing; strike for 12. Killed: a big green burst cutting a hole in the rock (radius 10), hurting creatures (chains through worms) and the team at half; loot drops after it.
+- Look: white-green body, saturated green inner outline, fading green glow, each flickering; they light their patch green; a drifting noise glow round them, orange and faster in agro.
+- Clusters of 3–20 on 35% of zone slices (Mines, Digging zone, Cavern each switchable), sizes 0.8–1.3; green spores drift round the clusters. Dev → Level → Coal Seams → Glow worms. Suite `coal-worm`.
+- Light check (C6): Coal Seams' other lights (gun lights, fire and burning things, the gas flash, level pads, chests, downed players) are kept as game markers; nothing else lights it.
+
 ## v2.0.8 — The Dev menu rebuilt; twitchier bats (branch `grem`)
 2026-10-17 (owner OK'd the Dev menu shots; bat flight from the owner's notes).
 - Dev is a full-screen menu: Copy Dev settings, Done, search every knob; a GLOBAL | LEVEL switch; on Level a dropdown "1 · Mossy Caves", "2 · Coal Seams"; category tabs along the top; only the controls scroll, live previews (Fire sim, Bats) pinned. Placement is data: `DEV_LEVELS`, `DEV_PLACES`, `DEV_KNOB_PLACE` in dev/knobs.js (`DEV_TABS` gone). Suite `dev-layout`.
