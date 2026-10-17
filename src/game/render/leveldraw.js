@@ -136,13 +136,13 @@ export function levelGlow(ctx, S) {
   if (c && c.y != null) drawHint(ctx, c.x - S.scroll, c.y - 16 - 12 * chestK(S), G ? 'Tap to open.' : 'Tap A to open', S.t, !!G);
 }
 
-// (owner, v1.0.44) a thin health bar over each creature's head, over the dark (so it shows in the cave's black); the
+// (owner, v1.0.44) a thin health bar over each creature's head (v2.0.16: only once it has taken damage), over the dark (so it shows in the cave's black); the
 // boss has its big one across the top of the play area instead (AutoScreen's .abossbar)
 /** @param {CanvasRenderingContext2D} ctx @param {import('../../art/titlescene.js').TitleScene} S */
 export function levelBars(ctx, S) {
   const L = levelState(S), boss = L && L.boss;
   for (const f of S.foes) {
-    if (f === boss || !(f.hp > 0) || !(f.hpMax > 0) || ((f.bat || f.worm) && f.hp >= f.hpMax)) continue;   // (a bat: a bar only once hit)
+    if (f === boss || !(f.hp > 0) || !(f.hpMax > 0) || f.hp >= f.hpMax) continue;   // (owner, v2.0.16: every creature's bar only once it's hurt)
     const x = f.x - S.scroll;
     if (x < -30 || x > TITLE_VW + 30) continue;
     const w = Math.max(10, Math.min(22, f.r * 2.4)), bx = Math.round(x - w / 2), by = Math.round(f.ty - f.r - 7);

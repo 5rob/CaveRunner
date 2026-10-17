@@ -102,16 +102,23 @@ export function levelFoes(S, L, teamX) {
     unbury(S, e.f);
     e.x = e.f.x;
   }
-  // the boss: in when the team reaches the arena, hunting at once
-  if (L.phase === 'arena' && !L.boss && !L.bossDead) {
+  // the boss: in when the team reaches the arena, hunting at once (Grem, owner v2.0.16: already waiting in the arena as
+  // the team comes into view of it, made as its middle is generated; still and holding its fire till the arena starts)
+  const mid = L.plan.arena.mid, early = L.grem && L.phase === 'run' && mid - S.scroll < TITLE_VW + 40 && mid < S.gen * TCELL - 6;
+  if ((L.phase === 'arena' || early) && !L.boss && !L.bossDead) {
     const look = lookAt(S, L.plan.arena.mid), ks = look && look.roster && look.roster.length ? look.roster : TITLE_KINDS, id = ks[Math.floor(S.rnd() * ks.length)];   // (v1.0.97) an old floor's: one of its roster
-    const f = titleFoeAt(S, bossKind(id, tier, mk), Math.min(L.plan.arena.x1 - 30, teamX + BOSS_IN));
+    const f = titleFoeAt(S, bossKind(id, tier, mk), early ? mid : Math.min(L.plan.arena.x1 - 30, teamX + BOSS_IN));
     f.aggro = true;
     L.boss = f;
+    if (early) { f.aggro = false; L.bossWait = true; f.hx = f.x; }
     // (Grem Mode, owner v1.0.92) made off screen right, it comes in to its place while its name's title plays (bossIntro)
-    if (L.grem) { L.introT = S.t; L.bossTo = f.x; L.bossFrom = S.scroll + TITLE_VW + f.r + 8; f.x = L.bossFrom; f.aggro = false; }
+    if (L.grem && !early) { L.introT = S.t; L.bossTo = f.x; L.bossFrom = S.scroll + TITLE_VW + f.r + 8; f.x = L.bossFrom; f.aggro = false; }
   }
   const B = L.boss;
+  if (B && L.bossWait) {
+    if (L.phase === 'run') { B.aggro = false; B.waiting = true; B.cd = Math.max(B.cd, 0.5); B.x = B.hx = L.plan.arena.mid; }   // (held in place: it would wander off)
+    else { L.bossWait = false; B.waiting = false; L.introT = S.t; L.bossFrom = L.bossTo = B.x; }   // the arena: its name's title, then it hunts (bossIntro)
+  }
   if (B && !L.bossDead) {
     if (B.hp > 0 && B.x >= L.plan.arena.x0 && B.x <= L.plan.arena.x1) unbury(S, B);   // (owner v1.0.103: one came in under the ground and the level stuck)
     if (B.hp <= 0) L.bossDead = true;
@@ -133,12 +140,12 @@ export function bossIntro(S, L) {
   return true;
 }
 
-// the boss's health bar (the screen's overlay): null when there's none
+// the boss's health bar (the screen's overlay): null when there's none (or it hasn't been hurt yet)
 /** @param {import('../art/titlescene.js').TitleScene} S @returns {{ hp: number, max: number, name: string } | null} */
 export function levelBoss(S) {
   const L = S.lvl && S.lvl.data;
   const B = L && L.boss;
-  if (!B || L.bossDead) return null;
+  if (!B || L.bossDead || B.hp >= B.hpMax) return null;   // (owner, v2.0.16: no bar till it's hurt)
   return { hp: Math.max(0, B.hp), max: B.hpMax, name: B.k.name };
 }
 

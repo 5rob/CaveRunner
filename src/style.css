@@ -640,6 +640,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 /* (owner v1.0.92) the pause button twice the size; the boss bar under the level */
 .grem .pausebtn{width:76px;height:76px;font-size:34px;border-radius:14px}
 .grem .adevbtn{right:96px;width:56px;height:56px;font-size:26px;border-radius:12px}   /* (v1.0.100) left of Grem's big ⏸ */
+.grem .gskip{position:absolute;top:10px;right:160px;z-index:6;touch-action:none;width:56px;height:56px;font-size:26px;border-radius:12px;border:1px solid rgba(255,255,255,0.25);background:rgba(0,0,0,0.35);color:#fff;padding:0;line-height:1;display:flex;align-items:center;justify-content:center}   /* (v2.0.16) Dev: skip the level, left of ⚙️ */
 .gboss{position:absolute;left:10px;right:96px;top:12px;pointer-events:none}
 /* the bottom row: the helmets in a 2×2 left of the stick, the stick, the level panel right of it (no bar under them) */
 .gbot{flex:none;height:128px;display:grid;grid-template-columns:1fr 148px 1fr;align-items:center;gap:6px}

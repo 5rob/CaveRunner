@@ -2,6 +2,8 @@
 
 **grem branch (CaveRunner Grem, v2.0.0):** cut from this folder as unused by Grem Mode: `app.js`, `cards.js`, `clips.js`, `exosuit.js`, `gunhold.js`, `gunshop.js`, `map.js`, `minimap.js`, `modshop.js`, `swap.js`, `trajedit.js`, `vendshop.js`, `witness.js`. Anything below that still names them describes `autobattler` / `main`, where they live on.
 
+**v2.0.16 (grem):** `auto/GremScreen.js`'s bottom row (`.gbot`): helmets 2×2 left of the stick, `GremLevel` right (the level and its name in an inset box, an SVG outline filling clockwise with `levelProgress`). Dev mode adds ⏭ (`.gskip`, left of ⚙️): the level's gold (`levelSkipGold`) paid, then the next level (runScene `next`). Shots: `tools/gremhudshots.js`, `tools/gremskipshots.js`.
+
 React without JSX (`h(...)`), off the global React the page loads from a CDN. Everything must work
 **at phone width, with touch** (the owner plays in the Android app).
 

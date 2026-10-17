@@ -1940,7 +1940,7 @@ export function titleSpill(S, x, y, items, up = 1) {
 
 /** @param {TitleScene} S @param {Enemy} f @param {number} dmg @param {string} col @param {number} [by] the runner who did it (its damage dealt, r.dealt) */
 function hitFoe(S, f, dmg, col, by) {
-  if (f.hp <= 0) return;
+  if (f.hp <= 0 || f.waiting) return;   // (v2.0.16) the boss waiting in its arena: untouchable till the fight
   if (S.dmgMul) dmg *= S.dmgMul;   // (Grem Mode, owner v1.0.92: the guns keep up with the level, auto/grem.js gremDmgMul)
   const ru = by != null && by >= 0 ? S.runners[by] : null;
   if (ru) ru.dealt = (ru.dealt || 0) + Math.min(dmg, f.hp);
@@ -2462,7 +2462,8 @@ const fuelOf = r => (r.fuel == null ? 1 : r.fuel);
 const tankOf = (S, r) => (S.lvl && S.lvl.fuel && S.lvl.fuel(S, r)) || { fuel: 1, refuel: 1 };
 // The players keep apart (owner, v0.0.167): within TITLE_SEP of each other they're eased apart (sideways on the
 // ground, any way in the air), and they never overlap: two bodies that do are pushed out along the shallower
-// way (sideways for one on the ground), each half, or all of it on the one with room (never into rock)
+// way (sideways for one on the ground), each half, or all of it on the one with room (never into rock); one steered by hand
+// (ctlOn) isn't pushed or pushing: he passes through
 /** @param {TitleScene} S @param {number} dt */
 function separate(S, dt) {
   const P = S.runners;
@@ -2478,6 +2479,7 @@ function separate(S, dt) {
   };
   for (let i = 0; i < P.length; i++) for (let j = i + 1; j < P.length; j++) {
     const a = P[i], b = P[j];
+    if (ctlOn(a) || ctlOn(b)) continue;   // (owner, v2.0.16) the one steered by hand passes through the others: pushing felt like the stick being fought
     let dx = b.x - a.x, dy = b.y - a.y;
     const d = Math.hypot(dx, dy * 0.6);
     if (d < TITLE_SEP) {                                   // a gentle push apart
@@ -2709,13 +2711,13 @@ export function titleAimPick(S, r) {
   // (the gun panel's window, auto/preview.js: its one target, anywhere in the room, so the grown window still fires)
   const lvl = !!S.lvl, E = DEV.autoAimEdge, pv = !!(S.hub && S.hub.pv);
   // (Grem Mode) a creature tapped on the screen: everyone aims at it till it's dead or gone
-  if (S.pick) { if (S.pick.hp > 0 && S.foes.includes(S.pick)) return S.pick; S.pick = null; }
+  if (S.pick) { if (S.pick.hp > 0 && !S.pick.waiting && S.foes.includes(S.pick)) return S.pick; S.pick = null; }
   let best = null, bd = lvl ? DEV.autoAimR : pv ? Infinity : TITLE_AIM;
   // (CaveRunner Auto's boss, feedback round 1: measured to its edge, and shot from behind too, so the team finishes it)
   for (const f of S.foes) {
     const fx = f.x - S.scroll, boss = f.k && f.k.boss, d = Math.hypot(fx - r.x, f.ty - r.y) - (boss ? f.r : 0);
     const seen = pv || (lvl ? fx > -DEV.autoAimLeft && fx < TITLE_VW - E : fx < TITLE_VW - 24 && fx > r.x + PW / 2 - 30);
-    if (f.hp > 0 && (boss || seen) && d < bd) { bd = d; best = f; }
+    if (f.hp > 0 && !f.waiting && (boss || seen) && d < bd) { bd = d; best = f; }   // (v2.0.16: not the boss waiting in its arena)
   }
   return best;
 }

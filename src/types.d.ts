@@ -147,12 +147,13 @@ interface CreatureKind {
   kp: string | null; glow: string | null;
   elite?: boolean;            // an elite (eliteOf): boosted, tinted, drops gold and red and green crystals
   boss?: boolean;             // CaveRunner Auto's level boss (auto/enemies.js bossKind)
-  eu?: number; r0?: number; col0?: CreatureType['col']; tintKey?: string;   // an elite: its roll, its kind's size and colours, the tint it has
+  eu?: number; r0?: number; rd?: number; col0?: CreatureType['col']; tintKey?: string;   // an elite: its roll, its kind's size and colours, the tint it has; rd its drawn size (r stays the kind's: its body)
   // no `fire`: enemyFor doesn't copy CreatureType's (REFACTOR.md, Found along the way)
 }
 
 /** a creature in the level: makeLevel's enemies, then the enemy loop's own fields */
 interface Enemy {
+  waiting?: boolean;   // (grem v2.0.16) the boss waiting in its arena before the fight: not aimed at (auto/enemies.js levelFoes)
   bat?: boolean;   // (grem C4) a bat's stand-in among the foes, so guns aim at it and hit it (art/titlescene.js batsStep)
   worm?: boolean;   // (grem C5b) a glow worm's stand-in among the foes (art/titlescene.js wormsStep, wormBlast)
   fuse?: number;   // (grem) a killed glow worm: seconds left before it blows up (DEV.glowFuse)

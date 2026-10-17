@@ -156,7 +156,7 @@ export function enemyFor(id, floor) {
 export function eliteOf(k, u = 0.5) {
   return Object.assign({}, k, { elite: true, eu: u, r0: k.r, col0: k.col,
     hp: Math.round(k.hp * kru('elHp', u)), dmg: Math.max(1, Math.round(k.dmg * kru('elDmg', u))),
-    r: k.r * kru('elScale', u), col: eliteCol(k.col, u) });
+    r: k.r, rd: k.r * kru('elScale', u), col: eliteCol(k.col, u) });   // (owner, v2.0.16) drawn rd big, but it moves and is hit at its kind's size (r): big elites got stuck
 }
 // a kind's colours tinted the way elite u is now (the enemy loop re-tints live as the knobs move)
 /** @param {CreatureKind['col']} c @param {number} u @returns {CreatureKind['col']} */

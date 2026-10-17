@@ -5,6 +5,15 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v2.0.16 — New HUD with a level progress panel, Dev skip, the boss waits in its arena (branch `grem`)
+2026-10-17 (owner's list; owner OK'd the shots).
+- HUD: the old bar under the stick is gone. The helmets sit 2×2 left of the stick; right of it, an inset panel shows the level and its name (moved from the top left), its outline filling clockwise as the team gets through the level (`levelProgress`, auto/level.js; `GremLevel`, ui/auto/GremScreen.js). Shots: `tools/gremhudshots.js`.
+- Manual steering: the player you steer is no longer pushed by (or pushing) teammates (`separate` skips him, titlescene.js): that was the fight felt on the stick. The 1 s hand-back (`autoCtlWait`) was already working. `auto-manual` checks both.
+- Dev ⏭ (dev mode, left of ⚙️): skips the level, paying its chests, living elites, boss and loose gold (`levelSkipGold`; the endless normal spawns aren't counted), then the next level. Shots: `tools/gremskipshots.js`.
+- The boss is made waiting at the arena's middle as the arena comes into view: held still, can't be hit or aimed at (`f.waiting`); the arena starts → its title, then it hunts (enemies.js `levelFoes`). `auto-bosswait` checks it.
+- Getting stuck: elites keep their kind's body size (drawn bigger: `k.rd`, data/creatures.js `eliteOf`); boss size 4 → 2.7 (`autoBossSize`, ≈ 2/3).
+- Health bars: none on any creature, the boss's top bar too, until it has taken damage.
+
 ## v2.0.15 — Dev: arrow buttons and double-tap zero on every knob (branch `grem`)
 2026-10-17 (owner's request; owner OK'd the shots).
 - Every number and slider row has ◀ ▶ (44 px) beside its value: 1 per press for whole-number knobs, 0.1 for floats, kept inside min/max, rounded clean; holding repeats.

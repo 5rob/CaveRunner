@@ -24,9 +24,9 @@ import { DEV } from '../../dev/knobs.js';
 import { clearedText } from '../../art/cleared.js';
 import { drawHint } from '../../game/render/hubdraw.js';
 import { chestAt, chestOpen } from '../../auto/chests.js';
-import { levelClearedAge, levelControl, levelDeathPrompt, levelHold, levelLead, levelLost, levelScene, levelState, levelTeleportHome, levelTitle, levelWaypoint, levelGoal, levelProgress } from '../../auto/level.js';
+import { levelClearedAge, levelControl, levelDeathPrompt, levelHold, levelLead, levelLost, levelScene, levelState, levelTeleportHome, levelTitle, levelWaypoint, levelGoal, levelProgress, levelSkipGold } from '../../auto/level.js';
 import { levelBoss } from '../../auto/enemies.js';
-import { bagCount, healRun, newPlayer, starterKit } from '../../auto/run.js';
+import { bagAdd, bagCount, healRun, newPlayer, starterKit } from '../../auto/run.js';
 import { gremFill, gremKitLoad, gremOpen, gremPrice, gremRun, gremTeamGun, gremUnlocked, gremUnlocks } from '../../auto/grem.js';
 import { sceneAddRunner } from '../../auto/addrunner.js';
 import { loadPresets, presetGun } from '../../save/presets.js';
@@ -54,6 +54,7 @@ export function GremScreen() {
   const [boss, setBoss] = useState(noBoss);
   const [paused, setPaused] = useState(false);
   const pausedRef = useRef(false);
+  const skip = useRef(false);   // (Dev ⏭, owner v2.0.16) the next frame: the level's gold paid, on to the next level
   const [lvlName, setLvlName] = useState(floorName(1));   // (owner v1.0.103) the level's name under its number
   // (owner, v1.0.100) the Dev panel as the normal game's: ⏸ held DEV_HOLD_MS toggles dev mode; on, a ⚙️ beside ⏸ opens it
   const [devOn, setDevOn] = useState(devShown);
@@ -206,6 +207,13 @@ export function GremScreen() {
       },
       // everyone down and the play area tapped (the blast): a fresh Grem run, back to level 1, every preset locked again
       next: S => {
+        if (skip.current) {
+          skip.current = false;
+          const R = run.current, n = levelSkipGold(S);
+          if (n > 0) bagAdd(R, { kind: 'gold', n });
+          R.tier = (S.tier || R.tier || 1) + 1;
+          return true;
+        }
         if (!levelLost(S)) return false;
         window.__AUTO_LEVEL = 0;
         kit.current = gremKitLoad(); items.current = gremUnlocks(presets.length, Math.random);
@@ -249,7 +257,7 @@ export function GremScreen() {
   // target; else (v1.0.101) the picked player heads for the spot (levelWaypoint), the camera on him
   /** @param {any} e */
   const playTap = e => {
-    if (e.target && e.target.closest && e.target.closest('.pausebtn, .adevbtn')) return;
+    if (e.target && e.target.closest && e.target.closest('.pausebtn, .adevbtn, .gskip')) return;
     const S = scene.current, C = cam.current, c = cvs.current;
     if (!S || !C || !c) return;
     SFX.unlock();
@@ -288,6 +296,7 @@ export function GremScreen() {
       h('canvas', { ref: cvs, className: 'aplaycvs' }),
       boss ? h('div', { className: 'abossbar gboss' }, h('b', null, boss.name),
         h('div', { className: 'abosstrack' }, h('i', { style: { width: (100 * boss.hp / Math.max(1, boss.max)).toFixed(1) + '%' } }))) : null,
+      devOn ? h('button', { className: 'gskip', title: 'Skip level', onPointerDown: e => { e.preventDefault(); e.stopPropagation(); SFX.fx('open'); skip.current = true; } }, '⏭') : null,
       devOn ? h('button', { className: 'adevbtn', title: 'Dev', onPointerDown: e => { e.preventDefault(); e.stopPropagation(); SFX.fx('open'); setDevOpen(true); } }, '⚙️') : null,
       h('button', { className: 'pausebtn', title: 'Pause', onPointerDown: pauseDown }, '⏸')),
     h('div', { className: 'ggold', 'data-gold': gold }, h('span', { className: 'ggicon' }, h(NuggetIcon, { kind: 'gold' })), h('b', null, gold.toLocaleString())),
@@ -349,6 +358,6 @@ function GremLevel({ lvl, name, prog }) {
   return h('div', { className: 'glvlbox', 'data-prog': prog.toFixed(3) },
     h('svg', { className: 'glvlring', viewBox: '0 0 100 100', preserveAspectRatio: 'none' },
       h('path', { className: 'glvltrack', d: box, vectorEffect: 'non-scaling-stroke' }),
-      h('path', { className: 'glvlfill', d: box, pathLength: 100, vectorEffect: 'non-scaling-stroke', strokeDasharray: p + ' 100' })),
+      prog > 0.005 ? h('path', { className: 'glvlfill', d: box, pathLength: 100, vectorEffect: 'non-scaling-stroke', strokeDasharray: p + ' 200' }) : null),   // (at 0: none, a round cap showed as dots)
     h('div', { className: 'glvl' }, 'Level ' + lvl, h('small', null, name)));
 }

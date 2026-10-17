@@ -249,6 +249,8 @@ export function titleDraw(ctx, S, cw, ch, cam) {
     if (sx < -60 || sx > TITLE_VW + 60 || f.bat || f.worm) continue;   // (a bat's stand-in: drawBats draws it)
     if (S.hub && S.hub.pv && f === S.hub.pv.foe) continue;   // the gun panel's target: the panel paints its hologram (auto/preview.js)
     // (owner v1.0.103) an elite: a soft glow behind it in its tint, pulsing (the old game's drawEnemies; Dev → Elites)
+    const r0 = f.r;
+    if (f.k.rd) f.r = f.k.rd;   // (v2.0.16) an elite drawn at its size, its body (f.r) the kind's: put back below
     if (f.k.elite) {
       const u = f.k.eu || 0, a = Math.max(0, Math.min(1, kru('elGlow', u) * (1 + 0.45 * Math.sin(S.t * 4 + f.x)))), R = f.r + kru('elGlowR', u);
       if (a > 0 && R > 0) {
@@ -259,6 +261,7 @@ export function titleDraw(ctx, S, cw, ch, cam) {
     }
     const e = f.r * 3 + 20;
     pixelSprite(ctx, sx - e, f.ty - e, 2 * e, 2 * e + 30, 1, false, c => { c.translate(-S.scroll, 0); drawEnemy(c, f, S.t); });
+    f.r = r0;
     if (f.burn > 0) { ctx.save(); ctx.translate(-S.scroll, 0); crackleBody(ctx, f.x, f.ty, f.r * 0.85, TCELL, S.fireN); ctx.restore(); }   // on fire: the burning pixels' crackle over it
   }
   // the four players: body and jet flame on the 1-unit pixel grid like the game's drawPlayer, the gun in it

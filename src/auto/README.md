@@ -4,6 +4,8 @@
 
 **Coal Seams (grem, v2.0.1, step 1 of the design doc):** `level.js` `levelPlan(…, floor)` and `levelScene` / `levelOnward` push the floor's zone set into the plan (`fk`, `floorFrom`, art/titlescene.js `floorZones` / `floorDeco`) at each look's seam (`plan.arena.x1`), and set the scene's looks before its first columns. `grem.js gremRun` starts at `DEV.gremStartLv`.
 
+**v2.0.16 (grem):** `level.js` `levelProgress(S)` (0..1, 1 from the arena: the HUD's level panel) and `levelSkipGold(S)` (Dev ⏭: the gold still in the level: loose, unopened chests, living elites, the boss; not the endless spawns). `enemies.js levelFoes`: in Grem the boss is made at the arena's middle as it comes into view (`L.bossWait`, `f.waiting`: held still, not aimed at, not hurt: titlescene.js `titleAimPick` / `hitFoe`), the arena starting its title (`bossIntro`, no slide-in); `levelBoss` is null till the boss is hurt (no bar). Suites `auto-bosswait`, `auto-manual`.
+
 The auto-battler's pure parts (`AUTOBATTLER.md`). **Layer 4**: `run.js` takes `TITLE_COLS` from
 `art/titlescene.js` (layer 4), so modules here may import layers 1–4 (core, dev, data, spells, world,
 art, …), never `game/`, `ui/` or `main.js`. Everything here is pure: the logic suites call it directly.

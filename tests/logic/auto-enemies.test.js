@@ -88,6 +88,8 @@ if (B) {
   check('scaled: size ×4, health ×12, damage ×3', Math.abs(B.r - base.r * D.autoBossSize) < 1e-9 && B.hpMax === Math.round(base.hp * D.autoBossHp)
     && B.k.dmg === Math.round(base.dmg * D.autoBossDmg), [B.k.id, B.r, B.hpMax, B.k.dmg]);
   check('its kind is the floor\'s', G.TITLE_KINDS.includes(B.k.id));
+  check("no bar till it's hurt (owner v2.0.16)", G.levelBoss(S4) === null);
+  B.hp -= 1;
   const bar = G.levelBoss(S4);
   check('the bar reads it', !!bar && bar.max === B.hpMax && bar.hp === B.hp);
   B.hp = Math.min(B.hp, 6);

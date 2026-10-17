@@ -10,7 +10,7 @@
 
 import { PH, PW } from '../core/consts.js';
 import { DEV } from '../dev/knobs.js';
-import { TITLE_BACK, TITLE_VW, TITLE_ZLEN, TITLE_ZONES, ctlOn, floorDeco, floorZones, zapArc, titleClearWebs, titleRng, titleFloor, titlePlan, titleScene, titleSurf, titleZoneAdd } from '../art/titlescene.js';
+import { TITLE_BACK, TITLE_KINDS, TITLE_VW, TITLE_ZLEN, TITLE_ZONES, ctlOn, floorDeco, floorZones, zapArc, titleClearWebs, titleRng, titleFloor, titlePlan, titleScene, titleSurf, titleZoneAdd } from '../art/titlescene.js';
 import { PAD_HALF, padNext } from './hub.js';
 import { meterAdd, meterNew, meterSet, meterStep } from './meters.js';
 import { lvlPace, pilotEase, pilotPace } from './pilot.js';
@@ -21,7 +21,7 @@ import { autoFoe, bossIntro, elitePlan, gremFoe, levelFoes, levelHurt } from './
 import { gremDmgMul, gremGold, gremHardTier } from './grem.js';
 import { bagFits, killLoot, lootCol } from './loot.js';
 import { bagAdd, playerStats } from './run.js';
-import { chestPlan, chestsStep } from './chests.js';
+import { chestPlan, chestRoll, chestsStep } from './chests.js';
 import { floorLook, floorName, levelFloor, levelLook } from './maps.js';
 import { CLEARED_N, clearedLand } from '../art/cleared.js';
 
@@ -140,7 +140,7 @@ export function levelFree(S, L, r) {
  *   elites: import('./enemies.js').LevelFoe[], chests: import('./chests.js').LevelChest[], doneT: number, meters: PlayerMeters[], blocked: boolean,
  *   boss: Enemy | null, failed: boolean, run?: AutoRun | null, bagV: number, blockKind?: string, webK?: number, webT?: number, lootT?: number, clearT?: number, popT?: number[], nukeT?: number, gatherT?: number, padGone?: boolean,
  *   deadT?: number, pace0?: number, base?: number, lastI?: number, tpT?: number, boomed?: boolean, far?: number,
- *   floor?: number, name?: string, introT?: number, bossFrom?: number, bossTo?: number, introDone?: boolean, joins?: { i: number, x: number, fy: number, t: number, done?: boolean }[] }} LevelState */
+ *   floor?: number, name?: string, introT?: number, bossWait?: boolean, bossFrom?: number, bossTo?: number, introDone?: boolean, joins?: { i: number, x: number, fy: number, t: number, done?: boolean }[] }} LevelState */
 // (Grem Mode, owner v1.0.92: introT when the boss began coming in from bossFrom to bossTo (world x) under its title; joins: players
 // teleporting in mid-level, the pad's charge then the flash where they land)
 // (far: the furthest the scroll got, world units: manual mode roams back at most DEV.autoRoamBack screens behind it)
@@ -157,6 +157,22 @@ export function levelProgress(S) {
   if (!L) return 0;
   if (L.phase !== 'arrive' && L.phase !== 'run') return 1;
   return Math.max(0, Math.min(1, (levelTeamX(S) - L.plan.z0) / Math.max(1, L.plan.len)));
+}
+
+// (Dev, owner v2.0.16: skip a level to reach newer content) the gold the level still holds, as if it were all collected:
+// the gold lying about, each unopened chest's roll, each living elite's and the boss's kill (rolled as the game rolls them;
+// the creatures the level keeps spawning are endless, so not counted). Grem's gold (gremGold)
+/** @param {import('../art/titlescene.js').TitleScene} S @returns {number} */
+export function levelSkipGold(S) {
+  const L = levelState(S);
+  if (!L) return 0;
+  const tier = S.tier || 1, mk = L.grem ? gremFoe : autoFoe, R = S.rnd;
+  const g = (/** @type {BagItem[]} */ its) => its.reduce((t, it) => t + (it.kind === 'gold' ? (L.grem ? gremGold(it) : it).n : 0), 0);
+  let n = S.coins.reduce((t, c) => t + (c.amount || 0), 0) + (S.loot || []).reduce((t, c) => t + (!c.left && c.it.kind === 'gold' ? c.it.n : 0), 0);
+  for (const c of L.chests) if (!c.open) n += g(chestRoll(R, tier, !!L.grem));
+  for (const e of L.elites) if (e.alive !== false) n += g(killLoot('elite', tier, R, (e.f ? e.f.k : mk(e.id || TITLE_KINDS[0], tier)).gold));
+  if (!L.bossDead) n += g(killLoot('boss', tier, R, (L.boss ? L.boss.k : mk(TITLE_KINDS[0], tier)).gold));
+  return n;
 }
 
 // The level's scene: titleScene with the finite plan, n players, the band (roof and floor) lower than the menu's
@@ -463,7 +479,7 @@ export function levelOnward(S, L) {
   Object.assign(P, { z0, z1: x, len: x - z0, arena: { x0: a.x0, x1: a.x1, mid: (a.x0 + a.x1) / 2 }, exitX: a.x1 + LVL_EXITW / 2, seed: P.seed + 1 });
   L.elites = elitePlan(P, S.rnd);
   L.chests = chestPlan(P);
-  L.phase = 'run'; L.bossDead = false; L.boss = null; L.arenaT = -1;
+  L.phase = 'run'; L.bossDead = false; L.boss = null; L.arenaT = -1; L.bossWait = false;
   L.introDone = false; L.introT = undefined;   // (owner v1.0.104) the next boss comes in too (it was left off screen right from level 2 on)
   S.gunsOff = false; S.huddle = false;
   // (owner, v1.0.98) the floor after this one starts past the new arena (this one's look began past the last: S.looks)

@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v2.0.15</title>
-<!-- VERSION = 'v2000015' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v2.0.16</title>
+<!-- VERSION = 'v2000016' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -624,7 +624,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 
 .grem .aplay{flex:1 1 0;min-height:0}
 .glvl small{display:block;margin-top:2px;font-size:11px;font-weight:800;letter-spacing:.05em;color:#d9cdf5}   /* (owner v1.0.103) the level's name under its number */
-.glvl{position:absolute;left:10px;top:8px;font:900 14px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.08em;color:#fff;text-shadow:0 0 4px #000,0 0 8px #000;pointer-events:none}
+.glvl{position:relative;font:900 15px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.08em;color:#fff;text-align:center;text-shadow:0 0 4px #000;pointer-events:none}
 .ggold{flex:none;display:flex;align-items:center;justify-content:center;gap:10px;height:46px}
 .ggicon{width:42px;height:42px;display:flex}
 .ggicon canvas{width:100%;height:100%;image-rendering:pixelated}
@@ -649,17 +649,22 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 /* (owner v1.0.92) the pause button twice the size; the boss bar under the level */
 .grem .pausebtn{width:76px;height:76px;font-size:34px;border-radius:14px}
 .grem .adevbtn{right:96px;width:56px;height:56px;font-size:26px;border-radius:12px}   /* (v1.0.100) left of Grem's big ⏸ */
-.gboss{position:absolute;left:10px;right:96px;top:30px;pointer-events:none}
-/* the players' helmets, between the guns and the stick: 1-2 left of the stick's dome, 3-4 right of it */
-.ghelms{flex:none;height:70px;display:grid;grid-template-columns:1fr 152px 1fr;align-items:center}
-.ghl,.ghr{display:flex;align-items:center;gap:12px}
-.ghl{justify-content:flex-end}
-.ghr{justify-content:flex-start;grid-column:3}
-/* no A or B (owner v1.0.90): the bar is the stick alone, its dome in the middle */
-.grem .abtns.gstick{height:58px;padding:0;border-radius:14px}
-.grem .abtns.gstick::after{border-radius:12px}
-.grem .gstick .astick{left:calc(50% - 74px)}
+.grem .gskip{position:absolute;top:10px;right:160px;z-index:6;touch-action:none;width:56px;height:56px;font-size:26px;border-radius:12px;border:1px solid rgba(255,255,255,0.25);background:rgba(0,0,0,0.35);color:#fff;padding:0;line-height:1;display:flex;align-items:center;justify-content:center}   /* (v2.0.16) Dev: skip the level, left of ⚙️ */
+.gboss{position:absolute;left:10px;right:96px;top:12px;pointer-events:none}
+/* the bottom row: the helmets in a 2×2 left of the stick, the stick, the level panel right of it (no bar under them) */
+.gbot{flex:none;height:128px;display:grid;grid-template-columns:1fr 148px 1fr;align-items:center;gap:6px}
+.ghelms{display:grid;grid-template-columns:repeat(2,50px);grid-auto-rows:50px;gap:8px;justify-content:center;align-content:center}
 .ghelms .anavc{padding:0;display:flex;align-items:center;justify-content:center}
+/* the stick: its dome cut at the screen's bottom */
+.gstick{position:relative;align-self:stretch}
+.gstick .astick{left:0;top:0;bottom:0}
+/* the level panel: an inset box, its outline filling clockwise from the top centre as the level goes (GremLevel, an SVG path) */
+.glvlbox{position:relative;justify-self:center;width:100%;max-width:150px;height:104px;box-sizing:border-box;padding:8px;border-radius:12px;
+  background:#0a0614;box-shadow:inset 0 3px 8px rgba(0,0,0,0.85),inset 0 -1px 0 rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:center;pointer-events:none}
+.glvlring{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.glvlring path{fill:none;stroke-width:4px;stroke-linecap:round}
+.glvltrack{stroke:#2c2340}
+.glvlfill{stroke:#ffc93c;filter:drop-shadow(0 0 3px rgba(255,201,60,0.7));transition:stroke-dasharray .25s linear}
 /* Dev → Presets (ui/auto/presetlib.js) */
 .apltiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:7px;margin-bottom:10px}
 .apltile{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 4px 4px;border-radius:10px;background:#2c1f45;border:2px solid #ffc93c88;color:#f1ecff;touch-action:pan-y}
@@ -722,7 +727,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v2.0.15';</script>
+<script>const VERSION = 'v2.0.16';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -1710,7 +1715,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "autoGhostRange", g: "autoperks", label: "Angry Ghost: range (units)", min: 20, max: 400, step: 5 }
   );
   DEV_GROUPS.push(["autoperks", "Auto: perks"]);
-  Object.assign(DEV_DEFAULTS, { autoFoeGap0: 4, autoFoeGap1: 1.5, autoFoeCap0: 3, autoFoeCap1: 10, autoFoeDmg: 0.5, autoFoeElites: 2, autoBossSize: 4, autoBossHp: 12, autoBossDmg: 3, autoTierHp: 1.45, autoTierDmg: 1.15, autoOldDmg: 0.4, autoOldCd: 1.5, autoFoeKeep: 16 });
+  Object.assign(DEV_DEFAULTS, { autoFoeGap0: 4, autoFoeGap1: 1.5, autoFoeCap0: 3, autoFoeCap1: 10, autoFoeDmg: 0.5, autoFoeElites: 2, autoBossSize: 2.7, autoBossHp: 12, autoBossDmg: 3, autoTierHp: 1.45, autoTierDmg: 1.15, autoOldDmg: 0.4, autoOldCd: 1.5, autoFoeKeep: 16 });
   DEV_META.push(
     { k: "autoRoamT", g: "autofoes", label: "Tall levels: the team picks a new height to roam at every … s", min: 1, max: 30, step: 0.5 },
     { k: "autoRoamHi", g: "autofoes", label: "… the top third, at this chance", min: 0, max: 1, step: 0.05 },
@@ -1730,7 +1735,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "autoFoeKeep", g: "autofoes", label: "Creatures keep this far from a player (units past their size; 0 off)", min: 0, max: 40, step: 1 },
     { k: "autoTierHp", g: "autofoes", label: "Creatures’ health × this for each level past 1 (compounding; level 10 ≈ 28× at 1.45)", min: 1, max: 3, step: 0.05 },
     { k: "autoTierDmg", g: "autofoes", label: "Creatures’ bite × this for each level past 1 (compounding)", min: 1, max: 2, step: 0.01 },
-    { k: "autoBossSize", g: "autofoes", label: "Boss size (× a normal one)", min: 1, max: 8, step: 0.25 },
+    { k: "autoBossSize", g: "autofoes", label: "Boss size (× a normal one)", min: 1, max: 8, step: 0.1 },
     { k: "autoBossHp", g: "autofoes", label: "Boss health (× a normal one)", min: 1, max: 200, step: 1 },
     { k: "autoBossDmg", g: "autofoes", label: "Boss damage (× a normal one)", min: 0.5, max: 10, step: 0.25 },
     // (v1.0.97) levels 2+ play as the old game's floors (auto/maps.js levelLook): their shooters, turrets, chasers and bombers
@@ -6414,7 +6419,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       col0: k.col,
       hp: Math.round(k.hp * kru("elHp", u)),
       dmg: Math.max(1, Math.round(k.dmg * kru("elDmg", u))),
-      r: k.r * kru("elScale", u),
+      r: k.r,
+      rd: k.r * kru("elScale", u),
       col: eliteCol(k.col, u)
     });
   }
@@ -14109,7 +14115,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
   }
   function hitFoe(S, f, dmg, col, by) {
-    if (f.hp <= 0) return;
+    if (f.hp <= 0 || f.waiting) return;
     if (S.dmgMul) dmg *= S.dmgMul;
     const ru = by != null && by >= 0 ? S.runners[by] : null;
     if (ru) ru.dealt = (ru.dealt || 0) + Math.min(dmg, f.hp);
@@ -14785,6 +14791,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     };
     for (let i = 0; i < P2.length; i++) for (let j = i + 1; j < P2.length; j++) {
       const a = P2[i], b = P2[j];
+      if (ctlOn(a) || ctlOn(b)) continue;
       let dx = b.x - a.x, dy = b.y - a.y;
       const d = Math.hypot(dx, dy * 0.6);
       if (d < TITLE_SEP) {
@@ -15089,14 +15096,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function titleAimPick(S, r) {
     const lvl = !!S.lvl, E = DEV.autoAimEdge, pv = !!(S.hub && S.hub.pv);
     if (S.pick) {
-      if (S.pick.hp > 0 && S.foes.includes(S.pick)) return S.pick;
+      if (S.pick.hp > 0 && !S.pick.waiting && S.foes.includes(S.pick)) return S.pick;
       S.pick = null;
     }
     let best = null, bd = lvl ? DEV.autoAimR : pv ? Infinity : TITLE_AIM;
     for (const f of S.foes) {
       const fx = f.x - S.scroll, boss = f.k && f.k.boss, d = Math.hypot(fx - r.x, f.ty - r.y) - (boss ? f.r : 0);
       const seen = pv || (lvl ? fx > -DEV.autoAimLeft && fx < TITLE_VW - E : fx < TITLE_VW - 24 && fx > r.x + PW / 2 - 30);
-      if (f.hp > 0 && (boss || seen) && d < bd) {
+      if (f.hp > 0 && !f.waiting && (boss || seen) && d < bd) {
         bd = d;
         best = f;
       }
@@ -18960,12 +18967,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       unbury(S, e.f);
       e.x = e.f.x;
     }
-    if (L.phase === "arena" && !L.boss && !L.bossDead) {
+    const mid = L.plan.arena.mid, early = L.grem && L.phase === "run" && mid - S.scroll < TITLE_VW + 40 && mid < S.gen * TCELL - 6;
+    if ((L.phase === "arena" || early) && !L.boss && !L.bossDead) {
       const look = lookAt(S, L.plan.arena.mid), ks = look && look.roster && look.roster.length ? look.roster : TITLE_KINDS, id = ks[Math.floor(S.rnd() * ks.length)];
-      const f = titleFoeAt(S, bossKind(id, tier, mk), Math.min(L.plan.arena.x1 - 30, teamX + BOSS_IN));
+      const f = titleFoeAt(S, bossKind(id, tier, mk), early ? mid : Math.min(L.plan.arena.x1 - 30, teamX + BOSS_IN));
       f.aggro = true;
       L.boss = f;
-      if (L.grem) {
+      if (early) {
+        f.aggro = false;
+        L.bossWait = true;
+        f.hx = f.x;
+      }
+      if (L.grem && !early) {
         L.introT = S.t;
         L.bossTo = f.x;
         L.bossFrom = S.scroll + TITLE_VW + f.r + 8;
@@ -18974,6 +18987,19 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
     }
     const B = L.boss;
+    if (B && L.bossWait) {
+      if (L.phase === "run") {
+        B.aggro = false;
+        B.waiting = true;
+        B.cd = Math.max(B.cd, 0.5);
+        B.x = B.hx = L.plan.arena.mid;
+      } else {
+        L.bossWait = false;
+        B.waiting = false;
+        L.introT = S.t;
+        L.bossFrom = L.bossTo = B.x;
+      }
+    }
     if (B && !L.bossDead) {
       if (B.hp > 0 && B.x >= L.plan.arena.x0 && B.x <= L.plan.arena.x1) unbury(S, B);
       if (B.hp <= 0) L.bossDead = true;
@@ -19001,7 +19027,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function levelBoss(S) {
     const L = S.lvl && S.lvl.data;
     const B = L && L.boss;
-    if (!B || L.bossDead) return null;
+    if (!B || L.bossDead || B.hp >= B.hpMax) return null;
     return { hp: Math.max(0, B.hp), max: B.hpMax, name: B.k.name };
   }
   var allFallen = (S) => S.runners.length > 0 && S.runners.every((r) => r.out);
@@ -19116,6 +19142,23 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   var levelState = (S) => S.lvl && S.lvl.data || null;
   var levelTeamX = (S) => S.scroll + LVL_TEAM;
+  function levelProgress(S) {
+    const L = levelState(S);
+    if (!L) return 0;
+    if (L.phase !== "arrive" && L.phase !== "run") return 1;
+    return Math.max(0, Math.min(1, (levelTeamX(S) - L.plan.z0) / Math.max(1, L.plan.len)));
+  }
+  function levelSkipGold(S) {
+    const L = levelState(S);
+    if (!L) return 0;
+    const tier = S.tier || 1, mk = L.grem ? gremFoe : autoFoe, R = S.rnd;
+    const g = (its) => its.reduce((t, it) => t + (it.kind === "gold" ? (L.grem ? gremGold(it) : it).n : 0), 0);
+    let n = S.coins.reduce((t, c) => t + (c.amount || 0), 0) + (S.loot || []).reduce((t, c) => t + (!c.left && c.it.kind === "gold" ? c.it.n : 0), 0);
+    for (const c of L.chests) if (!c.open) n += g(chestRoll(R, tier, !!L.grem));
+    for (const e of L.elites) if (e.alive !== false) n += g(killLoot("elite", tier, R, (e.f ? e.f.k : mk(e.id || TITLE_KINDS[0], tier)).gold));
+    if (!L.bossDead) n += g(killLoot("boss", tier, R, (L.boss ? L.boss.k : mk(TITLE_KINDS[0], tier)).gold));
+    return n;
+  }
   function levelScene(vh, seed, n, plan, team, tier = 1, run = null, grem = false) {
     const base = lvlPace(grem ? gremHardTier(tier) : tier);
     if (!plan) plan = levelPlan(seed, void 0, grem ? 0 : void 0, base, grem, grem ? levelFloor(tier) : 0);
@@ -19477,6 +19520,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     L.bossDead = false;
     L.boss = null;
     L.arenaT = -1;
+    L.bossWait = false;
     L.introDone = false;
     L.introT = void 0;
     S.gunsOff = false;
@@ -21115,7 +21159,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   function levelBars(ctx, S) {
     const L = levelState(S), boss = L && L.boss;
     for (const f of S.foes) {
-      if (f === boss || !(f.hp > 0) || !(f.hpMax > 0) || (f.bat || f.worm) && f.hp >= f.hpMax) continue;
+      if (f === boss || !(f.hp > 0) || !(f.hpMax > 0) || f.hp >= f.hpMax) continue;
       const x = f.x - S.scroll;
       if (x < -30 || x > TITLE_VW + 30) continue;
       const w = Math.max(10, Math.min(22, f.r * 2.4)), bx = Math.round(x - w / 2), by = Math.round(f.ty - f.r - 7);
@@ -22205,6 +22249,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const sx2 = f.x - S.scroll;
       if (sx2 < -60 || sx2 > TITLE_VW + 60 || f.bat || f.worm) continue;
       if (S.hub && S.hub.pv && f === S.hub.pv.foe) continue;
+      const r0 = f.r;
+      if (f.k.rd) f.r = f.k.rd;
       if (f.k.elite) {
         const u = f.k.eu || 0, a = Math.max(0, Math.min(1, kru("elGlow", u) * (1 + 0.45 * Math.sin(S.t * 4 + f.x)))), R = f.r + kru("elGlowR", u);
         if (a > 0 && R > 0) {
@@ -22223,6 +22269,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         c.translate(-S.scroll, 0);
         drawEnemy(c, f, S.t);
       });
+      f.r = r0;
       if (f.burn > 0) {
         ctx.save();
         ctx.translate(-S.scroll, 0);
@@ -25463,7 +25510,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
 
   // src/version.js
-  var VERSION2 = "v2.0.15";
+  var VERSION2 = "v2.0.16";
 
   // src/art/zonelab.js
   var ZLAB_LEAD = 60;
@@ -26834,12 +26881,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const [boss, setBoss] = useState(noBoss);
     const [paused, setPaused] = useState(false);
     const pausedRef = useRef(false);
+    const skip = useRef(false);
     const [lvlName, setLvlName] = useState(floorName(1));
     const [devOn, setDevOn] = useState(devShown);
     const [devOpen, setDevOpen] = useState(false);
     pausedRef.current = paused || devOpen;
     const [gold, setGold] = useState(0);
     const [lvl, setLvl] = useState(1);
+    const [prog, setProg] = useState(0);
     const noHas = [-1];
     const [has, setHas] = useState(noHas);
     const [who, setWho] = useState(0);
@@ -26883,6 +26932,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         const g = bagCount(R, "gold");
         setGold(g);
         setLvl(R.tier);
+        setProg(Math.round(levelProgress(S) * 200) / 200);
         const lk = lookAt(S, S.scroll + TITLE_VW / 2);
         setLvlName(lk ? lk.name : floorName(1));
         const u = gremUnlocked(g, items.current.length);
@@ -27004,6 +27054,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         },
         // everyone down and the play area tapped (the blast): a fresh Grem run, back to level 1, every preset locked again
         next: (S) => {
+          if (skip.current) {
+            skip.current = false;
+            const R = run.current, n = levelSkipGold(S);
+            if (n > 0) bagAdd(R, { kind: "gold", n });
+            R.tier = (S.tier || R.tier || 1) + 1;
+            return true;
+          }
           if (!levelLost(S)) return false;
           window.__AUTO_LEVEL = 0;
           kit.current = gremKitLoad();
@@ -27052,7 +27109,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       setWho(i);
     };
     const playTap = (e) => {
-      if (e.target && e.target.closest && e.target.closest(".pausebtn, .adevbtn")) return;
+      if (e.target && e.target.closest && e.target.closest(".pausebtn, .adevbtn, .gskip")) return;
       const S = scene.current, C = cam.current, c = cvs.current;
       if (!S || !C || !c) return;
       SFX.unlock();
@@ -27117,13 +27174,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         "div",
         { className: "aplay", onPointerDown: playTap },
         h("canvas", { ref: cvs, className: "aplaycvs" }),
-        h("div", { className: "glvl" }, "Level " + lvl, h("small", null, lvlName)),
         boss ? h(
           "div",
           { className: "abossbar gboss" },
           h("b", null, boss.name),
           h("div", { className: "abosstrack" }, h("i", { style: { width: (100 * boss.hp / Math.max(1, boss.max)).toFixed(1) + "%" } }))
         ) : null,
+        devOn ? h("button", { className: "gskip", title: "Skip level", onPointerDown: (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          SFX.fx("open");
+          skip.current = true;
+        } }, "⏭") : null,
         devOn ? h("button", { className: "adevbtn", title: "Dev", onPointerDown: (e) => {
           e.preventDefault();
           e.stopPropagation();
@@ -27134,8 +27196,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       ),
       h("div", { className: "ggold", "data-gold": gold }, h("span", { className: "ggicon" }, h(NuggetIcon, { kind: "gold" })), h("b", null, gold.toLocaleString())),
       h(GremGuns, { presets, items: items.current, gold, sel: has[who] ?? -1, who, fresh: fresh2, pick: pickItem, box: guns }),
-      h(GremHelms, { run: run.current, who, pick: pickWho }),
-      h("div", { className: "abtns gstick" }, h(PillStick, { onMove: steer })),
+      h(
+        "div",
+        { className: "gbot" },
+        h(GremHelms, { run: run.current, who, pick: pickWho }),
+        h("div", { className: "gstick" }, h(PillStick, { onMove: steer })),
+        h(GremLevel, { lvl, name: lvlName, prog })
+      ),
       flies.map((f) => h(FlyTile, { key: f.k, f, done: () => setFlies((fs) => fs.filter((q) => q.k !== f.k)) })),
       devOpen ? h(DevPanel, { close: () => {
         SFX.fx("close");
@@ -27194,11 +27261,22 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       },
       h(HelmetIcon, { col: q.col, size: 35 })
     );
+    return h("div", { className: "ghelms" }, run.players.map((q, i) => helm(q, i)));
+  }
+  function GremLevel({ lvl, name, prog }) {
+    const p = (100 * prog).toFixed(1);
+    const box = "M50 1.5 H92 Q98.5 1.5 98.5 8 V92 Q98.5 98.5 92 98.5 H8 Q1.5 98.5 1.5 92 V8 Q1.5 1.5 8 1.5 Z";
     return h(
       "div",
-      { className: "ghelms" },
-      h("div", { className: "ghl" }, run.players.slice(0, 2).map((q, i) => helm(q, i))),
-      h("div", { className: "ghr" }, run.players.slice(2).map((q, i) => helm(q, i + 2)))
+      { className: "glvlbox", "data-prog": prog.toFixed(3) },
+      h(
+        "svg",
+        { className: "glvlring", viewBox: "0 0 100 100", preserveAspectRatio: "none" },
+        h("path", { className: "glvltrack", d: box, vectorEffect: "non-scaling-stroke" }),
+        prog > 5e-3 ? h("path", { className: "glvlfill", d: box, pathLength: 100, vectorEffect: "non-scaling-stroke", strokeDasharray: p + " 200" }) : null
+      ),
+      // (at 0: none, a round cap showed as dots)
+      h("div", { className: "glvl" }, "Level " + lvl, h("small", null, name))
     );
   }
 
