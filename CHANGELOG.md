@@ -5,6 +5,10 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v2.0.13 — Fix: no invisible shooter in the slice preview (branch `grem`)
+2026-10-17 (owner's report).
+- The slice preview's player, once finished, was only hidden and kept shooting through the wait; he's now out of the scene until the next run (`slicelab.js sliceStep`). `slice-prev` checks no shots of his in the wait.
+
 ## v2.0.12 — Dev: slice preview for bats and glow worms (branch `grem`)
 2026-10-17 (the owner's request; owner OK'd the shots).
 - The Bats and Glow worms Dev pages share one live preview (`src/auto/slicelab.js`): a random slice of a real Coal Seams level with that enemy, the game's zoom, lighting, decorations and effects; tap-drag to pan, double-tap for full screen.

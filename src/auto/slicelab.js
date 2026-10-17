@@ -75,7 +75,7 @@ export function sliceStep(P, S, dt) {
   const r = S.runners[0];
   if (!P.done) {
     if (!r || r.out) P.dead += dt;
-    if (!r || P.dead > 2 || P.t > 30 || r.x >= TITLE_VW - PW - 14) { P.done = true; if (r) r.hide = true; }
+    if (!r || P.dead > 2 || P.t > 30 || r.x >= TITLE_VW - PW - 14) { P.done = true; if (r) { r.hide = true; r.out = true; r.dig = 0; r.clr = null; } }   // out: no longer stepped, so he stops shooting in the wait (owner)
     return false;
   }
   return (P.wait += dt) >= DEV.slicePrevWait;
