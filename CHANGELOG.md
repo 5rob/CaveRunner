@@ -5,6 +5,11 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v2.0.8 — The Dev menu rebuilt; twitchier bats (branch `grem`)
+2026-10-17 (owner OK'd the Dev menu shots; bat flight from the owner's notes).
+- Dev is a full-screen menu: Copy Dev settings, Done, search every knob; a GLOBAL | LEVEL switch; on Level a dropdown "1 · Mossy Caves", "2 · Coal Seams"; category tabs along the top; only the controls scroll, live previews (Fire sim, Bats) pinned. Placement is data: `DEV_LEVELS`, `DEV_PLACES`, `DEV_KNOB_PLACE` in dev/knobs.js (`DEV_TABS` gone). Suite `dev-layout`.
+- Bats fly twitchy: drag, jinks, a lift on each wingbeat with gravity between (they bob), look-ahead braking near rock (wall contacts ~560 → ~14 a bat-minute in the preview); steering force 320 → 700. Landing: each bat claims a free slot, never shares, retries after 4 s. New knobs, no min/max.
+
 ## v2.0.7 — Coal Seams: bats are enemies, bat Dev preview (branch `grem`)
 2026-10-17 (owner OK'd the screenshots; C4 feedback rounds).
 - Bats are foes: the players aim at and shoot them; health `batHp` 3; a dead bat puffs, falls and drops loot. A hit or killed bat sends its whole roost into panicked flight (`batPanic` 3 s). A bat's health bar shows only once hit.
