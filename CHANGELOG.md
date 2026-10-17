@@ -5,6 +5,12 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v2.0.10 — Bats fly in the open, land cleanly, preview stays fast (branch `grem`)
+2026-10-17 (the owner's notes on v2.0.9's bats).
+- They no longer hug the rock: gravity 132 balances the wingbeat lift, a pull toward the open air (`batOpen` 1.5), a bigger roost area; ~74% of flight in the open middle of the preview cave.
+- Landing: each bat flies back to its own spot, no free-slot or spacing rules (roosting bats may overlap); after 3 s the snap distance grows so none hovers; wings beat whenever not roosting.
+- Fixed: the Dev preview slowed to a crawl after minutes (roosts grew a slot every frame for a bat that found none free).
+
 ## v2.0.9 — Coal Seams: glow worms (branch `grem`)
 2026-10-17 (owner OK'd the look, asked for clusters and a size range; chunk C5).
 - Glow worms (`creatures/glowworm.js`): a rope body with IK feet, the two-crank inchworm walk, FABRIK into an Ω, roaming floors, walls and roofs; tapered ends, pixel filter; green spores puffed at each step.
