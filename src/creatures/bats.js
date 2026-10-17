@@ -7,9 +7,9 @@
 
 import { DEV } from '../dev/knobs.js';
 
-/** @typedef {{ x: number, y: number, x0: number, x1: number, y0: number, y1: number, n: number, hy: (number | undefined)[] }} BatRoost */
-/** @typedef {{ x: number, y: number, vx: number, vy: number, ro: BatRoost, slot: number, st: 'roost' | 'fly' | 'return', t: number, scared: boolean, wa: number, ph: number, bite: number, placed: boolean, gone?: boolean, panic?: number, f?: any, hpSeen?: number }} Bat */
-/** @typedef {{ roosts: BatRoost[], list: Bat[] }} Bats */
+/** @typedef {{ x: number, y: number, x0: number, x1: number, y0: number, y1: number, n: number, hy: (number | undefined)[], bad?: Set<number> }} BatRoost */
+/** @typedef {{ x: number, y: number, vx: number, vy: number, ro: BatRoost, slot: number, st: 'roost' | 'fly' | 'return', t: number, scared: boolean, wa: number, ph: number, bite: number, placed: boolean, gone?: boolean, panic?: number, f?: any, hpSeen?: number, rt?: number, jt?: number, fp?: number }} Bat */
+/** @typedef {{ roosts: BatRoost[], list: Bat[], hits?: number }} Bats */
 /** @typedef {(x: number, y: number) => boolean} BatSolid */
 
 // the Dev panel's buttons (ui/devpanel.js): read and cleared by the next stepBats
@@ -17,6 +17,8 @@ export const BAT_CMD = { reset: false, scare: false };
 const LOOK = 18;      // look this far ahead for rock
 const ZONE_W = 70;    // a roost's rectangle: this far each side of the anchor…
 const ZONE_H = 80;    // … and this far down from it
+const RETURN_T = 4;   // homing longer than this: another free slot, or off again (never stuck trying to land)
+const WHISKERS = [[0, 1], [0.5, 0.7], [-0.5, 0.7], [1.1, 0.35], [-1.1, 0.35]];   // (angle off its heading, weight)
 
 /** @returns {Bats} */
 export const newBats = () => ({ roosts: [], list: [] });
@@ -32,10 +34,11 @@ export function slotPos(ro, i, solid) {
     let y = NaN;
     for (let k = 0; k <= 24; k++) {   // (the underside within 24 units up or down: rock over, air at it)
       const a = ro.y - k, b = ro.y + k;
-      if (!solid(x, a + 0.5) && solid(x, a - 1)) { y = a; break; }
-      if (!solid(x, b + 0.5) && solid(x, b - 1)) { y = b; break; }
+      if (!solid(x, a + 0.01) && solid(x, a - 1)) { y = a; break; }
+      if (!solid(x, b + 0.01) && solid(x, b - 1)) { y = b; break; }
     }
-    ro.hy[i] = Math.floor(y / 2) * 2;   // (on the cell edge: the terrain's 2-unit cells; NaN: no rock to hang from there)
+    const g = Math.floor(y / 2) * 2;
+    ro.hy[i] = solid(x, g + 0.01) ? y : g;   // (on the cell edge: the terrain's 2-unit cells; NaN: no rock to hang from there)
   }
   return { x, y: ro.hy[i] ?? ro.y };
 }
@@ -57,6 +60,28 @@ function takeOff(b, rnd, scared) {
   b.vy += 30 + rnd() * 20; b.vx += (rnd() - 0.5) * 40;   // (a small downward kick)
 }
 
+// home: claim the nearest free slot of its roost (none hanging there, none homing to it; its own counts as free). again: not the
+// one it has. False: none free
+/** @param {Bats} B @param {Bat} b @param {BatSolid} solid @param {boolean} [again] */
+function startReturn(B, b, solid, again) {
+  const ro = b.ro, used = new Set();
+  for (const o of B.list) if (o !== b && o.ro === ro && !o.gone && (o.st === 'roost' || o.st === 'return')) used.add(o.slot);
+  let best = -1, bd = Infinity;
+  if (again) (ro.bad ||= new Set()).add(b.slot);   // (a slot it couldn't reach: not tried again)
+  for (let i = 0; i < ro.n; i++) {
+    if (used.has(i) || ro.bad?.has(i)) continue;
+    const p = slotPos(ro, i, solid);
+    if (isNaN(p.y) || solid(p.x, p.y + 0.5)) continue;
+    const q = Math.hypot(p.x - b.x, p.y - b.y);
+    if (q < bd) { bd = q; best = i; }
+  }
+  // none free: a fresh slot further out along the rock (the roost grows a little)
+  for (let k = 0; best < 0 && k < 12; k++) { const i = ro.n++, p = slotPos(ro, i, solid); if (!isNaN(p.y) && !solid(p.x, p.y + 0.01)) best = i; }
+  if (best < 0) return false;
+  b.slot = best; b.st = 'return'; b.rt = 0;
+  return true;
+}
+
 // a steering force toward a heading: (unit(d) × maxSpeed − v), or nothing
 /** @param {Bat} b @param {number} dx @param {number} dy @param {number[]} out */
 function steer(b, dx, dy, out) {
@@ -70,7 +95,11 @@ function steer(b, dx, dy, out) {
  * @param {(i: number, dmg: number) => void} [onBite] */
 export function stepBats(B, dt, preds, solid, rnd, onBite) {
   const D = DEV, sR = D.batScareR, scareOn = D.batScare > 0.5;
-  if (BAT_CMD.reset) { BAT_CMD.reset = false; for (const b of B.list) { const p = slotPos(b.ro, b.slot, solid); b.x = p.x; b.y = p.y; b.vx = b.vy = 0; b.st = 'roost'; b.scared = false; } }
+  if (BAT_CMD.reset) {   // (each to a slot of its own, nearest first)
+    BAT_CMD.reset = false;
+    for (const b of B.list) b.st = 'fly';
+    for (const b of B.list) if (b.placed && !b.gone && startReturn(B, b, solid)) { const p = slotPos(b.ro, b.slot, solid); b.x = p.x; b.y = p.y; b.vx = b.vy = 0; b.st = 'roost'; b.scared = false; b.panic = 0; }
+  }
   if (BAT_CMD.scare) { BAT_CMD.scare = false; for (const b of B.list) if (b.st !== 'fly' || !b.scared) { if (b.st === 'fly') b.scared = true; else takeOff(b, rnd, true); } }
   const fly = B.list.filter(b => b.st === 'fly'), f = [0, 0];
   for (const b of B.list) {
@@ -93,64 +122,75 @@ export function stepBats(B, dt, preds, solid, rnd, onBite) {
       if (rnd() < D.batTakeoff * dt) takeOff(b, rnd, false);
       continue;
     }
+    if (b.st === 'fly' && !b.scared && (b.t -= dt) <= 0) startReturn(B, b, solid);   // 4. the timer runs down only while calm, then home
+    let ax = 0, ay = 0, lim = Infinity;
     if (b.st === 'fly') {
-      // 4. the timer runs down only while calm, then home
-      if (!b.scared && (b.t -= dt) <= 0) { b.st = 'return'; }
-      else {
-        let ax = 0, ay = 0;
-        // flocking with the flying bats within perception
-        let n = 0, sx = 0, sy = 0, avx = 0, avy = 0, cx = 0, cy = 0, ns = 0;
-        for (const o of fly) {
-          if (o === b || o.st !== 'fly') continue;
-          const ox = b.x - o.x, oy = b.y - o.y, q = Math.hypot(ox, oy);
-          if (q > D.batPerception || q < 1e-6) continue;
-          n++; avx += o.vx; avy += o.vy; cx += o.x; cy += o.y;
-          if (q < D.batSepDist) { sx += ox / q / q; sy += oy / q / q; ns++; }   // (inverse-distance push)
-        }
-        if (ns) { steer(b, sx, sy, f); ax += f[0] * D.batSep; ay += f[1] * D.batSep; }
-        if (n) {
-          steer(b, avx / n, avy / n, f); ax += f[0] * D.batAli; ay += f[1] * D.batAli;
-          steer(b, cx / n - b.x, cy / n - b.y, f); ax += f[0] * D.batCoh; ay += f[1] * D.batCoh;
-        }
-        // a random wander jitter
-        b.wa += (rnd() - 0.5) * 12 * dt;
-        steer(b, Math.cos(b.wa), Math.sin(b.wa), f); ax += f[0] * D.batWander; ay += f[1] * D.batWander;
-        // flee the player when scared and near
-        if (b.scared && pi >= 0 && d < sR * D.batClearMult) { steer(b, b.x - preds[pi].x, b.y - preds[pi].y, f); ax += f[0] * 2; ay += f[1] * 2; }
-        // back inside the roost's rectangle
-        const R = b.ro, zx = Math.max(R.x0, Math.min(R.x1, b.x)), zy = Math.max(R.y0 + 4, Math.min(R.y1, b.y));
-        if (zx !== b.x || zy !== b.y) { steer(b, zx - b.x, zy - b.y, f); ax += f[0] * D.batZonePull; ay += f[1] * D.batZonePull; }
-        // rock 18 ahead: steer away from it (the open directions round the bat)
-        const sp = Math.hypot(b.vx, b.vy) || 1;
-        if (solid(b.x + b.vx / sp * LOOK, b.y + b.vy / sp * LOOK) || solid(b.x + b.vx / sp * LOOK * 0.5, b.y + b.vy / sp * LOOK * 0.5)) {
-          let wx = 0, wy = 0;
-          for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4, ux = Math.cos(a), uy = Math.sin(a); if (solid(b.x + ux * LOOK * 0.6, b.y + uy * LOOK * 0.6)) { wx -= ux; wy -= uy; } }
-          if (!wx && !wy) { wx = -b.vx; wy = -b.vy; }
-          steer(b, wx, wy, f); ax += f[0] * D.batWallAvoid; ay += f[1] * D.batWallAvoid;
-        }
-        const am = Math.hypot(ax, ay); if (am > D.batMaxForce) { ax *= D.batMaxForce / am; ay *= D.batMaxForce / am; }
-        b.vx += ax * dt; b.vy += ay * dt;
+      // flocking with the flying bats within perception
+      let n = 0, sx = 0, sy = 0, avx = 0, avy = 0, cx = 0, cy = 0, ns = 0;
+      for (const o of fly) {
+        if (o === b || o.st !== 'fly') continue;
+        const ox = b.x - o.x, oy = b.y - o.y, q = Math.hypot(ox, oy);
+        if (q > D.batPerception || q < 1e-6) continue;
+        n++; avx += o.vx; avy += o.vy; cx += o.x; cy += o.y;
+        if (q < D.batSepDist) { sx += ox / q / q; sy += oy / q / q; ns++; }   // (inverse-distance push)
       }
-    }
-    let goal = null;
-    if (b.st === 'return') {   // 5. arrive at its slot
-      goal = slotPos(b.ro, b.slot, solid);
-      if (isNaN(goal.y)) goal = { x: b.ro.x, y: b.ro.y };
-      const gx = goal.x - b.x, gy = goal.y - b.y, q = Math.hypot(gx, gy);
+      if (ns) { steer(b, sx, sy, f); ax += f[0] * D.batSep; ay += f[1] * D.batSep; }
+      if (n) {
+        steer(b, avx / n, avy / n, f); ax += f[0] * D.batAli; ay += f[1] * D.batAli;
+        steer(b, cx / n - b.x, cy / n - b.y, f); ax += f[0] * D.batCoh; ay += f[1] * D.batCoh;
+      }
+      // a random wander jitter
+      b.wa += (rnd() - 0.5) * 12 * dt;
+      steer(b, Math.cos(b.wa), Math.sin(b.wa), f); ax += f[0] * D.batWander; ay += f[1] * D.batWander;
+      // flee the player when scared and near
+      if (b.scared && pi >= 0 && d < sR * D.batClearMult) { steer(b, b.x - preds[pi].x, b.y - preds[pi].y, f); ax += f[0] * 2; ay += f[1] * 2; }
+      // back inside the roost's rectangle
+      const R = b.ro, zx = Math.max(R.x0, Math.min(R.x1, b.x)), zy = Math.max(R.y0 + 4, Math.min(R.y1, b.y));
+      if (zx !== b.x || zy !== b.y) { steer(b, zx - b.x, zy - b.y, f); ax += f[0] * D.batZonePull; ay += f[1] * D.batZonePull; }
+    } else {
+      // 5. home to its claimed slot: arrive (speed = min(maxSpeed, distance × 2.5)); within 3 snap; too long at it, another slot or off again
+      const goal = slotPos(b.ro, b.slot, solid), gx = goal.x - b.x, gy = goal.y - b.y, q = Math.hypot(gx, gy);
+      if (isNaN(q) || (b.rt = (b.rt || 0) + dt) > RETURN_T) { b.rt = 0; if (!startReturn(B, b, solid, true)) takeOff(b, rnd, false); continue; }
       if (q < 3) { b.x = goal.x; b.y = goal.y; b.vx = b.vy = 0; b.st = 'roost'; continue; }
-      const s = Math.min(D.batMaxSpeed, q * 2.5);
-      b.vx = gx / q * s; b.vy = gy / q * s;
+      lim = q - 2;   // (its slot is on the rock: rock no nearer than the slot counts)
+      const sp = Math.min(D.batMaxSpeed, q * 2.5);
+      ax += (gx / q * sp - b.vx) * 8; ay += (gy / q * sp - b.vy) * 8;
     }
-    const v = Math.hypot(b.vx, b.vy); if (v > D.batMaxSpeed) { b.vx *= D.batMaxSpeed / v; b.vy *= D.batMaxSpeed / v; }
+    // rock ahead (looking further the faster it goes, and to both sides): steer away early and hard, and brake
+    const sp = Math.hypot(b.vx, b.vy) || 1, ux = b.vx / sp, uy = b.vy / sp, look = Math.min(lim, LOOK + sp * D.batLookAhead);
+    let wx = 0, wy = 0, near = 0;
+    for (const [a, w] of WHISKERS) {
+      const c = Math.cos(a), s2 = Math.sin(a), dx = ux * c - uy * s2, dy = ux * s2 + uy * c;
+      for (const k of [0.35, 0.7, 1]) if (solid(b.x + dx * look * k, b.y + dy * look * k)) { wx -= dx * w / k; wy -= dy * w / k; near = Math.max(near, 1.4 - k); break; }
+    }
+    if (look > 0 && (wx || wy)) {
+      if (b.st === 'fly') { steer(b, wx, wy, f); ax += f[0] * D.batWallAvoid * (1 + near); ay += f[1] * D.batWallAvoid * (1 + near); }
+      else { ax += wx * D.batMaxSpeed * 2; ay += wy * D.batMaxSpeed * 2; }   // (homing: round the rock in its way)
+      const k = Math.exp(-near * 6 * dt); b.vx *= k; b.vy *= k;
+    }
+    const mf = D.batMaxForce * (b.st === 'fly' ? 1 : 2), am = Math.hypot(ax, ay); if (am > mf) { ax *= mf / am; ay *= mf / am; }
+    b.vx += ax * dt; b.vy += ay * dt;
+    if (b.st === 'fly') {
+      // twitchy: drag (little momentum), sudden jinks now and then, and the wingbeat: a lift each beat, gravity between (the bob)
+      const dr = Math.exp(-D.batDrag * dt); b.vx *= dr; b.vy *= dr;
+      if ((b.jt = (b.jt ?? rnd()) - dt) <= 0) { b.jt = (0.4 + rnd() * 1.2) / Math.max(0.01, D.batJinkRate); const a = rnd() * 6.283; b.vx += Math.cos(a) * D.batJinkStr; b.vy += Math.sin(a) * D.batJinkStr; }
+      b.vy += D.batGravity * dt;
+      b.fp = (b.fp ?? rnd()) + dt * D.batFlapRate;
+      if (b.fp >= 1) { b.fp -= Math.floor(b.fp); b.vy -= D.batFlapLift; }
+    }
+    const v = Math.hypot(b.vx, b.vy), cap = D.batMaxSpeed * (b.st === 'fly' ? 1.25 : 1); if (v > cap) { b.vx *= cap / v; b.vy *= cap / v; }
     // the move, in steps under a cell: on rock, slide along the free axis, or bounce
     const steps = Math.max(1, Math.ceil(Math.hypot(b.vx, b.vy) * dt / 1));
+    let hit = false;
     for (let s = 0; s < steps; s++) {
       const nx = b.x + b.vx * dt / steps, ny = b.y + b.vy * dt / steps;
-      if (!solid(nx, ny)) { b.x = nx; b.y = ny; }
-      else if (!solid(nx, b.y)) { b.x = nx; b.vy *= -0.5; }
+      if (!solid(nx, ny)) { b.x = nx; b.y = ny; continue; }
+      hit = true;
+      if (!solid(nx, b.y)) { b.x = nx; b.vy *= -0.5; }
       else if (!solid(b.x, ny)) { b.y = ny; b.vx *= -0.5; }
       else { b.vx = -b.vx * 0.5; b.vy = -b.vy * 0.5; break; }
     }
+    if (hit) B.hits = (B.hits || 0) + 1;   // (wall contacts, a frame each: the tests count them)
     // a bite (harmless by default: DEV.batBite 0)
     if (onBite && D.batBite > 0 && pi >= 0 && d < 5 && b.bite <= 0) { b.bite = 1; onBite(pi, D.batBite); }
   }
@@ -203,7 +243,7 @@ function drawBat(c, b, t, dbg) {
     return;
   }
   // in flight: wings flapping fast
-  const fl = Math.sin(t * 28 + b.ph), s = b.vx < 0 ? -1 : 1;
+  const fl = -Math.sin((b.fp ?? 0) * 6.283), s = b.vx < 0 ? -1 : 1;   // (in step with the wingbeat: the downstroke round each lift)
   c.beginPath();
   for (const w of [-1, 1]) {
     c.moveTo(0, -0.3);

@@ -1383,7 +1383,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     batFlightMin: 4,
     batFlightMax: 10,
     batMaxSpeed: 140,
-    batMaxForce: 320,
+    batMaxForce: 700,
     batPerception: 55,
     batSepDist: 16,
     batSep: 1.8,
@@ -1399,7 +1399,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     batBite: 0,
     batSize: 1,
     batHp: 3,
-    batPanic: 3
+    batPanic: 3,
+    batDrag: 3,
+    batJinkRate: 1.5,
+    batJinkStr: 70,
+    batFlapRate: 6,
+    batFlapLift: 22,
+    batGravity: 110,
+    batLookAhead: 0.25
   });
   DEV_META.push(
     { k: "batRoosts", g: "bats", label: "Bat roosts: about this many a screen (under the roof, under boulders)", step: 0.1 },
@@ -1425,7 +1432,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "batBite", g: "bats", label: "Bat bite damage (0: harmless)", step: 0.5 },
     { k: "batSize", g: "bats", label: "Bat size (× drawn and hit size)", step: 0.1 },
     { k: "batHp", g: "bats", label: "Bat health (the players shoot them)", step: 0.5 },
-    { k: "batPanic", g: "bats", label: "A roost hit: its bats panic for (s)", step: 0.5 }
+    { k: "batPanic", g: "bats", label: "A roost hit: its bats panic for (s)", step: 0.5 },
+    { k: "batDrag", g: "bats", label: "Flight: drag (more: less momentum, twitchier)", step: 0.1 },
+    { k: "batJinkRate", g: "bats", label: "Flight: jinks a second (sudden darts)", step: 0.1 },
+    { k: "batJinkStr", g: "bats", label: "Flight: jink strength (speed added)", step: 5 },
+    { k: "batFlapRate", g: "bats", label: "Flight: wingbeats a second", step: 0.5 },
+    { k: "batFlapLift", g: "bats", label: "Flight: lift each wingbeat (the bob)", step: 1 },
+    { k: "batGravity", g: "bats", label: "Flight: gravity between wingbeats", step: 5 },
+    { k: "batLookAhead", g: "bats", label: "Flight: looks ahead for rock (s of its speed, on top of 18 units)", step: 0.05 }
   );
   DEV_GROUPS.push(["bats", "Bats"]);
   Object.assign(DEV_DEFAULTS, {
@@ -7480,6 +7494,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var LOOK = 18;
   var ZONE_W = 70;
   var ZONE_H = 80;
+  var RETURN_T = 4;
+  var WHISKERS = [[0, 1], [0.5, 0.7], [-0.5, 0.7], [1.1, 0.35], [-1.1, 0.35]];
   var newBats = () => ({ roosts: [], list: [] });
   var slotOff = (i) => Math.ceil(i / 2) * (i % 2 ? 1 : -1);
   function slotPos(ro, i, solid) {
@@ -7488,16 +7504,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       let y = NaN;
       for (let k = 0; k <= 24; k++) {
         const a = ro.y - k, b = ro.y + k;
-        if (!solid(x, a + 0.5) && solid(x, a - 1)) {
+        if (!solid(x, a + 0.01) && solid(x, a - 1)) {
           y = a;
           break;
         }
-        if (!solid(x, b + 0.5) && solid(x, b - 1)) {
+        if (!solid(x, b + 0.01) && solid(x, b - 1)) {
           y = b;
           break;
         }
       }
-      ro.hy[i] = Math.floor(y / 2) * 2;
+      const g = Math.floor(y / 2) * 2;
+      ro.hy[i] = solid(x, g + 0.01) ? y : g;
     }
     return { x, y: ro.hy[i] ?? ro.y };
   }
@@ -7514,6 +7531,31 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     b.vy += 30 + rnd2() * 20;
     b.vx += (rnd2() - 0.5) * 40;
   }
+  function startReturn(B, b, solid, again) {
+    const ro = b.ro, used = /* @__PURE__ */ new Set();
+    for (const o of B.list) if (o !== b && o.ro === ro && !o.gone && (o.st === "roost" || o.st === "return")) used.add(o.slot);
+    let best = -1, bd = Infinity;
+    if (again) (ro.bad ||= /* @__PURE__ */ new Set()).add(b.slot);
+    for (let i = 0; i < ro.n; i++) {
+      if (used.has(i) || ro.bad?.has(i)) continue;
+      const p = slotPos(ro, i, solid);
+      if (isNaN(p.y) || solid(p.x, p.y + 0.5)) continue;
+      const q = Math.hypot(p.x - b.x, p.y - b.y);
+      if (q < bd) {
+        bd = q;
+        best = i;
+      }
+    }
+    for (let k = 0; best < 0 && k < 12; k++) {
+      const i = ro.n++, p = slotPos(ro, i, solid);
+      if (!isNaN(p.y) && !solid(p.x, p.y + 0.01)) best = i;
+    }
+    if (best < 0) return false;
+    b.slot = best;
+    b.st = "return";
+    b.rt = 0;
+    return true;
+  }
   function steer(b, dx, dy, out2) {
     const m = Math.hypot(dx, dy);
     if (m < 1e-6) {
@@ -7528,13 +7570,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const D = DEV, sR = D.batScareR, scareOn = D.batScare > 0.5;
     if (BAT_CMD.reset) {
       BAT_CMD.reset = false;
-      for (const b of B.list) {
+      for (const b of B.list) b.st = "fly";
+      for (const b of B.list) if (b.placed && !b.gone && startReturn(B, b, solid)) {
         const p = slotPos(b.ro, b.slot, solid);
         b.x = p.x;
         b.y = p.y;
         b.vx = b.vy = 0;
         b.st = "roost";
         b.scared = false;
+        b.panic = 0;
       }
     }
     if (BAT_CMD.scare) {
@@ -7580,87 +7624,60 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         if (rnd2() < D.batTakeoff * dt) takeOff(b, rnd2, false);
         continue;
       }
+      if (b.st === "fly" && !b.scared && (b.t -= dt) <= 0) startReturn(B, b, solid);
+      let ax = 0, ay = 0, lim = Infinity;
       if (b.st === "fly") {
-        if (!b.scared && (b.t -= dt) <= 0) {
-          b.st = "return";
-        } else {
-          let ax = 0, ay = 0;
-          let n = 0, sx = 0, sy = 0, avx = 0, avy = 0, cx = 0, cy = 0, ns = 0;
-          for (const o of fly) {
-            if (o === b || o.st !== "fly") continue;
-            const ox = b.x - o.x, oy = b.y - o.y, q = Math.hypot(ox, oy);
-            if (q > D.batPerception || q < 1e-6) continue;
-            n++;
-            avx += o.vx;
-            avy += o.vy;
-            cx += o.x;
-            cy += o.y;
-            if (q < D.batSepDist) {
-              sx += ox / q / q;
-              sy += oy / q / q;
-              ns++;
-            }
+        let n = 0, sx = 0, sy = 0, avx = 0, avy = 0, cx = 0, cy = 0, ns = 0;
+        for (const o of fly) {
+          if (o === b || o.st !== "fly") continue;
+          const ox = b.x - o.x, oy = b.y - o.y, q = Math.hypot(ox, oy);
+          if (q > D.batPerception || q < 1e-6) continue;
+          n++;
+          avx += o.vx;
+          avy += o.vy;
+          cx += o.x;
+          cy += o.y;
+          if (q < D.batSepDist) {
+            sx += ox / q / q;
+            sy += oy / q / q;
+            ns++;
           }
-          if (ns) {
-            steer(b, sx, sy, f);
-            ax += f[0] * D.batSep;
-            ay += f[1] * D.batSep;
-          }
-          if (n) {
-            steer(b, avx / n, avy / n, f);
-            ax += f[0] * D.batAli;
-            ay += f[1] * D.batAli;
-            steer(b, cx / n - b.x, cy / n - b.y, f);
-            ax += f[0] * D.batCoh;
-            ay += f[1] * D.batCoh;
-          }
-          b.wa += (rnd2() - 0.5) * 12 * dt;
-          steer(b, Math.cos(b.wa), Math.sin(b.wa), f);
-          ax += f[0] * D.batWander;
-          ay += f[1] * D.batWander;
-          if (b.scared && pi >= 0 && d < sR * D.batClearMult) {
-            steer(b, b.x - preds[pi].x, b.y - preds[pi].y, f);
-            ax += f[0] * 2;
-            ay += f[1] * 2;
-          }
-          const R = b.ro, zx = Math.max(R.x0, Math.min(R.x1, b.x)), zy = Math.max(R.y0 + 4, Math.min(R.y1, b.y));
-          if (zx !== b.x || zy !== b.y) {
-            steer(b, zx - b.x, zy - b.y, f);
-            ax += f[0] * D.batZonePull;
-            ay += f[1] * D.batZonePull;
-          }
-          const sp = Math.hypot(b.vx, b.vy) || 1;
-          if (solid(b.x + b.vx / sp * LOOK, b.y + b.vy / sp * LOOK) || solid(b.x + b.vx / sp * LOOK * 0.5, b.y + b.vy / sp * LOOK * 0.5)) {
-            let wx = 0, wy = 0;
-            for (let k = 0; k < 8; k++) {
-              const a = k * Math.PI / 4, ux = Math.cos(a), uy = Math.sin(a);
-              if (solid(b.x + ux * LOOK * 0.6, b.y + uy * LOOK * 0.6)) {
-                wx -= ux;
-                wy -= uy;
-              }
-            }
-            if (!wx && !wy) {
-              wx = -b.vx;
-              wy = -b.vy;
-            }
-            steer(b, wx, wy, f);
-            ax += f[0] * D.batWallAvoid;
-            ay += f[1] * D.batWallAvoid;
-          }
-          const am = Math.hypot(ax, ay);
-          if (am > D.batMaxForce) {
-            ax *= D.batMaxForce / am;
-            ay *= D.batMaxForce / am;
-          }
-          b.vx += ax * dt;
-          b.vy += ay * dt;
         }
-      }
-      let goal = null;
-      if (b.st === "return") {
-        goal = slotPos(b.ro, b.slot, solid);
-        if (isNaN(goal.y)) goal = { x: b.ro.x, y: b.ro.y };
-        const gx = goal.x - b.x, gy = goal.y - b.y, q = Math.hypot(gx, gy);
+        if (ns) {
+          steer(b, sx, sy, f);
+          ax += f[0] * D.batSep;
+          ay += f[1] * D.batSep;
+        }
+        if (n) {
+          steer(b, avx / n, avy / n, f);
+          ax += f[0] * D.batAli;
+          ay += f[1] * D.batAli;
+          steer(b, cx / n - b.x, cy / n - b.y, f);
+          ax += f[0] * D.batCoh;
+          ay += f[1] * D.batCoh;
+        }
+        b.wa += (rnd2() - 0.5) * 12 * dt;
+        steer(b, Math.cos(b.wa), Math.sin(b.wa), f);
+        ax += f[0] * D.batWander;
+        ay += f[1] * D.batWander;
+        if (b.scared && pi >= 0 && d < sR * D.batClearMult) {
+          steer(b, b.x - preds[pi].x, b.y - preds[pi].y, f);
+          ax += f[0] * 2;
+          ay += f[1] * 2;
+        }
+        const R = b.ro, zx = Math.max(R.x0, Math.min(R.x1, b.x)), zy = Math.max(R.y0 + 4, Math.min(R.y1, b.y));
+        if (zx !== b.x || zy !== b.y) {
+          steer(b, zx - b.x, zy - b.y, f);
+          ax += f[0] * D.batZonePull;
+          ay += f[1] * D.batZonePull;
+        }
+      } else {
+        const goal = slotPos(b.ro, b.slot, solid), gx = goal.x - b.x, gy = goal.y - b.y, q = Math.hypot(gx, gy);
+        if (isNaN(q) || (b.rt = (b.rt || 0) + dt) > RETURN_T) {
+          b.rt = 0;
+          if (!startReturn(B, b, solid, true)) takeOff(b, rnd2, false);
+          continue;
+        }
         if (q < 3) {
           b.x = goal.x;
           b.y = goal.y;
@@ -7668,22 +7685,75 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           b.st = "roost";
           continue;
         }
-        const s = Math.min(D.batMaxSpeed, q * 2.5);
-        b.vx = gx / q * s;
-        b.vy = gy / q * s;
+        lim = q - 2;
+        const sp2 = Math.min(D.batMaxSpeed, q * 2.5);
+        ax += (gx / q * sp2 - b.vx) * 8;
+        ay += (gy / q * sp2 - b.vy) * 8;
       }
-      const v = Math.hypot(b.vx, b.vy);
-      if (v > D.batMaxSpeed) {
-        b.vx *= D.batMaxSpeed / v;
-        b.vy *= D.batMaxSpeed / v;
+      const sp = Math.hypot(b.vx, b.vy) || 1, ux = b.vx / sp, uy = b.vy / sp, look = Math.min(lim, LOOK + sp * D.batLookAhead);
+      let wx = 0, wy = 0, near = 0;
+      for (const [a, w] of WHISKERS) {
+        const c = Math.cos(a), s2 = Math.sin(a), dx = ux * c - uy * s2, dy = ux * s2 + uy * c;
+        for (const k of [0.35, 0.7, 1]) if (solid(b.x + dx * look * k, b.y + dy * look * k)) {
+          wx -= dx * w / k;
+          wy -= dy * w / k;
+          near = Math.max(near, 1.4 - k);
+          break;
+        }
+      }
+      if (look > 0 && (wx || wy)) {
+        if (b.st === "fly") {
+          steer(b, wx, wy, f);
+          ax += f[0] * D.batWallAvoid * (1 + near);
+          ay += f[1] * D.batWallAvoid * (1 + near);
+        } else {
+          ax += wx * D.batMaxSpeed * 2;
+          ay += wy * D.batMaxSpeed * 2;
+        }
+        const k = Math.exp(-near * 6 * dt);
+        b.vx *= k;
+        b.vy *= k;
+      }
+      const mf = D.batMaxForce * (b.st === "fly" ? 1 : 2), am = Math.hypot(ax, ay);
+      if (am > mf) {
+        ax *= mf / am;
+        ay *= mf / am;
+      }
+      b.vx += ax * dt;
+      b.vy += ay * dt;
+      if (b.st === "fly") {
+        const dr = Math.exp(-D.batDrag * dt);
+        b.vx *= dr;
+        b.vy *= dr;
+        if ((b.jt = (b.jt ?? rnd2()) - dt) <= 0) {
+          b.jt = (0.4 + rnd2() * 1.2) / Math.max(0.01, D.batJinkRate);
+          const a = rnd2() * 6.283;
+          b.vx += Math.cos(a) * D.batJinkStr;
+          b.vy += Math.sin(a) * D.batJinkStr;
+        }
+        b.vy += D.batGravity * dt;
+        b.fp = (b.fp ?? rnd2()) + dt * D.batFlapRate;
+        if (b.fp >= 1) {
+          b.fp -= Math.floor(b.fp);
+          b.vy -= D.batFlapLift;
+        }
+      }
+      const v = Math.hypot(b.vx, b.vy), cap = D.batMaxSpeed * (b.st === "fly" ? 1.25 : 1);
+      if (v > cap) {
+        b.vx *= cap / v;
+        b.vy *= cap / v;
       }
       const steps = Math.max(1, Math.ceil(Math.hypot(b.vx, b.vy) * dt / 1));
+      let hit = false;
       for (let s = 0; s < steps; s++) {
         const nx = b.x + b.vx * dt / steps, ny = b.y + b.vy * dt / steps;
         if (!solid(nx, ny)) {
           b.x = nx;
           b.y = ny;
-        } else if (!solid(nx, b.y)) {
+          continue;
+        }
+        hit = true;
+        if (!solid(nx, b.y)) {
           b.x = nx;
           b.vy *= -0.5;
         } else if (!solid(b.x, ny)) {
@@ -7695,6 +7765,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           break;
         }
       }
+      if (hit) B.hits = (B.hits || 0) + 1;
       if (onBite && D.batBite > 0 && pi >= 0 && d < 5 && b.bite <= 0) {
         b.bite = 1;
         onBite(pi, D.batBite);
@@ -7770,7 +7841,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       c.fillRect(-0.15, 0, 0.3, 0.5);
       return;
     }
-    const fl = Math.sin(t * 28 + b.ph), s = b.vx < 0 ? -1 : 1;
+    const fl = -Math.sin((b.fp ?? 0) * 6.283), s = b.vx < 0 ? -1 : 1;
     c.beginPath();
     for (const w of [-1, 1]) {
       c.moveTo(0, -0.3);

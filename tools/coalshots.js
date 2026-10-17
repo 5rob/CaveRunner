@@ -29,24 +29,22 @@ require('../tests/build')();
   // (C4) Dev → Grem → Bats: the live preview (a cave of bats, a player walking past); then the player under a roost, scaring it
   if (ONLY === 'batdev') {
     await page.waitForTimeout(600);
-    // (dev mode is on by default on the test page: the ⚙️ is there)
-    await page.locator('.grem .adevbtn').dispatchEvent('pointerdown');
+    await page.locator('.grem .adevbtn').dispatchEvent('pointerdown');   // (dev mode is on by default on the test page)
     await page.waitForTimeout(500);
-    await page.locator('.devtab[data-t="grem"]').click();
-    await page.waitForTimeout(300);
-    const gh = page.locator('.devghead[data-g="bats"]');
-    if ((await gh.getAttribute('aria-expanded')) !== 'true') await gh.click();
-    await gh.scrollIntoViewIfNeeded();
-    await page.evaluate(() => { const g = document.querySelector('.devghead[data-g="bats"]'); g.scrollIntoView({ block: 'start' }); });
+    await page.locator('.devside[data-s=level]').click();
+    await page.locator('select.devlv').selectOption('coal');
+    await page.waitForTimeout(200);
+    await page.locator('.devtab[data-t=bats]').click();
+    await page.evaluate(() => { DEV.batScare = 0; });   // (the walking player kept from scaring them: Scare all instead)
     await page.waitForTimeout(1500);
-    await save('f-dev', 'Dev → Grem → Bats: the live preview at the top of the group, the knobs (no min/max) below');
-    for (let i = 0; i < 100; i++) {
-      const hit = await page.evaluate(() => [...document.querySelectorAll('.batprev')].length > 0 && window.__batLabScared > 0);
-      if (hit) break;
-      await page.waitForTimeout(100);
-    }
+    await save('f-dev', 'Dev → Level → Coal Seams → Bats: the live preview pinned over the knobs');
     const cb = await page.locator('.batprev').boundingBox();
-    await save('g-dev-scare', 'the preview a moment later: the player walking under a roost, its bats scared into flight', cb ? { x: cb.x, y: cb.y, width: cb.width, height: cb.height } : undefined);
+    const clip = cb ? { x: cb.x, y: cb.y, width: cb.width, height: cb.height } : undefined;
+    if (await page.$('.batscare')) await page.locator('.batscare').dispatchEvent('pointerdown'); else await page.evaluate(() => { BAT_CMD.scare = true; });
+    await page.waitForTimeout(1200);
+    for (const n of ['1', '2', '3']) { await save('g-fly' + n, 'the preview mid-flight, frame ' + n + ' (about 1/12 s apart: the wingbeat bob)', clip); await page.waitForTimeout(80); }
+    await page.waitForTimeout(20000);
+    await save('j-refilled', 'the preview 20 s on: the roosts filled again, one bat a slot', clip);
     await browser.close(); console.log(said.join(String.fromCharCode(10))); return;
   }
   // (C4 round 3) the bats are targets: the level played on (darkness lifted for the shots) till the players have hit a bat on screen

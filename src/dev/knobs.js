@@ -510,9 +510,10 @@ DEV_META.push(
   { k: 'coalCavLean',   g: 'coal', label: 'Cavern timber: share that are a lone prop leaning up to the rock', min: 0, max: 1, step: 0.05 });
 DEV_GROUPS.push(['coal', 'Coal Seams']);
 // (C4a) Coal Seams' bats (creatures/bats.js, the owner's spec): roosts under downward-facing rock, a flock (boids) in flight
-Object.assign(DEV_DEFAULTS, { batRoosts: 1.5, batsPerRoost: 14, batSlotSpacing: 8, batTakeoff: 0.02, batFlightMin: 4, batFlightMax: 10, batMaxSpeed: 140, batMaxForce: 320,
+Object.assign(DEV_DEFAULTS, { batRoosts: 1.5, batsPerRoost: 14, batSlotSpacing: 8, batTakeoff: 0.02, batFlightMin: 4, batFlightMax: 10, batMaxSpeed: 140, batMaxForce: 700,
   batPerception: 55, batSepDist: 16, batSep: 1.8, batAli: 0.08, batCoh: 0.5, batWander: 1.2, batZonePull: 2, batWallAvoid: 3, batScareR: 90, batClearMult: 1.6,
-  batScare: 1, batDebug: 0, batBite: 0, batSize: 1, batHp: 3, batPanic: 3 });
+  batScare: 1, batDebug: 0, batBite: 0, batSize: 1, batHp: 3, batPanic: 3,
+  batDrag: 3, batJinkRate: 1.5, batJinkStr: 70, batFlapRate: 6, batFlapLift: 22, batGravity: 110, batLookAhead: 0.25 });
 DEV_META.push(
   { k: 'batRoosts',      g: 'bats', label: 'Bat roosts: about this many a screen (under the roof, under boulders)', step: 0.1 },
   { k: 'batsPerRoost',   g: 'bats', label: 'Bats per roost', step: 1 },
@@ -537,7 +538,14 @@ DEV_META.push(
   { k: 'batBite',        g: 'bats', label: 'Bat bite damage (0: harmless)', step: 0.5 },
   { k: 'batSize',        g: 'bats', label: 'Bat size (× drawn and hit size)', step: 0.1 },
   { k: 'batHp',          g: 'bats', label: 'Bat health (the players shoot them)', step: 0.5 },
-  { k: 'batPanic',       g: 'bats', label: 'A roost hit: its bats panic for (s)', step: 0.5 });
+  { k: 'batPanic',       g: 'bats', label: 'A roost hit: its bats panic for (s)', step: 0.5 },
+  { k: 'batDrag',        g: 'bats', label: 'Flight: drag (more: less momentum, twitchier)', step: 0.1 },
+  { k: 'batJinkRate',    g: 'bats', label: 'Flight: jinks a second (sudden darts)', step: 0.1 },
+  { k: 'batJinkStr',     g: 'bats', label: 'Flight: jink strength (speed added)', step: 5 },
+  { k: 'batFlapRate',    g: 'bats', label: 'Flight: wingbeats a second', step: 0.5 },
+  { k: 'batFlapLift',    g: 'bats', label: 'Flight: lift each wingbeat (the bob)', step: 1 },
+  { k: 'batGravity',     g: 'bats', label: 'Flight: gravity between wingbeats', step: 5 },
+  { k: 'batLookAhead',   g: 'bats', label: 'Flight: looks ahead for rock (s of its speed, on top of 18 units)', step: 0.05 });
 DEV_GROUPS.push(['bats', 'Bats']);
 // (C5a) Coal Seams' glow worms (creatures/glowworm.js, the owner's spec): the body and the inchworm gait
 Object.assign(DEV_DEFAULTS, { glowPerScreen: 0, glowStride: 4, glowDMin: 2.5, glowDMax: 6.5, glowLiftF: 0.6, glowLiftR: 0.4, glowCrank: 4.5, glowLen: 8, glowW: 1.8, glowFoot: 1, glowTurn: 0.1,

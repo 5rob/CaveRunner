@@ -35,7 +35,7 @@ for (let i = 0; i < 60 * 40; i++) {
   if (B.list.every(b => b.st === 'roost')) { back = i / 60; break; }
 }
 check('… they come back and re-roost (within flightMax + a few seconds)', back > 0 && back < D.batFlightMax + 6, back);
-check('… each in its own slot', B.list.every(b => Math.abs(b.x - G.slotPos(ro, b.slot, solid).x) < 0.01 && b.y === 20));
+check('… each at its slot, no two sharing one', B.list.every(b => Math.abs(b.x - G.slotPos(ro, b.slot, solid).x) < 0.01 && b.y === 20) && new Set(B.list.map(b => b.slot)).size === B.list.length, B.list.map(b => b.slot));
 check('… never inside rock', inRock === 0, inRock);
 check('… never past maxSpeed', maxSp <= D.batMaxSpeed + 1e-6, Math.round(maxSp));
 // flying as a flock: scared all (the button), a second on they stay together (cohesion) and apart (separation)
@@ -126,6 +126,36 @@ check('… DevRow clamps only when a row has them', DP.includes('if (meta.min !=
   check('… a dead bat removed: out of the flock and out of the foes', S.bats.list.every(b => !b.f || b.f.hp > 0) && S.foes.every(f => !f.bat || f.hp > 0));
   check("… the bats were the guns' targets (stand-ins among the foes)", S.foes.some(f => f.bat));
   Object.assign(D, keep);
+}
+
+// (owner, round 4) twitchy flight, fewer wall hits, landing on free slots only
+{
+  // wall contacts (frames a bat is pushed back by rock) per bat-minute in flight, the Dev preview's cave, scared every 8 s:
+  // 560 with round 3's flight (measured, same run), now well under it
+  const L = G.batLab(); G.batLabStep(L, 1 / 60, rnd); let flyT = 0;
+  for (let i = 0; i < 60 * 120; i++) { if (i % (60 * 8) === 0) G.BAT_CMD.scare = true; G.batLabStep(L, 1 / 60, rnd); flyT += L.B.list.filter(b => b.st !== 'roost').length / 60; }
+  const per = (L.B.hits || 0) / (flyT / 60);
+  check("wall contacts per bat-minute: far fewer than round 3's 560", per < 120, +per.toFixed(1));
+  // the bob: a flying bat's height goes up and down with its wingbeats
+  const b = L.B.list[0]; G.BAT_CMD.scare = true; const ys = [];
+  for (let i = 0; i < 60; i++) { G.batLabStep(L, 1 / 60, rnd); ys.push(b.vy); }
+  let ups = 0; for (let i = 1; i < ys.length; i++) if (ys[i] < ys[i - 1] - G.DEV.batFlapLift * 0.5) ups++;
+  check('… each wingbeat a lift (the bob): about flapRate a second', ups >= G.DEV.batFlapRate * 0.6, ups);
+  // after a scare everyone is back on a slot of their own within flightMax + 10 s (the lab's bumpy roof and boulder)
+  const D0 = G.DEV.batTakeoff; G.DEV.batTakeoff = 0;
+  for (let i = 0; i < 400; i++) G.batLabStep(L, 1 / 60, rnd);   // (the player off the side)
+  L.wait = 1e9; L.px = -1e4; G.BAT_CMD.scare = true;
+  let back = -1;
+  for (let i = 0; i < 60 * (G.DEV.batFlightMax + 10); i++) { G.batLabStep(L, 1 / 60, rnd); if (L.B.list.every(q => q.st === 'roost')) { back = i / 60; break; } }
+  const keys = L.B.list.map(q => L.B.roosts.indexOf(q.ro) + ':' + q.slot);
+  check('after a scare, all re-roost within flightMax + 10 s', back > 0, { back, st: L.B.list.map(q => q.st[0]).join('') });
+  check('… no two on one slot', new Set(keys).size === keys.length, keys);
+  // a bat whose slot is taken picks the nearest free one
+  const q0 = L.B.list.find(q => q.ro === L.B.roosts[0]), q1 = L.B.list.find(q => q.ro === L.B.roosts[0] && q !== q0);
+  q0.st = 'fly'; q0.t = 0; q0.x += 5; q0.y += 20; const s0 = q0.slot; q1.slot = s0;
+  G.batLabStep(L, 1 / 60, rnd);
+  check('… a bat whose slot is taken claims another, free one', q0.st === 'return' && q0.slot !== s0 && !L.B.list.some(o => o !== q0 && o.ro === q0.ro && o.slot === q0.slot), [q0.st, s0, q0.slot]);
+  G.DEV.batTakeoff = D0;
 }
 
 console.log(fails ? `\n${fails} FAILED` : '\nall ok');
