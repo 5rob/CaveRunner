@@ -548,10 +548,18 @@ DEV_META.push(
   { k: 'batLookAhead',   g: 'bats', label: 'Flight: looks ahead for rock (s of its speed, on top of 18 units)', step: 0.05 });
 DEV_GROUPS.push(['bats', 'Bats']);
 // (C5a) Coal Seams' glow worms (creatures/glowworm.js, the owner's spec): the body and the inchworm gait
-Object.assign(DEV_DEFAULTS, { glowPerScreen: 0, glowStride: 4, glowDMin: 2.5, glowDMax: 6.5, glowLiftF: 0.6, glowLiftR: 0.4, glowCrank: 4.5, glowLen: 8, glowW: 1.8, glowFoot: 1, glowTurn: 0.1,
-  glowTaper: 0.55, glowSpores: 3, glowSporeSpd: 22, glowSporeDrag: 3, glowSporeSpread: 40, glowAmbient: 0 });   // (v2.0.7: glow worms off until the owner OKs them: 2 and 4)
+Object.assign(DEV_DEFAULTS, { glowCluster: 0.35, glowClusterMin: 3, glowClusterMax: 20, glowInMines: 1, glowInDig: 1, glowInCavern: 1, glowSizeMin: 0.8, glowSizeMax: 1.3, glowAmbientR: 70, glowStride: 4, glowDMin: 2.5, glowDMax: 6.5, glowLiftF: 0.6, glowLiftR: 0.4, glowCrank: 4.5, glowLen: 8, glowW: 1.8, glowFoot: 1, glowTurn: 0.1,
+  glowTaper: 0.55, glowSpores: 3, glowSporeSpd: 22, glowSporeDrag: 3, glowSporeSpread: 40, glowAmbient: 4 });
 DEV_META.push(
-  { k: 'glowPerScreen', g: 'glow', label: 'Glow worms: about this many a screen', min: 0, max: 12, step: 0.1 },
+  { k: 'glowCluster',    g: 'glow', label: 'Clusters: chance a zone slice gets one', min: 0, max: 1, step: 0.05 },
+  { k: 'glowClusterMin', g: 'glow', label: 'Clusters: fewest worms', min: 1, max: 40, step: 1 },
+  { k: 'glowClusterMax', g: 'glow', label: 'Clusters: most worms', min: 1, max: 40, step: 1 },
+  { k: 'glowInMines',    g: 'glow', label: 'Clusters in the Mines (1 yes, 0 no)', min: 0, max: 1, step: 1 },
+  { k: 'glowInDig',      g: 'glow', label: 'Clusters in the Digging zone (1 yes, 0 no)', min: 0, max: 1, step: 1 },
+  { k: 'glowInCavern',   g: 'glow', label: 'Clusters in the Cavern (1 yes, 0 no)', min: 0, max: 1, step: 1 },
+  { k: 'glowSizeMin',    g: 'glow', label: 'Size: smallest (× the whole body and its hit size)', min: 0.2, max: 4, step: 0.05 },
+  { k: 'glowSizeMax',    g: 'glow', label: 'Size: biggest', min: 0.2, max: 4, step: 0.05 },
+  { k: 'glowAmbientR',   g: 'glow', label: 'Green spores: drift within this of a cluster (units)', min: 5, max: 300, step: 5 },
   { k: 'glowStride',    g: 'glow', label: 'Stride (the foot gap swings this much)', min: 0, max: 20, step: 0.5 },
   { k: 'glowDMin',      g: 'glow', label: 'Foot gap: shortest (dMin)', min: 0, max: 20, step: 0.5 },
   { k: 'glowDMax',      g: 'glow', label: 'Foot gap: longest (dMax)', min: 1, max: 30, step: 0.5 },
@@ -567,7 +575,7 @@ DEV_META.push(
   { k: 'glowSporeSpd',  g: 'glow', label: 'Spore puff speed', min: 0, max: 200, step: 1 },
   { k: 'glowSporeDrag', g: 'glow', label: 'Spore puff drag (settles)', min: 0, max: 20, step: 0.1 },
   { k: 'glowSporeSpread', g: 'glow', label: 'Spore puff spread (± deg)', min: 0, max: 180, step: 1 },
-  { k: 'glowAmbient',   g: 'glow', label: 'Green spores drifting in Coal Seams (a second, a screen)', min: 0, max: 30, step: 0.5 });
+  { k: 'glowAmbient',   g: 'glow', label: 'Green spores drifting round a cluster (a second)', min: 0, max: 30, step: 0.5 });
 // (C5b) their behaviour: agro, the strike, and the blast when one is killed
 Object.assign(DEV_DEFAULTS, { glowAgroR: 60, glowStrikeR: 14, glowStrikeT: 0.3, glowStrikeCd: 0.9, glowStrikeDmg: 12, glowVib: 0.35, glowVibSpd: 70, glowMouthSpd: 18,
   glowBlastR: 16, glowBlastDmg: 6, glowHole: 10, glowTeam: 0.5, glowHp: 4 });

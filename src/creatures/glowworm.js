@@ -14,9 +14,9 @@ import { DEV, kcol } from '../dev/knobs.js';
 import { twinkle } from './jelly.js';
 
 /** @typedef {{ x: number, y: number, nx: number, ny: number }} WormFoot */
-/** @typedef {{ r: WormFoot, f: WormFoot, rl: { x: number, y: number }, fl: { x: number, y: number }, th: number, dir: number, pts: { x: number, y: number }[], ph: number,
+/** @typedef {{ r: WormFoot, f: WormFoot, rl: { x: number, y: number }, fl: { x: number, y: number }, th: number, dir: number, pts: { x: number, y: number }[], ph: number, sz: number,
  *   st: 'roam' | 'agro' | 'strike', ag: number, sk: number, cd: number, vt: number, ux: number, uy: number, hit: boolean, foe?: Enemy }} GlowWorm */
-// st: roaming, in agro (stood up on its back foot, facing the player) or striking; ag: 0 walking .. 1 stood up; sk: the strike's
+// sz: its size (× every body number: DEV.glowSizeMin..Max, rolled once); st: roaming, in agro (stood up on its back foot, facing the player) or striking; ag: 0 walking .. 1 stood up; sk: the strike's
 // clock; cd: till it can strike again; vt: the vibration's clock; (ux, uy): the way its head points; foe: its stand-in among the
 // scene's foes (art/titlescene.js wormsStep)
 /** @typedef {(x: number, y: number) => boolean} WormSolid */
@@ -73,8 +73,8 @@ export function newWorm(x, y, dir, solid, rnd) {
   const r = { x, y, nx: n.x, ny: n.y };
   if (!seat(r, solid) || solid(r.x, r.y)) return null;
   /** @type {GlowWorm} */
-  const w = { r, f: r, rl: { x, y }, fl: { x, y }, th: 0, dir, pts: [], ph: rnd() * 6.28, st: 'roam', ag: 0, sk: 0, cd: 0, vt: 0, ux: n.x, uy: n.y, hit: false };
-  const g = (DEV.glowDMin + DEV.glowDMax) / 2 - DEV.glowStride / 2;
+  const w = { r, f: r, rl: { x, y }, fl: { x, y }, th: 0, dir, pts: [], ph: rnd() * 6.28, sz: DEV.glowSizeMin + rnd() * Math.max(0, DEV.glowSizeMax - DEV.glowSizeMin), st: 'roam', ag: 0, sk: 0, cd: 0, vt: 0, ux: n.x, uy: n.y, hit: false };
+  const g = (DEV.glowDMin * w.sz + DEV.glowDMax * w.sz) / 2 - DEV.glowStride * w.sz / 2;
   let f = wormCrawl(r, g, dir, solid);
   if (!f) { w.dir = -dir; f = wormCrawl(r, g, -dir, solid); }
   if (!f) return null;
@@ -95,7 +95,7 @@ function turn(w) {
 /** @param {GlowWorm} w @param {number} dt @param {WormSolid} solid @param {() => number} rnd @param {{ x: number, y: number } | null} [tgt]
  * @returns {'' | 'plant' | 'strike'} */
 export function stepWorm(w, dt, solid, rnd, tgt) {
-  const D = DEV, A = D.glowStride / 2, dMid = (D.glowDMin + D.glowDMax) / 2;
+  const D = DEV, A = D.glowStride * w.sz / 2, dMid = (D.glowDMin * w.sz + D.glowDMax * w.sz) / 2;
   const d = tgt ? Math.hypot(tgt.x - w.r.x, tgt.y - w.r.y) : Infinity;
   /** @type {'' | 'plant' | 'strike'} */
   let ev = '';
@@ -131,7 +131,7 @@ export function stepWorm(w, dt, solid, rnd, tgt) {
 // height). Blended over the walking pose by w.ag
 /** @param {GlowWorm} w @param {{ x: number, y: number } | null} [tgt] */
 function wormStand(w, tgt) {
-  const D = DEV, b = D.glowLen / 5, nx = w.r.nx, ny = w.r.ny;
+  const D = DEV, b = D.glowLen * w.sz / 5, nx = w.r.nx, ny = w.r.ny;
   let px = nx, py = ny;
   if (tgt) { const dx = tgt.x - w.r.x, dy = tgt.y - w.r.y, l = Math.hypot(dx, dy) || 1; px = dx / l; py = dy / l; }
   let ux = nx + 0.35 * px, uy = ny + 0.35 * py, lunge = 1;
@@ -143,25 +143,25 @@ function wormStand(w, tgt) {
   const ul = Math.hypot(ux, uy) || 1; ux /= ul; uy /= ul;
   w.ux = ux; w.uy = uy;
   const vib = D.glowVib * Math.sin(w.vt * D.glowVibSpd) * (w.st === 'strike' ? 0 : 1), qx = -uy, qy = ux;
-  const ax = w.r.x + nx * D.glowFoot, ay = w.r.y + ny * D.glowFoot, k = w.ag;
+  const ax = w.r.x + nx * D.glowFoot * w.sz, ay = w.r.y + ny * D.glowFoot * w.sz, k = w.ag;
   /** @param {{ x: number, y: number }} p @param {number} x @param {number} y */
   const mix = (p, x, y) => ({ x: p.x + (x - p.x) * k, y: p.y + (y - p.y) * k });
   w.rl = mix(w.rl, w.r.x, w.r.y);
   w.pts = w.pts.map((p, i) => mix(p, ax + ux * b * i * lunge + qx * vib * i / 5, ay + uy * b * i * lunge + qy * vib * i / 5));
   const e = w.pts[5];
-  w.fl = mix(w.fl, e.x + ux * D.glowFoot, e.y + uy * D.glowFoot);
+  w.fl = mix(w.fl, e.x + ux * D.glowFoot * w.sz, e.y + uy * D.glowFoot * w.sz);
 }
 
 // the lifted feet and the body: six joints pinned footLen out from them, FABRIK from an arc bulging off the rock
 /** @param {GlowWorm} w @param {WormSolid} [solid] */
 export function wormBody(w, solid) {
-  const D = DEV, A = D.glowStride / 2, s = Math.sin(w.th), ext = w.th < Math.PI;
+  const D = DEV, A = D.glowStride * w.sz / 2, s = Math.sin(w.th), ext = w.th < Math.PI;
   const lf = ext ? D.glowLiftF * A * s : 0, lr = ext ? 0 : D.glowLiftR * A * -s;
   w.fl = { x: w.f.x + w.f.nx * lf, y: w.f.y + w.f.ny * lf };
   w.rl = { x: w.r.x + w.r.nx * lr, y: w.r.y + w.r.ny * lr };
-  const a = { x: w.rl.x + w.r.nx * D.glowFoot, y: w.rl.y + w.r.ny * D.glowFoot };
-  const e = { x: w.fl.x + w.f.nx * D.glowFoot, y: w.fl.y + w.f.ny * D.glowFoot };
-  w.pts = fabrik(a, e, w.r.nx + w.f.nx, w.r.ny + w.f.ny, D.glowLen / 5, solid);
+  const a = { x: w.rl.x + w.r.nx * D.glowFoot * w.sz, y: w.rl.y + w.r.ny * D.glowFoot * w.sz };
+  const e = { x: w.fl.x + w.f.nx * D.glowFoot * w.sz, y: w.fl.y + w.f.ny * D.glowFoot * w.sz };
+  w.pts = fabrik(a, e, w.r.nx + w.f.nx, w.r.ny + w.f.ny, D.glowLen * w.sz / 5, solid);
 }
 
 // FABRIK, both ends pinned: six joints a..e, five bones of b; the start: a circular arc of length 5b through a and e, bulging
@@ -230,7 +230,7 @@ export function wormLine(w, ox) {
 // pixelSprite (the creatures' pixel look)
 /** @param {CanvasRenderingContext2D} c @param {GlowWorm} w @param {number} ox */
 export function drawGlowWorm(c, w, ox) {
-  const Q = wormLine(w, ox), W = DEV.glowW, tp = DEV.glowTaper, hp = tp + (1 - tp) * w.ag;   // (stood up: the head end as fat as the middle)
+  const Q = wormLine(w, ox), W = DEV.glowW * w.sz, tp = DEV.glowTaper, hp = tp + (1 - tp) * w.ag;   // (stood up: the head end as fat as the middle)
   /** @param {number} s */
   const th = s => { const t0 = s > 0.5 ? hp : tp; return W * (t0 + (1 - t0) * Math.sin(Math.PI * s)); };
   for (const { col, add } of [{ col: EDGE, add: 0.3 }, { col: BODY, add: -0.9 }]) {
@@ -250,7 +250,7 @@ export function drawGlowWorm(c, w, ox) {
 export function wormBox(w, ox) {
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   for (const p of [w.rl, w.fl, ...w.pts]) { x0 = Math.min(x0, p.x); y0 = Math.min(y0, p.y); x1 = Math.max(x1, p.x); y1 = Math.max(y1, p.y); }
-  const e = DEV.glowW + 3;
+  const e = DEV.glowW * w.sz + 3;
   return { x: Math.floor(x0 - ox - e), y: Math.floor(y0 - e), w: Math.ceil(x1 - x0 + 2 * e) + 1, h: Math.ceil(y1 - y0 + 2 * e) + 1 };
 }
 
@@ -259,7 +259,7 @@ export function wormBox(w, ox) {
 /** @param {CanvasRenderingContext2D} c @param {GlowWorm} w @param {number} ox @param {number} t seconds */
 export function drawGlowFace(c, w, ox, t) {
   if (w.ag < 0.3) return;
-  const k = Math.min(1, (w.ag - 0.3) / 0.5), H = 2.2 * k, x = w.fl.x - ox - w.ux * 0.6, y = w.fl.y - w.uy * 0.6, qx = -w.uy, qy = w.ux;
+  const k = Math.min(1, (w.ag - 0.3) / 0.5), H = 2.2 * k * w.sz, x = w.fl.x - ox - w.ux * 0.6, y = w.fl.y - w.uy * 0.6, qx = -w.uy, qy = w.ux;
   c.fillStyle = '#2fd23a'; c.beginPath(); c.arc(x, y, H + 0.5, 0, 6.29); c.fill();
   c.fillStyle = '#e6ffd8'; c.beginPath(); c.arc(x, y, H, 0, 6.29); c.fill();
   c.fillStyle = '#0d2a10';

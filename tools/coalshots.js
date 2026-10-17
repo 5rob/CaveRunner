@@ -1,6 +1,6 @@
 // Screenshots for the owner (Coal Seams, grem branch): Grem Mode started at level 2 (Dev "Start at level"), phone size, a few
 // moments along the level, and close-ups of its decorations.
-//   node tools/coalshots.js [outdir] [prefix] [gas|stal|ladder|bats|worm|wormb|wormc]   (default tests/build/autoshots, coal; one of those: its shots only)
+//   node tools/coalshots.js [outdir] [prefix] [gas|stal|ladder|bats|worm|wormb|wormc|wormd]   (default tests/build/autoshots, coal; one of those: its shots only)
 const { launch } = require('../tests/chromium');
 const path = require('path');
 const fs = require('fs');
@@ -66,7 +66,7 @@ require('../tests/build')();
     await browser.close(); console.log(said.join(String.fromCharCode(10))); return;
   }
   // (C1) a gas pocket on screen set off: the whoomph mid-flash, then just after, the fire round it (each also a close-up)
-  for (let i = 0; ONLY !== 'stal' && ONLY !== 'ladder' && ONLY !== 'bats' && ONLY !== 'worm' && ONLY !== 'wormb' && ONLY !== 'wormc' && i < 400; i++) {
+  for (let i = 0; ONLY !== 'stal' && ONLY !== 'ladder' && ONLY !== 'bats' && ONLY !== 'worm' && ONLY !== 'wormb' && ONLY !== 'wormc' && ONLY !== 'wormd' && i < 400; i++) {
     const g = await page.evaluate(() => {
       const S = window.__gremScene, cv = document.querySelector('canvas');
       const g = S && cv && (S.gas || []).find(q => !q.gone && q.wx - S.scroll > 70 && q.wx - S.scroll < 150);
@@ -197,8 +197,20 @@ require('../tests/build')();
   }
   // (C5a) the glow worms: the view held on a worm on a floor; close-ups (darkness lifted) at four points of its gait, then one
   // on a wall or the roof
+  // (C5) a cluster of glow worms in the middle of the view, the normal dark
+  if (ONLY === 'wormd') {
+    await page.evaluate(() => { DEV.autoLvlPace = 3; });
+    let on = false;
+    for (let i = 0; i < 3000 && !on; i++) {
+      on = await page.evaluate(() => { const S = window.__gremScene; const C = S && (S.wormClusters || []).find(C => C.x - S.scroll > 90 && C.x - S.scroll < 130); if (!C) return false; S.lvl.step = null; S.pace = 0; S.foes.length = 0; S.spawn = 1e9; S.still = true; for (const r of S.runners) { r.out = true; r.x = -300; } console.log('at', S.scroll, C.x, C.y, C.n, C.z); return true; });
+      if (!on) await page.waitForTimeout(60);
+    }
+    await page.waitForTimeout(2500);
+    await save('q-cluster', 'as played (normal dark): a cluster of glow worms on a zone slice, green spores drifting round it');
+    await browser.close(); console.log(said.join(String.fromCharCode(10))); return;
+  }
   if (ONLY === 'worm' || ONLY === 'wormb' || ONLY === 'wormc') {
-    await page.evaluate(() => { DEV.autoLvlPace = 3; DEV.glowPerScreen = 2; DEV.glowAmbient = 4; });   // (the worms are off by default till the owner OKs them)
+    await page.evaluate(() => { DEV.autoLvlPace = 3; });
     const find = (/** @type {string} */ k) => page.evaluate(k => {
       const S = window.__gremScene; if (!S || !S.worms) return false;
       const w = S.worms.find(w => w.r.x - S.scroll > 60 && w.r.x - S.scroll < 160 && (k === 'floor' ? w.r.ny < -0.8 && w.f.ny < -0.8 : Math.abs(w.r.ny) < 0.6 || w.r.ny > 0.8));

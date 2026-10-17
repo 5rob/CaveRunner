@@ -204,7 +204,7 @@ const CLASSIC = { shoot: 1, turret: 1, chase: 1, bomb: 1 };
 /** @typedef {{ t: number, vh: number, top: number, bot: number, seed: number, rnd: () => number, scroll: number, shake: number, spawn: number,
  *   kills: number, gold: number, got: number, runner: TRunner, runners: TRunner[], foes: Enemy[], shots: TShot[], parts: TPart[], coins: Coin[],
  *   booms: TBoom[], zaps: TZap[], flash: number, rows: number, ncol: number, cells: Uint8Array, gen: number, props: TProp[],
- *   fire: TFire[], lightLater?: number[][], tim?: Record<number, { x: number, sets: import('./timber.js').TSet[] }>, timCol?: Map<number, Uint8Array>, chutes?: { x: number, y: number, s: number }[], gas?: TGas[], gasNext?: number, bats?: import('../creatures/bats.js').Bats, batNext?: number, worms?: import('../creatures/glowworm.js').GlowWorm[], wormNext?: number, wormRnd?: () => number, lootLater?: { f: Enemy, t: number }[], dirty: number[][], dirtyAll: boolean, carved: number, burnt: number, swaps: number, groundT: number, flyT: number, kinds: Record<string, number>,
+ *   fire: TFire[], lightLater?: number[][], tim?: Record<number, { x: number, sets: import('./timber.js').TSet[] }>, timCol?: Map<number, Uint8Array>, chutes?: { x: number, y: number, s: number }[], gas?: TGas[], gasNext?: number, bats?: import('../creatures/bats.js').Bats, batNext?: number, worms?: import('../creatures/glowworm.js').GlowWorm[], wormSlices?: Set<number>, wormPend?: { x: number, span: number, n: number, z: string, done?: boolean }[], wormClusters?: { x: number, y: number, n: number, z: string }[], wormRnd?: () => number, lootLater?: { f: Enemy, t: number }[], dirty: number[][], dirtyAll: boolean, carved: number, burnt: number, swaps: number, groundT: number, flyT: number, kinds: Record<string, number>,
  *   webs: WebLine[], orbN?: number, orbs?: Record<number, OrbRig>, mush?: MushCloud[], orbHub?: { x: number, y: number, r: number }[], orbT?: number, cut: number, lineT: number, silk: { x: number, y: number, ax: number, ay: number, vx: number, vy: number, life: number }[],
  *   nav: { F: any, fx: number, fy: number, t: number }, fireAcc: number, fireN: number, burning: Set<number>, gotN: number, pops: number, lampsPopped: number, kitNames: Set<string>,
  *   digT: number, digs: number, digWhy: Record<string, number>, still?: boolean, zp: TitlePlan, snd: TSnd[], hub?: TitleHub, lvl?: TitleLevel, lab?: boolean, back?: (ctx: CanvasRenderingContext2D, S: TitleScene) => void, pace?: number, team?: RunPlayer[], blocked?: number, blockedKind?: string, huddle?: boolean, gunsOff?: boolean, dmgMul?: number, coinWait?: number, hgoal?: number, hgoalT?: number, fuelWait?: number, tier?: number, loot?: TLoot[],
@@ -1153,21 +1153,52 @@ const rockAt = S => (x, y) => !!SOLID[titleCell(S, Math.floor(x / TCELL), Math.f
 // the worms' own random numbers (so they leave the level's own stream, and so its layout, as it was)
 /** @param {number} seed @returns {() => number} */
 const wormRng = seed => { let q = (Math.floor(seed * 7919) % 2147483646 + 2147483646) % 2147483646 + 1; return () => (q = (q * 16807) % 2147483647) / 2147483647; };
-// (C5a) Coal Seams' glow worms, about DEV.glowPerScreen a screen: one put on a floor or a roof in column c (creatures/glowworm.js;
-// it roams on to the walls by itself)
+// (C5, the owner) Coal Seams' glow worms come in clusters: a zone slice (one the Dev allows: glowInMines / glowInDig /
+// glowInCavern) gets one with DEV.glowCluster's chance, DEV.glowClusterMin..Max worms close together on the rock round a spot in
+// it (a floor or a roof), put down once the columns round the spot are made. creatures/glowworm.js; they roam on from there
 /** @param {TitleScene} S @param {number} c @param {number} wx */
 function wormCol(S, c, wx) {
-  if (DEV.glowPerScreen <= 0 || wx < (S.wormNext ?? TITLE_VW * 0.4)) return;
-  const R = S.wormRnd ||= wormRng(S.seed), base = ci(S, c, 0), cand = [];
-  for (let r = 2; r < S.rows - 2; r++) {
-    if (SOLID[S.cells[base + r]] && !SOLID[S.cells[base + r - 1]] && !SOLID[S.cells[base + r - 4]]) cand.push(r * TCELL - 0.5);   // (a floor, room over it)
-    if (SOLID[S.cells[base + r - 1]] && !SOLID[S.cells[base + r]] && !SOLID[S.cells[base + r + 3]]) cand.push(r * TCELL + 0.5);   // (a roof, room under it)
+  const R = S.wormRnd ||= wormRng(S.seed), Z = titleZoneSpan(wx, S), D = DEV;
+  if (!S.wormSlices) S.wormSlices = new Set();
+  if (!S.wormSlices.has(Z.x0)) {
+    S.wormSlices.add(Z.x0);
+    const ok = { timber: D.glowInMines, winding: D.glowInDig, spider: D.glowInCavern }[Z.z] ?? 0;
+    if (ok > 0.5 && R() < D.glowCluster && Z.x1 - Z.x0 > 60) {
+      const n = Math.round(D.glowClusterMin + R() * Math.max(0, D.glowClusterMax - D.glowClusterMin));
+      const span = Math.min(80, 6 + n * 3), cx = Math.max(wx + span, Z.x0 + span + (Z.x1 - Z.x0 - 2 * span) * (0.2 + 0.6 * R()));
+      (S.wormPend ||= []).push({ x: cx, span, n, z: Z.z });
+    }
   }
-  if (!cand.length) return;
-  const solid = rockAt(S);
-  const w = newWorm(wx - 1, cand[Math.floor(R() * cand.length)], R() < 0.5 ? 1 : -1, solid, R);
-  if (w) (S.worms ||= []).push(w);
-  S.wormNext = wx + TITLE_VW / Math.max(0.01, DEV.glowPerScreen) * (0.5 + R());
+  if (!S.wormPend) return;
+  for (const P of S.wormPend) if (!P.done && wx >= P.x + P.span + 4) { P.done = true; wormCluster(S, P, R); }
+  S.wormPend = S.wormPend.filter(P => !P.done);
+}
+// the rock surfaces (floor: air over rock; roof: rock over air) in column c, as y just off them
+/** @param {TitleScene} S @param {number} c @returns {number[]} */
+function wormSurfs(S, c) {
+  const base = ci(S, c, 0), cand = [];
+  for (let r = 4; r < S.rows - 4; r++) {
+    if (SOLID[S.cells[base + r]] && !SOLID[S.cells[base + r - 1]] && !SOLID[S.cells[base + r - 4]]) cand.push(r * TCELL - 0.5);
+    if (SOLID[S.cells[base + r - 1]] && !SOLID[S.cells[base + r]] && !SOLID[S.cells[base + r + 3]]) cand.push(r * TCELL + 0.5);
+  }
+  return cand;
+}
+// a cluster put down: a spot's surface, then each worm on the surface nearest it in a column within span of the spot
+/** @param {TitleScene} S @param {{ x: number, span: number, n: number, z: string }} P @param {() => number} R */
+function wormCluster(S, P, R) {
+  const solid = rockAt(S), c0 = Math.floor(P.x / TCELL), home = wormSurfs(S, c0);
+  if (!home.length) return;
+  const hy = home[Math.floor(R() * home.length)];
+  let made = 0;
+  for (let k = 0; k < P.n * 4 && made < P.n; k++) {
+    const x = P.x + (R() * 2 - 1) * P.span, ys = wormSurfs(S, Math.floor(x / TCELL));
+    let y = NaN, d = 30;
+    for (const q of ys) if (Math.abs(q - hy) < d) { d = Math.abs(q - hy); y = q; }
+    if (isNaN(y)) continue;
+    const w = newWorm(x, y, R() < 0.5 ? 1 : -1, solid, R);
+    if (w) { (S.worms ||= []).push(w); made++; }
+  }
+  if (made) (S.wormClusters ||= []).push({ x: P.x, y: hy, n: made, z: P.z });
 }
 // the glow worms' frame: each crawls on (stage a: no agro yet); those far behind the view dropped
 /** @param {TitleScene} S @param {number} dt */
@@ -1188,7 +1219,7 @@ function wormsStep(S, dt) {
     if (ev === 'strike' && ti >= 0 && S.lvl && S.lvl.hurt) S.lvl.hurt(S, live[ti].id, D.glowStrikeDmg);
     // its stand-in among the foes (as a bat's): the guns aim at it and hit it; killed, it blows up (killFoe → wormBlast)
     const f = w.foe || (w.foe = wormFoe(S, w)), j2 = w.pts[2], j3 = w.pts[3];
-    f.x = f.hx = (j2.x + j3.x) / 2; f.y = f.ty = f.hy = (j2.y + j3.y) / 2; f.r = D.glowW + 1.5;
+    f.x = f.hx = (j2.x + j3.x) / 2; f.y = f.ty = f.hy = (j2.y + j3.y) / 2; f.r = (D.glowW + 1.5) * w.sz;
     const sx = f.x - S.scroll;
     if (!inF.has(f) && f.hp > 0 && sx > -40 && sx < TITLE_VW + 40) S.foes.push(f);
     if (ev !== 'plant' || S.parts.length >= TITLE_PARTS - 20) continue;
@@ -1199,12 +1230,14 @@ function wormsStep(S, dt) {
       S.parts.push({ x: f.x - S.scroll, y: f.y, vx: (R() - 0.5) * 4, vy: -1 - R() * 2, life: l, max: l, r: 0.8, col: WORM_SPORE, kind: 'wspore', kx: Math.cos(a) * v, ky: Math.sin(a) * v });
     }
   }
-  // the green spores drifting through Coal Seams, where the worms live (the natural caves' luminescent spores, in the worms' green)
-  if (S.parts.length < TITLE_PARTS - 40 && R() < dt * D.glowAmbient) {
-    const x = R() * TITLE_VW, wx = x + S.scroll, l = 5 + R() * 3;
-    if (coalAt(S, wx)) S.parts.push({ x, y: titleCeil(wx, S) + 6 + R() * Math.max(0, titleFloor(wx, S) - titleCeil(wx, S) - 12), vx: (R() - 0.5) * 8, vy: -2 - R() * 3,
-      life: l, max: l, r: 0.9, col: WORM_SPORE, kind: 'wspore', kx: 0, ky: 0 });
+  // the green spores drifting round each cluster in view (the natural caves' luminescent spores, in the worms' green), DEV.glowAmbient
+  // a second each, within DEV.glowAmbientR of it
+  for (const C of S.wormClusters || []) {
+    if (C.x - S.scroll < -D.glowAmbientR || C.x - S.scroll > TITLE_VW + D.glowAmbientR || S.parts.length >= TITLE_PARTS - 40 || R() >= dt * D.glowAmbient) continue;
+    const wx = C.x + (R() * 2 - 1) * D.glowAmbientR, y = C.y + (R() * 2 - 1) * D.glowAmbientR * 0.6, l = 5 + R() * 3;
+    if (!solid(wx, y)) S.parts.push({ x: wx - S.scroll, y, vx: (R() - 0.5) * 8, vy: -2 - R() * 3, life: l, max: l, r: 0.9, col: WORM_SPORE, kind: 'wspore', kx: 0, ky: 0 });
   }
+  if (S.wormClusters) S.wormClusters = S.wormClusters.filter(C => C.x > S.scroll - TITLE_BACK);
 }
 const WORM_SPORE = '#7dff3a';   // (the worms' neon green)
 // a worm's stand-in foe: a spider's kind made over (no brain: stepFoes skips it; creatures/glowworm.js moves it), DEV.glowHp health
@@ -1212,7 +1245,7 @@ const WORM_SPORE = '#7dff3a';   // (the worms' neon green)
 function wormFoe(S, w) {
   const base = S.lvl && S.lvl.kind ? S.lvl.kind('hamahakki', 1) : enemyFor('hamahakki', 1), x = w.r.x, y = w.r.y;
   const k = { ...base, id: 'glowworm', name: 'Glow worm', act: 'worm', kp: undefined, elite: false, boss: false, dmg: 0, r: 2, hp: DEV.glowHp, gold: 2, col: { ...base.col, a: WORM_SPORE } };
-  return { x, y, ty: y, r: DEV.glowW + 1.5, phase: 0, hp: DEV.glowHp, hpMax: DEV.glowHp, cd: 1e9, flash: 0, lx: 0, ly: 1, hx: x, hy: y, tgt: null, rest: 0, k, touch: 1e9, charge: 0, worm: true };
+  return { x, y, ty: y, r: (DEV.glowW + 1.5) * w.sz, phase: 0, hp: DEV.glowHp, hpMax: DEV.glowHp, cd: 1e9, flash: 0, lx: 0, ly: 1, hx: x, hy: y, tgt: null, rest: 0, k, touch: 1e9, charge: 0, worm: true };
 }
 // (C5b) a glow worm killed: a burst of bright green, a hole blasted in the rock (DEV.glowHole), the creatures in DEV.glowBlastR hurt
 // (DEV.glowBlastDmg: other worms too, so a patch of them goes off in a chain), and the team at DEV.glowTeam of it

@@ -6,8 +6,7 @@ const G = require('../load');
 let fails = 0;
 const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FAIL'} ${n}${x !== undefined ? ' -> ' + JSON.stringify(x) : ''}`); };
 const D = G.DEV;
-if (!D.glowPerScreen) D.glowPerScreen = 2;   // (worms off by default until the owner OKs them)
-if (!D.glowAmbient) D.glowAmbient = 4;
+D.glowSizeMin = D.glowSizeMax = 1;   // (the hand-made rock: every worm its knobs' size; the level below rolls them)
 D.autoFoeDmg = 0; D.glowTurn = 0;
 let seed = 7; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
 const dt = 1 / 60;
@@ -61,7 +60,9 @@ let down = false, bad = 0;
 for (let i = 0; i < 60 * 40 && !down; i++) { G.stepWorm(w2, dt, ledge, rnd); for (const p of [w2.r, w2.f, ...w2.pts]) if (ledge(p.x, p.y)) bad++; if (w2.r.nx > 0.9 && w2.r.y > 75) down = true; }
 check('over a ledge (a convex corner) and down its side', down && bad === 0, { down, bad, r: w2.r });
 
-// a Grem level at level 2 (Coal Seams): worms made as it goes, about DEV.glowPerScreen a screen, never in rock
+// a Grem level at level 2 (Coal Seams): worms made in clusters as it goes, never in rock
+D.glowSizeMin = G.DEV_DEFAULTS.glowSizeMin; D.glowSizeMax = G.DEV_DEFAULTS.glowSizeMax;
+const clusters = new Set();
 const run = G.newRun(9);
 const S = G.levelScene(190, 23, 1, undefined, run.players, 2, run, true), L = G.levelState(S);
 S.spawn = 1e9; S.foes.length = 0;
@@ -70,13 +71,29 @@ let dist = 0, seen = new Set(), lv = 0;
 for (let i = 0; i < 2000 && S.scroll < L.plan.arena.x0 - 300; i++) {
   S.scroll += 3; dist += 3; G.titleStep(S, dt); S.foes.length = 0;
   for (const r of S.runners) { r.x = 40; r.y = 10; r.out = true; }
+  for (const C of S.wormClusters || []) clusters.add(C);
   for (const q of S.worms || []) { seen.add(q); if (rock(q.r.x, q.r.y) || rock(q.f.x, q.f.y)) lv++; }
 }
-const per = seen.size / (dist / G.TITLE_VW);
-check('worms in Coal Seams, about DEV.glowPerScreen a screen (within 40%)', Math.abs(per / D.glowPerScreen - 1) < 0.4, { n: seen.size, per: +per.toFixed(2) });
+const CL = [...clusters];
+check('worms in clusters on Coal Seams zone slices', CL.length >= 2 && seen.size >= CL.length * D.glowClusterMin, { clusters: CL.length, worms: seen.size });
+check('… each of glowClusterMin..Max worms', CL.every(C => C.n >= D.glowClusterMin && C.n <= D.glowClusterMax), CL.map(C => C.n));
+check('… sizes within glowSizeMin..Max, and varied', [...seen].every(q => q.sz >= D.glowSizeMin - 1e-9 && q.sz <= D.glowSizeMax + 1e-9) && new Set([...seen].map(q => q.sz.toFixed(3))).size > 3);
+check('… the hit size scaled with it', [...seen].filter(q => q.foe).every(q => Math.abs(q.foe.r - (D.glowW + 1.5) * q.sz) < 1e-9));
+// only the zones allowed: Mines only
+{
+  D.glowInDig = 0; D.glowInCavern = 0;
+  const S2 = G.levelScene(190, 23, 1, undefined, run.players, 2, run, true), L2 = G.levelState(S2), cs = new Set();
+  S2.spawn = 1e9;
+  for (let i = 0; i < 2000 && S2.scroll < L2.plan.arena.x0 - 300; i++) { S2.scroll += 3; G.titleStep(S2, dt); S2.foes.length = 0; for (const r of S2.runners) { r.x = 40; r.y = 10; r.out = true; } for (const C of S2.wormClusters || []) cs.add(C); }
+  check('a zone the Dev turns off gets none (Mines only: every cluster in the Mines)', cs.size > 0 && [...cs].every(C => C.z === 'timber'), [...cs].map(C => C.z));
+  D.glowInDig = 1; D.glowInCavern = 1;
+}
 check('… their feet never inside rock', lv === 0, lv);
 // the sandbox: the scene held still; the worms on screen crawl on for 10 s and get somewhere
-S.lvl.step = null; S.pace = 0; S.still = true; S.props.length = 0;
+S.lvl.step = null; S.pace = 0; S.still = true; S.props.length = 0; S.foes.length = 0;
+// a cluster put in view by hand (the level's own have scrolled by): six worms on floors there
+{ let n = 0, fx = 0, fy = 0; for (let x = S.scroll + 60; x < S.scroll + 170 && n < 6; x += 5) for (let y = 20; y < S.vh - 4; y += 1) if (!rock(x, y - 8) && !rock(x, y) && rock(x, y + 1)) { const q = G.newWorm(x, y + 0.5, 1, rock, rnd); if (q) { S.worms.push(q); n++; fx = x; fy = y; } break; }
+  (S.wormClusters ||= []).push({ x: fx, y: fy, n, z: "spider" }); }
 const mine = (S.worms || []).filter(q => q.r.x > S.scroll - 50 && q.r.x < S.scroll + 270), st = mine.map(q => ({ x: q.r.x, y: q.r.y }));
 for (let i = 0; i < 600; i++) { G.titleStep(S, dt); for (const q of mine) if (rock(q.r.x, q.r.y) || rock(q.f.x, q.f.y)) lv++; }
 const went = mine.filter((q, i) => Math.hypot(q.r.x - st[i].x, q.r.y - st[i].y) > 6).length;

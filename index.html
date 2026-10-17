@@ -1443,7 +1443,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   );
   DEV_GROUPS.push(["bats", "Bats"]);
   Object.assign(DEV_DEFAULTS, {
-    glowPerScreen: 0,
+    glowCluster: 0.35,
+    glowClusterMin: 3,
+    glowClusterMax: 20,
+    glowInMines: 1,
+    glowInDig: 1,
+    glowInCavern: 1,
+    glowSizeMin: 0.8,
+    glowSizeMax: 1.3,
+    glowAmbientR: 70,
     glowStride: 4,
     glowDMin: 2.5,
     glowDMax: 6.5,
@@ -1459,10 +1467,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     glowSporeSpd: 22,
     glowSporeDrag: 3,
     glowSporeSpread: 40,
-    glowAmbient: 0
+    glowAmbient: 4
   });
   DEV_META.push(
-    { k: "glowPerScreen", g: "glow", label: "Glow worms: about this many a screen", min: 0, max: 12, step: 0.1 },
+    { k: "glowCluster", g: "glow", label: "Clusters: chance a zone slice gets one", min: 0, max: 1, step: 0.05 },
+    { k: "glowClusterMin", g: "glow", label: "Clusters: fewest worms", min: 1, max: 40, step: 1 },
+    { k: "glowClusterMax", g: "glow", label: "Clusters: most worms", min: 1, max: 40, step: 1 },
+    { k: "glowInMines", g: "glow", label: "Clusters in the Mines (1 yes, 0 no)", min: 0, max: 1, step: 1 },
+    { k: "glowInDig", g: "glow", label: "Clusters in the Digging zone (1 yes, 0 no)", min: 0, max: 1, step: 1 },
+    { k: "glowInCavern", g: "glow", label: "Clusters in the Cavern (1 yes, 0 no)", min: 0, max: 1, step: 1 },
+    { k: "glowSizeMin", g: "glow", label: "Size: smallest (× the whole body and its hit size)", min: 0.2, max: 4, step: 0.05 },
+    { k: "glowSizeMax", g: "glow", label: "Size: biggest", min: 0.2, max: 4, step: 0.05 },
+    { k: "glowAmbientR", g: "glow", label: "Green spores: drift within this of a cluster (units)", min: 5, max: 300, step: 5 },
     { k: "glowStride", g: "glow", label: "Stride (the foot gap swings this much)", min: 0, max: 20, step: 0.5 },
     { k: "glowDMin", g: "glow", label: "Foot gap: shortest (dMin)", min: 0, max: 20, step: 0.5 },
     { k: "glowDMax", g: "glow", label: "Foot gap: longest (dMax)", min: 1, max: 30, step: 0.5 },
@@ -1478,7 +1494,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "glowSporeSpd", g: "glow", label: "Spore puff speed", min: 0, max: 200, step: 1 },
     { k: "glowSporeDrag", g: "glow", label: "Spore puff drag (settles)", min: 0, max: 20, step: 0.1 },
     { k: "glowSporeSpread", g: "glow", label: "Spore puff spread (± deg)", min: 0, max: 180, step: 1 },
-    { k: "glowAmbient", g: "glow", label: "Green spores drifting in Coal Seams (a second, a screen)", min: 0, max: 30, step: 0.5 }
+    { k: "glowAmbient", g: "glow", label: "Green spores drifting round a cluster (a second)", min: 0, max: 30, step: 0.5 }
   );
   Object.assign(DEV_DEFAULTS, {
     glowAgroR: 60,
@@ -7950,8 +7966,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (!n) return null;
     const r = { x, y, nx: n.x, ny: n.y };
     if (!seat(r, solid) || solid(r.x, r.y)) return null;
-    const w = { r, f: r, rl: { x, y }, fl: { x, y }, th: 0, dir, pts: [], ph: rnd2() * 6.28, st: "roam", ag: 0, sk: 0, cd: 0, vt: 0, ux: n.x, uy: n.y, hit: false };
-    const g = (DEV.glowDMin + DEV.glowDMax) / 2 - DEV.glowStride / 2;
+    const w = { r, f: r, rl: { x, y }, fl: { x, y }, th: 0, dir, pts: [], ph: rnd2() * 6.28, sz: DEV.glowSizeMin + rnd2() * Math.max(0, DEV.glowSizeMax - DEV.glowSizeMin), st: "roam", ag: 0, sk: 0, cd: 0, vt: 0, ux: n.x, uy: n.y, hit: false };
+    const g = (DEV.glowDMin * w.sz + DEV.glowDMax * w.sz) / 2 - DEV.glowStride * w.sz / 2;
     let f = wormCrawl(r, g, dir, solid);
     if (!f) {
       w.dir = -dir;
@@ -7970,7 +7986,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (w.th >= Math.PI) w.th = 2 * Math.PI - w.th;
   }
   function stepWorm(w, dt, solid, rnd2, tgt) {
-    const D = DEV, A = D.glowStride / 2, dMid = (D.glowDMin + D.glowDMax) / 2;
+    const D = DEV, A = D.glowStride * w.sz / 2, dMid = (D.glowDMin * w.sz + D.glowDMax * w.sz) / 2;
     const d = tgt ? Math.hypot(tgt.x - w.r.x, tgt.y - w.r.y) : Infinity;
     let ev = "";
     w.cd -= dt;
@@ -8018,7 +8034,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return ev;
   }
   function wormStand(w, tgt) {
-    const D = DEV, b = D.glowLen / 5, nx = w.r.nx, ny = w.r.ny;
+    const D = DEV, b = D.glowLen * w.sz / 5, nx = w.r.nx, ny = w.r.ny;
     let px = nx, py = ny;
     if (tgt) {
       const dx = tgt.x - w.r.x, dy = tgt.y - w.r.y, l = Math.hypot(dx, dy) || 1;
@@ -8038,21 +8054,21 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     w.ux = ux;
     w.uy = uy;
     const vib = D.glowVib * Math.sin(w.vt * D.glowVibSpd) * (w.st === "strike" ? 0 : 1), qx = -uy, qy = ux;
-    const ax = w.r.x + nx * D.glowFoot, ay = w.r.y + ny * D.glowFoot, k = w.ag;
+    const ax = w.r.x + nx * D.glowFoot * w.sz, ay = w.r.y + ny * D.glowFoot * w.sz, k = w.ag;
     const mix2 = (p, x, y) => ({ x: p.x + (x - p.x) * k, y: p.y + (y - p.y) * k });
     w.rl = mix2(w.rl, w.r.x, w.r.y);
     w.pts = w.pts.map((p, i) => mix2(p, ax + ux * b * i * lunge + qx * vib * i / 5, ay + uy * b * i * lunge + qy * vib * i / 5));
     const e = w.pts[5];
-    w.fl = mix2(w.fl, e.x + ux * D.glowFoot, e.y + uy * D.glowFoot);
+    w.fl = mix2(w.fl, e.x + ux * D.glowFoot * w.sz, e.y + uy * D.glowFoot * w.sz);
   }
   function wormBody(w, solid) {
-    const D = DEV, A = D.glowStride / 2, s = Math.sin(w.th), ext = w.th < Math.PI;
+    const D = DEV, A = D.glowStride * w.sz / 2, s = Math.sin(w.th), ext = w.th < Math.PI;
     const lf = ext ? D.glowLiftF * A * s : 0, lr = ext ? 0 : D.glowLiftR * A * -s;
     w.fl = { x: w.f.x + w.f.nx * lf, y: w.f.y + w.f.ny * lf };
     w.rl = { x: w.r.x + w.r.nx * lr, y: w.r.y + w.r.ny * lr };
-    const a = { x: w.rl.x + w.r.nx * D.glowFoot, y: w.rl.y + w.r.ny * D.glowFoot };
-    const e = { x: w.fl.x + w.f.nx * D.glowFoot, y: w.fl.y + w.f.ny * D.glowFoot };
-    w.pts = fabrik(a, e, w.r.nx + w.f.nx, w.r.ny + w.f.ny, D.glowLen / 5, solid);
+    const a = { x: w.rl.x + w.r.nx * D.glowFoot * w.sz, y: w.rl.y + w.r.ny * D.glowFoot * w.sz };
+    const e = { x: w.fl.x + w.f.nx * D.glowFoot * w.sz, y: w.fl.y + w.f.ny * D.glowFoot * w.sz };
+    w.pts = fabrik(a, e, w.r.nx + w.f.nx, w.r.ny + w.f.ny, D.glowLen * w.sz / 5, solid);
   }
   function fabrik(a, e, mx, my, b, solid) {
     const L = 5 * b, dx = e.x - a.x, dy = e.y - a.y, d = Math.hypot(dx, dy) || 1e-6;
@@ -8134,7 +8150,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return out2.map((p, i) => ({ x: p.x, y: p.y, s: L > 0 ? d[i] / L : 0 }));
   }
   function drawGlowWorm(c, w, ox) {
-    const Q = wormLine(w, ox), W = DEV.glowW, tp = DEV.glowTaper, hp = tp + (1 - tp) * w.ag;
+    const Q = wormLine(w, ox), W = DEV.glowW * w.sz, tp = DEV.glowTaper, hp = tp + (1 - tp) * w.ag;
     const th = (s) => {
       const t0 = s > 0.5 ? hp : tp;
       return W * (t0 + (1 - t0) * Math.sin(Math.PI * s));
@@ -8166,12 +8182,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       x1 = Math.max(x1, p.x);
       y1 = Math.max(y1, p.y);
     }
-    const e = DEV.glowW + 3;
+    const e = DEV.glowW * w.sz + 3;
     return { x: Math.floor(x0 - ox - e), y: Math.floor(y0 - e), w: Math.ceil(x1 - x0 + 2 * e) + 1, h: Math.ceil(y1 - y0 + 2 * e) + 1 };
   }
   function drawGlowFace(c, w, ox, t) {
     if (w.ag < 0.3) return;
-    const k = Math.min(1, (w.ag - 0.3) / 0.5), H = 2.2 * k, x = w.fl.x - ox - w.ux * 0.6, y = w.fl.y - w.uy * 0.6, qx = -w.uy, qy = w.ux;
+    const k = Math.min(1, (w.ag - 0.3) / 0.5), H = 2.2 * k * w.sz, x = w.fl.x - ox - w.ux * 0.6, y = w.fl.y - w.uy * 0.6, qx = -w.uy, qy = w.ux;
     c.fillStyle = "#2fd23a";
     c.beginPath();
     c.arc(x, y, H + 0.5, 0, 6.29);
@@ -13177,17 +13193,52 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return () => (q = q * 16807 % 2147483647) / 2147483647;
   };
   function wormCol2(S, c, wx) {
-    if (DEV.glowPerScreen <= 0 || wx < (S.wormNext ?? TITLE_VW * 0.4)) return;
-    const R = S.wormRnd ||= wormRng(S.seed), base = ci(S, c, 0), cand = [];
-    for (let r = 2; r < S.rows - 2; r++) {
+    const R = S.wormRnd ||= wormRng(S.seed), Z = titleZoneSpan(wx, S), D = DEV;
+    if (!S.wormSlices) S.wormSlices = /* @__PURE__ */ new Set();
+    if (!S.wormSlices.has(Z.x0)) {
+      S.wormSlices.add(Z.x0);
+      const ok = { timber: D.glowInMines, winding: D.glowInDig, spider: D.glowInCavern }[Z.z] ?? 0;
+      if (ok > 0.5 && R() < D.glowCluster && Z.x1 - Z.x0 > 60) {
+        const n = Math.round(D.glowClusterMin + R() * Math.max(0, D.glowClusterMax - D.glowClusterMin));
+        const span = Math.min(80, 6 + n * 3), cx = Math.max(wx + span, Z.x0 + span + (Z.x1 - Z.x0 - 2 * span) * (0.2 + 0.6 * R()));
+        (S.wormPend ||= []).push({ x: cx, span, n, z: Z.z });
+      }
+    }
+    if (!S.wormPend) return;
+    for (const P2 of S.wormPend) if (!P2.done && wx >= P2.x + P2.span + 4) {
+      P2.done = true;
+      wormCluster(S, P2, R);
+    }
+    S.wormPend = S.wormPend.filter((P2) => !P2.done);
+  }
+  function wormSurfs(S, c) {
+    const base = ci(S, c, 0), cand = [];
+    for (let r = 4; r < S.rows - 4; r++) {
       if (SOLID[S.cells[base + r]] && !SOLID[S.cells[base + r - 1]] && !SOLID[S.cells[base + r - 4]]) cand.push(r * TCELL - 0.5);
       if (SOLID[S.cells[base + r - 1]] && !SOLID[S.cells[base + r]] && !SOLID[S.cells[base + r + 3]]) cand.push(r * TCELL + 0.5);
     }
-    if (!cand.length) return;
-    const solid = rockAt(S);
-    const w = newWorm(wx - 1, cand[Math.floor(R() * cand.length)], R() < 0.5 ? 1 : -1, solid, R);
-    if (w) (S.worms ||= []).push(w);
-    S.wormNext = wx + TITLE_VW / Math.max(0.01, DEV.glowPerScreen) * (0.5 + R());
+    return cand;
+  }
+  function wormCluster(S, P2, R) {
+    const solid = rockAt(S), c0 = Math.floor(P2.x / TCELL), home = wormSurfs(S, c0);
+    if (!home.length) return;
+    const hy = home[Math.floor(R() * home.length)];
+    let made = 0;
+    for (let k = 0; k < P2.n * 4 && made < P2.n; k++) {
+      const x = P2.x + (R() * 2 - 1) * P2.span, ys = wormSurfs(S, Math.floor(x / TCELL));
+      let y = NaN, d = 30;
+      for (const q of ys) if (Math.abs(q - hy) < d) {
+        d = Math.abs(q - hy);
+        y = q;
+      }
+      if (isNaN(y)) continue;
+      const w = newWorm(x, y, R() < 0.5 ? 1 : -1, solid, R);
+      if (w) {
+        (S.worms ||= []).push(w);
+        made++;
+      }
+    }
+    if (made) (S.wormClusters ||= []).push({ x: P2.x, y: hy, n: made, z: P2.z });
   }
   function wormsStep(S, dt) {
     if (!S.worms) return;
@@ -13216,7 +13267,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const f = w.foe || (w.foe = wormFoe(S, w)), j2 = w.pts[2], j3 = w.pts[3];
       f.x = f.hx = (j2.x + j3.x) / 2;
       f.y = f.ty = f.hy = (j2.y + j3.y) / 2;
-      f.r = D.glowW + 1.5;
+      f.r = (D.glowW + 1.5) * w.sz;
       const sx = f.x - S.scroll;
       if (!inF.has(f) && f.hp > 0 && sx > -40 && sx < TITLE_VW + 40) S.foes.push(f);
       if (ev !== "plant" || S.parts.length >= TITLE_PARTS - 20) continue;
@@ -13226,28 +13277,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         S.parts.push({ x: f.x - S.scroll, y: f.y, vx: (R() - 0.5) * 4, vy: -1 - R() * 2, life: l, max: l, r: 0.8, col: WORM_SPORE, kind: "wspore", kx: Math.cos(a) * v, ky: Math.sin(a) * v });
       }
     }
-    if (S.parts.length < TITLE_PARTS - 40 && R() < dt * D.glowAmbient) {
-      const x = R() * TITLE_VW, wx = x + S.scroll, l = 5 + R() * 3;
-      if (coalAt(S, wx)) S.parts.push({
-        x,
-        y: titleCeil(wx, S) + 6 + R() * Math.max(0, titleFloor(wx, S) - titleCeil(wx, S) - 12),
-        vx: (R() - 0.5) * 8,
-        vy: -2 - R() * 3,
-        life: l,
-        max: l,
-        r: 0.9,
-        col: WORM_SPORE,
-        kind: "wspore",
-        kx: 0,
-        ky: 0
-      });
+    for (const C of S.wormClusters || []) {
+      if (C.x - S.scroll < -D.glowAmbientR || C.x - S.scroll > TITLE_VW + D.glowAmbientR || S.parts.length >= TITLE_PARTS - 40 || R() >= dt * D.glowAmbient) continue;
+      const wx = C.x + (R() * 2 - 1) * D.glowAmbientR, y = C.y + (R() * 2 - 1) * D.glowAmbientR * 0.6, l = 5 + R() * 3;
+      if (!solid(wx, y)) S.parts.push({ x: wx - S.scroll, y, vx: (R() - 0.5) * 8, vy: -2 - R() * 3, life: l, max: l, r: 0.9, col: WORM_SPORE, kind: "wspore", kx: 0, ky: 0 });
     }
+    if (S.wormClusters) S.wormClusters = S.wormClusters.filter((C) => C.x > S.scroll - TITLE_BACK);
   }
   var WORM_SPORE = "#7dff3a";
   function wormFoe(S, w) {
     const base = S.lvl && S.lvl.kind ? S.lvl.kind("hamahakki", 1) : enemyFor("hamahakki", 1), x = w.r.x, y = w.r.y;
     const k = { ...base, id: "glowworm", name: "Glow worm", act: "worm", kp: void 0, elite: false, boss: false, dmg: 0, r: 2, hp: DEV.glowHp, gold: 2, col: { ...base.col, a: WORM_SPORE } };
-    return { x, y, ty: y, r: DEV.glowW + 1.5, phase: 0, hp: DEV.glowHp, hpMax: DEV.glowHp, cd: 1e9, flash: 0, lx: 0, ly: 1, hx: x, hy: y, tgt: null, rest: 0, k, touch: 1e9, charge: 0, worm: true };
+    return { x, y, ty: y, r: (DEV.glowW + 1.5) * w.sz, phase: 0, hp: DEV.glowHp, hpMax: DEV.glowHp, cd: 1e9, flash: 0, lx: 0, ly: 1, hx: x, hy: y, tgt: null, rest: 0, k, touch: 1e9, charge: 0, worm: true };
   }
   function wormBlast(S, f) {
     const x = f.x - S.scroll, y = f.ty, r = DEV.glowBlastR, D = DEV;
