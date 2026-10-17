@@ -1209,9 +1209,12 @@ function wormsStep(S, dt) {
   const solid = rockAt(S);
   const R = S.wormRnd ||= wormRng(S.seed), D = DEV;
   if (S.lootLater) { for (const q of S.lootLater) if ((q.t -= dt) <= 0) dropLoot(S, q.f); S.lootLater = S.lootLater.filter(q => q.t > 0); }
-  if (S.worms.some(w => w.foe && w.foe.hp <= 0)) S.worms = S.worms.filter(w => !(w.foe && w.foe.hp <= 0));   // (killed: killFoe blew it up)
+  // killed: it lies still for DEV.glowFuse (f.fuse, set by killFoe), then blows up and goes
+  for (const w of S.worms) { const f = w.foe; if (f && f.hp <= 0 && (f.fuse || 0) > 0 && (f.fuse -= dt) <= 0) { f.fuse = 0; wormBlast(S, f); } }
+  if (S.worms.some(w => w.foe && w.foe.hp <= 0 && !(w.foe.fuse || 0))) S.worms = S.worms.filter(w => !(w.foe && w.foe.hp <= 0 && !(w.foe.fuse || 0)));
   const live = S.runners.filter(r => !r.out), inF = new Set(S.foes);
   for (const w of S.worms) {
+    if (w.foe && w.foe.hp <= 0) continue;   // (dead, its fuse burning)
     // the nearest player's middle: agro, strike (a strike at its height hurts him: DEV.glowStrikeDmg)
     let tgt = null, td = Infinity, ti = -1;
     for (let i = 0; i < live.length; i++) { const x = S.scroll + live[i].x + PW / 2, y = live[i].y + PH / 2, q = Math.hypot(x - w.r.x, y - w.r.y); if (q < td) { td = q; tgt = { x, y }; ti = i; } }
@@ -1885,7 +1888,7 @@ function killFoe(S, f) {
   S.kills++;
   const big = f.k.id !== 'rotta' && !f.bat && !f.worm, x = f.x - S.scroll, y = f.ty;
   snd(S, 'die', x, y, f.k);
-  if (f.worm) wormBlast(S, f);
+  if (f.worm) { if (DEV.glowFuse > 0) f.fuse = DEV.glowFuse; else wormBlast(S, f); }
   else if (f.bat) {   // (a bat: a small puff, and it drops, a little dark lump falling till it lands)
     burst(S, x, y, 5, '#8a7a90', 40, 'smoke', 0.5);
     burst(S, x, y, 4, '#ffffff', 90, 'spark', 0.2);

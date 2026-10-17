@@ -133,12 +133,16 @@ const dummy = { ...WA.foe, worm: false, bat: true, hp: 100, hpMax: 100, x: WA.fo
 const cx = WA.foe.x, cy = WA.foe.y;
 let rock0 = 0; for (let dx = -10; dx <= 10; dx += 1) for (let dy = -10; dy <= 10; dy += 1) if (rock(cx + dx, cy + dy)) rock0++;
 G.titleKill(S, WA.foe);
+let rockK = 0; for (let dx = -10; dx <= 10; dx += 1) for (let dy = -10; dy <= 10; dy += 1) if (rock(cx + dx, cy + dy)) rockK++;
+check('killed, it waits glowFuse before it blows up (owner)', D.glowFuse > 0 && rockK === rock0 && S.worms.includes(WA), { fuse: D.glowFuse, rock0, rockK });
+const fuseN = Math.ceil(D.glowFuse / dt) + 1;
+for (let i = 0; i < fuseN; i++) G.titleStep(S, dt);
 let rock1 = 0; for (let dx = -10; dx <= 10; dx += 1) for (let dy = -10; dy <= 10; dy += 1) if (rock(cx + dx, cy + dy)) rock1++;
 check('a kill blasts a hole in the rock', rock1 < rock0 - 10, { rock0, rock1 });
 check('… hurts a creature near (glowBlastDmg)', dummy.hp <= 100 - D.glowBlastDmg + 1e-9, dummy.hp);
 check('… sets off a worm near it (a chain)', !!B2 && !!B2.foe && B2.foe.hp <= 0, B2 && B2.foe && B2.foe.hp);
-check('… and hurts the team at glowTeam (half) of the blast', hits.length > 0 && hits.every(d => Math.abs(d - D.glowBlastDmg * D.glowTeam) < 1e-9), hits);
-G.titleStep(S, dt);
+check('… and hurts the team at glowTeam (half) of the blast', hits.some(d => Math.abs(d - D.glowBlastDmg * D.glowTeam) < 1e-9), hits);   // (other creatures may bite him in the fuse's frames)
+for (let i = 0; i < fuseN + 1; i++) G.titleStep(S, dt);
 check('… the killed worms gone from the scene', !S.worms.includes(WA) && !S.worms.includes(B2));
 
 console.log(fails ? `\n${fails} FAILED` : '\nall ok');

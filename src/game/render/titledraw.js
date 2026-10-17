@@ -240,8 +240,7 @@ export function titleDraw(ctx, S, cw, ch, cam) {
   // (C5a) Coal Seams' glow worms, each in the creatures' pixel look on a grid pinned to it
   for (const w of S.worms || []) {
     const b = wormBox(w, S.scroll);
-    if (b.x + b.w > -10 && b.x < TITLE_VW + 10) pixelSprite(ctx, b.x, b.y, b.w, b.h, 1, false, c => drawGlowWorm(c, w, S.scroll));
-    drawGlowFace(ctx, w, S.scroll, S.t);
+    if (b.x + b.w > -10 && b.x < TITLE_VW + 10) pixelSprite(ctx, b.x, b.y, b.w, b.h, 1, false, c => { drawGlowWorm(c, w, S.scroll); drawGlowFace(c, w, S.scroll, S.t); });   // (owner: the face in the pixel look too)
   }
   // floor 1's creatures, drawn by the game's own drawEnemy (they live in world coordinates), each in the players'
   // pixel look (v0.0.170) on a grid pinned to it, as the players' is

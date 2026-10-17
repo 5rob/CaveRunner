@@ -1511,6 +1511,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     glowBlastR: 16,
     glowBlastDmg: 6,
     glowHole: 10,
+    glowFuse: 0.3,
     glowTeam: 0.5,
     glowHp: 4,
     glowDebug: 0
@@ -1528,6 +1529,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "glowBlastR", g: "glow", label: "Killed: blast radius (hurts creatures, other worms: a chain)", min: 0, max: 80, step: 1 },
     { k: "glowBlastDmg", g: "glow", label: "Killed: blast damage", min: 0, max: 60, step: 0.5 },
     { k: "glowHole", g: "glow", label: "Killed: hole blasted in the rock (radius)", min: 0, max: 40, step: 0.5 },
+    { k: "glowFuse", g: "glow", label: "Killed: seconds before it blows up", min: 0, max: 3, step: 0.05 },
     { k: "glowTeam", g: "glow", label: "Killed: the team takes this share of the blast damage", min: 0, max: 1, step: 0.05 },
     { k: "glowDebug", g: "glow", label: "Debug draw: agro and strike reach (preview; 1 on)", min: 0, max: 1, step: 1 }
   );
@@ -13188,9 +13190,17 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       for (const q of S.lootLater) if ((q.t -= dt) <= 0) dropLoot(S, q.f);
       S.lootLater = S.lootLater.filter((q) => q.t > 0);
     }
-    if (S.worms.some((w) => w.foe && w.foe.hp <= 0)) S.worms = S.worms.filter((w) => !(w.foe && w.foe.hp <= 0));
+    for (const w of S.worms) {
+      const f = w.foe;
+      if (f && f.hp <= 0 && (f.fuse || 0) > 0 && (f.fuse -= dt) <= 0) {
+        f.fuse = 0;
+        wormBlast(S, f);
+      }
+    }
+    if (S.worms.some((w) => w.foe && w.foe.hp <= 0 && !(w.foe.fuse || 0))) S.worms = S.worms.filter((w) => !(w.foe && w.foe.hp <= 0 && !(w.foe.fuse || 0)));
     const live = S.runners.filter((r) => !r.out), inF = new Set(S.foes);
     for (const w of S.worms) {
+      if (w.foe && w.foe.hp <= 0) continue;
       let tgt = null, td = Infinity, ti = -1;
       for (let i = 0; i < live.length; i++) {
         const x = S.scroll + live[i].x + PW / 2, y = live[i].y + PH / 2, q = Math.hypot(x - w.r.x, y - w.r.y);
@@ -14019,8 +14029,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     S.kills++;
     const big = f.k.id !== "rotta" && !f.bat && !f.worm, x = f.x - S.scroll, y = f.ty;
     snd(S, "die", x, y, f.k);
-    if (f.worm) wormBlast(S, f);
-    else if (f.bat) {
+    if (f.worm) {
+      if (DEV.glowFuse > 0) f.fuse = DEV.glowFuse;
+      else wormBlast(S, f);
+    } else if (f.bat) {
       burst(S, x, y, 5, "#8a7a90", 40, "smoke", 0.5);
       burst(S, x, y, 4, "#ffffff", 90, "spark", 0.2);
       if (S.parts.length < TITLE_PARTS) S.parts.push({ x, y, vx: (S.rnd() - 0.5) * 10, vy: 10, life: 3, max: 3, r: 1.2 * DEV.batSize, col: "#2a2230", kind: "lump" });
@@ -22154,8 +22166,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     );
     for (const w of S.worms || []) {
       const b = wormBox(w, S.scroll);
-      if (b.x + b.w > -10 && b.x < TITLE_VW + 10) pixelSprite(ctx, b.x, b.y, b.w, b.h, 1, false, (c) => drawGlowWorm(c, w, S.scroll));
-      drawGlowFace(ctx, w, S.scroll, S.t);
+      if (b.x + b.w > -10 && b.x < TITLE_VW + 10) pixelSprite(ctx, b.x, b.y, b.w, b.h, 1, false, (c) => {
+        drawGlowWorm(c, w, S.scroll);
+        drawGlowFace(c, w, S.scroll, S.t);
+      });
     }
     for (const f of S.foes) {
       const sx2 = f.x - S.scroll;

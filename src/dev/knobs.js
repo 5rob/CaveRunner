@@ -589,7 +589,7 @@ DEV_META.push(
   { k: 'glowAmbient',   g: 'glow', label: 'Green spores drifting round a cluster (a second)', min: 0, max: 30, step: 0.5 });
 // (C5b) their behaviour: agro, the strike, and the blast when one is killed
 Object.assign(DEV_DEFAULTS, { glowAgroR: 60, glowStrikeR: 14, glowStrikeT: 0.3, glowStrikeCd: 0.9, glowStrikeDmg: 12, glowVib: 0.35, glowVibSpd: 70, glowMouthSpd: 18,
-  glowBlastR: 16, glowBlastDmg: 6, glowHole: 10, glowTeam: 0.5, glowHp: 4, glowDebug: 0 });
+  glowBlastR: 16, glowBlastDmg: 6, glowHole: 10, glowFuse: 0.3, glowTeam: 0.5, glowHp: 4, glowDebug: 0 });
 DEV_META.push(
   { k: 'glowHp',        g: 'glow', label: 'Health (the players shoot them)', min: 0.5, max: 40, step: 0.5 },
   { k: 'glowAgroR',     g: 'glow', label: 'Agro: stands up at a player within (units)', min: 0, max: 200, step: 1 },
@@ -603,6 +603,7 @@ DEV_META.push(
   { k: 'glowBlastR',    g: 'glow', label: 'Killed: blast radius (hurts creatures, other worms: a chain)', min: 0, max: 80, step: 1 },
   { k: 'glowBlastDmg',  g: 'glow', label: 'Killed: blast damage', min: 0, max: 60, step: 0.5 },
   { k: 'glowHole',      g: 'glow', label: 'Killed: hole blasted in the rock (radius)', min: 0, max: 40, step: 0.5 },
+  { k: 'glowFuse',      g: 'glow', label: 'Killed: seconds before it blows up', min: 0, max: 3, step: 0.05 },
   { k: 'glowTeam',      g: 'glow', label: 'Killed: the team takes this share of the blast damage', min: 0, max: 1, step: 0.05 },
   { k: 'glowDebug',     g: 'glow', label: 'Debug draw: agro and strike reach (preview; 1 on)', min: 0, max: 1, step: 1 });
 // (C5c) their look: the glow behind each, the green light they cast, the effects layer drifting across them
