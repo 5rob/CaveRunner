@@ -5,6 +5,11 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v2.0.14 — Glow worms: a fuse before the blast, the face pixelated (branch `grem`)
+2026-10-17 (owner's request).
+- A killed glow worm lies still for `glowFuse` s (Dev, 0.3) before it blows up; a chain ripples, each worm on its own fuse (`killFoe` sets `f.fuse`, `wormsStep` burns it). `coal-worm` checks the wait.
+- The face (mouth, eyes) is drawn inside the worm's pixel layer, so it gets the pixel filter too.
+
 ## v2.0.13 — Fix: no invisible shooter in the slice preview (branch `grem`)
 2026-10-17 (owner's report).
 - The slice preview's player, once finished, was only hidden and kept shooting through the wait; he's now out of the scene until the next run (`slicelab.js sliceStep`). `slice-prev` checks no shots of his in the wait.
