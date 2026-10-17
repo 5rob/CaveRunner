@@ -17,7 +17,7 @@ import { DEV, carrotAt, kcol, kr, kru, spr } from '../dev/knobs.js';
 import { jellyPal, jellyStep } from '../creatures/jelly.js';
 import { ratSpread, ratStep } from '../creatures/rat.js';
 import { spiderStep } from '../creatures/spider.js';
-import { addRoost, dropBats, newBats, panicRoost, stepBats } from '../creatures/bats.js';
+import { addSpawner, dropBats, newBats, panicGroup, stepBats } from '../creatures/bats.js';
 import { newWorm, stepWorm } from '../creatures/glowworm.js';
 import { roamStep } from '../creatures/common.js';
 import { FIRE_CATCH, FIRE_COLS, FIRE_KNOB, FIRE_TICK, FIRE_UPW, FLAMMABLE } from '../world/fire.js';
@@ -1101,11 +1101,11 @@ function timberCol(S, c, M, bands) {
   }
   return { cells, lamp };
 }
-// (C4a) Coal Seams' bat roosts, about DEV.batRoosts a screen: one under a downward-facing rock face in column c (the roof, a
+// Coal Seams' bat spawners, about DEV.batSpawners a screen: one under a downward-facing rock face in column c (the roof, a
 // boulder's or a tunnel's underside), with room under it; its bats (creatures/bats.js) hang there and fly in the space below
 /** @param {TitleScene} S @param {number} c @param {number} wx */
 function batCol(S, c, wx) {
-  if (DEV.batRoosts <= 0 || wx < (S.batNext ?? TITLE_VW * 0.6)) return;
+  if (DEV.batSpawners <= 0 || wx < (S.batNext ?? TITLE_VW * 0.6)) return;
   const base = ci(S, c, 0), cand = [];
   for (let r = 1; r < S.rows - 8; r++) {
     if (!SOLID[S.cells[base + r - 1]] || SOLID[S.cells[base + r]]) continue;
@@ -1113,9 +1113,9 @@ function batCol(S, c, wx) {
     if (a >= 12) cand.push([r, r + a]);   // (24 units open under it at least)
   }
   if (!cand.length) return;
-  const [r, f] = cand[Math.floor(S.rnd() * cand.length)];
-  addRoost(S.bats ||= newBats(), wx, r * TCELL, S.rnd, f * TCELL - 6);
-  S.batNext = wx + TITLE_VW / Math.max(0.01, DEV.batRoosts) * (0.5 + S.rnd());
+  const [r] = cand[Math.floor(S.rnd() * cand.length)];
+  addSpawner(S.bats ||= newBats(), wx, r * TCELL, S.rnd);
+  S.batNext = wx + TITLE_VW / Math.max(0.01, DEV.batSpawners) * (0.5 + S.rnd());
 }
 // the bats' frame (creatures/bats.js): the players scare them; a bite only with DEV.batBite over 0
 /** @param {TitleScene} S @param {number} dt */
@@ -1123,19 +1123,19 @@ function batsStep(S, dt) {
   const B = S.bats; if (!B) return;
   dropBats(B, Math.max(S.scroll - TITLE_BACK - 50, (S.gen - S.ncol) * TCELL + 40));   // (and before the ring of columns reuses theirs)
   const live = S.runners.filter(r => !r.out), preds = live.map(r => ({ x: S.scroll + r.x + PW / 2, y: r.y + PH / 2 }));
-  // (owner: they're enemies) each bat has a stand-in among the foes (f.bat) the guns aim at and hit; one hurt or killed panics its roost
-  const R = S.rnd, inF = new Set(S.foes);
+  // (owner: they're enemies) each bat has a stand-in among the foes (f.bat) the guns aim at and hit; one hurt or killed: its group flees
+  const R = S.rnd, inF = new Set(S.foes), CS = csolid(S), solid = (/** @type {number} */ x, /** @type {number} */ y) => !!CS(Math.floor(x / TCELL), Math.floor(y / TCELL));   // (columns not made yet count as rock: no spot picked in them)
   for (const b of B.list) {
     if (b.gone || !b.placed) continue;
     const f = b.f || (b.f = batFoe(S, b));
-    if (f.hp < (b.hpSeen ?? f.hp)) panicRoost(B, b.ro, R);
+    if (f.hp < (b.hpSeen ?? f.hp)) panicGroup(B, b.sp, R, solid, preds.length ? preds[0] : null);
     b.hpSeen = f.hp;
     if (f.hp <= 0) b.gone = true;
   }
-  stepBats(B, dt, preds, (x, y) => !!SOLID[titleCell(S, Math.floor(x / TCELL), Math.floor(y / TCELL))], R, (i, d) => { if (S.lvl && S.lvl.hurt) S.lvl.hurt(S, live[i].id, d); });
+  stepBats(B, dt, preds, solid, R, (i, d) => { if (S.lvl && S.lvl.hurt) S.lvl.hurt(S, live[i].id, d); });
   for (const b of B.list) {
     const f = b.f; if (!f) continue;
-    f.x = f.hx = b.x; f.y = f.ty = f.hy = b.y + (b.st === 'roost' ? 2 * DEV.batSize : 0); f.r = 2 * DEV.batSize;
+    f.x = f.hx = b.x; f.y = f.ty = f.hy = b.y + (b.st === 'hang' ? 2 * DEV.batSize : 0); f.r = 2 * DEV.batSize;
     const sx = b.x - S.scroll;
     if (!inF.has(f) && f.hp > 0 && sx > -40 && sx < TITLE_VW + 40) S.foes.push(f);
   }

@@ -17,7 +17,7 @@ export function BatPreview() {
       raf = requestAnimationFrame(tick);
       const dt = Math.min(0.05, (now - last) / 1000); last = now;
       batLabStep(L, dt);
-      window.__batLabScared = L.px > 30 && L.px < 150 ? L.B.list.filter(b => b.scared).length : 0;   // (for tools/coalshots.js batdev)
+      window.__batLabScared = L.px > 30 && L.px < 150 ? L.B.list.filter(b => b.st === 'flee' || b.st === 'attack').length : 0;   // (for tools/coalshots.js batdev)
       const dpr = window.devicePixelRatio || 1, cw = Math.round(c.clientWidth * dpr), ch = Math.round(c.clientHeight * dpr);
       if (!cw || !ch) return;
       if (c.width !== cw || c.height !== ch) { c.width = cw; c.height = ch; }

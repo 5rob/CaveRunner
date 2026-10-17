@@ -35,16 +35,16 @@ require('../tests/build')();
     await page.locator('select.devlv').selectOption('coal');
     await page.waitForTimeout(200);
     await page.locator('.devtab[data-t=bats]').click();
-    await page.evaluate(() => { DEV.batScare = 0; });   // (the walking player kept from scaring them: Scare all instead)
+    await page.evaluate(() => { DEV.batRoamChance = 0.15; });   // (more of them out for the shots)
     await page.waitForTimeout(1500);
     await save('f-dev', 'Dev → Level → Coal Seams → Bats: the live preview pinned over the knobs');
     const cb = await page.locator('.batprev').boundingBox();
     const clip = cb ? { x: cb.x, y: cb.y, width: cb.width, height: cb.height } : undefined;
-    if (await page.$('.batscare')) await page.locator('.batscare').dispatchEvent('pointerdown'); else await page.evaluate(() => { BAT_CMD.scare = true; });
-    await page.waitForTimeout(1200);
-    for (const n of ['1', '2', '3']) { await save('g-fly' + n, 'the preview mid-flight, frame ' + n + ' (about 1/12 s apart: the wingbeat bob)', clip); await page.waitForTimeout(80); }
-    await page.waitForTimeout(20000);
-    await save('j-refilled', 'the preview 20 s on: the roosts filled again', clip);
+    await page.evaluate(() => { DEV.batDebug = 1; });
+    for (const [n, w] of [['1', 2500], ['2', 2500], ['3', 3000]]) { await page.waitForTimeout(w); await save('g-state' + n, 'the preview, debug colours on (grey hanging, green roaming, yellow fleeing, red attacking, blue returning), the player walking past', clip); }
+    await page.evaluate(() => { DEV.batDebug = 0; });
+    await page.waitForTimeout(400);
+    await save('h-look', 'the preview as it looks (debug off)', clip);
     await browser.close(); console.log(said.join(String.fromCharCode(10))); return;
   }
   // (C4 round 3) the bats are targets: the level played on (darkness lifted for the shots) till the players have hit a bat on screen
@@ -163,36 +163,20 @@ require('../tests/build')();
   }
   // (C4a) the bats: the view held on a roost (players not scaring them), a close-up of it lit; then Scare all: the flock in flight
   if (ONLY === 'bats') {
-    await page.evaluate(() => { DEV.autoLvlPace = 3; DEV.batScare = 0; DEV.batTakeoff = 0; });
+    await page.evaluate(() => { DEV.autoLvlPace = 3; });
     for (let i = 0; i < 2000; i++) {
-      const on = await page.evaluate(() => { const S = window.__gremScene; return !!S && !!S.bats && S.bats.roosts.some(q => q.x - S.scroll > 80 && q.x - S.scroll < 140 && q.y > 20); });
+      const on = await page.evaluate(() => { const S = window.__gremScene; return !!S && !!S.bats && S.bats.spawners.filter(q => q.x - S.scroll > 40 && q.x - S.scroll < 180).length >= 1 && S.runners.some(r => !r.out); });
       if (on) break;
       await page.waitForTimeout(60);
     }
-    const box = await page.evaluate(() => {
-      const S = window.__gremScene, cv = document.querySelector('canvas'), b = cv.getBoundingClientRect(), k = b.width / TITLE_VW;
-      S.lvl.step = null; S.pace = 0;
-      const q = S.bats.roosts.find(q => q.x - S.scroll > 80 && q.x - S.scroll < 140 && q.y > 20); console.log('at', S.scroll, q.x, q.y);
-      return { x: Math.max(b.left, b.left + (q.x - S.scroll) * k - 90), y: Math.max(b.top, b.top + q.y * k - 50), width: 180, height: 180 };
-    });
+    await page.evaluate(() => { const S = window.__gremScene; S.lvl.step = null; S.pace = 0; DEV.batRoamChance = 0.2; });
+    await page.waitForTimeout(2500);
+    await save('a-level', 'Coal Seams with bats (as played, dark)');
+    await page.evaluate(() => { DEV.gremDark = 0; DEV.batDebug = 1; });
+    for (const n of ['1', '2']) { await page.waitForTimeout(1500); await save('b-level-states' + n, 'darkness lifted, debug colours on (grey hanging, green roaming, yellow fleeing, red attacking, blue returning)'); }
+    await page.evaluate(() => { DEV.batDebug = 0; });
     await page.waitForTimeout(300);
-    await save('a-roost', 'Coal Seams: a bat roost under the rock (as played, dark)');
-    await page.evaluate(() => { DEV.gremDark = 0; });
-    await page.waitForTimeout(150);
-    await save('b-roost-close', 'close up (darkness lifted): the roost, bats hanging folded in their slots', box);
-    await page.evaluate(() => { DEV.gremDark = DEV_DEFAULTS.gremDark; BAT_CMD.scare = true; });
-    await page.waitForTimeout(900);
-    await save('c-flock', 'Scare all (Dev): the flock in flight (as played, dark)');
-    await page.evaluate(() => { DEV.gremDark = 0; });
-    await page.waitForTimeout(60);
-    const fb = await page.evaluate(() => {
-      const S = window.__gremScene, cv = document.querySelector('canvas'), b = cv.getBoundingClientRect(), k = b.width / TITLE_VW;
-      const f = S.bats.list.filter(q => q.st === 'fly' && q.x - S.scroll > 0 && q.x - S.scroll < TITLE_VW); let x = 0, y = 0; for (const q of f) { x += q.x - S.scroll; y += q.y; }
-      x /= f.length || 1; y /= f.length || 1;
-      return { x: Math.max(b.left, b.left + x * k - 100), y: Math.max(b.top, b.top + y * k - 100), width: 200, height: 200 };
-    });
-    await save('d-flock-lit', 'the same moment, darkness lifted (for the shot only)');
-    await save('e-flock-close', 'close up (darkness lifted): bats flapping in the flock', fb);
+    await save('c-level-lit', 'darkness lifted, debug off: the bats as they look');
     await browser.close(); console.log(said.join(String.fromCharCode(10))); return;
   }
   // (C5a) the glow worms: the view held on a worm on a floor; close-ups (darkness lifted) at four points of its gait, then one
