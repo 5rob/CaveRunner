@@ -14,6 +14,7 @@ import { deathFall } from './death.js';
 import { shieldSoak } from './perks.js';
 import { spiderHold } from '../creatures/spider.js';
 import { gremHardTier } from './grem.js';
+import { LVL_TEAM } from './level.js';
 import { TCELL, TITLE_KINDS, TITLE_VW, lookAt, titleCeil, titleFloor, titleFoeAt, titleKind, titleSolid } from '../art/titlescene.js';
 
 const BOSS_IN = 90;                   // the boss comes in this far right of the team (world units)
@@ -138,19 +139,22 @@ export function levelFoes(S, L, teamX) {
   }
   // the boss: in when the team reaches the arena, hunting at once (Grem, owner v2.0.16: already waiting in the arena as
   // the team comes into view of it, made as its middle is generated; still and holding its fire till the arena starts)
-  const mid = L.plan.arena.mid, early = L.grem && L.phase === 'run' && mid - S.scroll < TITLE_VW + 40 && mid < S.gen * TCELL - 6;
+  // (owner v2.0.17) on the arena's right, DEV.gremBossAt across the screen where the team stops, facing them: both framed
+  const A = L.plan.arena, wx = Math.min(A.x1 - 30, A.mid - LVL_TEAM + TITLE_VW * DEV.gremBossAt);
+  const early = L.grem && L.phase === 'run' && wx - S.scroll < TITLE_VW + 200 && wx < S.gen * TCELL - 6;   // (v2.0.17: as soon as its ground is made, so it's there before the team arrives)
   if ((L.phase === 'arena' || early) && !L.boss && !L.bossDead) {
     const look = lookAt(S, L.plan.arena.mid), ks = look && look.roster && look.roster.length ? look.roster : TITLE_KINDS, id = ks[Math.floor(S.rnd() * ks.length)];   // (v1.0.97) an old floor's: one of its roster
-    const f = titleFoeAt(S, bossKind(id, tier, mk), early ? mid : Math.min(L.plan.arena.x1 - 30, teamX + BOSS_IN));
+    const f = titleFoeAt(S, bossKind(id, tier, mk), L.grem ? wx : Math.min(L.plan.arena.x1 - 30, teamX + BOSS_IN));   // (Grem: always at its waiting place)
     f.aggro = true;
     L.boss = f;
     if (early) { f.aggro = false; L.bossWait = true; f.hx = f.x; }
     // (Grem Mode, owner v1.0.92) made off screen right, it comes in to its place while its name's title plays (bossIntro)
-    if (L.grem && !early) { L.introT = S.t; L.bossTo = f.x; L.bossFrom = S.scroll + TITLE_VW + f.r + 8; f.x = L.bossFrom; f.aggro = false; }
+    // (v2.0.17) made late (the arena reached before its place was in view): no slide-in either, its title at once
+    if (L.grem && !early) { L.introT = S.t; L.bossTo = L.bossFrom = f.x; f.aggro = false; f.lx = -1; f.ly = 0; }
   }
   const B = L.boss;
   if (B && L.bossWait) {
-    if (L.phase === 'run') { B.aggro = false; B.waiting = true; B.cd = Math.max(B.cd, 0.5); B.x = B.hx = L.plan.arena.mid; }   // (held in place: it would wander off)
+    if (L.phase === 'run') { B.aggro = false; B.waiting = true; B.cd = Math.max(B.cd, 0.5); B.x = B.hx = wx; B.lx = -1; B.ly = 0; if (B.sp) B.sp.side = -1; }   // (held in place, facing the team: it would wander off)
     else { L.bossWait = false; B.waiting = false; L.introT = S.t; L.bossFrom = L.bossTo = B.x; }   // the arena: its name's title, then it hunts (bossIntro)
   }
   if (B && !L.bossDead) {
@@ -168,7 +172,7 @@ export function bossIntro(S, L) {
   const B = L.boss;
   if (!L.grem || !B || L.introT == null || L.bossDead || L.introDone) return false;
   const a = S.t - L.introT;
-  if (a >= DEV.gremBossT) { L.introDone = true; B.aggro = true; return false; }
+  if (a >= DEV.gremBossT && S.scroll + LVL_TEAM >= L.plan.arena.mid - 1) { L.introDone = true; B.aggro = true; return false; }   // (v2.0.17: and the team at its stop, both framed)
   const u = Math.min(1, a / (DEV.gremBossT * 0.7)), e = 1 - (1 - u) ** 3, from = L.bossFrom ?? B.x, to = L.bossTo ?? B.x;
   B.x = B.hx = from + (to - from) * e;
   B.cd = Math.max(B.cd, 0.5);

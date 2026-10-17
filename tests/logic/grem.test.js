@@ -116,14 +116,14 @@ check('the normal level still has its exit', !L2.grem && L2.plan.zp.z[L2.plan.zp
   for (let i = 0; i < 10; i++) G.titleStep(B, 1 / 30);
   const T = G.levelTitle(B);
   check('GO! as the team sets off', !!T && T.lines[0] === 'GO!' && !T.red, T);
-  L.phase = 'arena'; L.arenaT = B.t;
-  G.titleStep(B, 1 / 30);
+  B.scroll = L.plan.arena.x0 - G.LVL_TEAM;   // (v2.0.17) the fight starts as the team enters the arena
+  for (let i = 0; i < 90 && !(L.phase === 'arena' && L.boss && G.levelTitle(B) && G.levelTitle(B).red); i++) G.titleStep(B, 1 / 30);
   const boss = L.boss;
-  check('the boss made off screen right', !!boss && boss.x - B.scroll > G.TITLE_VW, boss && boss.x - B.scroll);
+  check('the arena: the boss already at its place (v2.0.17: no slide-in)', L.phase === 'arena' && !!boss && Math.abs(boss.x - L.bossTo) < 1, boss && [boss.x, L.bossTo]);
   const bt = G.levelTitle(B);
   check('its name in red', !!bt && bt.red && bt.lines.join(' ').length > 0, bt);
-  check('guns off while it comes in', B.gunsOff === true);
-  for (let i = 0; i < Math.ceil(D.gremBossT * 30) + 4; i++) G.titleStep(B, 1 / 30);
+  check('guns off under its title', B.gunsOff === true);
+  for (let i = 0; i < 30 * 12 && !L.introDone; i++) G.titleStep(B, 1 / 30);
   check('in its place once the title is gone', Math.abs(boss.x - L.bossTo) < 30 && boss.x - B.scroll < G.TITLE_VW, [boss.x, L.bossTo]);
   check('then the fight: guns on, it hunts', !B.gunsOff && boss.aggro === true && !G.levelTitle(B));
   const r = G.sceneAddRunner(B);

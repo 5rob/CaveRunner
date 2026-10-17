@@ -596,7 +596,7 @@ function titlePlantGlow(ctx, S, e) {
   ctx.imageSmoothingEnabled = sm;
 }
 
-// (C5c) the glow worms' added light over the dark: the effects layer (wormFxFill, at the terrain's grid, smoothed up), the
+// (C5c) the glow worms' added light over the dark: the effects layer (wormFxFill, on their bodies only since v2.0.17), the
 // tint over each one's lit patch (green; orange in agro), and the glow behind each
 /** @type {{ c: HTMLCanvasElement | null, x: CanvasRenderingContext2D | null }} */
 const WG = { c: null, x: null };
@@ -604,17 +604,25 @@ const WG = { c: null, x: null };
 function wormLook(ctx, S) {
   const near = (S.worms || []).filter(w => w.r.x - S.scroll > -80 && w.r.x - S.scroll < TITLE_VW + 80);
   if (!near.length) return;
-  const w = Math.ceil((TITLE_VW + 80) / TCELL), h = Math.ceil(S.vh / TCELL), ox = Math.floor((S.scroll - 40) / TCELL) * TCELL;
+  // (owner, v2.0.17) the effects layer only on their bodies: each worm's box filled at 1 world unit a cell, then cut to its
+  // body's shape (drawGlowWorm, destination-in)
   if (!WG.c) { WG.c = document.createElement('canvas'); WG.x = WG.c.getContext('2d'); }
   const c = WG.c, x = WG.x;
   if (!x) return;
-  if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
-  const im = new ImageData(w, h);
-  if (wormFxFill(im.data, w, h, { ox, oy: 0, px: TCELL, t: S.t, worms: near })) {
+  for (const q of near) {
+    const b = wormBox(q, S.scroll), K = 2;   // (K cells a world unit: the pattern finer than the body's pixel grid)
+    if (b.w <= 0 || b.h <= 0) continue;
+    const w = b.w * K, h = b.h * K;
+    if (c.width < w || c.height < h) { c.width = Math.max(c.width, w); c.height = Math.max(c.height, h); }
+    x.globalCompositeOperation = 'source-over'; x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, w, h);
+    const im = new ImageData(w, h);
+    if (!wormFxFill(im.data, w, h, { ox: b.x + S.scroll, oy: b.y, px: 1 / K, t: S.t, worms: [q] })) continue;
     x.putImageData(im, 0, 0);
-    const sm = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = true;
-    ctx.drawImage(c, 0, 0, w, h, ox - S.scroll, 0, w * TCELL, h * TCELL);
-    ctx.imageSmoothingEnabled = sm;
+    x.globalCompositeOperation = 'destination-in';
+    x.setTransform(K, 0, 0, K, -b.x * K, -b.y * K);
+    drawGlowWorm(x, q, S.scroll);
+    x.setTransform(1, 0, 0, 1, 0, 0); x.globalCompositeOperation = 'source-over';
+    ctx.drawImage(c, 0, 0, w, h, b.x, b.y, b.w, b.h);
   }
   for (const q of near) {
     if (DEV.glowTint > 0) glowAt(ctx, q.pts[2].x - S.scroll, q.pts[2].y, DEV.glowLightR, DEV.glowTint * wormFlicker(q, S.t), String(wormCol(q, 0.3)));

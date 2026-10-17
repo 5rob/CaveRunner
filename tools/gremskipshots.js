@@ -26,8 +26,8 @@ require('../tests/build')();
   const after = await page.evaluate(() => ({ tier: window.__gremScene.tier, gold: document.querySelector('.ggold').dataset.gold }));
   await page.screenshot({ path: path.join(OUT, 'grem-skip-b.png') });
   // the boss waiting in its arena as the team comes up to it (v2.0.16)
-  await page.evaluate(() => { const S = window.__gremScene, L = S.lvl.data; DEV.autoFoeDmg = 0; S.scroll = L.plan.arena.mid - TITLE_VW * 1.1; });
-  await page.waitForTimeout(4000);
+  await page.evaluate(() => { const S = window.__gremScene, L = S.lvl.data; DEV.autoFoeDmg = 0; S.scroll = L.plan.arena.mid - LVL_TEAM - 40; });
+  await page.waitForTimeout(5000);
   const boss = await page.evaluate(() => { const S = window.__gremScene, L = S.lvl.data; return { b: L.boss ? !!L.boss.waiting : null, phase: L.phase, sc: Math.round(S.scroll), mid: Math.round(L.plan.arena.mid), gen: S.gen * 4 }; });
   await page.screenshot({ path: path.join(OUT, 'grem-boss-wait.png') });
   console.log(JSON.stringify({ before, after, boss }) + '\n' + path.join(OUT, 'grem-boss-wait.png') + '\n' + path.join(OUT, 'grem-skip-a.png') + '\n' + path.join(OUT, 'grem-skip-b.png'));

@@ -6,6 +6,8 @@
 
 **v2.0.16 (grem):** `level.js` `levelProgress(S)` (0..1, 1 from the arena: the HUD's level panel) and `levelSkipGold(S)` (Dev ⏭: the gold still in the level: loose, unopened chests, living elites, the boss; not the endless spawns). `enemies.js levelFoes`: in Grem the boss is made at the arena's middle as it comes into view (`L.bossWait`, `f.waiting`: held still, not aimed at, not hurt: titlescene.js `titleAimPick` / `hitFoe`), the arena starting its title (`bossIntro`, no slide-in); `levelBoss` is null till the boss is hurt (no bar). Suites `auto-bosswait`, `auto-manual`.
 
+**v2.0.17 (grem):** the fight starts as the team enters the arena (level.js: phase `arena` at `arena.x0`, the team carried to its stop at `DEV.gremArenaPace`; `cleared` waits `gremClearWait`); the boss always made at its waiting place (`gremBossAt` across the stopped screen, facing left; as soon as its ground is made), no slide-in. enemies.js `unstick(S, f)` (elites and boss: `autoStuckT/R/Hop`), `unbury` measures spiders by `spiderHold`. Suites `auto-bossflow`, `auto-stuck`.
+
 The auto-battler's pure parts (`AUTOBATTLER.md`). **Layer 4**: `run.js` takes `TITLE_COLS` from
 `art/titlescene.js` (layer 4), so modules here may import layers 1–4 (core, dev, data, spells, world,
 art, …), never `game/`, `ui/` or `main.js`. Everything here is pure: the logic suites call it directly.

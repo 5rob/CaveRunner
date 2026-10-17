@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v2.0.16</title>
-<!-- VERSION = 'v2000016' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v2.0.17</title>
+<!-- VERSION = 'v2000017' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -727,7 +727,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v2.0.16';</script>
+<script>const VERSION = 'v2.0.17';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -1299,7 +1299,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     autoGreen: 150,
     autoModGold: 15
   });
-  Object.assign(DEV_DEFAULTS, { gremPrice: 100, gremGrow: 1.5, gremHard: 0.25, gremGold: 2, gremDark: 0.85, gremPickR: 40, gremChestSize: 2, gremChestGlow: 1, gremBossT: 3.2, gremGoT: 1.6, gremDmgScale: 1, gremGoldWait: 0.6, gremSeamW: 160, gremSeamJag: 1, gremWayT: 8, gremWayDone: 16, gremChestTapR: 30 });
+  Object.assign(DEV_DEFAULTS, { gremPrice: 100, gremGrow: 1.5, gremHard: 0.25, gremGold: 2, gremDark: 0.85, gremPickR: 40, gremChestSize: 2, gremChestGlow: 1, gremBossT: 2.4, gremBossAt: 0.78, gremArenaPace: 2.5, gremClearWait: 1.5, gremGoT: 1.6, gremDmgScale: 1, gremGoldWait: 0.6, gremSeamW: 160, gremSeamJag: 1, gremWayT: 8, gremWayDone: 16, gremChestTapR: 30 });
   DEV_META.push(
     { k: "gremPrice", g: "grem", label: "The first unlock costs (gold)", min: 5, max: 1e4, step: 5 },
     { k: "gremGrow", g: "grem", label: "Each unlock after it costs × this more", min: 1, max: 4, step: 0.05 },
@@ -1308,6 +1308,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "gremDark", g: "grem", label: "The dark × (1 = as CaveRunner Auto; owner: 0.85, 15% brighter)", min: 0, max: 1, step: 0.05 },
     { k: "gremChestSize", g: "grem", label: "Chests × bigger", min: 1, max: 4, step: 0.25 },
     { k: "gremChestGlow", g: "grem", label: "Chests: the green light pulsing behind (0 off)", min: 0, max: 1, step: 0.05 },
+    { k: "gremBossAt", g: "grem", label: "The boss waits this far across the screen where the team stops (0 left, 1 right)", min: 0.4, max: 1, step: 0.02 },
+    { k: "gremArenaPace", g: "grem", label: "Into the boss arena: the team hurries to its stop at (× the pace; the fight already on)", min: 1, max: 6, step: 0.1 },
+    { k: "gremClearWait", g: "grem", label: "Boss dead: waits for its gold at most (s; then on to the next level)", min: 0, max: 6, step: 0.1 },
     { k: "gremBossT", g: "grem", label: "The boss comes in under its name for (s; then the fight)", min: 0.5, max: 8, step: 0.1 },
     { k: "gremGoT", g: "grem", label: "GO! shows for (s)", min: 0.5, max: 5, step: 0.1 },
     { k: "gremDmgScale", g: "grem", label: "Guns grow with the level: share of the creatures’ health growth (1 all, 0 none)", min: 0, max: 2, step: 0.05 },
@@ -1527,6 +1530,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     glowBlastDmg: 6,
     glowHole: 10,
     glowFuse: 0.3,
+    glowSwell: 2.5,
     glowTeam: 0.5,
     glowHp: 4,
     glowDebug: 0
@@ -1545,6 +1549,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "glowBlastDmg", g: "glow", label: "Killed: blast damage", min: 0, max: 60, step: 0.5 },
     { k: "glowHole", g: "glow", label: "Killed: hole blasted in the rock (radius)", min: 0, max: 40, step: 0.5 },
     { k: "glowFuse", g: "glow", label: "Killed: seconds before it blows up", min: 0, max: 3, step: 0.05 },
+    { k: "glowSwell", g: "glow", label: "Killed: its middle swells by this much (× its width) before it blows", min: 0, max: 4, step: 0.1 },
     { k: "glowTeam", g: "glow", label: "Killed: the team takes this share of the blast damage", min: 0, max: 1, step: 0.05 },
     { k: "glowDebug", g: "glow", label: "Debug draw: agro and strike reach (preview; 1 on)", min: 0, max: 1, step: 1 }
   );
@@ -1743,6 +1748,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "autoOldCd", g: "autofoes", label: "Old floors: time between a shooter’s shots × this", min: 0.25, max: 5, step: 0.05 }
   );
   DEV_GROUPS.push(["autofoes", "Auto: enemies"]);
+  Object.assign(DEV_DEFAULTS, { autoStuckT: 4, autoStuckR: 12, autoStuckHop: 60 });
+  DEV_META.push(
+    { k: "autoStuckT", g: "autofoes", label: "Stuck elite / boss: unstuck after this long without getting anywhere (s; 0: never)", min: 0, max: 20, step: 0.5 },
+    { k: "autoStuckR", g: "autofoes", label: '… "getting anywhere": this far from where it was (units)', min: 2, max: 60, step: 1 },
+    { k: "autoStuckHop", g: "autofoes", label: "… then put on open floor this much nearer the team (units)", min: 10, max: 200, step: 5 }
+  );
   Object.assign(DEV_DEFAULTS, { autoMoveK: 0.75, autoJetTilt: 1, autoJetSmoke: 1, autoDeathStop: 1.5, autoTpBlink: 1, autoTpBoomWait: 0.6, autoTpBoomR: 60, autoSpStride: 0.14, autoRoamT: 8, autoRoamHi: 0.45, autoRoamMid: 0.4, autoRoamFly: 2.5, autoRoamRun: 0.4, autoJeTurnTier: 0.2, autoJeTurnMax: 2.5, autoExitNukeR: 90, autoExitNukeF: 1600, autoExitNukeWait: 3.5, autoMushT: 3.2, autoMushK: 1, autoFuelDrain: 1, autoFuelRegen: 1, autoCtlWait: 1, autoVineFire: 1, autoVineSpread: 4, autoVineJitter: 0.8, autoVineAsh: 8, autoFireJump: 2, autoFireJumpP: 0.5, autoNavCut: 0.8, autoNavGive: 1.2 });
   DEV_META.push(
     { k: "autoVineFire", g: "autofire", label: "Vines burn up at this × the old game speed (the title menu: 0.1)", min: 0.1, max: 5, step: 0.1 },
@@ -7243,24 +7254,26 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 
   // src/creatures/spider.js
   var SPIDER = { hold: 6, feel: 14, step: 1.5, fall: 900 };
-  function spiderSeat(e, S, solidCell, maxMove) {
-    return surfSeat(e, S, solidCell, maxMove, SPIDER.hold, SPIDER.feel);
+  var spiderHold = (e) => Math.max(SPIDER.hold, (e.k && e.k.rd || e.r) * 0.66);
+  function spiderSeat(e, S, solidCell, maxMove, hold = SPIDER.hold, feel = SPIDER.feel) {
+    return surfSeat(e, S, solidCell, maxMove, hold, feel);
   }
   var segNear = (L, x, y) => {
     const vx = L.bx - L.ax, vy = L.by - L.ay, ll = vx * vx + vy * vy || 1;
     const u = Math.max(0, Math.min(1, ((x - L.ax) * vx + (y - L.ay) * vy) / ll));
     return { u, d: Math.hypot(L.ax + vx * u - x, L.ay + vy * u - y) };
   };
-  function spiderAim(x, y, dx, dy, reach2, solidCell) {
+  function spiderAim(x, y, dx, dy, reach2, solidCell, hold = SPIDER.hold) {
     for (const a of [0, 0.22, -0.22, 0.45, -0.45]) {
       const c = Math.cos(a), s = Math.sin(a), ux = dx * c - dy * s, uy = dx * s + dy * c;
       const d = rayDist(x, y, ux, uy, reach2, solidCell);
-      if (d < reach2 && d > SPIDER.hold * 2.5) return { dx: ux, dy: uy, len: d };
+      if (d < reach2 && d > hold * 2.5) return { dx: ux, dy: uy, len: d };
     }
     return null;
   }
   function spiderStep(e, env, dt) {
     const { solidCell, webs, rnd: rnd2 } = env;
+    const hold = env.hold || SPIDER.hold, feel = hold * SPIDER.feel / SPIDER.hold;
     const S = e.sp || (e.sp = {
       mode: "fall",
       vy: 0,
@@ -7291,8 +7304,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           e.y = CH * CELL;
           break;
         }
-        if (surfNormal(e.x, e.y, SPIDER.hold + 1, solidCell)) {
-          spiderSeat(e, S, solidCell, SPIDER.hold);
+        if (surfNormal(e.x, e.y, hold + 1, solidCell)) {
+          spiderSeat(e, S, solidCell, hold, hold, feel);
           S.mode = "surf";
           S.vy = 0;
           S.on = 0;
@@ -7314,8 +7327,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       const L = {
         ax: sh.x,
         ay: sh.y,
-        bx: hx - sh.dx * SPIDER.hold,
-        by: hy - sh.dy * SPIDER.hold,
+        bx: hx - sh.dx * hold,
+        by: hy - sh.dy * hold,
         a0x: sh.ax0,
         a0y: sh.ay0,
         b0x: hx,
@@ -7342,7 +7355,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       S.vy = 0;
       return null;
     }
-    if (S.mode === "surf" && !surfNormal(e.x, e.y, SPIDER.hold + 2, solidCell)) {
+    if (S.mode === "surf" && !surfNormal(e.x, e.y, hold + 2, solidCell)) {
       S.mode = "fall";
       S.vy = 0;
       return null;
@@ -7371,10 +7384,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         const tx = -S.ny * S.side, ty = S.nx * S.side;
         e.x += tx * st;
         e.y += ty * st;
-        if (!spiderSeat(e, S, solidCell, st * 2)) {
+        if (!spiderSeat(e, S, solidCell, st * 2, hold, feel)) {
           e.x -= S.nx * st * 2;
           e.y -= S.ny * st * 2;
-          if (!spiderSeat(e, S, solidCell, st * 2)) {
+          if (!spiderSeat(e, S, solidCell, st * 2, hold, feel)) {
             S.mode = "fall";
             S.vy = 0;
             break;
@@ -7405,7 +7418,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           S.mode = "surf";
           S.line = null;
           S.go = false;
-          if (!spiderSeat(e, S, solidCell, SPIDER.hold)) {
+          if (!spiderSeat(e, S, solidCell, hold, hold, feel)) {
             S.mode = "fall";
             S.vy = 0;
             break;
@@ -7450,11 +7463,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       };
       const tryShoot = (from) => {
         if (S.webT > 0 || !env.hunting && gd < 40) return false;
-        const a = spiderAim(e.x, e.y, dx, dy, env.reach || spr("spWeb", rnd2), solidCell);
+        const a = spiderAim(e.x, e.y, dx, dy, env.reach || spr("spWeb", rnd2), solidCell, hold);
         if (!a) return false;
         let ax0 = e.x, ay0 = e.y, ain = null;
         if (from === "surf") {
-          const d = rayDist(e.x, e.y, -S.nx, -S.ny, SPIDER.feel + 4, solidCell);
+          const d = rayDist(e.x, e.y, -S.nx, -S.ny, feel + 4, solidCell);
           ax0 = e.x - S.nx * d;
           ay0 = e.y - S.ny * d;
           ain = { x: e.x - S.nx * (d + 1.2), y: e.y - S.ny * (d + 1.2) };
@@ -8126,10 +8139,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return out2.map((p, i) => ({ x: p.x, y: p.y, s: L > 0 ? d[i] / L : 0 }));
   }
   function drawGlowWorm(c, w, ox) {
-    const Q = wormLine(w, ox), W = DEV.glowW * w.sz, tp = DEV.glowTaper, hp = tp + (1 - tp) * w.ag;
+    const Q = wormLine(w, ox), W = DEV.glowW * w.sz, sw = wormSwell(w), tp = DEV.glowTaper, hp = tp + (1 - tp) * w.ag;
     const th = (s) => {
-      const t0 = s > 0.5 ? hp : tp;
-      return W * (t0 + (1 - t0) * Math.sin(Math.PI * s));
+      const t0 = s > 0.5 ? hp : tp, m = Math.sin(Math.PI * s);
+      return W * (t0 + (1 - t0) * m) * (1 + sw * m * m);
     };
     for (const { col, add } of [{ col: EDGE, add: 0.3 }, { col: BODY, add: -0.9 }]) {
       c.fillStyle = col;
@@ -8150,6 +8163,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
     }
   }
+  function wormSwell(w) {
+    const f = w.foe;
+    if (!f || f.hp > 0 || !(f.fuse > 0) || !(DEV.glowFuse > 0)) return 0;
+    const u = Math.max(0, Math.min(1, 1 - f.fuse / DEV.glowFuse));
+    return DEV.glowSwell * u * u * (0.85 + 0.15 * Math.sin(u * u * 40));
+  }
   function wormBox(w, ox) {
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     for (const p of [w.rl, w.fl, ...w.pts]) {
@@ -8158,7 +8177,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       x1 = Math.max(x1, p.x);
       y1 = Math.max(y1, p.y);
     }
-    const e = DEV.glowW * w.sz + 3;
+    const e = DEV.glowW * w.sz * (1 + wormSwell(w)) + 3;
     return { x: Math.floor(x0 - ox - e), y: Math.floor(y0 - e), w: Math.ceil(x1 - x0 + 2 * e) + 1, h: Math.ceil(y1 - y0 + 2 * e) + 1 };
   }
   function drawGlowFace(c, w, ox, t) {
@@ -13738,6 +13757,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     titleIgnite(S, x, y, 6, 0.8);
   }
   var lampHit = (p, x, y, r) => x > p.x - 3.5 - r && x < p.x + 3.5 + r && y > p.y + p.len - r && y < p.y + p.len + 9 + r;
+  var lampSwept = (p, s, dt) => {
+    const n = Math.max(1, Math.ceil(Math.hypot(s.vx, s.vy) * dt / 3));
+    for (let i = 0; i <= n; i++) if (lampHit(p, s.x - s.vx * dt * i / n, s.y - s.vy * dt * i / n, s.size)) return true;
+    return false;
+  };
   function titleCarve(S, sx, y, r, rim = true) {
     const wx = sx + S.scroll, c0 = Math.floor((wx - r - 2) / TCELL), c1 = Math.floor((wx + r + 2) / TCELL);
     const r0 = Math.max(0, Math.floor((y - r - 2) / TCELL)), r1 = Math.min(S.rows - 1, Math.floor((y + r + 2) / TCELL));
@@ -15638,7 +15662,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       e.wox = e.woy = 0;
     }
     const x0 = e.x, y0 = e.y;
-    if (spiderStep(e, { solidCell: CS, webs: S.webs, hunting, goal, rnd: R, speedMul: 1 }, dt) === "web") snd(S, "lash", e.x - S.scroll, e.y);
+    if (spiderStep(e, { solidCell: CS, webs: S.webs, hunting, goal, rnd: R, speedMul: 1, hold: S.lvl ? spiderHold(e) : void 0 }, dt) === "web") snd(S, "lash", e.x - S.scroll, e.y);
     const P2 = e.sp;
     if (P2 && S.lvl) P2.gait = (P2.gait || 0) + (P2.mode === "fall" ? 0 : Math.hypot(e.x - x0, e.y - y0) / Math.max(0.5, e.r * DEV.autoSpStride));
     if (P2 && P2.mode === "line" && P2.line) {
@@ -15894,7 +15918,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         }
         continue;
       }
-      for (const p of S.props) if ((p.k === "lamp" || p.k === "barrel") && !p.gone && (p.k === "lamp" ? lampHit : cartHit)(p, s.x, s.y, s.size)) {
+      for (const p of S.props) if ((p.k === "lamp" || p.k === "barrel") && !p.gone && (p.k === "lamp" ? lampSwept(p, s, dt) : cartHit(p, s.x, s.y, s.size))) {
         if (p.k === "lamp") popLamp(S, p);
         else cartBoom(S, p);
         if (!s.pierce) {
@@ -18942,11 +18966,51 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     S.snd.push({ k: "land", x: r.x + PW / 2, y: r.y + PH, a: 200 });
   }
   function unbury(S, f) {
-    const fy = titleFloor(f.x, S), cy = titleCeil(f.x, S);
-    if (!(f.y > fy - f.r + 2 || titleSolid(S, f.x - S.scroll, f.y))) return;
-    const y = fy - cy > 2 * f.r + 2 ? fy - f.r - 1 : (fy + cy) / 2;
+    const fy = titleFloor(f.x, S), cy = titleCeil(f.x, S), h3 = f.k && f.k.act === "spider" ? spiderHold(f) : f.r;
+    if (!(f.y > fy - h3 + 2 || titleSolid(S, f.x - S.scroll, f.y))) return;
+    const y = fy - cy > 2 * h3 + 2 ? fy - h3 - 1 : (fy + cy) / 2;
     f.ty += y - f.y;
     f.y = y;
+  }
+  function unstick(S, f) {
+    const act = f.k && f.k.act;
+    if (!(DEV.autoStuckT > 0) || act === "turret" || act === "nest" || f.hp <= 0) return;
+    const runs = S.runners.filter((r) => !r.out && !r.hide);
+    if (!runs.length) return;
+    let near = runs[0], nd = Infinity;
+    for (const r of runs) {
+      const d = Math.hypot(S.scroll + r.x + PW / 2 - f.x, r.y + PH / 2 - f.y);
+      if (d < nd) {
+        nd = d;
+        near = r;
+      }
+    }
+    const s = f.stk;
+    if (!s || !f.aggro || nd < f.r + 60 || Math.hypot(f.x - s.x, f.y - s.y) > DEV.autoStuckR) {
+      f.stk = { x: f.x, y: f.y, t: S.t };
+      return;
+    }
+    if (S.t - s.t < DEV.autoStuckT) return;
+    const tx = S.scroll + near.x + PW / 2, dir = Math.sign(tx - f.x) || 1, h3 = act === "spider" ? spiderHold(f) : f.r;
+    const go = Math.min(DEV.autoStuckHop, Math.max(0, Math.abs(tx - f.x) - f.r - 40));
+    for (let k = 0; k <= 12; k++) {
+      const x = f.x + dir * go * (1 - k / 12), fy = titleFloor(x, S), cy = titleCeil(x, S);
+      if (fy - cy < 2 * Math.min(h3, f.r) + 4) continue;
+      const y = fy - cy > 2 * h3 + 2 ? fy - h3 - 1 : (fy + cy) / 2;
+      if (titleSolid(S, x - S.scroll, y)) continue;
+      f.ty += y - f.y;
+      f.x = f.hx = x;
+      f.y = y;
+      if (f.sp) {
+        f.sp.mode = "fall";
+        f.sp.line = null;
+        f.sp.vy = 0;
+        f.sp.shot = null;
+      }
+      f.wox = f.woy = 0;
+      break;
+    }
+    f.stk = { x: f.x, y: f.y, t: S.t };
   }
   function levelFoes(S, L, teamX) {
     if (L.phase === "arrive") return;
@@ -18965,12 +19029,14 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         continue;
       }
       unbury(S, e.f);
+      unstick(S, e.f);
       e.x = e.f.x;
     }
-    const mid = L.plan.arena.mid, early = L.grem && L.phase === "run" && mid - S.scroll < TITLE_VW + 40 && mid < S.gen * TCELL - 6;
+    const A = L.plan.arena, wx = Math.min(A.x1 - 30, A.mid - LVL_TEAM + TITLE_VW * DEV.gremBossAt);
+    const early = L.grem && L.phase === "run" && wx - S.scroll < TITLE_VW + 200 && wx < S.gen * TCELL - 6;
     if ((L.phase === "arena" || early) && !L.boss && !L.bossDead) {
       const look = lookAt(S, L.plan.arena.mid), ks = look && look.roster && look.roster.length ? look.roster : TITLE_KINDS, id = ks[Math.floor(S.rnd() * ks.length)];
-      const f = titleFoeAt(S, bossKind(id, tier, mk), early ? mid : Math.min(L.plan.arena.x1 - 30, teamX + BOSS_IN));
+      const f = titleFoeAt(S, bossKind(id, tier, mk), L.grem ? wx : Math.min(L.plan.arena.x1 - 30, teamX + BOSS_IN));
       f.aggro = true;
       L.boss = f;
       if (early) {
@@ -18980,10 +19046,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
       if (L.grem && !early) {
         L.introT = S.t;
-        L.bossTo = f.x;
-        L.bossFrom = S.scroll + TITLE_VW + f.r + 8;
-        f.x = L.bossFrom;
+        L.bossTo = L.bossFrom = f.x;
         f.aggro = false;
+        f.lx = -1;
+        f.ly = 0;
       }
     }
     const B = L.boss;
@@ -18992,7 +19058,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         B.aggro = false;
         B.waiting = true;
         B.cd = Math.max(B.cd, 0.5);
-        B.x = B.hx = L.plan.arena.mid;
+        B.x = B.hx = wx;
+        B.lx = -1;
+        B.ly = 0;
+        if (B.sp) B.sp.side = -1;
       } else {
         L.bossWait = false;
         B.waiting = false;
@@ -19002,6 +19071,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     }
     if (B && !L.bossDead) {
       if (B.hp > 0 && B.x >= L.plan.arena.x0 && B.x <= L.plan.arena.x1) unbury(S, B);
+      if (B.hp > 0 && !B.waiting) unstick(S, B);
       if (B.hp <= 0) L.bossDead = true;
       else if (!S.foes.includes(B)) {
         B.x = Math.min(L.plan.arena.x1 - 30, teamX + BOSS_IN);
@@ -19014,7 +19084,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const B = L.boss;
     if (!L.grem || !B || L.introT == null || L.bossDead || L.introDone) return false;
     const a = S.t - L.introT;
-    if (a >= DEV.gremBossT) {
+    if (a >= DEV.gremBossT && S.scroll + LVL_TEAM >= L.plan.arena.mid - 1) {
       L.introDone = true;
       B.aggro = true;
       return false;
@@ -19415,7 +19485,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (L.phase !== "exit" && levelTeamX(S) > stop) S.scroll = stop - LVL_TEAM;
     L.far = Math.max(L.far ?? S.scroll, S.scroll);
     if (S.scroll < roamMin(L)) S.scroll = roamMin(L);
-    if (L.phase === "run" && levelTeamX(S) >= stop - 0.5) {
+    if (L.phase === "run" && (levelTeamX(S) >= stop - 0.5 || L.grem && levelTeamX(S) >= L.plan.arena.x0)) {
       L.phase = "arena";
       L.arenaT = S.t;
     }
@@ -19440,7 +19510,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       return;
     }
     if (L.phase === "arena") {
-      S.pace = 0;
+      if (L.grem && levelTeamX(S) < stop - 0.5) {
+        const b = L.base * DEV.gremArenaPace;
+        S.pace = pilotEase(S.pace || 0, pilotPace({ base: b, x: levelTeamX(S), stopX: stop }), dt, b);
+      } else S.pace = 0;
       return;
     }
     if (S.blocked != null) {
@@ -19493,7 +19566,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   function cleared(S, L) {
     const left = (S.loot ? S.loot.filter((g) => !g.left).length : 0) + S.coins.length;
-    if (left === 0 || S.t - (L.lootT ?? S.t) >= DEV.autoClearWait) {
+    if (left === 0 || S.t - (L.lootT ?? S.t) >= (L.grem ? DEV.gremClearWait : DEV.autoClearWait)) {
       L.clearT = S.t;
       L.phase = "out";
       S.runners.forEach((r) => {
@@ -22709,26 +22782,34 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
   var WG = { c: null, x: null };
   function wormLook(ctx, S) {
-    const near = (S.worms || []).filter((w2) => w2.r.x - S.scroll > -80 && w2.r.x - S.scroll < TITLE_VW + 80);
+    const near = (S.worms || []).filter((w) => w.r.x - S.scroll > -80 && w.r.x - S.scroll < TITLE_VW + 80);
     if (!near.length) return;
-    const w = Math.ceil((TITLE_VW + 80) / TCELL), h3 = Math.ceil(S.vh / TCELL), ox = Math.floor((S.scroll - 40) / TCELL) * TCELL;
     if (!WG.c) {
       WG.c = document.createElement("canvas");
       WG.x = WG.c.getContext("2d");
     }
     const c = WG.c, x = WG.x;
     if (!x) return;
-    if (c.width !== w || c.height !== h3) {
-      c.width = w;
-      c.height = h3;
-    }
-    const im = new ImageData(w, h3);
-    if (wormFxFill(im.data, w, h3, { ox, oy: 0, px: TCELL, t: S.t, worms: near })) {
+    for (const q of near) {
+      const b = wormBox(q, S.scroll), K = 2;
+      if (b.w <= 0 || b.h <= 0) continue;
+      const w = b.w * K, h3 = b.h * K;
+      if (c.width < w || c.height < h3) {
+        c.width = Math.max(c.width, w);
+        c.height = Math.max(c.height, h3);
+      }
+      x.globalCompositeOperation = "source-over";
+      x.setTransform(1, 0, 0, 1, 0, 0);
+      x.clearRect(0, 0, w, h3);
+      const im = new ImageData(w, h3);
+      if (!wormFxFill(im.data, w, h3, { ox: b.x + S.scroll, oy: b.y, px: 1 / K, t: S.t, worms: [q] })) continue;
       x.putImageData(im, 0, 0);
-      const sm = ctx.imageSmoothingEnabled;
-      ctx.imageSmoothingEnabled = true;
-      ctx.drawImage(c, 0, 0, w, h3, ox - S.scroll, 0, w * TCELL, h3 * TCELL);
-      ctx.imageSmoothingEnabled = sm;
+      x.globalCompositeOperation = "destination-in";
+      x.setTransform(K, 0, 0, K, -b.x * K, -b.y * K);
+      drawGlowWorm(x, q, S.scroll);
+      x.setTransform(1, 0, 0, 1, 0, 0);
+      x.globalCompositeOperation = "source-over";
+      ctx.drawImage(c, 0, 0, w, h3, b.x, b.y, b.w, b.h);
     }
     for (const q of near) {
       if (DEV.glowTint > 0) glowAt(ctx, q.pts[2].x - S.scroll, q.pts[2].y, DEV.glowLightR, DEV.glowTint * wormFlicker(q, S.t), String(wormCol(q, 0.3)));
@@ -25510,7 +25591,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
 
   // src/version.js
-  var VERSION2 = "v2.0.16";
+  var VERSION2 = "v2.0.17";
 
   // src/art/zonelab.js
   var ZLAB_LEAD = 60;

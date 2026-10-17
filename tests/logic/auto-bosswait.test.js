@@ -16,8 +16,10 @@ for (let i = 0; i < 9000 && L.phase !== 'arena'; i++) {
   if (B && seenAt === null) { seenAt = { scr: Math.round(L.plan.arena.mid - S.scroll), x: B.x }; hp0 = B.hp; }
   if (B && L.phase === 'run') moved = Math.max(moved, Math.abs(B.x - seenAt.x));
 }
-check('the boss is made before the arena starts, as the arena comes into view', !!seenAt && seenAt.scr < G.TITLE_VW + 41, seenAt);
-check('it waits at the arena\'s middle', !!seenAt && Math.abs(seenAt.x - L.plan.arena.mid) < 1, [seenAt && seenAt.x, L.plan.arena.mid]);
+check('the boss is made before the arena starts (v2.0.17: the fight starts at its edge)', !!seenAt && seenAt.scr < G.TITLE_VW + 201, seenAt);
+const wx = Math.min(L.plan.arena.x1 - 30, L.plan.arena.mid - G.LVL_TEAM + G.TITLE_VW * D.gremBossAt);
+check('it waits on the arena\'s right, gremBossAt across the stopped screen (v2.0.17)', !!seenAt && Math.abs(seenAt.x - wx) < 1 && wx > L.plan.arena.mid, [seenAt && seenAt.x, wx, L.plan.arena.mid]);
+check('facing left, toward the team', L.boss.lx === -1 && (!L.boss.sp || L.boss.sp.side === -1), [L.boss.lx, L.boss.sp && L.boss.sp.side]);
 check('nobody shot it while it waited', !!L.boss && L.boss.hp === hp0, [L.boss && L.boss.hp, hp0]);
 check('it stayed near its place', moved < 40, Math.round(moved));
 check('the arena: it stops waiting, its title starts', L.phase === 'arena' && (G.titleStep(S, dt), !L.boss.waiting && L.introT != null));

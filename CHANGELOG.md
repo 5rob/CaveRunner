@@ -5,6 +5,14 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v2.0.17 — Boss flow streamlined, big spiders walk, unstick, lanterns, glow worm swell (branch `grem`)
+2026-10-17 (owner's list; owner OK'd).
+- Level → boss → level: the fight starts as the team enters the arena (title at once, `gremBossT` 3.2 → 2.4 s; it hunts once the title is done and the team is at its stop; the team hurried to its stop at `gremArenaPace`); the boss is made at its place as soon as its ground exists (no slide-in); the next level within `gremClearWait` s of its death (was `autoClearWait` 4). Arena to fight ~2.4 s (was ~9), death to next level 1.5 s (was 4). `auto-bossflow`.
+- The boss waits on the arena's right, `gremBossAt` across the screen where the team stops, facing left.
+- Big spiders (boss, elites) were stuck falling forever: they hovered 6 units off the rock whatever their size, `unbury` lifted them every frame. Now they sit as far off as their feet reach (`spiderHold`, creatures/spider.js): they walk, legs move. Fallback for every elite and the boss: `unstick` (no progress for `autoStuckT` s while hunting → open floor up to `autoStuckHop` nearer the team). All big kinds measured over 10 levels: only ranged ones holding their range stand still. `auto-stuck`.
+- Lanterns: fast shots flew through them; the hit is checked along the shot's whole step (`lampSwept`). They pop and throw fire; dropped ones break on landing. `coal-lamp`.
+- Glow worms: killed, the middle swells through the fuse (`glowSwell`, `wormSwell`); the drifting glow pattern only on their bodies (titledraw.js `wormLook`, cut to the body shape).
+
 ## v2.0.16 — New HUD with a level progress panel, Dev skip, the boss waits in its arena (branch `grem`)
 2026-10-17 (owner's list; owner OK'd the shots).
 - HUD: the old bar under the stick is gone. The helmets sit 2×2 left of the stick; right of it, an inset panel shows the level and its name (moved from the top left), its outline filling clockwise as the team gets through the level (`levelProgress`, auto/level.js; `GremLevel`, ui/auto/GremScreen.js). Shots: `tools/gremhudshots.js`.

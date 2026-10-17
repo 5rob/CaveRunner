@@ -1593,6 +1593,14 @@ function popLamp(S, p) {
 // a lantern's body (screen), where a shot or a blast finds it
 /** @param {TProp} p @param {number} x @param {number} y @param {number} r */
 const lampHit = (p, x, y, r) => x > p.x - 3.5 - r && x < p.x + 3.5 + r && y > p.y + p.len - r && y < p.y + p.len + 9 + r;
+// (owner, v2.0.17: shots flew through lanterns) along the shot's whole step this frame, not only where it ended (a fast bullet
+// moves further than the lantern is wide)
+/** @param {TProp} p @param {TShot} s @param {number} dt */
+const lampSwept = (p, s, dt) => {
+  const n = Math.max(1, Math.ceil(Math.hypot(s.vx, s.vy) * dt / 3));
+  for (let i = 0; i <= n; i++) if (lampHit(p, s.x - s.vx * dt * i / n, s.y - s.vy * dt * i / n, s.size)) return true;
+  return false;
+};
 
 // blow a hole: every cell within r of (sx, y) goes, the rock round its rim chars, plants on it fall
 /** @param {TitleScene} S @param {number} sx @param {number} y @param {number} r @param {boolean} [rim] blasted: the rock round it chars (not a saw's cut) */
@@ -3346,7 +3354,7 @@ function stepShots(S, dt) {
       else if (titleSolid(S, s.x, s.y)) { s.life = 0; burst(S, s.x, s.y, 4, s.col, 40, 'spark', 0.3); snd(S, 'fizzle', s.x, s.y); }
       continue;
     }
-    for (const p of S.props) if ((p.k === 'lamp' || p.k === 'barrel') && !p.gone && (p.k === 'lamp' ? lampHit : cartHit)(p, s.x, s.y, s.size)) {
+    for (const p of S.props) if ((p.k === 'lamp' || p.k === 'barrel') && !p.gone && (p.k === 'lamp' ? lampSwept(p, s, dt) : cartHit(p, s.x, s.y, s.size))) {
       if (p.k === 'lamp') popLamp(S, p); else cartBoom(S, p);
       if (!s.pierce) { s.life = 0; burst(S, s.x, s.y, 3, s.col, 50, 'spark', 0.2); }
     }

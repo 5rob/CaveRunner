@@ -15,7 +15,7 @@ for (let lv = 1; lv <= 3; lv++) {
   const got = until(S, () => !!L.boss, 30 * 180);
   if (got < 0) { check('level ' + lv + ': a boss came', false, L.phase); break; }
   const B = L.boss;
-  until(S, () => !!L.introDone, Math.round((D.gremBossT + 1) / dt));
+  until(S, () => !!L.introDone, Math.round(15 / dt));   // (v2.0.17: the title, and the team at its stop)
   for (let i = 0; i < 15; i++) G.titleStep(S, dt);
   const sx = B.x - S.scroll;
   check('level ' + lv + ' (' + B.k.name + ', ' + B.k.act + '): on screen after its title', sx > 0 && sx < G.TITLE_VW, Math.round(sx));

@@ -382,7 +382,9 @@ export function levelStep(S, dt) {
   if (L.phase !== 'exit' && levelTeamX(S) > stop) S.scroll = stop - LVL_TEAM;
   L.far = Math.max(L.far ?? S.scroll, S.scroll);
   if (S.scroll < roamMin(L)) S.scroll = roamMin(L);
-  if (L.phase === 'run' && levelTeamX(S) >= stop - 0.5) { L.phase = 'arena'; L.arenaT = S.t; }
+  // (Grem, owner v2.0.17: too much waiting before the fight) the fight starts as the team enters the arena: the boss's title
+  // at once (enemies.js), the team carried on to its stop at DEV.gremArenaPace × the pace meanwhile
+  if (L.phase === 'run' && (levelTeamX(S) >= stop - 0.5 || (L.grem && levelTeamX(S) >= L.plan.arena.x0))) { L.phase = 'arena'; L.arenaT = S.t; }
   if (L.phase === 'arena' && (L.bossDead || S.t - L.arenaT >= DEV.autoLvlBossT)) { L.bossDead = true; L.phase = 'cleared'; L.lootT = S.t; L.clearT = -1; }   // (the timeout: a fallback, a boss out of reach)
   S.huddle = L.phase === 'cleared' || L.phase === 'out' || L.phase === 'exit';   // the team keeps together after the boss (titlescene.js's pack pick)
   S.gunsOff = L.bossDead;   // (owner v1.0.74) the boss dead: guns down
@@ -390,7 +392,11 @@ export function levelStep(S, dt) {
   joinStep(S, L);
   if (L.phase === 'cleared') { S.pace = 0; cleared(S, L); return; }
   if (L.phase === 'out' && levelTeamX(S) >= stop - 0.5) { L.phase = 'exit'; S.still = true; return; }
-  if (L.phase === 'arena') { S.pace = 0; return; }
+  if (L.phase === 'arena') {
+    if (L.grem && levelTeamX(S) < stop - 0.5) { const b = L.base * DEV.gremArenaPace; S.pace = pilotEase(S.pace || 0, pilotPace({ base: b, x: levelTeamX(S), stopX: stop }), dt, b); }
+    else S.pace = 0;
+    return;
+  }
   // blocked (the scene's startDig found no gun in play to clear the rock): stays till one can (a gun fitted)
   if (S.blocked != null) { L.blocked = true; L.blockKind = S.blockedKind || 'rock'; S.blocked = undefined; }
   // webs (stage 6b): they slow the team; tangled enough, it halts till a gun that clears webs burns or cuts them, else blocked
@@ -458,7 +464,7 @@ export function roamFollow(S, lead) {
 /** @param {import('../art/titlescene.js').TitleScene} S @param {LevelState} L */
 function cleared(S, L) {
   const left = (S.loot ? S.loot.filter(g => !g.left).length : 0) + S.coins.length;
-  if (left === 0 || S.t - (L.lootT ?? S.t) >= DEV.autoClearWait) { L.clearT = S.t; L.phase = 'out'; S.runners.forEach(r => { r.retarget = 0; }); if (L.grem) levelOnward(S, L); }
+  if (left === 0 || S.t - (L.lootT ?? S.t) >= (L.grem ? DEV.gremClearWait : DEV.autoClearWait)) { L.clearT = S.t; L.phase = 'out'; S.runners.forEach(r => { r.retarget = 0; }); if (L.grem) levelOnward(S, L); }
 }
 
 // (Grem Mode) on past the arena instead of to an exit: the level + 1 (S.tier, the run's), the next stretch of random zones

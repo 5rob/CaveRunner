@@ -230,6 +230,17 @@ require('../tests/build')();
       await page.evaluate(() => { const S = window.__gremScene, w = window.__worm, ru = S.runners[0]; ru.out = false; ru.x = w.r.x + 40 - S.scroll - PW / 2; ru.y = w.r.y - 22 - PH / 2; });
       await page.waitForTimeout(700);
       await save('p-agro', 'close up (normal dark): in agro (a player off to the side): the glow turned orange, the pattern faster and finer', await box());
+      // (v2.0.17) killed, its fuse burning: its middle swells. A tight close-up on the worm, before and near the end of the fuse
+      const mid = () => page.evaluate(() => {
+        const S = window.__gremScene, w = window.__worm, m = w.pts[2], cv = document.querySelector('canvas'), b = cv.getBoundingClientRect(), k = b.width / TITLE_VW;
+        return { x: b.left + (m.x - S.scroll) * k - 50, y: b.top + m.y * k - 50, width: 100, height: 80 };
+      });
+      await page.evaluate(() => { for (const r of window.__gremScene.runners) { r.out = true; r.x = -300; } });
+      await page.waitForTimeout(1500);
+      await save('q-unswollen', 'tight close-up: the worm alive (for comparison)', await mid());
+      await page.evaluate(() => { const w = window.__worm; DEV.glowFuse = 3; w.foe.hp = 0; w.foe.fuse = 3; });
+      await page.waitForTimeout(2500);
+      await save('r-swell', 'tight close-up: killed, its fuse nearly out: the middle swollen, about to burst', await mid());
       await browser.close(); console.log(said.join(String.fromCharCode(10))); return;
     }
     if (ONLY === 'wormb') {

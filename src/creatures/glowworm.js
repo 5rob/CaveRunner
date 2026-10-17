@@ -230,9 +230,9 @@ export function wormLine(w, ox) {
 // pixelSprite (the creatures' pixel look)
 /** @param {CanvasRenderingContext2D} c @param {GlowWorm} w @param {number} ox */
 export function drawGlowWorm(c, w, ox) {
-  const Q = wormLine(w, ox), W = DEV.glowW * w.sz, tp = DEV.glowTaper, hp = tp + (1 - tp) * w.ag;   // (stood up: the head end as fat as the middle)
+  const Q = wormLine(w, ox), W = DEV.glowW * w.sz, sw = wormSwell(w), tp = DEV.glowTaper, hp = tp + (1 - tp) * w.ag;   // (stood up: the head end as fat as the middle)
   /** @param {number} s */
-  const th = s => { const t0 = s > 0.5 ? hp : tp; return W * (t0 + (1 - t0) * Math.sin(Math.PI * s)); };
+  const th = s => { const t0 = s > 0.5 ? hp : tp, m = Math.sin(Math.PI * s); return W * (t0 + (1 - t0) * m) * (1 + sw * m * m); };
   for (const { col, add } of [{ col: EDGE, add: 0.3 }, { col: BODY, add: -0.9 }]) {
     c.fillStyle = col;
     for (let i = 0; i < Q.length; i++) {
@@ -245,12 +245,21 @@ export function drawGlowWorm(c, w, ox) {
     }
   }
 }
+// (owner, v2.0.17) killed, its fuse burning (foe.fuse, DEV.glowFuse): how much its middle has swollen, 0 → DEV.glowSwell
+// (eased in, a quickening throb on top), so it looks about to burst
+/** @param {GlowWorm} w */
+export function wormSwell(w) {
+  const f = w.foe;
+  if (!f || f.hp > 0 || !(f.fuse > 0) || !(DEV.glowFuse > 0)) return 0;
+  const u = Math.max(0, Math.min(1, 1 - f.fuse / DEV.glowFuse));
+  return DEV.glowSwell * u * u * (0.85 + 0.15 * Math.sin(u * u * 40));
+}
 // the box a worm is drawn in (screen units): for the pixel layer
 /** @param {GlowWorm} w @param {number} ox */
 export function wormBox(w, ox) {
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   for (const p of [w.rl, w.fl, ...w.pts]) { x0 = Math.min(x0, p.x); y0 = Math.min(y0, p.y); x1 = Math.max(x1, p.x); y1 = Math.max(y1, p.y); }
-  const e = DEV.glowW * w.sz + 3;
+  const e = DEV.glowW * w.sz * (1 + wormSwell(w)) + 3;
   return { x: Math.floor(x0 - ox - e), y: Math.floor(y0 - e), w: Math.ceil(x1 - x0 + 2 * e) + 1, h: Math.ceil(y1 - y0 + 2 * e) + 1 };
 }
 
