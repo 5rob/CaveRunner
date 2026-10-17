@@ -221,7 +221,7 @@ const CLASSIC = { shoot: 1, turret: 1, chase: 1, bomb: 1 };
 /** @typedef {{ zp: TitlePlan, kind?: (id: string, tier: number) => CreatureKind, hardY?: (S: TitleScene, wx: number) => number, step?: (S: TitleScene, dt: number) => void, data?: any, hurt?: (S: TitleScene, i: number, dmg: number) => void,
  *   loot?: (S: TitleScene, f: Enemy) => BagItem[], fits?: (S: TitleScene, it: BagItem) => boolean, take?: (S: TitleScene, it: BagItem) => boolean, lootCol?: (it: BagItem) => string,
  *   blockCell?: (B: import('../auto/blocked.js').ZoneBlock, wx: number, y: number, cy: number, fy: number, cur: number) => number,
- *   blockCol?: (S: TitleScene, B: import('../auto/blocked.js').ZoneBlock, c: number, wx: number, cy: number, fy: number) => void, blockKind?: (S: TitleScene, wx: number) => string, free?: (S: TitleScene, r?: TRunner) => boolean, fuel?: (S: TitleScene, r: TRunner) => { fuel: number, refuel: number } | null, spawn?: (S: TitleScene) => { gap: number, cap: number } }} TitleLevel */
+ *   blockCol?: (S: TitleScene, B: import('../auto/blocked.js').ZoneBlock, c: number, wx: number, cy: number, fy: number) => void, blockKind?: (S: TitleScene, wx: number) => string, free?: (S: TitleScene, r?: TRunner) => boolean, fuel?: (S: TitleScene, r: TRunner) => { fuel: number, refuel: number } | null, spawn?: (S: TitleScene) => { gap: number, cap: number }, keepOut?: (S: TitleScene) => { x0: number, x1: number } | null }} TitleLevel */
 // blockCell, blockCol, blockKind (CaveRunner Auto stage 6b, auto/blocked.js): a blocked zone's cells and web lines, and what a dig goes into
 // loot (CaveRunner Auto, auto/level.js): what a kill drops (its gold spills as nuggets, the rest as TLoot pickups); fits: would it go in the bag;
 // take: put it in the bag (false: it didn't fit). A pickup: the item, its colour, nopull (s before it can fly), wait (the bag is full)
@@ -1105,7 +1105,7 @@ function timberCol(S, c, M, bands) {
 // boulder's or a tunnel's underside), with room under it; its bats (creatures/bats.js) hang there and fly in the space below
 /** @param {TitleScene} S @param {number} c @param {number} wx */
 function batCol(S, c, wx) {
-  if (DEV.batSpawners <= 0 || wx < (S.batNext ?? TITLE_VW * 0.6)) return;
+  if (DEV.batSpawners <= 0 || wx < (S.batNext ?? TITLE_VW * 0.6) || inKeepOut(S, wx, DEV.gremArenaClear)) return;
   const base = ci(S, c, 0), cand = [];
   for (let r = 1; r < S.rows - 8; r++) {
     if (!SOLID[S.cells[base + r - 1]] || SOLID[S.cells[base + r]]) continue;
@@ -1116,6 +1116,13 @@ function batCol(S, c, wx) {
   const [r] = cand[Math.floor(S.rnd() * cand.length)];
   addSpawner(S.bats ||= newBats(), wx, r * TCELL, S.rnd);
   S.batNext = wx + TITLE_VW / Math.max(0.01, DEV.batSpawners) * (0.5 + S.rnd());
+}
+// (owner, v2.0.18: the next level's bats were always in the boss arena) a level's boss arena (S.lvl.keepOut) and pad past it
+// (world units, its right side): no bats or glow worms placed there, and none may fly into the arena
+/** @param {TitleScene} S @param {number} wx @param {number} pad */
+function inKeepOut(S, wx, pad) {
+  const K = S.lvl && S.lvl.keepOut ? S.lvl.keepOut(S) : null;
+  return !!K && wx > K.x0 - pad && wx < K.x1 + pad;
 }
 // the bats' frame (creatures/bats.js): the players scare them; a bite only with DEV.batBite over 0
 /** @param {TitleScene} S @param {number} dt */
@@ -1133,6 +1140,11 @@ function batsStep(S, dt) {
     if (f.hp <= 0) b.gone = true;
   }
   stepBats(B, dt, preds, solid, R, (i, d) => { if (S.lvl && S.lvl.hurt) S.lvl.hurt(S, live[i].id, d); });
+  const K = S.lvl && S.lvl.keepOut ? S.lvl.keepOut(S) : null;
+  if (K) for (const b of B.list) if (!b.gone && b.x > K.x0 - 4 && b.x < K.x1 + 4) {   // (v2.0.18) out of the arena, back the way it came
+    const e = b.sp.x >= (K.x0 + K.x1) / 2 ? K.x1 + 4 : K.x0 - 4;
+    b.x = b.bx = e; b.tx = b.hx; b.ty = b.hy;
+  }
   for (const b of B.list) {
     const f = b.f; if (!f) continue;
     f.x = f.hx = b.x; f.y = f.ty = f.hy = b.y + (b.st === 'hang' ? 2 * DEV.batSize : 0); f.r = 2 * DEV.batSize;
@@ -1186,6 +1198,7 @@ function wormSurfs(S, c) {
 // a cluster put down: a spot's surface, then each worm on the surface nearest it in a column within span of the spot
 /** @param {TitleScene} S @param {{ x: number, span: number, n: number, z: string }} P @param {() => number} R */
 function wormCluster(S, P, R) {
+  if (inKeepOut(S, P.x, DEV.gremArenaClear + P.span)) return;   // (v2.0.18) none near the boss arena
   const solid = rockAt(S), c0 = Math.floor(P.x / TCELL), home = wormSurfs(S, c0);
   if (!home.length) return;
   const hy = home[Math.floor(R() * home.length)];
@@ -1218,6 +1231,11 @@ function wormsStep(S, dt) {
     // the nearest player's middle: agro, strike (a strike at its height hurts him: DEV.glowStrikeDmg)
     let tgt = null, td = Infinity, ti = -1;
     for (let i = 0; i < live.length; i++) { const x = S.scroll + live[i].x + PW / 2, y = live[i].y + PH / 2, q = Math.hypot(x - w.r.x, y - w.r.y); if (q < td) { td = q; tgt = { x, y }; ti = i; } }
+    // (owner v2.0.18) a player within DEV.glowProxR of its middle sets it off: killed (gold, the fuse, then the blast)
+    if (w.foe && w.foe.hp > 0 && D.glowProxR > 0 && w.pts.length > 3) {
+      const mx = (w.pts[2].x + w.pts[3].x) / 2, my = (w.pts[2].y + w.pts[3].y) / 2;
+      if (live.some(r => Math.hypot(S.scroll + r.x + PW / 2 - mx, r.y + PH / 2 - my) < D.glowProxR)) { killFoe(S, w.foe); continue; }
+    }
     const ev = stepWorm(w, dt, solid, R, tgt);
     if (ev === 'strike' && ti >= 0 && S.lvl && S.lvl.hurt) S.lvl.hurt(S, live[ti].id, D.glowStrikeDmg);
     // its stand-in among the foes (as a bat's): the guns aim at it and hit it; killed, it blows up (killFoe → wormBlast)
@@ -1260,7 +1278,7 @@ function wormBlast(S, f) {
   burst(S, x, y, 40, WORM_SPORE, 170, 'spark', 0.8);
   burst(S, x, y, 20, '#eaffd8', 90, 'spark', 0.5);
   burst(S, x, y, 16, '#2fd23a', 110, 'chunk', 1);
-  S.shake = Math.min(7, S.shake + 1.5); S.flash = Math.min(0.3, S.flash + 0.06);
+  S.shake = Math.max(S.shake, D.glowShake); S.flash = Math.min(0.3, S.flash + 0.06);   // (owner v2.0.18: a real shake)
   if (D.glowHole > 0) titleCarve(S, x, y, D.glowHole);
   for (const g of S.foes) if (g !== f && g.hp > 0 && Math.hypot(g.x - S.scroll - x, g.ty - y) < r + g.r) hitFoe(S, g, D.glowBlastDmg, WORM_SPORE);
   if (S.lvl && S.lvl.hurt && D.glowTeam > 0) for (const ru of S.runners) if (!ru.out && Math.hypot(ru.x + PW / 2 - x, ru.y + PH / 2 - y) < r + 6) S.lvl.hurt(S, ru.id, D.glowBlastDmg * D.glowTeam);
@@ -1360,7 +1378,7 @@ function cartBoom(S, p) {
   burst(S, x, y, 6, '#3a3346', 30, 'smoke', 1.3);
   burst(S, x, y, 8, '#6e4a32', 120, 'chunk', 0.9);
   burst(S, x, y, 4, '#8c8f96', 120, 'chunk', 0.9);
-  S.shake = Math.min(7, S.shake + 3); S.flash = Math.min(0.35, S.flash + 0.12);
+  S.shake = Math.max(S.shake, DEV.coalCartShake); S.flash = Math.min(0.35, S.flash + 0.12);   // (owner v2.0.18: a real shake)
   titleCarve(S, x, y, r);
   titleIgnite(S, x, y, r + 5);
   for (const g of S.foes) if (g.hp > 0 && Math.hypot(g.x - S.scroll - x, g.ty - y) < r + g.r) hitFoe(S, g, DEV.coalCartDmg, '#ffb02e');

@@ -6,6 +6,7 @@ const G = require('../load');
 let fails = 0;
 const check = (n, ok, x) => { if (!ok) fails++; console.log(`${ok ? 'ok  ' : 'FAIL'} ${n}${x !== undefined ? ' -> ' + JSON.stringify(x) : ''}`); };
 const D = G.DEV;
+const PROX = D.glowProxR; D.glowProxR = 0;   // (v2.0.18) the proximity trigger off for the old checks: its own check at the end
 D.glowSizeMin = D.glowSizeMax = 1;   // (the hand-made rock: every worm its knobs' size; the level below rolls them)
 D.autoFoeDmg = 0; D.glowTurn = 0;
 let seed = 7; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
@@ -91,6 +92,7 @@ check('… the hit size scaled with it', [...seen].filter(q => q.foe).every(q =>
 check('… their feet never inside rock', lv === 0, lv);
 // the sandbox: the scene held still; the worms on screen crawl on for 10 s and get somewhere
 S.lvl.step = null; S.pace = 0; S.still = true; S.props.length = 0; S.foes.length = 0;
+S.fire.length = 0; S.burning.clear(); S.parts.length = 0;   // (a fire elsewhere fills the particles with smoke: no room for the spores)
 // a cluster put in view by hand (the level's own have scrolled by): six worms on floors there
 { let n = 0, fx = 0, fy = 0; for (let x = S.scroll + 60; x < S.scroll + 170 && n < 6; x += 5) for (let y = 20; y < S.vh - 4; y += 1) if (!rock(x, y - 8) && !rock(x, y) && rock(x, y + 1)) { const q = G.newWorm(x, y + 0.5, 1, rock, rnd); if (q) { S.worms.push(q); n++; fx = x; fy = y; } break; }
   (S.wormClusters ||= []).push({ x: fx, y: fy, n, z: "spider" }); }
@@ -148,5 +150,22 @@ check('… and hurts the team at glowTeam (half) of the blast', hits.some(d => M
 for (let i = 0; i < fuseN + 1; i++) G.titleStep(S, dt);
 check('… the killed worms gone from the scene', !S.worms.includes(WA) && !S.worms.includes(B2));
 
+// (owner v2.0.18) a player within glowProxR sets a worm off: killed, its fuse, then the blast; and worms walk out of step, bigger ones slower
+D.glowProxR = PROX;
+let WP = null;
+for (let x = S.scroll + 40; x < S.scroll + 180 && !WP; x += 2) for (let y = 20; y < S.vh - 4 && !WP; y += 1) if (!rock(x, y - 8) && !rock(x, y) && rock(x, y + 1)) WP = G.newWorm(x, y + 0.5, 1, rock, rnd);
+S.worms.push(WP);
+for (let i = 0; i < 3; i++) G.titleStep(S, dt);
+const ru3 = S.runners[0]; ru3.out = false;
+const mx = (WP.pts[2].x + WP.pts[3].x) / 2, my = (WP.pts[2].y + WP.pts[3].y) / 2;
+ru3.x = mx - S.scroll - G.PW / 2; ru3.y = my - G.PH / 2 - Math.max(0, PROX - 6);
+G.titleStep(S, dt);
+check('a player within glowProxR sets it off (killed, fuse burning)', !!WP.foe && WP.foe.hp <= 0 && WP.foe.fuse > 0, WP.foe && [WP.foe.hp, WP.foe.fuse]);
+const a = G.newWorm(WP.r.x, WP.r.y, 1, rock, () => 0.1), b = G.newWorm(WP.r.x, WP.r.y, 1, rock, () => 0.9);
+check('out of step: each its own start and speed', a.th !== b.th && a.spd !== b.spd, [a.th, b.th, a.spd, b.spd]);
+const big = G.newWorm(WP.r.x, WP.r.y, 1, rock, () => 0.5), small = G.newWorm(WP.r.x, WP.r.y, 1, rock, () => 0.5);
+big.sz = 1.3; small.sz = 0.8; const t0 = big.th;
+G.stepWorm(big, 0.05, rock, () => 0.5, null); G.stepWorm(small, 0.05, rock, () => 0.5, null);
+check('bigger ones crank slower', big.th - t0 < small.th - t0, [big.th - t0, small.th - t0]);
 console.log(fails ? `\n${fails} FAILED` : '\nall ok');
 process.exit(fails ? 1 : 0);

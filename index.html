@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v2.0.17</title>
-<!-- VERSION = 'v2000017' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v2.0.18</title>
+<!-- VERSION = 'v2000018' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -727,7 +727,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v2.0.17';</script>
+<script>const VERSION = 'v2.0.18';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -1299,7 +1299,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     autoGreen: 150,
     autoModGold: 15
   });
-  Object.assign(DEV_DEFAULTS, { gremPrice: 100, gremGrow: 1.5, gremHard: 0.25, gremGold: 2, gremDark: 0.85, gremPickR: 40, gremChestSize: 2, gremChestGlow: 1, gremBossT: 2.4, gremBossAt: 0.78, gremArenaPace: 2.5, gremClearWait: 1.5, gremGoT: 1.6, gremDmgScale: 1, gremGoldWait: 0.6, gremSeamW: 160, gremSeamJag: 1, gremWayT: 8, gremWayDone: 16, gremChestTapR: 30 });
+  Object.assign(DEV_DEFAULTS, { gremPrice: 100, gremGrow: 1.5, gremHard: 0.25, gremGold: 2, gremDark: 0.85, gremPickR: 40, gremChestSize: 2, gremChestGlow: 1, gremBossT: 2.4, gremBossAt: 0.78, gremArenaPace: 2.5, gremClearWait: 0, gremArenaClear: 120, gremGoT: 1.6, gremDmgScale: 1, gremGoldWait: 0.6, gremSeamW: 160, gremSeamJag: 1, gremWayT: 8, gremWayDone: 16, gremChestTapR: 30 });
   DEV_META.push(
     { k: "gremPrice", g: "grem", label: "The first unlock costs (gold)", min: 5, max: 1e4, step: 5 },
     { k: "gremGrow", g: "grem", label: "Each unlock after it costs × this more", min: 1, max: 4, step: 0.05 },
@@ -1311,6 +1311,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "gremBossAt", g: "grem", label: "The boss waits this far across the screen where the team stops (0 left, 1 right)", min: 0.4, max: 1, step: 0.02 },
     { k: "gremArenaPace", g: "grem", label: "Into the boss arena: the team hurries to its stop at (× the pace; the fight already on)", min: 1, max: 6, step: 0.1 },
     { k: "gremClearWait", g: "grem", label: "Boss dead: waits for its gold at most (s; then on to the next level)", min: 0, max: 6, step: 0.1 },
+    { k: "gremArenaClear", g: "grem", label: "No bats or glow worms placed within this of the boss arena (units)", min: 0, max: 400, step: 10 },
     { k: "gremBossT", g: "grem", label: "The boss comes in under its name for (s; then the fight)", min: 0.5, max: 8, step: 0.1 },
     { k: "gremGoT", g: "grem", label: "GO! shows for (s)", min: 0.5, max: 5, step: 0.1 },
     { k: "gremDmgScale", g: "grem", label: "Guns grow with the level: share of the creatures’ health growth (1 all, 0 none)", min: 0, max: 2, step: 0.05 },
@@ -1479,6 +1480,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     glowLiftF: 0.6,
     glowLiftR: 0.4,
     glowCrank: 4.5,
+    glowSpdMin: 0.8,
+    glowSpdMax: 1.2,
+    glowSizeSlow: 1,
     glowLen: 8,
     glowW: 1.8,
     glowFoot: 1,
@@ -1506,6 +1510,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "glowLiftF", g: "glow", label: "Front foot lift (× half the stride)", min: 0, max: 2, step: 0.05 },
     { k: "glowLiftR", g: "glow", label: "Rear foot lift (× half the stride)", min: 0, max: 2, step: 0.05 },
     { k: "glowCrank", g: "glow", label: "Crank speed (turns of the gait: radians a second)", min: 0, max: 20, step: 0.1 },
+    { k: "glowSpdMin", g: "glow", label: "Speed: slowest (× the crank speed, each worm its own)", min: 0, max: 3, step: 0.05 },
+    { k: "glowSpdMax", g: "glow", label: "Speed: fastest", min: 0, max: 3, step: 0.05 },
+    { k: "glowSizeSlow", g: "glow", label: "Bigger ones slower (0 none, 1 speed ÷ size, 2 ÷ size²)", min: 0, max: 3, step: 0.1 },
     { k: "glowLen", g: "glow", label: "Body size: length (units)", min: 4, max: 50, step: 0.5 },
     { k: "glowW", g: "glow", label: "Body size: thickness (units)", min: 0.5, max: 10, step: 0.1 },
     { k: "glowFoot", g: "glow", label: "Foot length (units)", min: 0, max: 8, step: 0.1 },
@@ -1531,6 +1538,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     glowHole: 10,
     glowFuse: 0.3,
     glowSwell: 2.5,
+    glowProxR: 18,
+    glowShake: 5,
+    coalCartShake: 8,
     glowTeam: 0.5,
     glowHp: 4,
     glowDebug: 0
@@ -1549,6 +1559,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "glowBlastDmg", g: "glow", label: "Killed: blast damage", min: 0, max: 60, step: 0.5 },
     { k: "glowHole", g: "glow", label: "Killed: hole blasted in the rock (radius)", min: 0, max: 40, step: 0.5 },
     { k: "glowFuse", g: "glow", label: "Killed: seconds before it blows up", min: 0, max: 3, step: 0.05 },
+    { k: "glowProxR", g: "glow", label: "A player this close sets it off: the fuse, then the blast (units; 0 off)", min: 0, max: 80, step: 1 },
+    { k: "glowShake", g: "glow", label: "Its blast shakes the screen (amount)", min: 0, max: 20, step: 0.5 },
+    { k: "coalCartShake", g: "glow", label: "An explosive minecart’s blast shakes the screen (amount)", min: 0, max: 20, step: 0.5 },
     { k: "glowSwell", g: "glow", label: "Killed: its middle swells by this much (× its width) before it blows", min: 0, max: 4, step: 0.1 },
     { k: "glowTeam", g: "glow", label: "Killed: the team takes this share of the blast damage", min: 0, max: 1, step: 0.05 },
     { k: "glowDebug", g: "glow", label: "Debug draw: agro and strike reach (preview; 1 on)", min: 0, max: 1, step: 1 }
@@ -7955,7 +7968,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (!n) return null;
     const r = { x, y, nx: n.x, ny: n.y };
     if (!seat(r, solid) || solid(r.x, r.y)) return null;
-    const w = { r, f: r, rl: { x, y }, fl: { x, y }, th: 0, dir, pts: [], ph: rnd2() * 6.28, sz: DEV.glowSizeMin + rnd2() * Math.max(0, DEV.glowSizeMax - DEV.glowSizeMin), st: "roam", ag: 0, sk: 0, cd: 0, vt: 0, ux: n.x, uy: n.y, hit: false };
+    const w = { r, f: r, rl: { x, y }, fl: { x, y }, th: rnd2() * 2 * Math.PI, dir, pts: [], ph: rnd2() * 6.28, sz: DEV.glowSizeMin + rnd2() * Math.max(0, DEV.glowSizeMax - DEV.glowSizeMin), st: "roam", ag: 0, sk: 0, cd: 0, vt: 0, ux: n.x, uy: n.y, hit: false, spd: DEV.glowSpdMin + rnd2() * Math.max(0, DEV.glowSpdMax - DEV.glowSpdMin) };
     const g = (DEV.glowDMin * w.sz + DEV.glowDMax * w.sz) / 2 - DEV.glowStride * w.sz / 2;
     let f = wormCrawl(r, g, dir, solid);
     if (!f) {
@@ -8000,7 +8013,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     w.ag = Math.max(0, Math.min(1, w.ag + (up ? dt : -dt) / 0.2));
     if (!up) {
       const was = w.th < Math.PI;
-      w.th += D.glowCrank * dt;
+      w.th += D.glowCrank * (w.spd ?? 1) * Math.pow(Math.max(0.05, w.sz), -D.glowSizeSlow) * dt;
       if (was !== w.th < Math.PI) ev = "plant";
       if (w.th >= 2 * Math.PI) {
         w.th -= 2 * Math.PI;
@@ -13138,7 +13151,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return { cells, lamp: lamp2 };
   }
   function batCol(S, c, wx) {
-    if (DEV.batSpawners <= 0 || wx < (S.batNext ?? TITLE_VW * 0.6)) return;
+    if (DEV.batSpawners <= 0 || wx < (S.batNext ?? TITLE_VW * 0.6) || inKeepOut(S, wx, DEV.gremArenaClear)) return;
     const base = ci(S, c, 0), cand = [];
     for (let r2 = 1; r2 < S.rows - 8; r2++) {
       if (!SOLID[S.cells[base + r2 - 1]] || SOLID[S.cells[base + r2]]) continue;
@@ -13150,6 +13163,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const [r] = cand[Math.floor(S.rnd() * cand.length)];
     addSpawner(S.bats ||= newBats(), wx, r * TCELL, S.rnd);
     S.batNext = wx + TITLE_VW / Math.max(0.01, DEV.batSpawners) * (0.5 + S.rnd());
+  }
+  function inKeepOut(S, wx, pad) {
+    const K = S.lvl && S.lvl.keepOut ? S.lvl.keepOut(S) : null;
+    return !!K && wx > K.x0 - pad && wx < K.x1 + pad;
   }
   function batsStep(S, dt) {
     const B = S.bats;
@@ -13167,6 +13184,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     stepBats(B, dt, preds, solid, R, (i, d) => {
       if (S.lvl && S.lvl.hurt) S.lvl.hurt(S, live[i].id, d);
     });
+    const K = S.lvl && S.lvl.keepOut ? S.lvl.keepOut(S) : null;
+    if (K) {
+      for (const b of B.list) if (!b.gone && b.x > K.x0 - 4 && b.x < K.x1 + 4) {
+        const e = b.sp.x >= (K.x0 + K.x1) / 2 ? K.x1 + 4 : K.x0 - 4;
+        b.x = b.bx = e;
+        b.tx = b.hx;
+        b.ty = b.hy;
+      }
+    }
     for (const b of B.list) {
       const f = b.f;
       if (!f) continue;
@@ -13215,6 +13241,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return cand;
   }
   function wormCluster(S, P2, R) {
+    if (inKeepOut(S, P2.x, DEV.gremArenaClear + P2.span)) return;
     const solid = rockAt(S), c0 = Math.floor(P2.x / TCELL), home = wormSurfs(S, c0);
     if (!home.length) return;
     const hy = home[Math.floor(R() * home.length)];
@@ -13265,6 +13292,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           ti = i;
         }
       }
+      if (w.foe && w.foe.hp > 0 && D.glowProxR > 0 && w.pts.length > 3) {
+        const mx = (w.pts[2].x + w.pts[3].x) / 2, my = (w.pts[2].y + w.pts[3].y) / 2;
+        if (live.some((r) => Math.hypot(S.scroll + r.x + PW / 2 - mx, r.y + PH / 2 - my) < D.glowProxR)) {
+          killFoe(S, w.foe);
+          continue;
+        }
+      }
       const ev = stepWorm(w, dt, solid, R, tgt);
       if (ev === "strike" && ti >= 0 && S.lvl && S.lvl.hurt) S.lvl.hurt(S, live[ti].id, D.glowStrikeDmg);
       const f = w.foe || (w.foe = wormFoe(S, w)), j2 = w.pts[2], j3 = w.pts[3];
@@ -13300,7 +13334,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     burst(S, x, y, 40, WORM_SPORE, 170, "spark", 0.8);
     burst(S, x, y, 20, "#eaffd8", 90, "spark", 0.5);
     burst(S, x, y, 16, "#2fd23a", 110, "chunk", 1);
-    S.shake = Math.min(7, S.shake + 1.5);
+    S.shake = Math.max(S.shake, D.glowShake);
     S.flash = Math.min(0.3, S.flash + 0.06);
     if (D.glowHole > 0) titleCarve(S, x, y, D.glowHole);
     for (const g of S.foes) if (g !== f && g.hp > 0 && Math.hypot(g.x - S.scroll - x, g.ty - y) < r + g.r) hitFoe(S, g, D.glowBlastDmg, WORM_SPORE);
@@ -13399,7 +13433,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     burst(S, x, y, 6, "#3a3346", 30, "smoke", 1.3);
     burst(S, x, y, 8, "#6e4a32", 120, "chunk", 0.9);
     burst(S, x, y, 4, "#8c8f96", 120, "chunk", 0.9);
-    S.shake = Math.min(7, S.shake + 3);
+    S.shake = Math.max(S.shake, DEV.coalCartShake);
     S.flash = Math.min(0.35, S.flash + 0.12);
     titleCarve(S, x, y, r);
     titleIgnite(S, x, y, r + 5);
@@ -19275,7 +19309,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       blockKind,
       free: (S2, r) => levelFree(S2, L, r),
       fuel: (_S, r) => team && team[r.id] ? playerStats(team[r.id]) : null,
-      spawn: (S2) => levelSpawn(S2, L)
+      spawn: (S2) => levelSpawn(S2, L),
+      keepOut: () => L.phase === "run" || L.phase === "arena" || L.phase === "cleared" ? { x0: L.plan.arena.x0, x1: L.plan.arena.x1 } : null
     }, team, tier });
     if (grem) {
       S.dmgMul = gremDmgMul(tier);
@@ -25591,7 +25626,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
 
   // src/version.js
-  var VERSION2 = "v2.0.17";
+  var VERSION2 = "v2.0.18";
 
   // src/art/zonelab.js
   var ZLAB_LEAD = 60;

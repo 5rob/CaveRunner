@@ -8,6 +8,8 @@
 
 **v2.0.17 (grem):** the fight starts as the team enters the arena (level.js: phase `arena` at `arena.x0`, the team carried to its stop at `DEV.gremArenaPace`; `cleared` waits `gremClearWait`); the boss always made at its waiting place (`gremBossAt` across the stopped screen, facing left; as soon as its ground is made), no slide-in. enemies.js `unstick(S, f)` (elites and boss: `autoStuckT/R/Hop`), `unbury` measures spiders by `spiderHold`. Suites `auto-bossflow`, `auto-stuck`.
 
+**v2.0.18 (grem):** `levelScene`'s TitleLevel `keepOut` (the arena while the level runs to the kill): titlescene.js places no bats or glow worm clusters within `DEV.gremArenaClear` of it and puts bats flying in back out (`inKeepOut`, batsStep). `gremClearWait` 0: on at once after the kill.
+
 The auto-battler's pure parts (`AUTOBATTLER.md`). **Layer 4**: `run.js` takes `TITLE_COLS` from
 `art/titlescene.js` (layer 4), so modules here may import layers 1–4 (core, dev, data, spells, world,
 art, …), never `game/`, `ui/` or `main.js`. Everything here is pure: the logic suites call it directly.

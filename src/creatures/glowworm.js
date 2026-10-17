@@ -15,7 +15,7 @@ import { twinkle } from './jelly.js';
 
 /** @typedef {{ x: number, y: number, nx: number, ny: number }} WormFoot */
 /** @typedef {{ r: WormFoot, f: WormFoot, rl: { x: number, y: number }, fl: { x: number, y: number }, th: number, dir: number, pts: { x: number, y: number }[], ph: number, sz: number,
- *   st: 'roam' | 'agro' | 'strike', ag: number, sk: number, cd: number, vt: number, ux: number, uy: number, hit: boolean, foe?: Enemy }} GlowWorm */
+ *   st: 'roam' | 'agro' | 'strike', ag: number, sk: number, cd: number, vt: number, ux: number, uy: number, hit: boolean, foe?: Enemy, spd?: number }} GlowWorm */
 // sz: its size (× every body number: DEV.glowSizeMin..Max, rolled once); st: roaming, in agro (stood up on its back foot, facing the player) or striking; ag: 0 walking .. 1 stood up; sk: the strike's
 // clock; cd: till it can strike again; vt: the vibration's clock; (ux, uy): the way its head points; foe: its stand-in among the
 // scene's foes (art/titlescene.js wormsStep)
@@ -73,7 +73,7 @@ export function newWorm(x, y, dir, solid, rnd) {
   const r = { x, y, nx: n.x, ny: n.y };
   if (!seat(r, solid) || solid(r.x, r.y)) return null;
   /** @type {GlowWorm} */
-  const w = { r, f: r, rl: { x, y }, fl: { x, y }, th: 0, dir, pts: [], ph: rnd() * 6.28, sz: DEV.glowSizeMin + rnd() * Math.max(0, DEV.glowSizeMax - DEV.glowSizeMin), st: 'roam', ag: 0, sk: 0, cd: 0, vt: 0, ux: n.x, uy: n.y, hit: false };
+  const w = { r, f: r, rl: { x, y }, fl: { x, y }, th: rnd() * 2 * Math.PI, dir, pts: [], ph: rnd() * 6.28, sz: DEV.glowSizeMin + rnd() * Math.max(0, DEV.glowSizeMax - DEV.glowSizeMin), st: 'roam', ag: 0, sk: 0, cd: 0, vt: 0, ux: n.x, uy: n.y, hit: false, spd: DEV.glowSpdMin + rnd() * Math.max(0, DEV.glowSpdMax - DEV.glowSpdMin) };   // (v2.0.18: out of step, each its own speed)
   const g = (DEV.glowDMin * w.sz + DEV.glowDMax * w.sz) / 2 - DEV.glowStride * w.sz / 2;
   let f = wormCrawl(r, g, dir, solid);
   if (!f) { w.dir = -dir; f = wormCrawl(r, g, -dir, solid); }
@@ -111,7 +111,7 @@ export function stepWorm(w, dt, solid, rnd, tgt) {
   w.ag = Math.max(0, Math.min(1, w.ag + (up ? dt : -dt) / 0.2));
   if (!up) {
     const was = w.th < Math.PI;
-    w.th += D.glowCrank * dt;
+    w.th += D.glowCrank * (w.spd ?? 1) * Math.pow(Math.max(0.05, w.sz), -D.glowSizeSlow) * dt;   // (owner v2.0.18: bigger ones slower, by its size ^ glowSizeSlow)
     if (was !== (w.th < Math.PI)) ev = 'plant';
     if (w.th >= 2 * Math.PI) { w.th -= 2 * Math.PI; ev = 'plant'; if (rnd() < D.glowTurn) turn(w); }
     for (let k = 0; k < 2; k++) {

@@ -407,7 +407,7 @@ Object.assign(DEV_DEFAULTS, { autoGunBase: 100, autoGunGrow: 1.35, autoExoPrice:
 // CaveRunner Auto's hub (auto/hub.js, stage 3b): the team walking between the stops
 // (player 1 moves on the old game's own numbers, core/consts.js WALK / JET / GRAVITY, feedback round 1)
 // Grem Mode (auto/grem.js): the unlocks' prices (each dearer than the last), how fast the creatures toughen, the gold, the dark
-Object.assign(DEV_DEFAULTS, { gremPrice: 100, gremGrow: 1.5, gremHard: 0.25, gremGold: 2, gremDark: 0.85, gremPickR: 40, gremChestSize: 2, gremChestGlow: 1, gremBossT: 2.4, gremBossAt: 0.78, gremArenaPace: 2.5, gremClearWait: 1.5, gremGoT: 1.6, gremDmgScale: 1, gremGoldWait: 0.6, gremSeamW: 160, gremSeamJag: 1, gremWayT: 8, gremWayDone: 16, gremChestTapR: 30 });
+Object.assign(DEV_DEFAULTS, { gremPrice: 100, gremGrow: 1.5, gremHard: 0.25, gremGold: 2, gremDark: 0.85, gremPickR: 40, gremChestSize: 2, gremChestGlow: 1, gremBossT: 2.4, gremBossAt: 0.78, gremArenaPace: 2.5, gremClearWait: 0, gremArenaClear: 120, gremGoT: 1.6, gremDmgScale: 1, gremGoldWait: 0.6, gremSeamW: 160, gremSeamJag: 1, gremWayT: 8, gremWayDone: 16, gremChestTapR: 30 });
 DEV_META.push(
   { k: 'gremPrice', g: 'grem', label: 'The first unlock costs (gold)', min: 5, max: 10000, step: 5 },
   { k: 'gremGrow',  g: 'grem', label: 'Each unlock after it costs × this more', min: 1, max: 4, step: 0.05 },
@@ -419,6 +419,7 @@ DEV_META.push(
   { k: 'gremBossAt', g: 'grem', label: 'The boss waits this far across the screen where the team stops (0 left, 1 right)', min: 0.4, max: 1, step: 0.02 },
   { k: 'gremArenaPace', g: 'grem', label: 'Into the boss arena: the team hurries to its stop at (× the pace; the fight already on)', min: 1, max: 6, step: 0.1 },
   { k: 'gremClearWait', g: 'grem', label: 'Boss dead: waits for its gold at most (s; then on to the next level)', min: 0, max: 6, step: 0.1 },
+  { k: 'gremArenaClear', g: 'grem', label: 'No bats or glow worms placed within this of the boss arena (units)', min: 0, max: 400, step: 10 },
   { k: 'gremBossT', g: 'grem', label: 'The boss comes in under its name for (s; then the fight)', min: 0.5, max: 8, step: 0.1 },
   { k: 'gremGoT', g: 'grem', label: 'GO! shows for (s)', min: 0.5, max: 5, step: 0.1 },
   { k: 'gremDmgScale', g: 'grem', label: 'Guns grow with the level: share of the creatures’ health growth (1 all, 0 none)', min: 0, max: 2, step: 0.05 },
@@ -562,7 +563,7 @@ Object.assign(DEV_DEFAULTS, { slicePrevWait: 2 });
 DEV_META.push({ k: 'slicePrevWait', g: 'bats', label: 'Preview: wait before the next player comes in (s)', step: 0.5 });
 DEV_GROUPS.push(['bats', 'Bats']);
 // (C5a) Coal Seams' glow worms (creatures/glowworm.js, the owner's spec): the body and the inchworm gait
-Object.assign(DEV_DEFAULTS, { glowCluster: 0.35, glowClusterMin: 3, glowClusterMax: 20, glowInMines: 1, glowInDig: 1, glowInCavern: 1, glowSizeMin: 0.8, glowSizeMax: 1.3, glowAmbientR: 70, glowStride: 4, glowDMin: 2.5, glowDMax: 6.5, glowLiftF: 0.6, glowLiftR: 0.4, glowCrank: 4.5, glowLen: 8, glowW: 1.8, glowFoot: 1, glowTurn: 0.1,
+Object.assign(DEV_DEFAULTS, { glowCluster: 0.35, glowClusterMin: 3, glowClusterMax: 20, glowInMines: 1, glowInDig: 1, glowInCavern: 1, glowSizeMin: 0.8, glowSizeMax: 1.3, glowAmbientR: 70, glowStride: 4, glowDMin: 2.5, glowDMax: 6.5, glowLiftF: 0.6, glowLiftR: 0.4, glowCrank: 4.5, glowSpdMin: 0.8, glowSpdMax: 1.2, glowSizeSlow: 1, glowLen: 8, glowW: 1.8, glowFoot: 1, glowTurn: 0.1,
   glowTaper: 0.55, glowSpores: 3, glowSporeSpd: 22, glowSporeDrag: 3, glowSporeSpread: 40, glowAmbient: 4 });
 DEV_META.push(
   { k: 'glowCluster',    g: 'glow', label: 'Clusters: chance a zone slice gets one', min: 0, max: 1, step: 0.05 },
@@ -580,6 +581,9 @@ DEV_META.push(
   { k: 'glowLiftF',     g: 'glow', label: 'Front foot lift (× half the stride)', min: 0, max: 2, step: 0.05 },
   { k: 'glowLiftR',     g: 'glow', label: 'Rear foot lift (× half the stride)', min: 0, max: 2, step: 0.05 },
   { k: 'glowCrank',     g: 'glow', label: 'Crank speed (turns of the gait: radians a second)', min: 0, max: 20, step: 0.1 },
+  { k: 'glowSpdMin',    g: 'glow', label: 'Speed: slowest (× the crank speed, each worm its own)', min: 0, max: 3, step: 0.05 },
+  { k: 'glowSpdMax',    g: 'glow', label: 'Speed: fastest', min: 0, max: 3, step: 0.05 },
+  { k: 'glowSizeSlow',  g: 'glow', label: 'Bigger ones slower (0 none, 1 speed ÷ size, 2 ÷ size²)', min: 0, max: 3, step: 0.1 },
   { k: 'glowLen',       g: 'glow', label: 'Body size: length (units)', min: 4, max: 50, step: 0.5 },
   { k: 'glowW',         g: 'glow', label: 'Body size: thickness (units)', min: 0.5, max: 10, step: 0.1 },
   { k: 'glowFoot',      g: 'glow', label: 'Foot length (units)', min: 0, max: 8, step: 0.1 },
@@ -592,7 +596,7 @@ DEV_META.push(
   { k: 'glowAmbient',   g: 'glow', label: 'Green spores drifting round a cluster (a second)', min: 0, max: 30, step: 0.5 });
 // (C5b) their behaviour: agro, the strike, and the blast when one is killed
 Object.assign(DEV_DEFAULTS, { glowAgroR: 60, glowStrikeR: 14, glowStrikeT: 0.3, glowStrikeCd: 0.9, glowStrikeDmg: 12, glowVib: 0.35, glowVibSpd: 70, glowMouthSpd: 18,
-  glowBlastR: 16, glowBlastDmg: 6, glowHole: 10, glowFuse: 0.3, glowSwell: 2.5, glowTeam: 0.5, glowHp: 4, glowDebug: 0 });
+  glowBlastR: 16, glowBlastDmg: 6, glowHole: 10, glowFuse: 0.3, glowSwell: 2.5, glowProxR: 18, glowShake: 5, coalCartShake: 8, glowTeam: 0.5, glowHp: 4, glowDebug: 0 });
 DEV_META.push(
   { k: 'glowHp',        g: 'glow', label: 'Health (the players shoot them)', min: 0.5, max: 40, step: 0.5 },
   { k: 'glowAgroR',     g: 'glow', label: 'Agro: stands up at a player within (units)', min: 0, max: 200, step: 1 },
@@ -607,6 +611,9 @@ DEV_META.push(
   { k: 'glowBlastDmg',  g: 'glow', label: 'Killed: blast damage', min: 0, max: 60, step: 0.5 },
   { k: 'glowHole',      g: 'glow', label: 'Killed: hole blasted in the rock (radius)', min: 0, max: 40, step: 0.5 },
   { k: 'glowFuse',      g: 'glow', label: 'Killed: seconds before it blows up', min: 0, max: 3, step: 0.05 },
+  { k: 'glowProxR',     g: 'glow', label: 'A player this close sets it off: the fuse, then the blast (units; 0 off)', min: 0, max: 80, step: 1 },
+  { k: 'glowShake',     g: 'glow', label: 'Its blast shakes the screen (amount)', min: 0, max: 20, step: 0.5 },
+  { k: 'coalCartShake', g: 'glow', label: 'An explosive minecart’s blast shakes the screen (amount)', min: 0, max: 20, step: 0.5 },
   { k: 'glowSwell',     g: 'glow', label: 'Killed: its middle swells by this much (× its width) before it blows', min: 0, max: 4, step: 0.1 },
   { k: 'glowTeam',      g: 'glow', label: 'Killed: the team takes this share of the blast damage', min: 0, max: 1, step: 0.05 },
   { k: 'glowDebug',     g: 'glow', label: 'Debug draw: agro and strike reach (preview; 1 on)', min: 0, max: 1, step: 1 });

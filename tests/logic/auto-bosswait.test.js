@@ -36,4 +36,17 @@ const S2 = G.levelScene(190, 31, 1, undefined, G.newRun(3).players, 2, null, tru
 check('skip gold counts chests, elites, boss', g2 > 0 && L2.chests.length > 0, [g2, L2.chests.length, L2.elites.length]);
 L2.chests.forEach(c => { c.open = true; }); L2.elites.forEach(e => { e.alive = false; }); L2.bossDead = true;
 check('nothing left: 0', G.levelSkipGold(S2) === 0, G.levelSkipGold(S2));
+// (owner v2.0.18) level 1's arena, the next level (Coal Seams, bats) past it: no bat in the arena, all the way to the kill
+{
+  const r5 = G.newRun(9), S5 = G.levelScene(190, 9, 1, undefined, r5.players, 1, r5, true), L5 = G.levelState(S5);
+  let inA = 0, bats = 0;
+  for (let i = 0; i < 30 * 90 && L5.phase !== 'cleared'; i++) {
+    G.titleStep(S5, dt);
+    if (L5.boss && L5.introDone) L5.boss.hp = Math.min(L5.boss.hp, 1);
+    const B = S5.bats; if (!B) continue;
+    bats = Math.max(bats, B.list.length);
+    inA += B.list.filter(b => !b.gone && b.x > L5.plan.arena.x0 && b.x < L5.plan.arena.x1).length;
+  }
+  check('no bats in the boss arena (the next level kept out)', inA === 0, { inA, bats });
+}
 process.exit(fails ? 1 : 0);

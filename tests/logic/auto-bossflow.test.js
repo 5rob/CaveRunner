@@ -13,7 +13,7 @@ for (const seed of [3, 24, 81]) {
     if (enter == null && G.levelTeamX(S) >= L.plan.arena.x0) enter = t;
     if (a == null && L.phase === 'arena') a = t;
     if (h == null && L.boss && L.introDone) { h = t; L.boss.hp = Math.min(L.boss.hp, 2); }
-    if (d == null && L.bossDead) d = t;
+    if (d == null && (L.bossDead || (L.boss && L.boss.hp <= 0) || (L.ups || 0) >= 1)) d = t;   // (gremClearWait 0: on in the same frame)
     if ((L.ups || 0) >= 1) { o = t; break; }
   }
   check(`seed ${seed}: the fight starts on entering the arena`, a != null && Math.abs(a - enter) < 0.1, [enter, a]);

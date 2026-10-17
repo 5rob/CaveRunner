@@ -5,6 +5,13 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v2.0.18 — Glow worms out of step and set off by a near player, real blast shakes, no bats in the boss arena, no wait after the kill (branch `grem`)
+2026-10-17 (owner's list; owner OK'd).
+- Glow worms: each its own start in the gait and speed (`glowSpdMin..Max` × the crank), bigger ones slower (÷ size ^ `glowSizeSlow`); a player within `glowProxR` sets one off (killed: gold, the swelling fuse, the blast; 0 off).
+- Screen shake: a worm's blast `glowShake` (5), an explosive minecart's `coalCartShake` (8): they were +1.5 / +3, gone in a blink.
+- The boss arena (S.lvl.keepOut, while the level runs to the kill): no bat spawners or glow worm clusters within `gremArenaClear` (120) of it, and a bat flying into it is put back out (the next level's Coal Seams bats were always in level 1's arena).
+- Boss dead: LEVEL CLEARED and on at once (`gremClearWait` 1.5 → 0; gold still flying may be left).
+
 ## v2.0.17 — Boss flow streamlined, big spiders walk, unstick, lanterns, glow worm swell (branch `grem`)
 2026-10-17 (owner's list; owner OK'd).
 - Level → boss → level: the fight starts as the team enters the arena (title at once, `gremBossT` 3.2 → 2.4 s; it hunts once the title is done and the team is at its stop; the team hurried to its stop at `gremArenaPace`); the boss is made at its place as soon as its ground exists (no slide-in); the next level within `gremClearWait` s of its death (was `autoClearWait` 4). Arena to fight ~2.4 s (was ~9), death to next level 1.5 s (was 4). `auto-bossflow`.

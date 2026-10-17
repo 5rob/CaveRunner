@@ -197,7 +197,7 @@ export function levelScene(vh, seed, n, plan, team, tier = 1, run = null, grem =
     loot: (S, f) => killLoot(f.k.boss ? 'boss' : f.k.elite ? 'elite' : 'foe', S.tier || 1, S.rnd, f.k.gold).filter(it => !L.grem || it.kind === 'gold').map(it => (L.grem ? gremGold(it) : it)),
     fits: (_S, it) => !L.run || bagFits(L.run, it),
     take: (_S, it) => { if (L.run && bagAdd(L.run, it)) return false; L.bagV++; return true; },
-    kind: grem ? gremFoe : autoFoe, hardY: (S, wx) => levelHardY(S, plan, wx), lootCol, blockCell, blockCol, blockKind, free: (S, r) => levelFree(S, L, r), fuel: (_S, r) => (team && team[r.id] ? playerStats(team[r.id]) : null), spawn: S => levelSpawn(S, L) }, team, tier });
+    kind: grem ? gremFoe : autoFoe, hardY: (S, wx) => levelHardY(S, plan, wx), lootCol, blockCell, blockCol, blockKind, free: (S, r) => levelFree(S, L, r), fuel: (_S, r) => (team && team[r.id] ? playerStats(team[r.id]) : null), spawn: S => levelSpawn(S, L), keepOut: () => (L.phase === 'run' || L.phase === 'arena' || L.phase === 'cleared' ? { x0: L.plan.arena.x0, x1: L.plan.arena.x1 } : null) }, team, tier });   // (keepOut, v2.0.18: no bats or worms in the boss arena)
   if (grem) { S.dmgMul = gremDmgMul(tier); S.coinWait = DEV.gremGoldWait; }   // (owner v1.0.92) the guns keep up; the gold bounces first
   // (owner, v1.0.97) past level 1 the level plays as one of the old game's floors: its palette and creatures (auto/maps.js levelLook)
   if (run && !grem) { const look = levelLook(run, seed); L.floor = look.floor; L.name = look.name; if (look.roster) S.looks = [Object.assign({ x0: -Infinity }, look)]; }
