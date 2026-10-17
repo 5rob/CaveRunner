@@ -5,6 +5,11 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v2.0.15 — Dev: arrow buttons and double-tap zero on every knob (branch `grem`)
+2026-10-17 (owner's request; owner OK'd the shots).
+- Every number and slider row has ◀ ▶ (44 px) beside its value: 1 per press for whole-number knobs, 0.1 for floats, kept inside min/max, rounded clean; holding repeats.
+- Double-tap a knob's name: it goes to 0 and the row greys; again: back to its value before (remembered until the app closes). Copy Dev settings sees only the value. `dev-layout` and `grem-dev` check it.
+
 ## v2.0.14 — Glow worms: a fuse before the blast, the face pixelated (branch `grem`)
 2026-10-17 (owner's request).
 - A killed glow worm lies still for `glowFuse` s (Dev, 0.3) before it blows up; a chain ripples, each worm on its own fuse (`killFoe` sets `f.fuse`, `wormsStep` burns it). `coal-worm` checks the wait.
