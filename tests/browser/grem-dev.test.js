@@ -63,6 +63,27 @@ fs.mkdirSync(OUT, { recursive: true });
   const groups = await page.evaluate(() => [...document.querySelectorAll('.devgroup')].map(g => g.textContent || ''));
   check('… Global → Creatures: Auto: enemies, spider; no hub, maps, bag, throw or economy', groups.some(t => /Auto: enemies/.test(t)) && groups.some(t => /Spider/.test(t))
     && !groups.some(t => /Auto: (hub|maps|bag|throw|economy|blocks)/.test(t)), groups.map(t => t.slice(0, 24)));
+  // (owner) ◀ ▶ on a row step its knob; a double tap on the name zeroes it (greyed), another puts it back
+  if (!(await page.$('.devrow.devnum input[type=number]'))) { await page.locator('.devghead').first().click(); await page.waitForTimeout(200); }
+  const row = page.locator('.devrow.devnum').filter({ has: page.locator('input[type=number]') }).first();
+  const k0 = await row.locator('input').inputValue();
+  const box2 = await row.locator('.devarrow').last().boundingBox();
+  check('the arrows are thumb-sized', box2.width >= 40 && box2.height >= 40, box2);
+  await row.locator('.devarrow').last().dispatchEvent('pointerdown'); await row.locator('.devarrow').last().dispatchEvent('pointerup');
+  const k1 = await row.locator('input').inputValue();
+  check('▶ steps the value up', +k1 > +k0 || k0 === k1, [k0, k1]);
+  await row.locator('.devarrow').first().dispatchEvent('pointerdown'); await row.locator('.devarrow').first().dispatchEvent('pointerup');
+  check('◀ steps it back', +(await row.locator('input').inputValue()) === +k0);
+  await row.locator('.devname').dispatchEvent('pointerdown');
+  await page.waitForTimeout(500);
+  check('a single tap on the name does nothing', !(await row.evaluate(e => e.classList.contains('devzero'))));
+  await row.locator('.devname').dispatchEvent('pointerdown'); await page.waitForTimeout(100); await row.locator('.devname').dispatchEvent('pointerdown');
+  await page.waitForTimeout(100);
+  check('a double tap: 0, greyed', +(await row.locator('input').inputValue()) === 0 && await row.evaluate(e => e.classList.contains('devzero')));
+  await page.waitForTimeout(500);
+  await row.locator('.devname').dispatchEvent('pointerdown'); await page.waitForTimeout(100); await row.locator('.devname').dispatchEvent('pointerdown');
+  await page.waitForTimeout(100);
+  check('… again: the old value back', +(await row.locator('input').inputValue()) === +k0 && !(await row.evaluate(e => e.classList.contains('devzero'))));
   await page.screenshot({ path: path.join(OUT, 'grem-dev-panel.png') });
   await browser.close();
   console.log(fails ? fails + ' FAILED' : 'all passed');

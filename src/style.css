@@ -371,6 +371,16 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .devrow label{font-size:13px;color:var(--text);flex:1 1 auto;line-height:1.3}
 .devrow input[type=color]{width:56px;padding:2px 4px}
 .devrow input[type=range]{width:132px;height:36px;padding:0;border:0;background:none;accent-color:var(--acc)}
+/* (owner) ◀ value ▶ on every number and slider row; a double tap on the name zeroes the knob and greys the row */
+.devrow.devnum{gap:6px;touch-action:manipulation}
+.devrow .devname{flex:1 1 auto;min-width:0;touch-action:manipulation;user-select:none;-webkit-user-select:none;cursor:pointer}
+.devrow.devnum input[type=number]{width:72px}
+.devrow.devnum input[type=range]{width:96px}
+.devarrow{flex:0 0 auto;width:44px;height:44px;padding:0;border-radius:10px;border:1px solid var(--ring);background:var(--pad);
+  color:var(--text);font-size:16px;line-height:1;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+.devarrow:active{background:var(--acc);color:#0b1220}
+.devrow.devzero{opacity:.38}
+.devrow.devzero .devname{text-decoration:line-through}
 .devval{display:inline-block;margin-left:8px;font:700 12px ui-monospace,monospace;color:var(--acc)}
 /* the live jellyfish above its colour knobs: stuck under the group's header while you
    scroll through them, so every change shows as you make it */

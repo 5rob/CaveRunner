@@ -16,6 +16,10 @@
   knobs go to the page listing it; `DEV_KNOB_PLACE` (key regex → page) sends single knobs elsewhere (Coal Seams is split that
   way: Coal, Props, Gas, Stalactites, Timber & ladders). `devPlaceOf(m)` = a knob's page. **A new group goes in one page's
   `groups` (a new level: a `DEV_LEVELS` row and its pages)**; `tests/logic/dev-layout.test.js` checks every knob lands on exactly one page.
+- **Row arrows and zeroing (owner, not released):** `devStepSize(m)` / `devStepped(m, v, dir)` = a row's ◀ ▶ (whole-number
+  knobs by 1: step ≥ 1, or no step and a whole default; else 0.1; clamped; float noise rounded off); `devToggleZero(k)` = a double
+  tap on a row's name (0, the old value remembered in `DEV_ZEROED` this session; again: put back); `devIsZeroed(k)` = the row
+  greyed (value 0 and remembered: any other move off 0 ends it). Copy Dev settings sees only the value. Checked in `dev-layout`.
 - `devSet(k, v)` writes through to localStorage (`DEV_KEY` = `caverunner-dev`): since v1.0.94 only the keys that
   differ from `DEV_DEFAULTS` (`devChanged()`), so a device follows every new default for knobs it hasn't touched
   (a store from before v1.0.94 holds every key; it thins out on its next change). `devReport()` lists every

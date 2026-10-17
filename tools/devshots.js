@@ -28,6 +28,14 @@ require('../tests/build')();
   await page.locator('select.devlv').selectOption('coal');
   await page.waitForTimeout(300);
   await page.screenshot({ path: path.join(OUT, 'dev-b-coal.png') });
+  // (owner) the rows' ◀ ▶ arrows; then a row zeroed by a double tap on its name (greyed), and put back
+  await page.screenshot({ path: path.join(OUT, 'arrows-a-coal.png') });
+  const nm = page.locator('.devrow.devnum .devname').nth(2);
+  await nm.dispatchEvent('pointerdown'); await page.waitForTimeout(100); await nm.dispatchEvent('pointerdown');
+  await page.waitForTimeout(200);
+  await page.screenshot({ path: path.join(OUT, 'arrows-b-zeroed.png') });
+  await page.waitForTimeout(400);
+  await nm.dispatchEvent('pointerdown'); await page.waitForTimeout(100); await nm.dispatchEvent('pointerdown');
   await page.locator('.devtab[data-t=bats]').click();
   await page.waitForTimeout(1500);
   await page.evaluate(() => { document.querySelector('.devbody').scrollTop = 500; });

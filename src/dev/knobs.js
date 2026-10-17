@@ -1062,6 +1062,30 @@ export function devSet(k, v) {
   // (v1.0.94) only the changed ones: a device follows every new default for the knobs it hasn't touched
   try { localStorage.setItem(DEV_KEY, JSON.stringify(devChanged())); } catch (_) {}
 }
+// (owner) a row's ◀ ▶ arrows: whole-number knobs (step ≥ 1; no step: a whole default) move by 1, the rest by 0.1 (owner:
+// "floats change at 0.1 per"), clamped to the row's min / max, float noise rounded off
+/** @param {{ k: string, min?: number, max?: number, step?: number }} m @returns {number} */
+export const devStepSize = m => ((m.step != null ? m.step >= 1 : Number.isInteger(DEV_DEFAULTS[m.k])) ? 1 : 0.1);
+/** @param {{ k: string, min?: number, max?: number, step?: number }} m @param {number} v @param {number} dir -1 or 1 @returns {number} */
+export function devStepped(m, v, dir) {
+  let n = Math.round(((+v || 0) + dir * devStepSize(m)) * 1e6) / 1e6;
+  if (m.min != null) n = Math.max(m.min, n);
+  if (m.max != null) n = Math.min(m.max, n);
+  return n;
+}
+// (owner) a double tap on a row's name: the knob to 0 (the row greyed), again: back to what it was. The grey is just the value 0
+// with a remembered value here (this session only), so Copy Dev settings is unchanged and any other move off 0 ends it.
+/** @type {Map<string, number>} */
+export const DEV_ZEROED = new Map();
+/** @param {string} k @returns {boolean} the row shows greyed */
+export const devIsZeroed = k => DEV[k] === 0 && DEV_ZEROED.has(k);
+/** @param {string} k @returns {number} the knob's new value */
+export function devToggleZero(k) {
+  if (devIsZeroed(k)) { const v = DEV_ZEROED.get(k); DEV_ZEROED.delete(k); devSet(k, v); return v; }
+  DEV_ZEROED.set(k, +DEV[k]);
+  devSet(k, 0);
+  return 0;
+}
 
 // (grem branch) values the game still reads whose Dev rows went with the Auto and old-game pages: fixed now
 Object.assign(DEV_DEFAULTS, { holoAlpha: 1, enemies: 50, l2Bg: '#0c0d11', l2Bg2: '#1c1e24', l2Rock1: '#2c2c32', l2Rock2: '#4a4a52', l2Moss1: '#2e4a34', l2Moss2: '#54744a', l2Brick1: '#403e42', l2Brick2: '#605c62', l2Mortar: '#262428', l2Bed1: '#18181c', l2Bed2: '#28282e', l2dFlkDrops: 0.9, alCountLo: 30, alCountHi: 60, alStraysLo: 2, alStraysHi: 4, alScaleLo: 0.6, alScaleHi: 2.4, alBiasLo: 3, alBiasHi: 4, alSpeedLo: 80, alSpeedHi: 240, alRoamOnLo: 0.15, alRoamOnHi: 0.9, alRoamOffLo: 0.3, alRoamOffHi: 2, alFleeSpdLo: 220, alFleeSpdHi: 320, alFleeRLo: 110, alFleeRHi: 140, alHuntLo: 120, alHuntHi: 200, alKeepLo: 50, alKeepHi: 80, alAggroLo: 0.9, alAggroHi: 1.1, alBoidRLo: 14, alBoidRHi: 20, alSepLo: 1.2, alSepHi: 1.6, alAliLo: 0.5, alAliHi: 0.8, alCohLo: 0.4, alCohHi: 0.6, alBiteLo: 3, alBiteHi: 5, alBiteCdLo: 0.6, alBiteCdHi: 1.2, alGlimpseLo: 0.35, alGlimpseHi: 0.5, alGlimpseRLo: 22, alGlimpseRHi: 30, caAggroLo: 1, caAggroHi: 2, autoGunBase: 100, autoGunGrow: 1.35, autoExoPrice: 175, autoScrap: 25, autoRed: 40, autoGreen: 150, autoModGold: 15, autoMapPrice: 1000000, autoMapGrow: 1, autoMapStep: 5, autoWallMin: 20, autoWallMax: 35, autoBlockN: 2, autoBlockMin: 0.2, autoBlockMax: 1, autoBlockFull: 0.85, autoBlockThin: 16, autoBlockWide: 0.75, autoWebSlow: 0.2, autoWebHalt: 0.25, autoGrab: 0.45, autoPvRegrow: 40, autoHoldMs: 350, autoDiscPull: 70, autoThrowPull: 45, autoThrowBack: 3, autoPayReach: 30 });

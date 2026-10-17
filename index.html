@@ -380,6 +380,16 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .devrow label{font-size:13px;color:var(--text);flex:1 1 auto;line-height:1.3}
 .devrow input[type=color]{width:56px;padding:2px 4px}
 .devrow input[type=range]{width:132px;height:36px;padding:0;border:0;background:none;accent-color:var(--acc)}
+/* (owner) ◀ value ▶ on every number and slider row; a double tap on the name zeroes the knob and greys the row */
+.devrow.devnum{gap:6px;touch-action:manipulation}
+.devrow .devname{flex:1 1 auto;min-width:0;touch-action:manipulation;user-select:none;-webkit-user-select:none;cursor:pointer}
+.devrow.devnum input[type=number]{width:72px}
+.devrow.devnum input[type=range]{width:96px}
+.devarrow{flex:0 0 auto;width:44px;height:44px;padding:0;border-radius:10px;border:1px solid var(--ring);background:var(--pad);
+  color:var(--text);font-size:16px;line-height:1;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+.devarrow:active{background:var(--acc);color:#0b1220}
+.devrow.devzero{opacity:.38}
+.devrow.devzero .devname{text-decoration:line-through}
 .devval{display:inline-block;margin-left:8px;font:700 12px ui-monospace,monospace;color:var(--acc)}
 /* the live jellyfish above its colour knobs: stuck under the group's header while you
    scroll through them, so every change shows as you make it */
@@ -2026,6 +2036,26 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       localStorage.setItem(DEV_KEY, JSON.stringify(devChanged()));
     } catch (_) {
     }
+  }
+  var devStepSize = (m) => (m.step != null ? m.step >= 1 : Number.isInteger(DEV_DEFAULTS[m.k])) ? 1 : 0.1;
+  function devStepped(m, v, dir) {
+    let n = Math.round(((+v || 0) + dir * devStepSize(m)) * 1e6) / 1e6;
+    if (m.min != null) n = Math.max(m.min, n);
+    if (m.max != null) n = Math.min(m.max, n);
+    return n;
+  }
+  var DEV_ZEROED = /* @__PURE__ */ new Map();
+  var devIsZeroed = (k) => DEV[k] === 0 && DEV_ZEROED.has(k);
+  function devToggleZero(k) {
+    if (devIsZeroed(k)) {
+      const v = DEV_ZEROED.get(k);
+      DEV_ZEROED.delete(k);
+      devSet(k, v);
+      return v;
+    }
+    DEV_ZEROED.set(k, +DEV[k]);
+    devSet(k, 0);
+    return 0;
   }
   Object.assign(DEV_DEFAULTS, { holoAlpha: 1, enemies: 50, l2Bg: "#0c0d11", l2Bg2: "#1c1e24", l2Rock1: "#2c2c32", l2Rock2: "#4a4a52", l2Moss1: "#2e4a34", l2Moss2: "#54744a", l2Brick1: "#403e42", l2Brick2: "#605c62", l2Mortar: "#262428", l2Bed1: "#18181c", l2Bed2: "#28282e", l2dFlkDrops: 0.9, alCountLo: 30, alCountHi: 60, alStraysLo: 2, alStraysHi: 4, alScaleLo: 0.6, alScaleHi: 2.4, alBiasLo: 3, alBiasHi: 4, alSpeedLo: 80, alSpeedHi: 240, alRoamOnLo: 0.15, alRoamOnHi: 0.9, alRoamOffLo: 0.3, alRoamOffHi: 2, alFleeSpdLo: 220, alFleeSpdHi: 320, alFleeRLo: 110, alFleeRHi: 140, alHuntLo: 120, alHuntHi: 200, alKeepLo: 50, alKeepHi: 80, alAggroLo: 0.9, alAggroHi: 1.1, alBoidRLo: 14, alBoidRHi: 20, alSepLo: 1.2, alSepHi: 1.6, alAliLo: 0.5, alAliHi: 0.8, alCohLo: 0.4, alCohHi: 0.6, alBiteLo: 3, alBiteHi: 5, alBiteCdLo: 0.6, alBiteCdHi: 1.2, alGlimpseLo: 0.35, alGlimpseHi: 0.5, alGlimpseRLo: 22, alGlimpseRHi: 30, caAggroLo: 1, caAggroHi: 2, autoGunBase: 100, autoGunGrow: 1.35, autoExoPrice: 175, autoScrap: 25, autoRed: 40, autoGreen: 150, autoModGold: 15, autoMapPrice: 1e6, autoMapGrow: 1, autoMapStep: 5, autoWallMin: 20, autoWallMax: 35, autoBlockN: 2, autoBlockMin: 0.2, autoBlockMax: 1, autoBlockFull: 0.85, autoBlockThin: 16, autoBlockWide: 0.75, autoWebSlow: 0.2, autoWebHalt: 0.25, autoGrab: 0.45, autoPvRegrow: 40, autoHoldMs: 350, autoDiscPull: 70, autoThrowPull: 45, autoThrowBack: 3, autoPayReach: 30 });
   Object.assign(DEV, { holoAlpha: DEV_DEFAULTS.holoAlpha, enemies: DEV_DEFAULTS.enemies, l2Bg: DEV_DEFAULTS.l2Bg, l2Bg2: DEV_DEFAULTS.l2Bg2, l2Rock1: DEV_DEFAULTS.l2Rock1, l2Rock2: DEV_DEFAULTS.l2Rock2, l2Moss1: DEV_DEFAULTS.l2Moss1, l2Moss2: DEV_DEFAULTS.l2Moss2, l2Brick1: DEV_DEFAULTS.l2Brick1, l2Brick2: DEV_DEFAULTS.l2Brick2, l2Mortar: DEV_DEFAULTS.l2Mortar, l2Bed1: DEV_DEFAULTS.l2Bed1, l2Bed2: DEV_DEFAULTS.l2Bed2, l2dFlkDrops: DEV_DEFAULTS.l2dFlkDrops, alCountLo: DEV_DEFAULTS.alCountLo, alCountHi: DEV_DEFAULTS.alCountHi, alStraysLo: DEV_DEFAULTS.alStraysLo, alStraysHi: DEV_DEFAULTS.alStraysHi, alScaleLo: DEV_DEFAULTS.alScaleLo, alScaleHi: DEV_DEFAULTS.alScaleHi, alBiasLo: DEV_DEFAULTS.alBiasLo, alBiasHi: DEV_DEFAULTS.alBiasHi, alSpeedLo: DEV_DEFAULTS.alSpeedLo, alSpeedHi: DEV_DEFAULTS.alSpeedHi, alRoamOnLo: DEV_DEFAULTS.alRoamOnLo, alRoamOnHi: DEV_DEFAULTS.alRoamOnHi, alRoamOffLo: DEV_DEFAULTS.alRoamOffLo, alRoamOffHi: DEV_DEFAULTS.alRoamOffHi, alFleeSpdLo: DEV_DEFAULTS.alFleeSpdLo, alFleeSpdHi: DEV_DEFAULTS.alFleeSpdHi, alFleeRLo: DEV_DEFAULTS.alFleeRLo, alFleeRHi: DEV_DEFAULTS.alFleeRHi, alHuntLo: DEV_DEFAULTS.alHuntLo, alHuntHi: DEV_DEFAULTS.alHuntHi, alKeepLo: DEV_DEFAULTS.alKeepLo, alKeepHi: DEV_DEFAULTS.alKeepHi, alAggroLo: DEV_DEFAULTS.alAggroLo, alAggroHi: DEV_DEFAULTS.alAggroHi, alBoidRLo: DEV_DEFAULTS.alBoidRLo, alBoidRHi: DEV_DEFAULTS.alBoidRHi, alSepLo: DEV_DEFAULTS.alSepLo, alSepHi: DEV_DEFAULTS.alSepHi, alAliLo: DEV_DEFAULTS.alAliLo, alAliHi: DEV_DEFAULTS.alAliHi, alCohLo: DEV_DEFAULTS.alCohLo, alCohHi: DEV_DEFAULTS.alCohHi, alBiteLo: DEV_DEFAULTS.alBiteLo, alBiteHi: DEV_DEFAULTS.alBiteHi, alBiteCdLo: DEV_DEFAULTS.alBiteCdLo, alBiteCdHi: DEV_DEFAULTS.alBiteCdHi, alGlimpseLo: DEV_DEFAULTS.alGlimpseLo, alGlimpseHi: DEV_DEFAULTS.alGlimpseHi, alGlimpseRLo: DEV_DEFAULTS.alGlimpseRLo, alGlimpseRHi: DEV_DEFAULTS.alGlimpseRHi, caAggroLo: DEV_DEFAULTS.caAggroLo, caAggroHi: DEV_DEFAULTS.caAggroHi, autoGunBase: DEV_DEFAULTS.autoGunBase, autoGunGrow: DEV_DEFAULTS.autoGunGrow, autoExoPrice: DEV_DEFAULTS.autoExoPrice, autoScrap: DEV_DEFAULTS.autoScrap, autoRed: DEV_DEFAULTS.autoRed, autoGreen: DEV_DEFAULTS.autoGreen, autoModGold: DEV_DEFAULTS.autoModGold, autoMapPrice: DEV_DEFAULTS.autoMapPrice, autoMapGrow: DEV_DEFAULTS.autoMapGrow, autoMapStep: DEV_DEFAULTS.autoMapStep, autoWallMin: DEV_DEFAULTS.autoWallMin, autoWallMax: DEV_DEFAULTS.autoWallMax, autoBlockN: DEV_DEFAULTS.autoBlockN, autoBlockMin: DEV_DEFAULTS.autoBlockMin, autoBlockMax: DEV_DEFAULTS.autoBlockMax, autoBlockFull: DEV_DEFAULTS.autoBlockFull, autoBlockThin: DEV_DEFAULTS.autoBlockThin, autoBlockWide: DEV_DEFAULTS.autoBlockWide, autoWebSlow: DEV_DEFAULTS.autoWebSlow, autoWebHalt: DEV_DEFAULTS.autoWebHalt, autoGrab: DEV_DEFAULTS.autoGrab, autoPvRegrow: DEV_DEFAULTS.autoPvRegrow, autoHoldMs: DEV_DEFAULTS.autoHoldMs, autoDiscPull: DEV_DEFAULTS.autoDiscPull, autoThrowPull: DEV_DEFAULTS.autoThrowPull, autoThrowBack: DEV_DEFAULTS.autoThrowBack, autoPayReach: DEV_DEFAULTS.autoPayReach });
@@ -26419,8 +26449,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       };
       return h(
         "div",
-        { className: "devrow" },
-        h("label", null, meta.label, h("span", { className: "devval" }, String(DEV[meta.k]))),
+        { className: "devrow devnum" + (devIsZeroed(meta.k) ? " devzero" : "") },
+        h("div", { className: "devname" }, h(DevName, { k: meta.k, label: meta.label, done: (v) => setVal(String(v)) }), h("span", { className: "devval" }, String(DEV[meta.k]))),
+        h(DevArrow, { dir: -1, step: () => set(devStepped(meta, DEV[meta.k], -1)) }),
         h("input", {
           type: "range",
           min: meta.min,
@@ -26429,6 +26460,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           value: DEV[meta.k],
           onChange: (e) => set(parseFloat(e.target.value))
         }),
+        h(DevArrow, { dir: 1, step: () => set(devStepped(meta, DEV[meta.k], 1)) }),
         h("button", { className: "devreset", "aria-label": "Default", onPointerDown: () => set(DEV_DEFAULTS[meta.k]) }, "↺")
       );
     }
@@ -26461,10 +26493,18 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       devSet(meta.k, v);
       setVal(String(v));
     };
+    const put2 = (v) => {
+      devSet(meta.k, v);
+      setVal(String(v));
+    };
     return h(
       "div",
-      { className: "devrow" },
-      h("label", null, meta.label),
+      { className: "devrow devnum" + (devIsZeroed(meta.k) ? " devzero" : "") },
+      h(DevName, { k: meta.k, label: meta.label, done: (v) => setVal(String(v)) }),
+      h(DevArrow, { dir: -1, step: () => {
+        blurBox();
+        put2(devStepped(meta, DEV[meta.k], -1));
+      } }),
       h("input", {
         type: "number",
         inputMode: "decimal",
@@ -26479,8 +26519,49 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
             e.target.blur();
           }
         }
-      })
+      }),
+      h(DevArrow, { dir: 1, step: () => {
+        blurBox();
+        put2(devStepped(meta, DEV[meta.k], 1));
+      } })
     );
+  }
+  function DevName({ k, label, done }) {
+    const last = useRef(0);
+    return h("label", { className: "devname", onPointerDown: (e) => {
+      const t = e.timeStamp;
+      if (t - last.current < 350) {
+        e.preventDefault();
+        last.current = 0;
+        blurBox();
+        done(devToggleZero(k));
+      } else last.current = t;
+    } }, label);
+  }
+  function DevArrow({ dir, step }) {
+    const timer = useRef(0);
+    const stop = () => {
+      clearTimeout(timer.current);
+      clearInterval(timer.current);
+      timer.current = 0;
+    };
+    useEffect(() => stop, []);
+    return h("button", {
+      className: "devarrow",
+      "aria-label": dir < 0 ? "Less" : "More",
+      onPointerDown: (e) => {
+        e.preventDefault();
+        stop();
+        step();
+        timer.current = setTimeout(() => {
+          timer.current = setInterval(step, 80);
+        }, 400);
+      },
+      onPointerUp: stop,
+      onPointerLeave: stop,
+      onPointerCancel: stop,
+      onContextMenu: (e) => e.preventDefault()
+    }, dir < 0 ? "◀" : "▶");
   }
   function DevGroupHead({ g, name, shut, toggle, n, changed, tab }) {
     return h(

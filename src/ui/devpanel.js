@@ -15,7 +15,7 @@ import {
 import { enemyFor } from '../data/creatures.js';
 import { themeFor } from '../data/themes.js';
 import {
-  CURVES, DEV, DEV_DEFAULTS, DEV_GROUPS, DEV_LEVELS, DEV_META, DEV_PLACES, devPlaceOf, devSet, kr, kru
+  CURVES, DEV, DEV_DEFAULTS, DEV_GROUPS, DEV_LEVELS, DEV_META, DEV_PLACES, devIsZeroed, devPlaceOf, devSet, devStepped, devToggleZero, kr, kru
 } from '../dev/knobs.js';
 import { devCopyText } from '../auto/devcopy.js';
 import { BAT_CMD } from '../creatures/bats.js';
@@ -481,10 +481,12 @@ export function DevRow({ meta }) {
   if (meta.type === 'slider') {
     // a slider: changes live as you drag, the number beside the label; ↺ puts the default back
     const set = v => { devSet(meta.k, v); setVal(String(v)); };
-    return h('div', { className: 'devrow' },
-      h('label', null, meta.label, h('span', { className: 'devval' }, String(DEV[meta.k]))),
+    return h('div', { className: 'devrow devnum' + (devIsZeroed(meta.k) ? ' devzero' : '') },
+      h('div', { className: 'devname' }, h(DevName, { k: meta.k, label: meta.label, done: v => setVal(String(v)) }), h('span', { className: 'devval' }, String(DEV[meta.k]))),
+      h(DevArrow, { dir: -1, step: () => set(devStepped(meta, DEV[meta.k], -1)) }),
       h('input', { type: 'range', min: meta.min, max: meta.max, step: meta.step, value: DEV[meta.k],
         onChange: e => set(parseFloat(e.target.value)) }),
+      h(DevArrow, { dir: 1, step: () => set(devStepped(meta, DEV[meta.k], 1)) }),
       h('button', { className: 'devreset', 'aria-label': 'Default', onPointerDown: () => set(DEV_DEFAULTS[meta.k]) }, '↺'));
   }
   if (meta.type === 'color') {
@@ -505,14 +507,43 @@ export function DevRow({ meta }) {
     devSet(meta.k, v);
     setVal(String(v));
   };
-  return h('div', { className: 'devrow' },
-    h('label', null, meta.label),
+  const put = (/** @type {number} */ v) => { devSet(meta.k, v); setVal(String(v)); };
+  return h('div', { className: 'devrow devnum' + (devIsZeroed(meta.k) ? ' devzero' : '') },
+    h(DevName, { k: meta.k, label: meta.label, done: v => setVal(String(v)) }),
+    h(DevArrow, { dir: -1, step: () => { blurBox(); put(devStepped(meta, DEV[meta.k], -1)); } }),
     h('input', { type: 'number', inputMode: 'decimal', step: meta.step,
       value: val, placeholder: String(DEV_DEFAULTS[meta.k]),
       onChange: e => setVal(e.target.value),
       onBlur: commit,
-      onKeyDown: e => { if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); } } })
+      onKeyDown: e => { if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); } } }),
+    h(DevArrow, { dir: 1, step: () => { blurBox(); put(devStepped(meta, DEV[meta.k], 1)); } })
   );
+}
+
+// (owner) a row's name: a double tap sets the knob to 0 and greys the row; another puts back the value it had (devToggleZero).
+// Two taps within 350 ms; a single tap does nothing (touch-action: manipulation in style.css keeps the page from zooming).
+/** @param {{ k: string, label: string, done: (v: number) => void }} props */
+function DevName({ k, label, done }) {
+  const last = useRef(0);
+  return h('label', { className: 'devname', onPointerDown: e => {
+    const t = e.timeStamp;
+    if (t - last.current < 350) { e.preventDefault(); last.current = 0; blurBox(); done(devToggleZero(k)); }
+    else last.current = t;
+  } }, label);
+}
+
+// (owner) ◀ / ▶ beside a value: a press steps it (devStepped); held, it repeats after 0.4 s, every 0.08 s
+/** @param {{ dir: number, step: () => void }} props */
+function DevArrow({ dir, step }) {
+  const timer = useRef(0);
+  const stop = () => { clearTimeout(timer.current); clearInterval(timer.current); timer.current = 0; };
+  useEffect(() => stop, []);
+  return h('button', { className: 'devarrow', 'aria-label': dir < 0 ? 'Less' : 'More',
+    onPointerDown: e => {
+      e.preventDefault(); stop(); step();
+      timer.current = setTimeout(() => { timer.current = setInterval(step, 80); }, 400);
+    },
+    onPointerUp: stop, onPointerLeave: stop, onPointerCancel: stop, onContextMenu: e => e.preventDefault() }, dir < 0 ? '◀' : '▶');
 }
 
 // A group's header: a tap opens or shuts the group (a finger that scrolls the panel gets no

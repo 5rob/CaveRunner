@@ -52,5 +52,23 @@ check('Copy Dev settings holds a change from every page (' + changed.length + ' 
 const DP = G.source;
 check('the panel builds its tabs from DEV_PLACES', /DEV_PLACES\.filter\(p => p\.side === place\.side/.test(DP));
 
+// (owner) the rows' ◀ ▶ arrows: whole-number knobs by 1, the rest by 0.1, clamped, no float noise
+check('step: 1 for a whole-number knob, 0.1 for a float', G.devStepSize({ k: 'x', step: 1 }) === 1 && G.devStepSize({ k: 'x', step: 0.05 }) === 0.1 && G.devStepSize({ k: 'x', step: 5 }) === 1);
+check('no step: by the default (whole: 1, else 0.1)', G.devStepSize({ k: 'batsPerRoost' }) === (Number.isInteger(G.DEV_DEFAULTS.batsPerRoost) ? 1 : 0.1));
+check('0.2 + 0.1 = 0.3 (no float noise)', G.devStepped({ k: 'x', step: 0.01 }, 0.2, 1) === 0.3, G.devStepped({ k: 'x', step: 0.01 }, 0.2, 1));
+let v = 0; for (let i = 0; i < 7; i++) v = G.devStepped({ k: 'x', step: 0.01 }, v, 1);
+check('seven steps up from 0: 0.7 exactly', v === 0.7, v);
+check('clamped to max and min', G.devStepped({ k: 'x', step: 1, min: 0, max: 5 }, 5, 1) === 5 && G.devStepped({ k: 'x', step: 0.1, min: 0.05, max: 1 }, 0.1, -1) === 0.05);
+check('whole numbers step down by 1', G.devStepped({ k: 'x', step: 1, min: 0, max: 10 }, 4, -1) === 3);
+// a double tap on the name: 0, greyed; again: the old value back; a move off 0 ends the grey
+const zk = G.DEV_META.find(m => typeof G.DEV_DEFAULTS[m.k] === 'number' && G.DEV_DEFAULTS[m.k] !== 0 && !m.type).k;
+const before = G.DEV[zk];
+check('double tap: the knob goes to 0, greyed', G.devToggleZero(zk) === 0 && G.DEV[zk] === 0 && G.devIsZeroed(zk));
+check('Copy Dev settings shows it as 0 (nothing else kept)', new RegExp(zk + '\\): 0\\b').test(G.devCopyText()), G.devCopyText().split('\n').filter(l => l.includes(zk)));
+check('again: the old value back, not greyed', G.devToggleZero(zk) === before && G.DEV[zk] === before && !G.devIsZeroed(zk));
+G.devToggleZero(zk); G.devSet(zk, 0.5);
+check('moved off 0 by other means: the grey goes', !G.devIsZeroed(zk));
+G.devSet(zk, before);
+
 console.log(fails ? fails + ' FAILED' : 'all passed');
 process.exit(fails ? 1 : 0);
