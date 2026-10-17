@@ -153,6 +153,7 @@ interface CreatureKind {
 
 /** a creature in the level: makeLevel's enemies, then the enemy loop's own fields */
 interface Enemy {
+  stk?: { x: number; y: number; t: number };   // (grem) where it last got somewhere, and when (auto/enemies.js unstick)
   waiting?: boolean;   // (grem v2.0.16) the boss waiting in its arena before the fight: not aimed at (auto/enemies.js levelFoes)
   bat?: boolean;   // (grem C4) a bat's stand-in among the foes, so guns aim at it and hit it (art/titlescene.js batsStep)
   worm?: boolean;   // (grem C5b) a glow worm's stand-in among the foes (art/titlescene.js wormsStep, wormBlast)
@@ -221,7 +222,7 @@ interface SpiderBrain extends RoamState, SurfState {
 /** what spiderStep is handed */
 interface SpiderEnv {
   solidCell: SolidCell; webs: WebLine[]; goal: Pt; hunting: boolean; rnd: Rnd;
-  speed?: number; reach?: number; speedMul?: number;
+  speed?: number; reach?: number; speedMul?: number; hold?: number;
 }
 /** the alien's brain, `e.al` (alienStep, creatures/alien.js): the look (rot, px, py, walk, black) the sprite reads,
  * z its zone (number + 1), its velocity, the roam burst (ha heading, on, rest, spd), pt the pupil's dart clock,

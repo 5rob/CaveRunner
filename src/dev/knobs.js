@@ -766,6 +766,13 @@ DEV_META.push(
   { k: 'autoOldDmg',    g: 'autofoes', label: 'Old floors: shooters, chasers and bombers hurt × this (on top of the line above)', min: 0, max: 3, step: 0.05 },
   { k: 'autoOldCd',     g: 'autofoes', label: 'Old floors: time between a shooter’s shots × this', min: 0.25, max: 5, step: 0.05 });
 DEV_GROUPS.push(['autofoes', 'Auto: enemies']);
+// (Grem, owner: elites and the boss still stuck) the fallback (auto/enemies.js unstick): hunting, not near the team, and it
+// hasn't got autoStuckR units from where it was for autoStuckT s → put on open floor autoStuckHop units nearer the team
+Object.assign(DEV_DEFAULTS, { autoStuckT: 4, autoStuckR: 12, autoStuckHop: 60 });
+DEV_META.push(
+  { k: 'autoStuckT',   g: 'autofoes', label: 'Stuck elite / boss: unstuck after this long without getting anywhere (s; 0: never)', min: 0, max: 20, step: 0.5 },
+  { k: 'autoStuckR',   g: 'autofoes', label: '… "getting anywhere": this far from where it was (units)', min: 2, max: 60, step: 1 },
+  { k: 'autoStuckHop', g: 'autofoes', label: '… then put on open floor this much nearer the team (units)', min: 10, max: 200, step: 5 });
 // the jetpack (art/titlescene.js jetStep, feedback round 2: the old game's flame and smoke) and a death (auto/death.js: the ragdoll,
 // the slow stop, Tap A, the helmet light, the blast, home)
 Object.assign(DEV_DEFAULTS, { autoMoveK: 0.75, autoJetTilt: 1, autoJetSmoke: 1, autoDeathStop: 1.5, autoTpBlink: 1, autoTpBoomWait: 0.6, autoTpBoomR: 60, autoSpStride: 0.14, autoRoamT: 8, autoRoamHi: 0.45, autoRoamMid: 0.4, autoRoamFly: 2.5, autoRoamRun: 0.4, autoJeTurnTier: 0.2, autoJeTurnMax: 2.5, autoExitNukeR: 90, autoExitNukeF: 1600, autoExitNukeWait: 3.5, autoMushT: 3.2, autoMushK: 1, autoFuelDrain: 1, autoFuelRegen: 1, autoCtlWait: 1, autoVineFire: 1, autoVineSpread: 4, autoVineJitter: 0.8, autoVineAsh: 8, autoFireJump: 2, autoFireJumpP: 0.5, autoNavCut: 0.8, autoNavGive: 1.2 });

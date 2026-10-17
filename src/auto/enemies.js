@@ -12,6 +12,7 @@ import { DEV } from '../dev/knobs.js';
 import { eliteOf, enemyFor } from '../data/creatures.js';
 import { deathFall } from './death.js';
 import { shieldSoak } from './perks.js';
+import { spiderHold } from '../creatures/spider.js';
 import { gremHardTier } from './grem.js';
 import { TCELL, TITLE_KINDS, TITLE_VW, lookAt, titleCeil, titleFloor, titleFoeAt, titleKind, titleSolid } from '../art/titlescene.js';
 
@@ -77,11 +78,43 @@ export function levelFall(S, i) {
 // whose middle is in rock or under the floor's line is put back on the floor (its size above it; under the roof if the cave is
 // lower than it is tall: half way)
 /** @param {import('../art/titlescene.js').TitleScene} S @param {Enemy} f */
+// (Grem v2.0.17: elites and the boss spider stuck) a spider sits only its feet's reach off the rock (creatures/spider.js
+// spiderHold), less than its size: measured by its size it was "buried" on every floor, lifted, fell, lifted, never walked
 export function unbury(S, f) {
-  const fy = titleFloor(f.x, S), cy = titleCeil(f.x, S);
-  if (!(f.y > fy - f.r + 2 || titleSolid(S, f.x - S.scroll, f.y))) return;
-  const y = fy - cy > 2 * f.r + 2 ? fy - f.r - 1 : (fy + cy) / 2;
+  const fy = titleFloor(f.x, S), cy = titleCeil(f.x, S), h = f.k && f.k.act === 'spider' ? spiderHold(f) : f.r;
+  if (!(f.y > fy - h + 2 || titleSolid(S, f.x - S.scroll, f.y))) return;
+  const y = fy - cy > 2 * h + 2 ? fy - h - 1 : (fy + cy) / 2;
   f.ty += y - f.y; f.y = y;
+}
+// (Grem, owner: "elites still getting stuck … a reliable solution") the fallback for an elite or the boss: hunting, further than
+// its size + 60 from every player, and it hasn't got DEV.autoStuckR from where it was for DEV.autoStuckT s → it is put on open
+// floor (or the middle of the cave) DEV.autoStuckHop nearer the team, falling from there (a spider lets go of its lines).
+// Turrets and nests hold still by design: never
+/** @param {import('../art/titlescene.js').TitleScene} S @param {Enemy} f */
+export function unstick(S, f) {
+  const act = f.k && f.k.act;
+  if (!(DEV.autoStuckT > 0) || act === 'turret' || act === 'nest' || f.hp <= 0) return;
+  const runs = S.runners.filter(r => !r.out && !r.hide);
+  if (!runs.length) return;
+  let near = runs[0], nd = Infinity;
+  for (const r of runs) { const d = Math.hypot(S.scroll + r.x + PW / 2 - f.x, r.y + PH / 2 - f.y); if (d < nd) { nd = d; near = r; } }
+  const s = f.stk;
+  if (!s || !f.aggro || nd < f.r + 60 || Math.hypot(f.x - s.x, f.y - s.y) > DEV.autoStuckR) { f.stk = { x: f.x, y: f.y, t: S.t }; return; }
+  if (S.t - s.t < DEV.autoStuckT) return;
+  const tx = S.scroll + near.x + PW / 2, dir = Math.sign(tx - f.x) || 1, h = act === 'spider' ? spiderHold(f) : f.r;
+  const go = Math.min(DEV.autoStuckHop, Math.max(0, Math.abs(tx - f.x) - f.r - 40));
+  // the first open place from there back toward where it is: room for its body between the floor and the roof
+  for (let k = 0; k <= 12; k++) {
+    const x = f.x + dir * go * (1 - k / 12), fy = titleFloor(x, S), cy = titleCeil(x, S);
+    if (fy - cy < 2 * Math.min(h, f.r) + 4) continue;
+    const y = fy - cy > 2 * h + 2 ? fy - h - 1 : (fy + cy) / 2;
+    if (titleSolid(S, x - S.scroll, y)) continue;
+    f.ty += y - f.y; f.x = f.hx = x; f.y = y;
+    if (f.sp) { f.sp.mode = 'fall'; f.sp.line = null; f.sp.vy = 0; f.sp.shot = null; }
+    f.wox = f.woy = 0;
+    break;
+  }
+  f.stk = { x: f.x, y: f.y, t: S.t };
 }
 // One step of the level's enemies (levelStep calls it): the elites in and marked, the boss (the fallen: auto/death.js)
 /** @param {import('../art/titlescene.js').TitleScene} S @param {import('./level.js').LevelState} L @param {number} teamX the team's place (world x) */
@@ -100,6 +133,7 @@ export function levelFoes(S, L, teamX) {
     }
     if (e.f.hp <= 0 || !S.foes.includes(e.f)) { e.alive = false; continue; }
     unbury(S, e.f);
+    unstick(S, e.f);
     e.x = e.f.x;
   }
   // the boss: in when the team reaches the arena, hunting at once (Grem, owner v2.0.16: already waiting in the arena as
@@ -121,6 +155,7 @@ export function levelFoes(S, L, teamX) {
   }
   if (B && !L.bossDead) {
     if (B.hp > 0 && B.x >= L.plan.arena.x0 && B.x <= L.plan.arena.x1) unbury(S, B);   // (owner v1.0.103: one came in under the ground and the level stuck)
+    if (B.hp > 0 && !B.waiting) unstick(S, B);
     if (B.hp <= 0) L.bossDead = true;
     else if (!S.foes.includes(B)) { B.x = Math.min(L.plan.arena.x1 - 30, teamX + BOSS_IN); B.y = B.ty = S.vh / 2; S.foes.push(B); }   // fell out of the scene: back in
   }

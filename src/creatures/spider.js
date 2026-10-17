@@ -20,12 +20,17 @@ import { rayDist } from '../world/vision.js';
 // on a hand-made grid. Nearly every number is a Dev-panel range (SP_KNOBS, rolled by spr);
 // SPIDER holds only the body's own geometry.
 export const SPIDER = { hold: 6, feel: 14, step: 1.5, fall: 900 };
+// (Grem) how far off the rock a spider of this size sits: its feet's reach (drawSpider: r × 0.62), never under SPIDER.hold.
+// A boss or an elite (drawn at k.rd) is bigger: at SPIDER.hold it sank into the floor, and auto/enemies.js unbury lifted it
+// back out every frame, so it fell for good (no walking, no legs)
+/** @param {{ r: number, k?: { rd?: number } }} e @returns {number} */
+export const spiderHold = e => Math.max(SPIDER.hold, ((e.k && e.k.rd) || e.r) * 0.66);
 
 // sit the spider at `hold` off the nearest rock: pushed straight out of anything closer
 // (so a spike or a step just lifts it over, like a ball rolling on it), pulled in along
 // the smoothed normal if it has drifted off. false if there's no rock to sit on.
-/** @param {Pt} e @param {SurfState} S @param {SolidCell} solidCell @param {number} maxMove */
-export function spiderSeat(e, S, solidCell, maxMove) { return surfSeat(e, S, solidCell, maxMove, SPIDER.hold, SPIDER.feel); }
+/** @param {Pt} e @param {SurfState} S @param {SolidCell} solidCell @param {number} maxMove @param {number} [hold] @param {number} [feel] */
+export function spiderSeat(e, S, solidCell, maxMove, hold = SPIDER.hold, feel = SPIDER.feel) { return surfSeat(e, S, solidCell, maxMove, hold, feel); }
 
 /** @type {(L: WebLine, x: number, y: number) => { u: number, d: number }} */
 export const segNear = (L, x, y) => {
@@ -36,12 +41,12 @@ export const segNear = (L, x, y) => {
 
 // a new line from (x, y) toward the rock along (dx, dy), or null if no rock within reach.
 // Tries straight at it first, then fans out a little.
-/** @param {number} x @param {number} y @param {number} dx @param {number} dy @param {number} reach @param {SolidCell} solidCell @returns {{ dx: number, dy: number, len: number } | null} */
-export function spiderAim(x, y, dx, dy, reach, solidCell) {
+/** @param {number} x @param {number} y @param {number} dx @param {number} dy @param {number} reach @param {SolidCell} solidCell @param {number} [hold] @returns {{ dx: number, dy: number, len: number } | null} */
+export function spiderAim(x, y, dx, dy, reach, solidCell, hold = SPIDER.hold) {
   for (const a of [0, 0.22, -0.22, 0.45, -0.45]) {
     const c = Math.cos(a), s = Math.sin(a), ux = dx * c - dy * s, uy = dx * s + dy * c;
     const d = rayDist(x, y, ux, uy, reach, solidCell);
-    if (d < reach && d > SPIDER.hold * 2.5) return { dx: ux, dy: uy, len: d };
+    if (d < reach && d > hold * 2.5) return { dx: ux, dy: uy, len: d };
   }
   return null;
 }
@@ -52,6 +57,8 @@ export function spiderAim(x, y, dx, dy, reach, solidCell) {
 /** @param {Enemy} e @param {SpiderEnv} env @param {number} dt @returns {string | null} */
 export function spiderStep(e, env, dt) {
   const { solidCell, webs, rnd } = env;
+  // (Grem) a big spider (the boss, an elite) sits as far off the rock as its feet reach (env.hold), and feels as far round
+  const hold = env.hold || SPIDER.hold, feel = hold * SPIDER.feel / SPIDER.hold;
   const S = e.sp || (e.sp = { mode: 'fall', vy: 0, nx: 0, ny: -1, on: 0, rest: rnd() * 0.5,
     side: 1, line: null, u: 0, dir: 1, shot: null, rx: e.hx, ry: e.hy, ra: rnd() * 6.28, high: false });
   // the roam point drifts slowly round home, and is pulled back if it wanders too far
@@ -66,8 +73,8 @@ export function spiderStep(e, env, dt) {
     for (let i = 0; i < n; i++) {
       e.y += S.vy * dt / n;
       if (e.y > CH * CELL) { e.y = CH * CELL; break; }
-      if (surfNormal(e.x, e.y, SPIDER.hold + 1, solidCell)) {
-        spiderSeat(e, S, solidCell, SPIDER.hold);
+      if (surfNormal(e.x, e.y, hold + 1, solidCell)) {
+        spiderSeat(e, S, solidCell, hold, hold, feel);
         S.mode = 'surf'; S.vy = 0; S.on = 0; S.rest = 0.1;
         break;
       }
@@ -84,7 +91,7 @@ export function spiderStep(e, env, dt) {
     const inx = hx + sh.dx * 1.2, iny = hy + sh.dy * 1.2;
     S.mode = sh.from; S.shot = null;
     if (!solidCell(Math.floor(inx / CELL), Math.floor(iny / CELL))) return null;
-    const L = { ax: sh.x, ay: sh.y, bx: hx - sh.dx * SPIDER.hold, by: hy - sh.dy * SPIDER.hold,
+    const L = { ax: sh.x, ay: sh.y, bx: hx - sh.dx * hold, by: hy - sh.dy * hold,
       a0x: sh.ax0, a0y: sh.ay0, b0x: hx, b0y: hy, ain: sh.ain, bin: { x: inx, y: iny }, owner: e };
     webs.push(L);
     // an old line of this spider's goes, unless something is riding it
@@ -100,7 +107,7 @@ export function spiderStep(e, env, dt) {
   // on a line whose rock has gone: drop
   if (S.mode === 'line' && webs.indexOf(S.line) < 0) { S.mode = 'fall'; S.line = null; S.vy = 0; return null; }
   // on rock that has been dug away from under it: drop
-  if (S.mode === 'surf' && !surfNormal(e.x, e.y, SPIDER.hold + 2, solidCell)) { S.mode = 'fall'; S.vy = 0; return null; }
+  if (S.mode === 'surf' && !surfNormal(e.x, e.y, hold + 2, solidCell)) { S.mode = 'fall'; S.vy = 0; return null; }
 
   // resting: count down, then start a burst and decide where it goes. Nothing worth doing
   // (already there, right under it): look again shortly — never sit with no clock running
@@ -125,10 +132,10 @@ export function spiderStep(e, env, dt) {
     if (S.mode === 'surf') {
       const tx = -S.ny * S.side, ty = S.nx * S.side;
       e.x += tx * st; e.y += ty * st;
-      if (!spiderSeat(e, S, solidCell, st * 2)) {
+      if (!spiderSeat(e, S, solidCell, st * 2, hold, feel)) {
         // stepped off the edge of nothing: curl back round toward where the rock was
         e.x -= S.nx * st * 2; e.y -= S.ny * st * 2;
-        if (!spiderSeat(e, S, solidCell, st * 2)) { S.mode = 'fall'; S.vy = 0; break; }
+        if (!spiderSeat(e, S, solidCell, st * 2, hold, feel)) { S.mode = 'fall'; S.vy = 0; break; }
       }
       // came round a corner and now faces the goal off the surface: look again
       const gx = goal.x - e.x, gy = goal.y - e.y, gd = Math.hypot(gx, gy) || 1;
@@ -147,7 +154,7 @@ export function spiderStep(e, env, dt) {
         S.u = S.u >= 1 ? 1 : 0;
         e.x = S.u ? L.bx : L.ax; e.y = S.u ? L.by : L.ay;
         S.mode = 'surf'; S.line = null; S.go = false;
-        if (!spiderSeat(e, S, solidCell, SPIDER.hold)) { S.mode = 'fall'; S.vy = 0; break; }
+        if (!spiderSeat(e, S, solidCell, hold, hold, feel)) { S.mode = 'fall'; S.vy = 0; break; }
         decide();
         continue;
       }
@@ -182,11 +189,11 @@ export function spiderStep(e, env, dt) {
     const tryShoot = from => {
       // a roaming spider spins a new line now and then, not every hop; hunting, much more often
       if (S.webT > 0 || (!env.hunting && gd < 40)) return false;
-      const a = spiderAim(e.x, e.y, dx, dy, env.reach || spr('spWeb', rnd), solidCell);
+      const a = spiderAim(e.x, e.y, dx, dy, env.reach || spr('spWeb', rnd), solidCell, hold);
       if (!a) return false;
       let ax0 = e.x, ay0 = e.y, ain = null;
       if (from === 'surf') {
-        const d = rayDist(e.x, e.y, -S.nx, -S.ny, SPIDER.feel + 4, solidCell);
+        const d = rayDist(e.x, e.y, -S.nx, -S.ny, feel + 4, solidCell);
         ax0 = e.x - S.nx * d; ay0 = e.y - S.ny * d;
         ain = { x: e.x - S.nx * (d + 1.2), y: e.y - S.ny * (d + 1.2) };
       }

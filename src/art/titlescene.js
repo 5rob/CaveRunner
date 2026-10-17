@@ -16,7 +16,7 @@ import { THEMES } from '../data/themes.js';
 import { DEV, carrotAt, kcol, kr, kru, spr } from '../dev/knobs.js';
 import { jellyPal, jellyStep } from '../creatures/jelly.js';
 import { ratSpread, ratStep } from '../creatures/rat.js';
-import { spiderStep } from '../creatures/spider.js';
+import { spiderHold, spiderStep } from '../creatures/spider.js';
 import { addSpawner, dropBats, newBats, panicGroup, stepBats } from '../creatures/bats.js';
 import { newWorm, stepWorm } from '../creatures/glowworm.js';
 import { roamStep } from '../creatures/common.js';
@@ -3138,7 +3138,7 @@ function spiderAct(S, e, hunting, goal, sees, dist, dx, dy, CS, dt) {
   // on a line it rides the line's sag, which spiderStep doesn't know about: last frame's off, this frame's on
   if (e.wox || e.woy) { e.x -= e.wox || 0; e.y -= e.woy || 0; e.wox = e.woy = 0; }
   const x0 = e.x, y0 = e.y;
-  if (spiderStep(e, { solidCell: CS, webs: S.webs, hunting, goal, rnd: R, speedMul: 1 }, dt) === 'web') snd(S, 'lash', e.x - S.scroll, e.y);
+  if (spiderStep(e, { solidCell: CS, webs: S.webs, hunting, goal, rnd: R, speedMul: 1, hold: S.lvl ? spiderHold(e) : undefined }, dt) === 'web') snd(S, 'lash', e.x - S.scroll, e.y);
   const P = e.sp;
   // (owner v1.0.74: the boss's and elites' legs didn't walk) a level's spider: the legs cycle by the distance walked, a stride
   // as long as DEV.autoSpStride × its size (not falling)
