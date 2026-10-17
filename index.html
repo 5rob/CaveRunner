@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>CaveRunner v2.0.18</title>
-<!-- VERSION = 'v2000018' : the update number (tools/build.js), what version.txt and the app compare -->
+<title>CaveRunner v2.0.19</title>
+<!-- VERSION = 'v2000019' : the update number (tools/build.js), what version.txt and the app compare -->
 <style>
 :root{
   --bg:#cfdbe4; --text:#1c2a38; --muted:rgba(28,42,56,0.55);
@@ -727,7 +727,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script>const VERSION = 'v2.0.18';</script>
+<script>const VERSION = 'v2.0.19';</script>
 <script>
 (() => {
   // src/ui/h.js
@@ -1299,7 +1299,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     autoGreen: 150,
     autoModGold: 15
   });
-  Object.assign(DEV_DEFAULTS, { gremPrice: 100, gremGrow: 1.5, gremHard: 0.25, gremGold: 2, gremDark: 0.85, gremPickR: 40, gremChestSize: 2, gremChestGlow: 1, gremBossT: 2.4, gremBossAt: 0.78, gremArenaPace: 2.5, gremClearWait: 0, gremArenaClear: 120, gremGoT: 1.6, gremDmgScale: 1, gremGoldWait: 0.6, gremSeamW: 160, gremSeamJag: 1, gremWayT: 8, gremWayDone: 16, gremChestTapR: 30 });
+  Object.assign(DEV_DEFAULTS, { gremPrice: 100, gremGrow: 1.5, gremHard: 0.25, gremGold: 2, gremDark: 0.85, gremPickR: 40, gremChestSize: 2, gremChestGlow: 1, gremBossT: 2.4, gremBossAt: 0.78, gremArenaPace: 2.5, gremClearWait: 0, gremArenaClear: 120, gremArenaGap: 240, gremGoT: 1.6, gremDmgScale: 1, gremGoldWait: 0.6, gremSeamW: 160, gremSeamJag: 1, gremWayT: 8, gremWayDone: 16, gremChestTapR: 30 });
   DEV_META.push(
     { k: "gremPrice", g: "grem", label: "The first unlock costs (gold)", min: 5, max: 1e4, step: 5 },
     { k: "gremGrow", g: "grem", label: "Each unlock after it costs × this more", min: 1, max: 4, step: 0.05 },
@@ -1317,6 +1317,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "gremDmgScale", g: "grem", label: "Guns grow with the level: share of the creatures’ health growth (1 all, 0 none)", min: 0, max: 2, step: 0.05 },
     { k: "gremGoldWait", g: "grem", label: "Gold bounces this long before it flies to you (s)", min: 0, max: 3, step: 0.05 },
     // (owner, v1.0.98) each level cleared, the next old floor: the colours blend over a seam past the boss's arena
+    { k: "gremArenaGap", g: "grem", label: "Past the boss arena: this much of its floor before the next level (units; a new level)", min: 0, max: 600, step: 10 },
     { k: "gremSeamW", g: "grem", label: "Floor change: the colours blend over this much cave (units)", min: 4, max: 600, step: 4 },
     // (owner, v1.0.101) a tap that isn't a chest or a creature: the picked player heads there (v1.0.103: on at once once there)
     { k: "gremWayT", g: "grem", label: "A tapped spot: given up after this long if not reached (s)", min: 1, max: 30, step: 0.5 },
@@ -19106,6 +19107,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (B && !L.bossDead) {
       if (B.hp > 0 && B.x >= L.plan.arena.x0 && B.x <= L.plan.arena.x1) unbury(S, B);
       if (B.hp > 0 && !B.waiting) unstick(S, B);
+      if (L.grem && B.hp > 0 && L.phase === "arena") {
+        const r = B.k && B.k.r || 10, x = Math.max(A.x0 + r, Math.min(A.x1 - r, B.x));
+        if (x !== B.x) B.x = B.hx = x;
+      }
       if (B.hp <= 0) L.bossDead = true;
       else if (!S.foes.includes(B)) {
         B.x = Math.min(L.plan.arena.x1 - 30, teamX + BOSS_IN);
@@ -19198,7 +19203,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     planBlocks(P2, zs, seed, blocks);
     const wallX = endless ? Infinity : plantWall(P2, zs, seed, pace);
     const a = flatZone(P2, x, x + LVL_ARENA, -14);
-    if (endless) return { zp: P2, seed, padX: LVL_PADX, z0: LVL_PAD, z1: x, len: x - LVL_PAD, arena: { x0: a.x0, x1: a.x1, mid: (a.x0 + a.x1) / 2 }, exitX: a.x1 + LVL_EXITW / 2, wallX };
+    if (endless) {
+      const g = flatZone(P2, a.x1, a.x1 + Math.max(0, DEV.gremArenaGap), -14);
+      return { zp: P2, seed, padX: LVL_PADX, z0: LVL_PAD, z1: x, len: x - LVL_PAD, arena: { x0: a.x0, x1: a.x1, mid: (a.x0 + a.x1) / 2 }, exitX: a.x1 + LVL_EXITW / 2, wallX, nextX: g.x1 };
+    }
     const e = flatZone(P2, a.x1, a.x1 + LVL_EXITW, 0);
     flatZone(P2, e.x1, 1e9, 400);
     return {
@@ -19288,7 +19296,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       grem,
       ups: 0
     };
-    const looks = grem ? [Object.assign({ x0: -Infinity }, floorLook(levelFloor(tier), seed + tier)), Object.assign({ x0: plan.arena.x1 }, floorLook(levelFloor(tier + 1), seed + tier + 1))] : void 0;
+    const looks = grem ? [Object.assign({ x0: -Infinity }, floorLook(levelFloor(tier), seed + tier)), Object.assign({ x0: plan.nextX ?? plan.arena.x1 }, floorLook(levelFloor(tier + 1), seed + tier + 1))] : void 0;
     const S = titleScene(vh, seed, Math.min(vh * 0.24, 50), vh - Math.min(vh * 0.08, 20), { looks, runners: n, level: {
       zp: plan.zp,
       step: levelStep,
@@ -19310,7 +19318,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       free: (S2, r) => levelFree(S2, L, r),
       fuel: (_S, r) => team && team[r.id] ? playerStats(team[r.id]) : null,
       spawn: (S2) => levelSpawn(S2, L),
-      keepOut: () => L.phase === "run" || L.phase === "arena" || L.phase === "cleared" ? { x0: L.plan.arena.x0, x1: L.plan.arena.x1 } : null
+      keepOut: () => L.phase === "run" || L.phase === "arena" || L.phase === "cleared" ? { x0: L.plan.arena.x0, x1: L.plan.nextX ?? L.plan.arena.x1 } : null
     }, team, tier });
     if (grem) {
       S.dmgMul = gremDmgMul(tier);
@@ -19326,7 +19334,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       L.floor = levelFloor(tier);
       L.name = S.looks[0].name;
     }
-    if (grem) floorFrom(plan.zp, plan.arena.x1, levelFloor(tier + 1));
+    if (grem) floorFrom(plan.zp, plan.nextX ?? plan.arena.x1, levelFloor(tier + 1));
     L.elites = elitePlan(plan, S.rnd);
     L.chests = chestPlan(plan);
     L.meters = S.runners.map(() => ({ dmg: meterNew(), hp: meterNew(), dealt: 0 }));
@@ -19460,7 +19468,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       if (pl) meterSet(M.hp, pl.alive === false ? 0 : pl.hp);
     });
   }
-  var stopAt = (L) => L.phase === "run" || L.phase === "arrive" ? L.plan.arena.mid : L.plan.exitX;
+  var stopAt = (L) => L.phase === "run" || L.phase === "arrive" || L.phase === "arena" ? L.plan.arena.mid : L.plan.exitX;
   function levelStep(S, dt) {
     const L = levelState(S);
     if (!L) return;
@@ -19617,11 +19625,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     L.ups = (L.ups || 0) + 1;
     L.base = lvlPace(gremHardTier(tier));
     S.dmgMul = gremDmgMul(tier);
-    const z0 = P2.arena.x1, want = Math.max(TITLE_ZLEN[0], DEV.autoLvlMin * 60 * LVL_SCROLL * L.base);
+    const z0 = P2.nextX ?? P2.arena.x1, want = Math.max(TITLE_ZLEN[0], DEV.autoLvlMin * 60 * LVL_SCROLL * L.base);
     let x = Math.max(z0, zp.z[zp.z.length - 1].x1);
     while (x - z0 < want) x = titleZoneAdd(zp, x).x1;
-    const a = flatZone(zp, x, x + LVL_ARENA, -14);
-    Object.assign(P2, { z0, z1: x, len: x - z0, arena: { x0: a.x0, x1: a.x1, mid: (a.x0 + a.x1) / 2 }, exitX: a.x1 + LVL_EXITW / 2, seed: P2.seed + 1 });
+    const a = flatZone(zp, x, x + LVL_ARENA, -14), g = flatZone(zp, a.x1, a.x1 + Math.max(0, DEV.gremArenaGap), -14);
+    Object.assign(P2, { z0, z1: x, len: x - z0, arena: { x0: a.x0, x1: a.x1, mid: (a.x0 + a.x1) / 2 }, exitX: a.x1 + LVL_EXITW / 2, seed: P2.seed + 1, nextX: g.x1 });
     L.elites = elitePlan(P2, S.rnd);
     L.chests = chestPlan(P2);
     L.phase = "run";
@@ -19633,8 +19641,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     L.introT = void 0;
     S.gunsOff = false;
     S.huddle = false;
-    if (S.looks) S.looks.push(Object.assign({ x0: a.x1 }, floorLook(levelFloor(tier + 1), P2.seed + tier + 1)));
-    if (L.grem) floorFrom(zp, a.x1, levelFloor(tier + 1));
+    if (S.looks) S.looks.push(Object.assign({ x0: g.x1 }, floorLook(levelFloor(tier + 1), P2.seed + tier + 1)));
+    if (L.grem) floorFrom(zp, g.x1, levelFloor(tier + 1));
     L.floor = levelFloor(tier);
     L.name = floorName(L.floor);
     if (S.team) {
@@ -25626,7 +25634,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   }
 
   // src/version.js
-  var VERSION2 = "v2.0.18";
+  var VERSION2 = "v2.0.19";
 
   // src/art/zonelab.js
   var ZLAB_LEAD = 60;

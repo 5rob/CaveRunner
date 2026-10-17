@@ -73,14 +73,14 @@ check('a Limanuljaska comes at him, bursts, and is gone', until(S, s => !s.foes.
 const gr = G.newRun(5);
 const SG = G.levelScene(190, 41, 1, undefined, gr.players, 1, gr, true), LG = G.levelState(SG);
 check('Grem level 1: Mossy Caves, Coal Seams from past the arena', SG.looks.length === 2 && SG.looks[0].roster === null && SG.looks[0].theme === G.THEMES[0]
-  && SG.looks[1].x0 === LG.plan.arena.x1 && SG.looks[1].name === 'Coal Seams', SG.looks.map(l => [l.x0, l.name]));
-check('… level 1\'s look up to the seam, Coal Seams\' after it', G.lookAt(SG, LG.plan.arena.mid) === SG.looks[0] && G.lookAt(SG, LG.plan.arena.x1 + 50) === SG.looks[1]);
+  && SG.looks[1].x0 === LG.plan.nextX && SG.looks[1].name === 'Coal Seams', SG.looks.map(l => [l.x0, l.name]));
+check('… level 1\'s look up to the seam, Coal Seams\' after it', G.lookAt(SG, LG.plan.arena.mid) === SG.looks[0] && G.lookAt(SG, LG.plan.nextX + 50) === SG.looks[1]);
 const ids = new Set();
-for (let i = 0; i < 300; i++) ids.add(G.titleKind(SG, LG.plan.arena.x1 + 80 + i));
+for (let i = 0; i < 300; i++) ids.add(G.titleKind(SG, LG.plan.nextX + 80 + i));
 check('… past the seam only Coal Seams\' creatures come in', [...ids].every(id => G.ROSTERS[1].includes(id)), [...ids]);
 const a1 = LG.plan.arena.x1;
 G.levelOnward(SG, LG);
-check('a level cleared: Frozen Deep from past the new arena', SG.looks.length === 3 && SG.looks[2].name === 'Frozen Deep' && SG.looks[2].x0 === LG.plan.arena.x1
+check('a level cleared: Frozen Deep from past the new arena', SG.looks.length === 3 && SG.looks[2].name === 'Frozen Deep' && SG.looks[2].x0 === LG.plan.nextX
   && LG.plan.arena.x1 > a1 && LG.name === 'Coal Seams', SG.looks.map(l => l.name));
 for (let i = 0; i < 10; i++) G.levelOnward(SG, LG);
 check('… round past Void Hollow to Mossy Caves again (owner v1.0.108)', SG.looks[SG.looks.length - 1].name === 'Mossy Caves'

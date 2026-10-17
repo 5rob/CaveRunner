@@ -160,6 +160,10 @@ export function levelFoes(S, L, teamX) {
   if (B && !L.bossDead) {
     if (B.hp > 0 && B.x >= L.plan.arena.x0 && B.x <= L.plan.arena.x1) unbury(S, B);   // (owner v1.0.103: one came in under the ground and the level stuck)
     if (B.hp > 0 && !B.waiting) unstick(S, B);
+    if (L.grem && B.hp > 0 && L.phase === 'arena') {   // (owner v2.0.19) kept inside its arena (it chased the team out past it)
+      const r = (B.k && B.k.r) || 10, x = Math.max(A.x0 + r, Math.min(A.x1 - r, B.x));
+      if (x !== B.x) B.x = B.hx = x;
+    }
     if (B.hp <= 0) L.bossDead = true;
     else if (!S.foes.includes(B)) { B.x = Math.min(L.plan.arena.x1 - 30, teamX + BOSS_IN); B.y = B.ty = S.vh / 2; S.foes.push(B); }   // fell out of the scene: back in
   }

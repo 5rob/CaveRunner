@@ -407,7 +407,7 @@ Object.assign(DEV_DEFAULTS, { autoGunBase: 100, autoGunGrow: 1.35, autoExoPrice:
 // CaveRunner Auto's hub (auto/hub.js, stage 3b): the team walking between the stops
 // (player 1 moves on the old game's own numbers, core/consts.js WALK / JET / GRAVITY, feedback round 1)
 // Grem Mode (auto/grem.js): the unlocks' prices (each dearer than the last), how fast the creatures toughen, the gold, the dark
-Object.assign(DEV_DEFAULTS, { gremPrice: 100, gremGrow: 1.5, gremHard: 0.25, gremGold: 2, gremDark: 0.85, gremPickR: 40, gremChestSize: 2, gremChestGlow: 1, gremBossT: 2.4, gremBossAt: 0.78, gremArenaPace: 2.5, gremClearWait: 0, gremArenaClear: 120, gremGoT: 1.6, gremDmgScale: 1, gremGoldWait: 0.6, gremSeamW: 160, gremSeamJag: 1, gremWayT: 8, gremWayDone: 16, gremChestTapR: 30 });
+Object.assign(DEV_DEFAULTS, { gremPrice: 100, gremGrow: 1.5, gremHard: 0.25, gremGold: 2, gremDark: 0.85, gremPickR: 40, gremChestSize: 2, gremChestGlow: 1, gremBossT: 2.4, gremBossAt: 0.78, gremArenaPace: 2.5, gremClearWait: 0, gremArenaClear: 120, gremArenaGap: 240, gremGoT: 1.6, gremDmgScale: 1, gremGoldWait: 0.6, gremSeamW: 160, gremSeamJag: 1, gremWayT: 8, gremWayDone: 16, gremChestTapR: 30 });
 DEV_META.push(
   { k: 'gremPrice', g: 'grem', label: 'The first unlock costs (gold)', min: 5, max: 10000, step: 5 },
   { k: 'gremGrow',  g: 'grem', label: 'Each unlock after it costs × this more', min: 1, max: 4, step: 0.05 },
@@ -425,6 +425,7 @@ DEV_META.push(
   { k: 'gremDmgScale', g: 'grem', label: 'Guns grow with the level: share of the creatures’ health growth (1 all, 0 none)', min: 0, max: 2, step: 0.05 },
   { k: 'gremGoldWait', g: 'grem', label: 'Gold bounces this long before it flies to you (s)', min: 0, max: 3, step: 0.05 },
   // (owner, v1.0.98) each level cleared, the next old floor: the colours blend over a seam past the boss's arena
+  { k: 'gremArenaGap', g: 'grem', label: 'Past the boss arena: this much of its floor before the next level (units; a new level)', min: 0, max: 600, step: 10 },
   { k: 'gremSeamW',    g: 'grem', label: 'Floor change: the colours blend over this much cave (units)', min: 4, max: 600, step: 4 },
   // (owner, v1.0.101) a tap that isn't a chest or a creature: the picked player heads there (v1.0.103: on at once once there)
   { k: 'gremWayT',     g: 'grem', label: 'A tapped spot: given up after this long if not reached (s)', min: 1, max: 30, step: 0.5 },

@@ -53,11 +53,11 @@ check('… its health from the kit', pl.hp > G.playerStats(G.newPlayer(0)).maxHp
 
 // ---- the endless level ----
 const P = G.levelPlan(5, 1, 0, 1, true);
-check('endless: no exit pad and no solid rock after the arena', P.zp.z[P.zp.z.length - 1].x1 === P.arena.x1 && P.wallX === Infinity);
+check('endless: no exit pad and no solid rock after the arena', P.zp.z[P.zp.z.length - 1].x1 === P.nextX && P.nextX === P.arena.x1 + G.DEV.gremArenaGap && P.wallX === Infinity);
 const S = G.levelScene(300, 5, 1, undefined, run.players, 1, run, true), L = G.levelState(S);
 check('a Grem level is endless', L.grem && L.plan.zp.z.every(z => z.x1 < 1e9));
 check('no exit pad drawn', G.levelPads(S).every(q => q.id !== 'exit'));
-const a0 = L.plan.arena.x1;
+const a0 = L.plan.nextX;
 L.phase = 'out';
 G.levelOnward(S, L);
 check('onward: the level + 1, on the scene and the run', S.tier === 2 && run.tier === 2 && L.ups === 1);

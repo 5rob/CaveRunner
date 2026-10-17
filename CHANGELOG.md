@@ -5,6 +5,12 @@ rules these changes left behind live in the folder READMEs under `src/`; this is
 Names are as they were at the time (before the refactor Game's state had loose names: `mat` is now
 `W.mat`, and so on). Versions before v39: `git log`.
 
+## v2.0.19 — The boss fight kept in its arena, a gap before the next level (branch `grem`)
+2026-10-18 (owner: "the player flies past the arena and battles the boss from halfway in the next level"; owner OK'd).
+- The cause: since v2.0.17 the fight starts at the arena's edge (phase `arena` before the team's stop), and `stopAt` gave `arena` the old exit pad's x, 240 past the arena: the screen ran on into the next level. Now the arena's middle: the screen's right edge stops at the arena's.
+- The boss is kept inside the arena during the fight (enemies.js).
+- A flat stretch of this level's floor, `gremArenaGap` (240) long, after each arena; the next level's look, zones and creatures begin past it (`plan.nextX`); the bat/worm keep-out covers it. Shots `tools/gremarenashots.js`.
+
 ## v2.0.18 — Glow worms out of step and set off by a near player, real blast shakes, no bats in the boss arena, no wait after the kill (branch `grem`)
 2026-10-17 (owner's list; owner OK'd).
 - Glow worms: each its own start in the gait and speed (`glowSpdMin..Max` × the crank), bigger ones slower (÷ size ^ `glowSizeSlow`); a player within `glowProxR` sets one off (killed: gold, the swelling fuse, the blast; 0 off).

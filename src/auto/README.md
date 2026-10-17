@@ -10,6 +10,8 @@
 
 **v2.0.18 (grem):** `levelScene`'s TitleLevel `keepOut` (the arena while the level runs to the kill): titlescene.js places no bats or glow worm clusters within `DEV.gremArenaClear` of it and puts bats flying in back out (`inKeepOut`, batsStep). `gremClearWait` 0: on at once after the kill.
 
+**v2.0.19 (grem):** `stopAt` gives phase `arena` the arena's middle (it gave the exit pad: the screen ran 240 past the arena); the boss clamped inside the arena in the fight (`levelFoes`); after each arena a flat stretch of this floor `DEV.gremArenaGap` long, the next floor's look and zones from `plan.nextX` (levelPlan, levelScene, levelOnward; keepOut to it). Suites `auto-bosswait`, `grem`, `auto-floors`.
+
 The auto-battler's pure parts (`AUTOBATTLER.md`). **Layer 4**: `run.js` takes `TITLE_COLS` from
 `art/titlescene.js` (layer 4), so modules here may import layers 1–4 (core, dev, data, spells, world,
 art, …), never `game/`, `ui/` or `main.js`. Everything here is pure: the logic suites call it directly.

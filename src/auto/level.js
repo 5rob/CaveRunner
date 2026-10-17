@@ -50,7 +50,8 @@ function flatZone(P, x0, x1, co) {
 // LevelPlan: the zone plan (the scene's S.zp) and its landmarks (world x): the start pad's middle, where the random zones
 // begin and end (len their total), the arena's span and middle, the exit pad's middle
 /** @typedef {{ zp: import('../art/titlescene.js').TitlePlan, seed: number, padX: number, z0: number, z1: number, len: number,
- *   arena: { x0: number, x1: number, mid: number }, exitX: number, wallX: number }} LevelPlan */
+ *   arena: { x0: number, x1: number, mid: number }, exitX: number, wallX: number, nextX?: number }} LevelPlan */
+// (Grem, owner v2.0.19) nextX: where the next level's look and zones begin, DEV.gremArenaGap past the arena (a flat stretch of this one's between)
 
 // The finite plan: same seed, same level. minutes (default the knob) at normal pace (DEV.autoLvlPace) of random zones;
 // blocks of them blocked (stage 6b, auto/blocked.js planBlocks; default DEV.autoBlockN; 0: none)
@@ -70,7 +71,7 @@ export function levelPlan(seed, minutes = DEV.autoLvlMin, blocks = DEV.autoBlock
   planBlocks(P, zs, seed, blocks);
   const wallX = endless ? Infinity : plantWall(P, zs, seed, pace);
   const a = flatZone(P, x, x + LVL_ARENA, -14);
-  if (endless) return { zp: P, seed, padX: LVL_PADX, z0: LVL_PAD, z1: x, len: x - LVL_PAD, arena: { x0: a.x0, x1: a.x1, mid: (a.x0 + a.x1) / 2 }, exitX: a.x1 + LVL_EXITW / 2, wallX };
+  if (endless) { const g = flatZone(P, a.x1, a.x1 + Math.max(0, DEV.gremArenaGap), -14); return { zp: P, seed, padX: LVL_PADX, z0: LVL_PAD, z1: x, len: x - LVL_PAD, arena: { x0: a.x0, x1: a.x1, mid: (a.x0 + a.x1) / 2 }, exitX: a.x1 + LVL_EXITW / 2, wallX, nextX: g.x1 }; }
   const e = flatZone(P, a.x1, a.x1 + LVL_EXITW, 0);
   flatZone(P, e.x1, 1e9, 400);   // solid rock: the roof far below the floor (it closes over ZMIX)
   return { zp: P, seed, padX: LVL_PADX, z0: LVL_PAD, z1: x, len: x - LVL_PAD,
@@ -192,17 +193,17 @@ export function levelScene(vh, seed, n, plan, team, tier = 1, run = null, grem =
     boss: null, failed: false, run, bagV: 0, grem, ups: 0 };
   // (owner, v1.0.98) Grem Mode: each level cleared, the next old floor (levelFloor(tier)): this stretch's and the next one's from past the arena
   // (made before the scene, so its first columns are dressed as their floor: Coal Seams' decorations)
-  const looks = grem ? [Object.assign({ x0: -Infinity }, floorLook(levelFloor(tier), seed + tier)), Object.assign({ x0: plan.arena.x1 }, floorLook(levelFloor(tier + 1), seed + tier + 1))] : undefined;
+  const looks = grem ? [Object.assign({ x0: -Infinity }, floorLook(levelFloor(tier), seed + tier)), Object.assign({ x0: plan.nextX ?? plan.arena.x1 }, floorLook(levelFloor(tier + 1), seed + tier + 1))] : undefined;
   const S = titleScene(vh, seed, Math.min(vh * 0.24, 50), vh - Math.min(vh * 0.08, 20), { looks, runners: n, level: { zp: plan.zp, step: levelStep, data: L, hurt: levelHurt,
     loot: (S, f) => killLoot(f.k.boss ? 'boss' : f.k.elite ? 'elite' : 'foe', S.tier || 1, S.rnd, f.k.gold).filter(it => !L.grem || it.kind === 'gold').map(it => (L.grem ? gremGold(it) : it)),
     fits: (_S, it) => !L.run || bagFits(L.run, it),
     take: (_S, it) => { if (L.run && bagAdd(L.run, it)) return false; L.bagV++; return true; },
-    kind: grem ? gremFoe : autoFoe, hardY: (S, wx) => levelHardY(S, plan, wx), lootCol, blockCell, blockCol, blockKind, free: (S, r) => levelFree(S, L, r), fuel: (_S, r) => (team && team[r.id] ? playerStats(team[r.id]) : null), spawn: S => levelSpawn(S, L), keepOut: () => (L.phase === 'run' || L.phase === 'arena' || L.phase === 'cleared' ? { x0: L.plan.arena.x0, x1: L.plan.arena.x1 } : null) }, team, tier });   // (keepOut, v2.0.18: no bats or worms in the boss arena)
+    kind: grem ? gremFoe : autoFoe, hardY: (S, wx) => levelHardY(S, plan, wx), lootCol, blockCell, blockCol, blockKind, free: (S, r) => levelFree(S, L, r), fuel: (_S, r) => (team && team[r.id] ? playerStats(team[r.id]) : null), spawn: S => levelSpawn(S, L), keepOut: () => (L.phase === 'run' || L.phase === 'arena' || L.phase === 'cleared' ? { x0: L.plan.arena.x0, x1: L.plan.nextX ?? L.plan.arena.x1 } : null) }, team, tier });   // (keepOut, v2.0.18: no bats or worms in the boss arena)
   if (grem) { S.dmgMul = gremDmgMul(tier); S.coinWait = DEV.gremGoldWait; }   // (owner v1.0.92) the guns keep up; the gold bounces first
   // (owner, v1.0.97) past level 1 the level plays as one of the old game's floors: its palette and creatures (auto/maps.js levelLook)
   if (run && !grem) { const look = levelLook(run, seed); L.floor = look.floor; L.name = look.name; if (look.roster) S.looks = [Object.assign({ x0: -Infinity }, look)]; }
   if (S.looks && grem) { L.floor = levelFloor(tier); L.name = S.looks[0].name; }
-  if (grem) floorFrom(plan.zp, plan.arena.x1, levelFloor(tier + 1));   // (Coal Seams) the next floor's zones past the arena, as its look
+  if (grem) floorFrom(plan.zp, plan.nextX ?? plan.arena.x1, levelFloor(tier + 1));   // (Coal Seams) the next floor's zones past the arena, as its look
   L.elites = elitePlan(plan, S.rnd);
   L.chests = chestPlan(plan);
   L.meters = S.runners.map(() => ({ dmg: meterNew(), hp: meterNew(), dealt: 0 }));
@@ -340,7 +341,8 @@ export function levelMeters(S, L, dt) {
 }
 // where the team stops next (world x): the arena's middle till the boss is dead, then the exit pad
 /** @param {LevelState} L */
-const stopAt = L => (L.phase === 'run' || L.phase === 'arrive' ? L.plan.arena.mid : L.plan.exitX);
+// (v2.0.19: 'arena' too: since the Grem fight starts at the arena's edge, it stopped at the exit pad, 240 units past it)
+const stopAt = L => (L.phase === 'run' || L.phase === 'arrive' || L.phase === 'arena' ? L.plan.arena.mid : L.plan.exitX);
 
 // One step (titleStep calls it after its own)
 /** @param {import('../art/titlescene.js').TitleScene} S @param {number} dt */
@@ -478,19 +480,19 @@ export function levelOnward(S, L) {
   L.ups = (L.ups || 0) + 1;
   L.base = lvlPace(gremHardTier(tier));
   S.dmgMul = gremDmgMul(tier);
-  const z0 = P.arena.x1, want = Math.max(TITLE_ZLEN[0], DEV.autoLvlMin * 60 * LVL_SCROLL * L.base);
+  const z0 = P.nextX ?? P.arena.x1, want = Math.max(TITLE_ZLEN[0], DEV.autoLvlMin * 60 * LVL_SCROLL * L.base);
   let x = Math.max(z0, zp.z[zp.z.length - 1].x1);
   while (x - z0 < want) x = titleZoneAdd(zp, x).x1;
-  const a = flatZone(zp, x, x + LVL_ARENA, -14);
-  Object.assign(P, { z0, z1: x, len: x - z0, arena: { x0: a.x0, x1: a.x1, mid: (a.x0 + a.x1) / 2 }, exitX: a.x1 + LVL_EXITW / 2, seed: P.seed + 1 });
+  const a = flatZone(zp, x, x + LVL_ARENA, -14), g = flatZone(zp, a.x1, a.x1 + Math.max(0, DEV.gremArenaGap), -14);
+  Object.assign(P, { z0, z1: x, len: x - z0, arena: { x0: a.x0, x1: a.x1, mid: (a.x0 + a.x1) / 2 }, exitX: a.x1 + LVL_EXITW / 2, seed: P.seed + 1, nextX: g.x1 });
   L.elites = elitePlan(P, S.rnd);
   L.chests = chestPlan(P);
   L.phase = 'run'; L.bossDead = false; L.boss = null; L.arenaT = -1; L.bossWait = false;
   L.introDone = false; L.introT = undefined;   // (owner v1.0.104) the next boss comes in too (it was left off screen right from level 2 on)
   S.gunsOff = false; S.huddle = false;
   // (owner, v1.0.98) the floor after this one starts past the new arena (this one's look began past the last: S.looks)
-  if (S.looks) S.looks.push(Object.assign({ x0: a.x1 }, floorLook(levelFloor(tier + 1), P.seed + tier + 1)));
-  if (L.grem) floorFrom(zp, a.x1, levelFloor(tier + 1));
+  if (S.looks) S.looks.push(Object.assign({ x0: g.x1 }, floorLook(levelFloor(tier + 1), P.seed + tier + 1)));
+  if (L.grem) floorFrom(zp, g.x1, levelFloor(tier + 1));
   L.floor = levelFloor(tier); L.name = floorName(L.floor);
   if (S.team) for (const pl of S.team) if (pl.alive !== false) pl.hp = playerStats(pl).maxHp;
 }
