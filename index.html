@@ -700,6 +700,12 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .agkperks{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .agkperk{height:34px;border-radius:8px;background:#1d1531;border:2px solid #3d2f5c;color:#d8cff0;font:600 12px system-ui,sans-serif}
 .agkperk.on{border-color:#ffc93c;color:#fff}
+
+/* Dev → Bats / Glow worms: the slice preview (ui/slicepreview.js); double-tap: full screen */
+.sliceprev{position:relative}
+.sliceprev .slicecv{display:block;width:100%;height:220px;border-radius:10px;touch-action:none;background:#000}
+.sliceprev.full{position:fixed;inset:0;z-index:1000;background:#000;padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}
+.sliceprev.full .slicecv{height:100%;border-radius:0}
 </style>
 </head>
 <body>
@@ -1436,6 +1442,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     ["batWiggle", "Look: wiggle across the way (units)", 0.1, 1, 3],
     ["batWiggleF", "Look: wiggles a second", 0.1, 0.8, 1.8]
   ]);
+  Object.assign(DEV_DEFAULTS, { slicePrevWait: 2 });
+  DEV_META.push({ k: "slicePrevWait", g: "bats", label: "Preview: wait before the next player comes in (s)", step: 0.5 });
   DEV_GROUPS.push(["bats", "Bats"]);
   Object.assign(DEV_DEFAULTS, {
     glowCluster: 0.35,
@@ -7835,36 +7843,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     c.fillRect(s * 0.4 - 0.25, ey, 0.5, 0.6);
     c.fillRect(-s * 0.2 - 0.25, ey, 0.5, 0.6);
   }
-  var BAT_LAB_W = 180, BAT_LAB_H = 100;
-  function batLab() {
-    const roof = (x) => 12 + 5 * Math.sin(x * 0.07) + 3 * Math.sin(x * 0.19 + 1);
-    const floor = BAT_LAB_H - 10;
-    const boulder = (x, y) => Math.hypot((x - 132) / 16, (y - roof(132) - 8) / 10) < 1;
-    const solid = (x, y) => x < 0 || x >= BAT_LAB_W || y < roof(x) || y >= floor || boulder(x, y);
-    return { B: newBats(), solid, roof, floor, px: -20, dir: 1, wait: 2, key: "", t: 0 };
-  }
-  function batLabStep(L, dt, rnd2 = Math.random) {
-    L.t += dt;
-    const key = DEV.batPerSpawnLo + "," + DEV.batPerSpawnHi;
-    if (key !== L.key) {
-      L.key = key;
-      L.B = newBats();
-      for (const x of [50, 132]) {
-        let y = Math.floor(L.roof(x));
-        while (L.solid(x, y + 0.5) && y < L.floor) y++;
-        addSpawner(L.B, x, y, rnd2);
-      }
-    }
-    if (L.wait > 0) L.wait -= dt;
-    else {
-      L.px += L.dir * 32 * dt;
-      if (L.px > BAT_LAB_W + 20 || L.px < -20) {
-        L.dir = -L.dir;
-        L.wait = 1.5;
-      }
-    }
-    stepBats(L.B, dt, [{ x: L.px, y: L.floor - 6 }], L.solid, rnd2);
-  }
 
   // src/creatures/glowworm.js
   var HOLD = 0.5;
@@ -8225,98 +8203,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
     }
     return any;
-  }
-  var GLOW_LAB_W = 180, GLOW_LAB_H = 100, GLOW_LAB_N = 6, GLOW_LAB_PARTS = 240;
-  var GLOW_CMD = { reset: false };
-  function glowLab() {
-    const floor = GLOW_LAB_H - 12;
-    const solid = (x, y) => x < 8 || x >= GLOW_LAB_W - 8 || y < 10 + 4 * Math.sin(x * 0.08) || y >= floor || Math.abs(x - 112) < 6 && y > floor - 34;
-    return { worms: [], parts: [], booms: [], solid, floor, px: -20, dir: 1, wait: 1, shot: 4, back: 0, key: "", t: 0, strikes: 0, kills: 0 };
-  }
-  var LAB_SPOTS = [[30, 1], [70, 1], [150, 1], [50, -1], [130, -1], [9, 0], [171, 0], [112, 2]];
-  function labFill(L, rnd2) {
-    const order = LAB_SPOTS.map((q) => ({ q, k: rnd2() })).sort((p, q) => p.k - q.k).map((p) => p.q);
-    for (let i = 0; L.worms.length < GLOW_LAB_N && i < order.length; i++) {
-      const [x, k] = order[i];
-      let px = x, py = 0;
-      if (k === 1) py = L.floor - 0.5;
-      else if (k === -1) {
-        py = 20;
-        while (L.solid(px, py) && py < L.floor) py++;
-        py += 0.5;
-      } else if (k === 0) {
-        py = 50;
-        px = x < 90 ? 8.5 : GLOW_LAB_W - 8.5;
-      } else {
-        py = 20;
-        while (!L.solid(px, py + 1) && py < L.floor) py++;
-        py += 0.5;
-      }
-      if (L.worms.some((w2) => Math.hypot(w2.r.x - px, w2.r.y - py) < 12)) continue;
-      const w = newWorm(px, py, rnd2() < 0.5 ? 1 : -1, L.solid, rnd2);
-      if (w) L.worms.push(w);
-    }
-  }
-  function labBlast(L, w, rnd2) {
-    const m = w.pts[2] || w.r;
-    L.booms.push({ x: m.x, y: m.y, t: 0 });
-    for (let i = 0; i < 40; i++) {
-      const a = rnd2() * 6.283, v = 30 + rnd2() * 120, l = 0.4 + rnd2() * 0.6;
-      L.parts.push({ x: m.x, y: m.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: l, max: l, col: i % 3 ? "#7dff3a" : "#eaffd8", r: 0.6 + rnd2() * 0.8 });
-    }
-    L.worms = L.worms.filter((q) => q !== w);
-    L.kills++;
-    L.back = 1.5;
-  }
-  function glowLabStep(L, dt, rnd2 = Math.random) {
-    L.t += dt;
-    const key = DEV.glowSizeMin + "," + DEV.glowSizeMax + "," + DEV.glowLen + "," + DEV.glowW;
-    if (GLOW_CMD.reset || key !== L.key) {
-      GLOW_CMD.reset = false;
-      L.key = key;
-      L.worms = [];
-      L.parts = [];
-      L.booms = [];
-      labFill(L, rnd2);
-    }
-    if (L.wait > 0) L.wait -= dt;
-    else {
-      L.px += L.dir * 26 * dt;
-      if (L.px > GLOW_LAB_W + 20 || L.px < -20) {
-        L.dir = -L.dir;
-        L.wait = 1.5;
-      }
-    }
-    const tgt = { x: L.px, y: L.floor - 6 };
-    for (const w of L.worms) {
-      const ev = stepWorm(w, dt, L.solid, rnd2, L.px > 0 && L.px < GLOW_LAB_W ? tgt : null);
-      if (ev === "strike") L.strikes++;
-      if (ev === "plant" && L.parts.length < GLOW_LAB_PARTS) {
-        const m = w.pts[2], a0 = Math.atan2(w.r.ny + w.f.ny, w.r.nx + w.f.nx);
-        for (let i = 0; i < Math.round(DEV.glowSpores); i++) {
-          const a = a0 + (rnd2() * 2 - 1) * DEV.glowSporeSpread * Math.PI / 180, v = DEV.glowSporeSpd * (0.6 + 0.4 * rnd2()), l = 2 + rnd2() * 2;
-          L.parts.push({ x: m.x, y: m.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: l, max: l, col: "#7dff3a", r: 0.7 });
-        }
-      }
-    }
-    if ((L.shot -= dt) <= 0) {
-      L.shot = 3 + rnd2() * 3;
-      const up = L.worms.filter((w) => w.st !== "roam").sort((a, b) => Math.abs(a.r.x - L.px) - Math.abs(b.r.x - L.px))[0];
-      if (up) labBlast(L, up, rnd2);
-    }
-    if (L.back > 0 && (L.back -= dt) <= 0) labFill(L, rnd2);
-    for (const p of L.parts) {
-      const k = Math.exp(-3 * dt);
-      p.vx *= k;
-      p.vy *= k;
-      p.vy -= 4 * dt;
-      p.x += p.vx * dt;
-      p.y += p.vy * dt;
-      p.life -= dt;
-    }
-    L.parts = L.parts.filter((p) => p.life > 0).slice(-GLOW_LAB_PARTS);
-    for (const b of L.booms) b.t += dt;
-    L.booms = L.booms.filter((b) => b.t < 0.5);
   }
 
   // src/world/fire.js
@@ -25088,7 +24974,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var LAB_IN = 0.1;
   var EDGE3 = 40;
   var LAB_KINDS = ["vines", "webs", "timber", "moss", "grass"];
-  var LAB_SPOTS2 = LAB_KINDS.map((kind, i) => ({ kind, x0: EDGE3 + i * (LAB_SPOT + LAB_GAP) }));
+  var LAB_SPOTS = LAB_KINDS.map((kind, i) => ({ kind, x0: EDGE3 + i * (LAB_SPOT + LAB_GAP) }));
   var LAB_W = EDGE3 * 2 + LAB_KINDS.length * LAB_SPOT + (LAB_KINDS.length - 1) * LAB_GAP;
   var MINE_H = 46;
   function labScene(vh, seed) {
@@ -25099,7 +24985,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const webs = [];
     const arches = [];
     const lamps = [];
-    for (const { kind, x0: s0 } of LAB_SPOTS2) {
+    for (const { kind, x0: s0 } of LAB_SPOTS) {
       const x0 = s0 + LAB_SPOT * LAB_IN, x1 = s0 + LAB_SPOT * (1 - LAB_IN), SP3 = x1 - x0;
       if (kind === "vines") {
         for (let x = x0 + 3; x < x1 - 3; x += 3 + R() * 5) if (R() < 0.65) vines.push({ x, y: roof, len: room * (0.12 + R() * 0.62), st: "vine" });
@@ -25294,7 +25180,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       ctx.fillStyle = "rgba(15,10,8,0.7)";
       for (let i = 0; i < 7; i++) ctx.fillRect(tx - 7 + hash5(tx, i) * 14 - sx, cy - 9 + hash5(i, tx) * 18, 1, 1);
     }
-    for (const { kind, x0: x02 } of LAB_SPOTS2) {
+    for (const { kind, x0: x02 } of LAB_SPOTS) {
       if (x02 + LAB_SPOT < sx - 10 || x02 > sx + TITLE_VW + 10) continue;
       ctx.fillStyle = "rgba(230,200,120,0.5)";
       pixText(ctx, kind.toUpperCase(), x02 + 6 - sx, y1 - 10, 1, 1, 1);
@@ -25395,139 +25281,136 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     );
   }
 
-  // src/ui/batpreview.js
-  function BatPreview() {
-    const ref = useRef(null);
-    useEffect(() => {
-      const c = ref.current;
-      if (!c || !c.getContext) return;
-      const ctx = c.getContext("2d");
-      const L = batLab();
-      let raf, last = performance.now();
-      const tick = (now) => {
-        raf = requestAnimationFrame(tick);
-        const dt = Math.min(0.05, (now - last) / 1e3);
-        last = now;
-        batLabStep(L, dt);
-        window.__batLabScared = L.px > 30 && L.px < 150 ? L.B.list.filter((b) => b.st === "flee" || b.st === "attack").length : 0;
-        const dpr = window.devicePixelRatio || 1, cw = Math.round(c.clientWidth * dpr), ch2 = Math.round(c.clientHeight * dpr);
-        if (!cw || !ch2) return;
-        if (c.width !== cw || c.height !== ch2) {
-          c.width = cw;
-          c.height = ch2;
-        }
-        const sc = Math.min(cw / BAT_LAB_W, ch2 / BAT_LAB_H);
-        ctx.setTransform(1, 0, 0, 1, 0, 0);
-        ctx.fillStyle = "#0d0f14";
-        ctx.fillRect(0, 0, cw, ch2);
-        ctx.setTransform(sc, 0, 0, sc, (cw - BAT_LAB_W * sc) / 2, (ch2 - BAT_LAB_H * sc) / 2);
-        ctx.fillStyle = "#3a3a44";
-        for (let x = 0; x < BAT_LAB_W; x += 2) for (let y = 0; y < BAT_LAB_H; y += 2) if (L.solid(x + 1, y + 1)) ctx.fillRect(x, y, 2.05, 2.05);
-        const px = L.px, fy = L.floor;
-        ctx.fillStyle = "#d9d2c0";
-        ctx.fillRect(px - 2, fy - 9, 4, 5);
-        ctx.fillStyle = "#6a8fd0";
-        ctx.fillRect(px - 2, fy - 4, 4, 4);
-        ctx.fillStyle = "#20242c";
-        ctx.fillRect(px + (L.dir > 0 ? 0.5 : -1.5), fy - 8, 1, 1);
-        drawBats(ctx, L.B, 0, L.t, [{ x: px, y: fy - 6 }], (x, y, e, paint2) => pixelSprite(ctx, x - e, y - e, 2 * e, 2 * e, 1, false, paint2));
-      };
-      raf = requestAnimationFrame(tick);
-      return () => cancelAnimationFrame(raf);
-    }, []);
-    return h("canvas", { ref, className: "jellyprev batprev" });
+  // src/auto/slicelab.js
+  function sliceHas(S, kind) {
+    const a = S.scroll + 20, b = S.scroll + TITLE_VW - 20;
+    if (kind === "bats") return !!S.bats && S.bats.spawners.some((p) => p.x > a && p.x < b);
+    return !!S.worms && S.worms.filter((w) => w.r.x > a && w.r.x < b).length >= 2;
+  }
+  function sliceFocus(S, kind) {
+    const a = S.scroll + 20, b = S.scroll + TITLE_VW - 20;
+    const ys = kind === "bats" ? S.bats ? S.bats.spawners.filter((p) => p.x > a && p.x < b).map((p) => p.y + 25) : [] : (S.worms || []).filter((w) => w.r.x > a && w.r.x < b).map((w) => w.r.y);
+    return ys.length ? ys.reduce((p, q) => p + q, 0) / ys.length : S.vh / 2;
+  }
+  function jumped(seed, n, vh) {
+    const run = newRun(seed), S = levelScene(vh, seed, 1, void 0, run.players.slice(0, 1), 2, run, true);
+    if (S.lvl) S.lvl.step = null;
+    S.pace = 0;
+    S.spawn = 1e9;
+    for (let i = 0; i < n; i++) {
+      S.scroll += TITLE_VW;
+      titleStep(S, 1 / 60);
+    }
+    return S;
+  }
+  function sliceFind(kind, vh, rnd2 = Math.random) {
+    for (let k = 0; k < 6; k++) {
+      const seed = 1 + Math.floor(rnd2() * 1e6), run = newRun(seed), S = levelScene(vh, seed, 1, void 0, run.players.slice(0, 1), 2, run, true), L = levelState(S);
+      if (S.lvl) S.lvl.step = null;
+      S.pace = 0;
+      S.spawn = 1e9;
+      let skip = Math.floor(rnd2() * 3);
+      for (let n = 1; L && S.scroll + TITLE_VW * 2 < L.plan.arena.x0; n++) {
+        S.scroll += TITLE_VW;
+        titleStep(S, 1 / 60);
+        if (n >= 2 && sliceHas(S, kind) && skip-- <= 0) return { seed, n };
+      }
+    }
+    return { seed: 1, n: 3 };
+  }
+  function sliceScene(P2, vh, rnd2 = Math.random) {
+    const S = jumped(P2.seed, P2.n, vh), L = levelState(S), r = S.runners[0];
+    if (L) L.phase = "run";
+    S.still = false;
+    S.spawn = 0;
+    const x0 = S.scroll + 2, f0 = titleFloor(x0, S);
+    Object.assign(r, { x: -PW - 4, y: f0 - PH, vx: 0, vy: 0, hide: false, out: false, mode: "fly", modeT: 0, ground: false });
+    const gx = S.scroll + TITLE_VW + 12, c = titleCeil(gx, S), f = titleFloor(gx, S);
+    levelWaypoint(S, r.id, gx, c + 12 + rnd2() * Math.max(0, f - c - 24));
+    P2.t = 0;
+    P2.dead = 0;
+    P2.wait = 0;
+    P2.done = false;
+    P2.runs++;
+    return S;
+  }
+  function sliceStep(P2, S, dt) {
+    P2.t += dt;
+    const r = S.runners[0];
+    if (!P2.done) {
+      if (!r || r.out) P2.dead += dt;
+      if (!r || P2.dead > 2 || P2.t > 30 || r.x >= TITLE_VW - PW - 14) {
+        P2.done = true;
+        if (r) r.hide = true;
+      }
+      return false;
+    }
+    return (P2.wait += dt) >= DEV.slicePrevWait;
   }
 
-  // src/ui/glowpreview.js
-  function GlowPreview() {
+  // src/ui/slicepreview.js
+  var gameVh = () => Math.max(200, Math.round(TITLE_VW * (window.innerHeight * 0.62) / Math.max(1, window.innerWidth)));
+  function SlicePreview({ kind, fresh: fresh2 }) {
     const ref = useRef(null);
+    const [full, setFull] = useState(false);
+    const st = useRef({ P: null, again: false, C: null });
+    useEffect(() => {
+      st.current.P = null;
+      st.current.again = true;
+    }, [fresh2]);
     useEffect(() => {
       const c = ref.current;
-      if (!c || !c.getContext) return;
-      const ctx = c.getContext("2d");
-      const L = glowLab();
-      const rock = document.createElement("canvas");
-      rock.width = GLOW_LAB_W;
-      rock.height = GLOW_LAB_H;
-      const rc = rock.getContext("2d");
-      if (rc) {
-        rc.fillStyle = "#34343c";
-        for (let x = 0; x < GLOW_LAB_W; x += 2) for (let y = 0; y < GLOW_LAB_H; y += 2) if (L.solid(x + 1, y + 1)) rc.fillRect(x, y, 2, 2);
-      }
-      const fx = document.createElement("canvas"), FW2 = GLOW_LAB_W / 2, FH2 = GLOW_LAB_H / 2;
-      fx.width = FW2;
-      fx.height = FH2;
-      const fc = fx.getContext("2d");
-      let raf, last = performance.now();
-      const tick = (now) => {
-        raf = requestAnimationFrame(tick);
-        const dt = Math.min(0.05, (now - last) / 1e3);
-        last = now;
-        glowLabStep(L, dt);
-        window.__glowLab = L;
-        const dpr = window.devicePixelRatio || 1, cw = Math.round(c.clientWidth * dpr), ch2 = Math.round(c.clientHeight * dpr);
-        if (!cw || !ch2 || !ctx) return;
-        if (c.width !== cw || c.height !== ch2) {
-          c.width = cw;
-          c.height = ch2;
-        }
-        const sc = Math.min(cw / GLOW_LAB_W, ch2 / GLOW_LAB_H);
-        ctx.setTransform(1, 0, 0, 1, 0, 0);
-        ctx.fillStyle = "#07080b";
-        ctx.fillRect(0, 0, cw, ch2);
-        ctx.setTransform(sc, 0, 0, sc, (cw - GLOW_LAB_W * sc) / 2, (ch2 - GLOW_LAB_H * sc) / 2);
-        ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(rock, 0, 0);
-        const px = L.px, fy = L.floor;
-        ctx.fillStyle = "#d9d2c0";
-        ctx.fillRect(px - 2, fy - 9, 4, 5);
-        ctx.fillStyle = "#6a8fd0";
-        ctx.fillRect(px - 2, fy - 4, 4, 4);
-        for (const w of L.worms) {
-          const b = wormBox(w, 0);
-          pixelSprite(ctx, b.x, b.y, b.w, b.h, 1, false, (q) => drawGlowWorm(q, w, 0));
-          drawGlowFace(ctx, w, 0, L.t);
-        }
-        ctx.globalCompositeOperation = "lighter";
-        if (fc && L.worms.length) {
-          const im = new ImageData(FW2, FH2);
-          if (wormFxFill(im.data, FW2, FH2, { ox: 0, oy: 0, px: 2, t: L.t, worms: L.worms })) {
-            fc.putImageData(im, 0, 0);
-            ctx.imageSmoothingEnabled = true;
-            ctx.drawImage(fx, 0, 0, GLOW_LAB_W, GLOW_LAB_H);
+      if (!c) return void 0;
+      const vh = gameVh();
+      const stop = runScene(c, {
+        size: () => ({ w: c.clientWidth, hh: c.clientHeight }),
+        make: (w, hh2) => {
+          const o = st.current;
+          if (!o.P || o.P.kind !== kind) {
+            const f = sliceFind(kind, vh);
+            o.P = { kind, seed: f.seed, n: f.n, t: 0, dead: 0, wait: 0, runs: 0, done: false };
           }
-        }
-        for (const w of L.worms) {
-          const m = w.pts[2];
-          glowAt(ctx, m.x, m.y, DEV.glowLightR, DEV.glowLight * 0.35 * wormFlicker(w, L.t), String(wormCol(w, 0.3)));
-          drawWormGlow(ctx, w, 0, L.t);
-        }
-        for (const p of L.parts) {
-          ctx.globalAlpha = Math.max(0, p.life / p.max);
-          ctx.fillStyle = p.col;
-          ctx.fillRect(p.x - p.r / 2, p.y - p.r / 2, p.r, p.r);
-        }
-        ctx.globalAlpha = 1;
-        for (const o of L.booms) glowAt(ctx, o.x, o.y, DEV.glowBlastR * (0.6 + o.t * 2), 0.9 * (1 - o.t / 0.5), "125,255,58");
-        ctx.globalCompositeOperation = "source-over";
-        if (DEV.glowDebug > 0.5) {
-          ctx.lineWidth = 0.4;
-          for (const w of L.worms) {
-            ctx.strokeStyle = "rgba(255,200,80,0.5)";
-            ctx.beginPath();
-            ctx.arc(w.r.x, w.r.y, DEV.glowAgroR, 0, 6.29);
-            ctx.stroke();
-            ctx.strokeStyle = "rgba(255,70,70,0.7)";
-            ctx.beginPath();
-            ctx.arc(w.r.x, w.r.y, DEV.glowStrikeR, 0, 6.29);
-            ctx.stroke();
+          const S = sliceScene(o.P, vh), view = hh2 / (w / TITLE_VW), C = titleCam(view / 2, vh);
+          C.view = view;
+          C.y = sliceFocus(S, kind);
+          camClamp(C);
+          o.C = C;
+          o.again = false;
+          window.__slicePrev = { S, P: o.P, C };
+          return { S, C, warm: 0 };
+        },
+        quiet: true,
+        keep: true,
+        step: (S, dt) => {
+          const o = st.current, C = o.C, view = c.clientHeight / (c.clientWidth / TITLE_VW);
+          if (C && Math.abs((C.view || 0) - view) > 0.5) {
+            C.view = view;
+            C.ay = view / 2;
+            camClamp(C);
           }
+          if (o.P && sliceStep(o.P, S, dt)) o.again = true;
+        },
+        next: () => st.current.again
+      });
+      let lastUp = 0, lx = 0, ly = 0;
+      const up = (e) => {
+        const now = performance.now();
+        if (now - lastUp < 320 && Math.hypot(e.clientX - lx, e.clientY - ly) < 24) {
+          setFull((f) => !f);
+          lastUp = 0;
+          return;
         }
+        lastUp = now;
+        lx = e.clientX;
+        ly = e.clientY;
       };
-      raf = requestAnimationFrame(tick);
-      return () => cancelAnimationFrame(raf);
-    }, []);
-    return h("canvas", { ref, className: "jellyprev glowprev" });
+      c.addEventListener("pointerup", up);
+      return () => {
+        stop();
+        c.removeEventListener("pointerup", up);
+      };
+    }, [kind]);
+    return h("div", { className: "sliceprev" + (full ? " full" : "") }, h("canvas", { ref, className: "slicecv", "data-kind": kind }));
   }
 
   // src/version.js
@@ -26506,6 +26389,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       )
     );
   }
+  var SLICE_WAIT = DEV_META.find((m) => m.k === "slicePrevWait");
   function DevRow({ meta }) {
     const [val, setVal] = useState(String(DEV[meta.k]));
     if (meta.type === "curve" || meta.type === "grad" || meta.type === "ramp") return null;
@@ -26646,6 +26530,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     return { g, key: split ? g + "@" + id : g, name: split ? placeById(id).name : name, rows, place: id };
   }).filter((x) => x.rows.length);
   function DevPanel({ close, pages, bats }) {
+    const [slice, setSlice] = useState(0);
     const [copied, setCopied] = useState(null);
     const [q, setQ] = useState("");
     const [openG, setOpenG] = useState(() => lsGet("caverunner-devgroups") || {});
@@ -26776,31 +26661,24 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         ),
         // the page's live preview: pinned here, the controls scroll under it
         pin === "fire" ? h("div", { className: "devpin firesimtop" }, h(FireSim, null)) : null,
-        pin === "bats" ? h(
+        // (Bats, Glow worms) the shared slice preview: a real Coal Seams slice with the enemy on it, a player crossing it (ui/slicepreview.js)
+        pin === "bats" || pin === "glow" ? h(
           "div",
           { className: "devpin" },
-          h(BatPreview, null),
-          // (C4) a cave of bats, a player walking past (ui/batpreview.js)
-          bats ? h(
+          h(SlicePreview, { key: pin, kind: pin, fresh: slice }),
+          h(
             "div",
             { className: "devbtns devpinbtns" },
-            act("batreset", "Reset bats", () => {
+            act("slicenew", "New slice", () => setSlice((n) => n + 1)),
+            pin === "bats" && bats ? act("batreset", "Reset bats", () => {
               BAT_CMD.reset = true;
-            }),
+            }) : null,
             // (C4, creatures/bats.js: Grem's panel only, prop bats)
-            act("batscare", "Scare all bats", () => {
+            pin === "bats" && bats ? act("batscare", "Scare all bats", () => {
               BAT_CMD.scare = true;
-            })
-          ) : null
-        ) : null,
-        pin === "glow" ? h(
-          "div",
-          { className: "devpin" },
-          h(GlowPreview, null),
-          // (C5) a cave room of glow worms, a player walking past (ui/glowpreview.js)
-          h("div", { className: "devbtns devpinbtns" }, act("glowreset", "Reset worms", () => {
-            GLOW_CMD.reset = true;
-          }))
+            }) : null
+          ),
+          SLICE_WAIT ? h(DevRow, { meta: SLICE_WAIT }) : null
         ) : null,
         h(
           "div",

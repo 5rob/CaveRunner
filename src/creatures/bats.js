@@ -257,30 +257,3 @@ function drawBat(c, b, dcol) {
   c.fillRect(s * 0.4 - 0.25, ey, 0.5, 0.6); c.fillRect(-s * 0.2 - 0.25, ey, 0.5, 0.6);   // (ears)
 }
 
-// ---- the Dev preview's cave (ui/batpreview.js; the owner: "a cave of bats with a player walking past periodically") ----
-// A small room across with a bumpy roof, a boulder hanging off it, and a floor; two spawners under the rock; a player walking across
-// and back every few seconds. Rebuilt when the bats-a-spawner knobs change; every other knob is read live.
-export const BAT_LAB_W = 180, BAT_LAB_H = 100;
-/** @typedef {{ B: Bats, solid: BatSolid, roof: (x: number) => number, floor: number, px: number, dir: number, wait: number, key: string, t: number }} BatLab */
-/** @returns {BatLab} */
-export function batLab() {
-  const roof = (/** @type {number} */ x) => 12 + 5 * Math.sin(x * 0.07) + 3 * Math.sin(x * 0.19 + 1);
-  const floor = BAT_LAB_H - 10;
-  const boulder = (/** @type {number} */ x, /** @type {number} */ y) => Math.hypot((x - 132) / 16, (y - roof(132) - 8) / 10) < 1;
-  /** @type {BatSolid} */
-  const solid = (x, y) => x < 0 || x >= BAT_LAB_W || y < roof(x) || y >= floor || boulder(x, y);
-  return { B: newBats(), solid, roof, floor, px: -20, dir: 1, wait: 2, key: '', t: 0 };
-}
-/** @param {BatLab} L @param {number} dt @param {() => number} [rnd] */
-export function batLabStep(L, dt, rnd = Math.random) {
-  L.t += dt;
-  const key = DEV.batPerSpawnLo + ',' + DEV.batPerSpawnHi;
-  if (key !== L.key) {   // (the groups' size changed: released afresh)
-    L.key = key; L.B = newBats();
-    for (const x of [50, 132]) { let y = Math.floor(L.roof(x)); while (L.solid(x, y + 0.5) && y < L.floor) y++; addSpawner(L.B, x, y, rnd); }
-  }
-  // the player: waits off one side, walks across, waits off the other, walks back
-  if (L.wait > 0) L.wait -= dt;
-  else { L.px += L.dir * 32 * dt; if (L.px > BAT_LAB_W + 20 || L.px < -20) { L.dir = -L.dir; L.wait = 1.5; } }
-  stepBats(L.B, dt, [{ x: L.px, y: L.floor - 6 }], L.solid, rnd);
-}

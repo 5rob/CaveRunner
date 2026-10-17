@@ -691,3 +691,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .agkperks{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .agkperk{height:34px;border-radius:8px;background:#1d1531;border:2px solid #3d2f5c;color:#d8cff0;font:600 12px system-ui,sans-serif}
 .agkperk.on{border-color:#ffc93c;color:#fff}
+
+/* Dev → Bats / Glow worms: the slice preview (ui/slicepreview.js); double-tap: full screen */
+.sliceprev{position:relative}
+.sliceprev .slicecv{display:block;width:100%;height:220px;border-radius:10px;touch-action:none;background:#000}
+.sliceprev.full{position:fixed;inset:0;z-index:1000;background:#000;padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}
+.sliceprev.full .slicecv{height:100%;border-radius:0}

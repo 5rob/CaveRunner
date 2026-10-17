@@ -27,40 +27,25 @@ require('../tests/build')();
   const save = async (n, what, clip) => { await page.screenshot({ path: path.join(OUT, PRE + '-' + n + '.png'), clip }); said.push(`${PRE}-${n}.png  ${what}`); };
   const zone = () => page.evaluate(() => { const S = window.__gremScene; return S ? titleZoneSpan(S.scroll + 110, S).z : '?'; });
   // (C4) Dev → Grem → Bats: the live preview (a cave of bats, a player walking past); then the player under a roost, scaring it
-  // (C5) Dev → Coal Seams → Glow worms: the live preview pinned over the knobs, calm, then the player close (agro / strike)
-  if (ONLY === 'glowdev') {
+  // Dev → Coal Seams → Bats / Glow worms: the shared slice preview (ui/slicepreview.js) with the player crossing, then full screen
+  if (ONLY === 'slicedev') {
     await page.waitForTimeout(600);
     await page.locator('.grem .adevbtn').dispatchEvent('pointerdown');
     await page.waitForTimeout(500);
     await page.locator('.devside[data-s=level]').click();
     await page.locator('select.devlv').selectOption('coal');
     await page.waitForTimeout(200);
-    await page.locator('.devtab[data-t=glow]').click();
-    await page.waitForFunction(() => { const L = window.__glowLab; return !!L && L.px < -5 && L.worms.every(w => w.st === 'roam' && w.ag === 0); }, undefined, { polling: 'raf', timeout: 30000 });
-    await save('calm', 'Dev → Coal Seams → Glow worms: the live preview pinned over the knobs, the worms calm (player off to the side)');
-    await page.evaluate(() => { DEV.glowDebug = 1; });
-    await page.waitForFunction(() => { const L = window.__glowLab; return !!L && L.worms.some(w => w.st === 'strike' && w.sk > 0.1); }, undefined, { polling: 'raf', timeout: 30000 });
-    await save('close', 'the player close: worms stood up in agro, one mid-strike (debug on: agro reach yellow, strike reach red)');
-    await browser.close(); console.log(said.join(String.fromCharCode(10))); return;
-  }
-  if (ONLY === 'batdev') {
-    await page.waitForTimeout(600);
-    await page.locator('.grem .adevbtn').dispatchEvent('pointerdown');   // (dev mode is on by default on the test page)
-    await page.waitForTimeout(500);
-    await page.locator('.devside[data-s=level]').click();
-    await page.locator('select.devlv').selectOption('coal');
-    await page.waitForTimeout(200);
-    await page.locator('.devtab[data-t=bats]').click();
-    await page.evaluate(() => { DEV.batRoamChance = 0.15; });   // (more of them out for the shots)
-    await page.waitForTimeout(1500);
-    await save('f-dev', 'Dev → Level → Coal Seams → Bats: the live preview pinned over the knobs');
-    const cb = await page.locator('.batprev').boundingBox();
-    const clip = cb ? { x: cb.x, y: cb.y, width: cb.width, height: cb.height } : undefined;
-    await page.evaluate(() => { DEV.batDebug = 1; });
-    for (const [n, w] of [['1', 2500], ['2', 2500], ['3', 3000]]) { await page.waitForTimeout(w); await save('g-state' + n, 'the preview, debug colours on (grey hanging, green roaming, yellow fleeing, red attacking, blue returning), the player walking past', clip); }
-    await page.evaluate(() => { DEV.batDebug = 0; });
-    await page.waitForTimeout(400);
-    await save('h-look', 'the preview as it looks (debug off)', clip);
+    const passing = () => page.waitForFunction(() => { const q = window.__slicePrev; const r = q && q.S.runners[0]; return !!r && !r.hide && r.x > 70 && r.x < 150; }, undefined, { polling: 'raf', timeout: 60000 });
+    for (const [t, n, what] of [['bats', 'bats', 'Dev → Coal Seams → Bats: the slice preview, a real Coal Seams slice with bats, the player crossing it'], ['glow', 'glow', 'Dev → Coal Seams → Glow worms: the slice preview, a slice with a glow worm cluster, the player crossing it']]) {
+      await page.locator('.devtab[data-t=' + t + ']').click();
+      await page.waitForTimeout(300);
+      await passing();
+      await save(n, what);
+    }
+    const cb = await page.locator('.slicecv').boundingBox();
+    if (cb) { const x = cb.x + cb.width / 2, y = cb.y + cb.height / 2; await page.mouse.click(x, y); await page.waitForTimeout(80); await page.mouse.click(x, y); }
+    await page.waitForTimeout(700);
+    await save('full', 'the preview double-tapped: full screen (double-tap again to go back)');
     await browser.close(); console.log(said.join(String.fromCharCode(10))); return;
   }
   // (C4 round 3) the bats are targets: the level played on (darkness lifted for the shots) till the players have hit a bat on screen

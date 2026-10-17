@@ -124,28 +124,6 @@ Object.assign(D, keep0);
   Object.assign(D, keep0);
 }
 
-// ---- the Dev preview's cave (batLab): steps cleanly, the walking player scares them, the state stays the same size ----
-{
-  const L = G.batLab(); let err = null, fled = 0, inR = 0;
-  try {
-    for (let i = 0; i < 60 * 12; i++) {
-      G.batLabStep(L, 1 / 60, rnd);
-      if (L.B.list.some(b => b.st === 'flee')) fled++;
-      for (const b of L.B.list) if (b.st !== 'hang' && L.solid(b.x, b.y)) inR++;
-    }
-  } catch (e) { err = e.message; }
-  check('Dev preview: steps without errors, two spawners', !err && L.B.spawners.length === 2, err || L.B.spawners.length);
-  check('… the walking player scares them', fled > 0, fled);
-  check('… no bat inside its rock', inR === 0, inR);
-  const size = () => L.B.list.length + L.B.spawners.length;
-  const s0 = size();
-  for (let i = 0; i < 60 * 600; i++) G.batLabStep(L, 1 / 60, rnd);
-  check('ten minutes on: the state the same size (the preview stays fast)', size() === s0, [s0, size()]);
-  D.batPerSpawnLo = D.batPerSpawnHi = 30;
-  try { for (let i = 0; i < 120; i++) G.batLabStep(L, 1 / 60, rnd); } catch (e) { err = e.message; }
-  check('… a new group size: released afresh (30 a spawner)', !err && L.B.list.length === 60, err || L.B.list.length);
-  Object.assign(D, keep0);
-}
 // (owner) the Bats knobs have no min / max
 const rows = G.DEV_META.filter(m => m.g === 'bats');
 check('Bats knobs: no min or max on any row', rows.length >= 30 && rows.every(m => m.min == null && m.max == null), rows.length);

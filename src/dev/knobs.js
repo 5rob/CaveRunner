@@ -554,6 +554,9 @@ batRange([
   ['batBob',         'Look: bob height (units)', 0.1, 0.8, 1.6],
   ['batWiggle',      'Look: wiggle across the way (units)', 0.1, 1, 3],
   ['batWiggleF',     'Look: wiggles a second', 0.1, 0.8, 1.8]]);
+// (the Bats and Glow worms pages' slice preview, auto/slicelab.js) the pause before the next player comes in
+Object.assign(DEV_DEFAULTS, { slicePrevWait: 2 });
+DEV_META.push({ k: 'slicePrevWait', g: 'bats', label: 'Preview: wait before the next player comes in (s)', step: 0.5 });
 DEV_GROUPS.push(['bats', 'Bats']);
 // (C5a) Coal Seams' glow worms (creatures/glowworm.js, the owner's spec): the body and the inchworm gait
 Object.assign(DEV_DEFAULTS, { glowCluster: 0.35, glowClusterMin: 3, glowClusterMax: 20, glowInMines: 1, glowInDig: 1, glowInCavern: 1, glowSizeMin: 0.8, glowSizeMax: 1.3, glowAmbientR: 70, glowStride: 4, glowDMin: 2.5, glowDMax: 6.5, glowLiftF: 0.6, glowLiftR: 0.4, glowCrank: 4.5, glowLen: 8, glowW: 1.8, glowFoot: 1, glowTurn: 0.1,

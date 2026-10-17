@@ -20,9 +20,7 @@ import {
 import { devCopyText } from '../auto/devcopy.js';
 import { BAT_CMD } from '../creatures/bats.js';
 import { FireSim } from './firesim.js';
-import { BatPreview } from './batpreview.js';
-import { GlowPreview } from './glowpreview.js';
-import { GLOW_CMD } from '../creatures/glowworm.js';
+import { SlicePreview } from './slicepreview.js';
 import { ZoneSim } from './zonesim.js';
 import { h, useEffect, useRef, useState } from './h.js';
 
@@ -475,6 +473,8 @@ export function RampEditor({ k = 'elFxAlpha', life = 'elFxLife' } = {}) {
 // value, its default shown as the placeholder. Committing an empty box restores the
 // default; anything else is parsed, clamped to the knob's range and saved at once.
 /** @param {{ meta: DevRow }} props */
+// the slice preview's own knob, shown under it on both pages (its row also sits in the Bats group)
+const SLICE_WAIT = DEV_META.find(m => m.k === 'slicePrevWait');
 export function DevRow({ meta }) {
   const [val, setVal] = useState(String(DEV[meta.k]));
   if (meta.type === 'curve' || meta.type === 'grad' || meta.type === 'ramp') return null;   // shaped on their editors, not typed
@@ -573,6 +573,7 @@ const pageGroups = id => DEV_GROUPS.filter(([g]) => !g.startsWith('zone_')).map(
 }).filter(x => x.rows.length);
 /** @param {{ close: () => void, pages?: Record<string, () => any>, bats?: boolean }} props */
 export function DevPanel({ close, pages, bats }) {
+  const [slice, setSlice] = useState(0);   // (the slice preview's New slice)
   const [copied, setCopied] = useState(null);     // null, or the text + whether it copied
   const [q, setQ] = useState('');
   // which groups are open: remembered on this device only, all shut the first time (a page of one group, and Fire: open)
@@ -656,12 +657,13 @@ export function DevPanel({ close, pages, bats }) {
           tabs.map(p => btn('devtab', p.id === tab, { key: p.id, 'data-t': p.id, role: 'tab', 'aria-selected': p.id === tab }, p.name, () => setTab(p.id), chgOf(p.id))))),
       // the page's live preview: pinned here, the controls scroll under it
       pin === 'fire' ? h('div', { className: 'devpin firesimtop' }, h(FireSim, null)) : null,
-      pin === 'bats' ? h('div', { className: 'devpin' }, h(BatPreview, null),   // (C4) a cave of bats, a player walking past (ui/batpreview.js)
-        bats ? h('div', { className: 'devbtns devpinbtns' },
-          act('batreset', 'Reset bats', () => { BAT_CMD.reset = true; }),   // (C4, creatures/bats.js: Grem's panel only, prop bats)
-          act('batscare', 'Scare all bats', () => { BAT_CMD.scare = true; })) : null) : null,
-      pin === 'glow' ? h('div', { className: 'devpin' }, h(GlowPreview, null),   // (C5) a cave room of glow worms, a player walking past (ui/glowpreview.js)
-        h('div', { className: 'devbtns devpinbtns' }, act('glowreset', 'Reset worms', () => { GLOW_CMD.reset = true; }))) : null,
+      // (Bats, Glow worms) the shared slice preview: a real Coal Seams slice with the enemy on it, a player crossing it (ui/slicepreview.js)
+      pin === 'bats' || pin === 'glow' ? h('div', { className: 'devpin' }, h(SlicePreview, { key: pin, kind: pin, fresh: slice }),
+        h('div', { className: 'devbtns devpinbtns' },
+          act('slicenew', 'New slice', () => setSlice(n => n + 1)),
+          pin === 'bats' && bats ? act('batreset', 'Reset bats', () => { BAT_CMD.reset = true; }) : null,   // (C4, creatures/bats.js: Grem's panel only, prop bats)
+          pin === 'bats' && bats ? act('batscare', 'Scare all bats', () => { BAT_CMD.scare = true; }) : null),
+        SLICE_WAIT ? h(DevRow, { meta: SLICE_WAIT }) : null) : null,
       h('div', { className: 'devbody' + (pin === 'zones' ? ' zonesmode' : '') },
         // (Dev → Level → Caves → Zones) the zone preview, sticky at the top of the scroll, and its zone cards
         pin === 'zones' ? h(ZoneSim, { Row: DevRow }) : null,
