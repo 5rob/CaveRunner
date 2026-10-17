@@ -150,6 +150,14 @@ export const levelState = S => (S.lvl && S.lvl.data) || null;
 // the team's place in the level (world x)
 /** @param {import('../art/titlescene.js').TitleScene} S */
 export const levelTeamX = S => S.scroll + LVL_TEAM;
+// how far into the level the team is, 0..1 (the HUD's progress panel); 1 from the arena on
+/** @param {import('../art/titlescene.js').TitleScene} S @returns {number} */
+export function levelProgress(S) {
+  const L = levelState(S);
+  if (!L) return 0;
+  if (L.phase !== 'arrive' && L.phase !== 'run') return 1;
+  return Math.max(0, Math.min(1, (levelTeamX(S) - L.plan.z0) / Math.max(1, L.plan.len)));
+}
 
 // The level's scene: titleScene with the finite plan, n players, the band (roof and floor) lower than the menu's
 // team: the run's players (stage 5a): each fires its active gun for real (art/scenegun.js), and its damage dealt and

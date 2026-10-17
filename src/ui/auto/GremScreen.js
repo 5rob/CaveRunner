@@ -1,13 +1,13 @@
 // @ts-check
 // Grem Mode's screen (owner, 2026-10-15; the rules: auto/grem.js): the title's GREM MODE button opens it. No hub, no nav, no
 // saving: one player teleports straight into an endless level (auto/level.js levelScene's grem: gold the only drop, after each
-// boss LEVEL CLEARED and on into more cave, the level + 1). Top to bottom: the play area (⏸ top right, the level top left), the
+// boss LEVEL CLEARED and on into more cave, the level + 1). Top to bottom: the play area (⏸ top right), the
 // gold collected (a big nugget and number, centred), the gun presets in their order (GremGuns, one row scrolling sideways:
 // locked ones dim, the one being paid off filling its outline clockwise, a freshly unlocked one glowing till it's used, none equipped by itself (v1.0.92);
 // a tap on an unlocked one gives it to the picked player; the 3 extra players are unlocks on the same row, spread among the
 // guns: owner v1.0.90, auto/grem.js gremUnlocks), the players' helmets (GremHelms: no health rings, players take no damage in
-// Grem; the picked one ringed white; a tap picks him; split either side of the stick), and the stick, centred at the bottom
-// (it steers the picked player). No A or B (owner v1.0.90): a tap on the play area opens a chest in reach. No bag (owner):
+// Grem; the picked one ringed white; a tap picks him; in a 2×2 left of the stick), the stick, centred at the bottom
+// (it steers the picked player), and right of it the level panel (GremLevel: its outline fills as the level goes). No A or B (owner v1.0.90): a tap on the play area opens a chest in reach. No bag (owner):
 // the gold is kept in the run's bag (bagCount) but each pickup flies into the gold counter.
 // The stick takes player 1 over by hand at once (levelControl; the camera follows him); DEV.autoCtlWait s after it's let go
 // the autopilot has him again. A tap on the play area picks the creature nearest the tap (within DEV.gremPickR): every player
@@ -24,7 +24,7 @@ import { DEV } from '../../dev/knobs.js';
 import { clearedText } from '../../art/cleared.js';
 import { drawHint } from '../../game/render/hubdraw.js';
 import { chestAt, chestOpen } from '../../auto/chests.js';
-import { levelClearedAge, levelControl, levelDeathPrompt, levelHold, levelLead, levelLost, levelScene, levelState, levelTeleportHome, levelTitle, levelWaypoint, levelGoal } from '../../auto/level.js';
+import { levelClearedAge, levelControl, levelDeathPrompt, levelHold, levelLead, levelLost, levelScene, levelState, levelTeleportHome, levelTitle, levelWaypoint, levelGoal, levelProgress } from '../../auto/level.js';
 import { levelBoss } from '../../auto/enemies.js';
 import { bagCount, healRun, newPlayer, starterKit } from '../../auto/run.js';
 import { gremFill, gremKitLoad, gremOpen, gremPrice, gremRun, gremTeamGun, gremUnlocked, gremUnlocks } from '../../auto/grem.js';
@@ -61,6 +61,7 @@ export function GremScreen() {
   pausedRef.current = paused || devOpen;
   const [gold, setGold] = useState(0);
   const [lvl, setLvl] = useState(1);
+  const [prog, setProg] = useState(0);   // how far into the level (levelProgress): the level panel's outline fills clockwise
   /** @type {number[]} */
   const noHas = [-1];
   const [has, setHas] = useState(noHas);      // the preset each player has (-1: his starter gun)
@@ -109,7 +110,7 @@ export function GremScreen() {
       const S = scene.current, R = run.current, C = cam.current;
       if (!S) return;
       const g = bagCount(R, 'gold');
-      setGold(g); setLvl(R.tier);
+      setGold(g); setLvl(R.tier); setProg(Math.round(levelProgress(S) * 200) / 200);
       const lk = lookAt(S, S.scroll + TITLE_VW / 2); setLvlName(lk ? lk.name : floorName(1));   // (owner v1.0.103) the old floor in view
       // gold paid off the next unlock(s): it glows on the row till it's used (owner v1.0.92: no auto-equip); a player joins (below)
       const u = gremUnlocked(g, items.current.length);
@@ -285,15 +286,16 @@ export function GremScreen() {
   return h('div', { className: 'auto grem' },
     h('div', { className: 'aplay', onPointerDown: playTap },
       h('canvas', { ref: cvs, className: 'aplaycvs' }),
-      h('div', { className: 'glvl' }, 'Level ' + lvl, h('small', null, lvlName)),
       boss ? h('div', { className: 'abossbar gboss' }, h('b', null, boss.name),
         h('div', { className: 'abosstrack' }, h('i', { style: { width: (100 * boss.hp / Math.max(1, boss.max)).toFixed(1) + '%' } }))) : null,
       devOn ? h('button', { className: 'adevbtn', title: 'Dev', onPointerDown: e => { e.preventDefault(); e.stopPropagation(); SFX.fx('open'); setDevOpen(true); } }, '⚙️') : null,
       h('button', { className: 'pausebtn', title: 'Pause', onPointerDown: pauseDown }, '⏸')),
     h('div', { className: 'ggold', 'data-gold': gold }, h('span', { className: 'ggicon' }, h(NuggetIcon, { kind: 'gold' })), h('b', null, gold.toLocaleString())),
     h(GremGuns, { presets, items: items.current, gold, sel: has[who] ?? -1, who, fresh, pick: pickItem, box: guns }),
-    h(GremHelms, { run: run.current, who, pick: pickWho }),
-    h('div', { className: 'abtns gstick' }, h(PillStick, { onMove: steer })),
+    h('div', { className: 'gbot' },
+      h(GremHelms, { run: run.current, who, pick: pickWho }),
+      h('div', { className: 'gstick' }, h(PillStick, { onMove: steer })),
+      h(GremLevel, { lvl, name: lvlName, prog })),
     flies.map(f => h(FlyTile, { key: f.k, f, done: () => setFlies(fs => fs.filter(q => q.k !== f.k)) })),
     devOpen ? h(DevPanel, { close: () => { SFX.fx('close'); setDevOpen(false); }, pages: DEV_PAGES, bats: true }) : null,
     paused ? h(PauseMenu, { input, label: 'Grem Mode · Level ' + lvl, onNew: () => location.reload(), close: () => { SFX.fx('close'); setPaused(false); } }) : null);
@@ -327,15 +329,26 @@ function GremGuns({ presets, items, gold, sel, who, fresh, pick, box }) {
   }));
 }
 
-// The players' helmets (as the nav's player row, owner v1.0.90: no health rings, no damage in Grem), players 1-2 left of the
-// stick's dome, 3-4 right of it; the picked one ringed white; a tap picks him
+// The players' helmets (as the nav's player row, owner v1.0.90: no health rings, no damage in Grem), a 2×2 grid left of the
+// stick (1 2 / 3 4); the picked one ringed white; a tap picks him
 /** @param {{ run: AutoRun, who: number, pick: (i: number) => void }} props */
 function GremHelms({ run, who, pick }) {
   /** @param {RunPlayer} q @param {number} i */
   const helm = (q, i) => h('button', { key: i, className: 'anavc on' + (i === who ? ' sel' : ''), 'data-player': i, onPointerDown: tap(() => pick(i)),
     style: { boxShadow: i === who ? undefined : '0 0 10px ' + q.col + '66' } },
     h(HelmetIcon, { col: q.col, size: 35 }));
-  return h('div', { className: 'ghelms' },
-    h('div', { className: 'ghl' }, run.players.slice(0, 2).map((q, i) => helm(q, i))),
-    h('div', { className: 'ghr' }, run.players.slice(2).map((q, i) => helm(q, i + 2))));
+  return h('div', { className: 'ghelms' }, run.players.map((q, i) => helm(q, i)));
+}
+
+// The level panel right of the stick: an inset box with the level and its name, its outline filling clockwise from the top
+// centre as the team gets through the level (prog 0..1; levelProgress). An SVG path round the box, pathLength 100
+/** @param {{ lvl: number, name: string, prog: number }} props */
+function GremLevel({ lvl, name, prog }) {
+  const p = (100 * prog).toFixed(1);
+  const box = 'M50 1.5 H92 Q98.5 1.5 98.5 8 V92 Q98.5 98.5 92 98.5 H8 Q1.5 98.5 1.5 92 V8 Q1.5 1.5 8 1.5 Z';
+  return h('div', { className: 'glvlbox', 'data-prog': prog.toFixed(3) },
+    h('svg', { className: 'glvlring', viewBox: '0 0 100 100', preserveAspectRatio: 'none' },
+      h('path', { className: 'glvltrack', d: box, vectorEffect: 'non-scaling-stroke' }),
+      h('path', { className: 'glvlfill', d: box, pathLength: 100, vectorEffect: 'non-scaling-stroke', strokeDasharray: p + ' 100' })),
+    h('div', { className: 'glvl' }, 'Level ' + lvl, h('small', null, name)));
 }

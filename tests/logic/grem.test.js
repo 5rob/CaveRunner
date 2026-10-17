@@ -158,5 +158,15 @@ const rc = { x: r.x + 6, y: r.y + 11 }, d1 = Math.hypot(hole.x - rc.x, hole.y - 
 check('with Follow Me it comes to its caster', d1 < d0 * 0.4, [d0, d1]);
 check('without, it hangs where it was cast', Math.abs(still.x - (cx + G.WH_AHEAD)) < 1, still.x);
 
+// the HUD's level panel: levelProgress 0 at the start, the share of the run to the arena, 1 from the arena on
+{
+  const P = G.levelScene(300, 5, 1, undefined, G.newRun(3).players, 1, G.newRun(3), true), PL = G.levelState(P);
+  P.scroll = PL.plan.z0 - G.levelTeamX({ ...P, scroll: 0 }) - 50; PL.phase = 'run';
+  check('progress 0 before the level', G.levelProgress(P) === 0, G.levelProgress(P));
+  P.scroll += 50 + PL.plan.len * 0.4;
+  check('progress 0.4 at 40%', Math.abs(G.levelProgress(P) - 0.4) < 1e-6, G.levelProgress(P));
+  PL.phase = 'arena';
+  check('progress 1 in the arena', G.levelProgress(P) === 1, G.levelProgress(P));
+}
 console.log(fails ? `${fails} FAILED` : 'all passed');
 process.exit(fails ? 1 : 0);

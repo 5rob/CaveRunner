@@ -615,7 +615,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 
 .grem .aplay{flex:1 1 0;min-height:0}
 .glvl small{display:block;margin-top:2px;font-size:11px;font-weight:800;letter-spacing:.05em;color:#d9cdf5}   /* (owner v1.0.103) the level's name under its number */
-.glvl{position:absolute;left:10px;top:8px;font:900 14px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.08em;color:#fff;text-shadow:0 0 4px #000,0 0 8px #000;pointer-events:none}
+.glvl{position:relative;font:900 15px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.08em;color:#fff;text-align:center;text-shadow:0 0 4px #000;pointer-events:none}
 .ggold{flex:none;display:flex;align-items:center;justify-content:center;gap:10px;height:46px}
 .ggicon{width:42px;height:42px;display:flex}
 .ggicon canvas{width:100%;height:100%;image-rendering:pixelated}
@@ -640,17 +640,21 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 /* (owner v1.0.92) the pause button twice the size; the boss bar under the level */
 .grem .pausebtn{width:76px;height:76px;font-size:34px;border-radius:14px}
 .grem .adevbtn{right:96px;width:56px;height:56px;font-size:26px;border-radius:12px}   /* (v1.0.100) left of Grem's big ⏸ */
-.gboss{position:absolute;left:10px;right:96px;top:30px;pointer-events:none}
-/* the players' helmets, between the guns and the stick: 1-2 left of the stick's dome, 3-4 right of it */
-.ghelms{flex:none;height:70px;display:grid;grid-template-columns:1fr 152px 1fr;align-items:center}
-.ghl,.ghr{display:flex;align-items:center;gap:12px}
-.ghl{justify-content:flex-end}
-.ghr{justify-content:flex-start;grid-column:3}
-/* no A or B (owner v1.0.90): the bar is the stick alone, its dome in the middle */
-.grem .abtns.gstick{height:58px;padding:0;border-radius:14px}
-.grem .abtns.gstick::after{border-radius:12px}
-.grem .gstick .astick{left:calc(50% - 74px)}
+.gboss{position:absolute;left:10px;right:96px;top:12px;pointer-events:none}
+/* the bottom row: the helmets in a 2×2 left of the stick, the stick, the level panel right of it (no bar under them) */
+.gbot{flex:none;height:128px;display:grid;grid-template-columns:1fr 148px 1fr;align-items:center;gap:6px}
+.ghelms{display:grid;grid-template-columns:repeat(2,50px);grid-auto-rows:50px;gap:8px;justify-content:center;align-content:center}
 .ghelms .anavc{padding:0;display:flex;align-items:center;justify-content:center}
+/* the stick: its dome cut at the screen's bottom */
+.gstick{position:relative;align-self:stretch}
+.gstick .astick{left:0;top:0;bottom:0}
+/* the level panel: an inset box, its outline filling clockwise from the top centre as the level goes (GremLevel, an SVG path) */
+.glvlbox{position:relative;justify-self:center;width:100%;max-width:150px;height:104px;box-sizing:border-box;padding:8px;border-radius:12px;
+  background:#0a0614;box-shadow:inset 0 3px 8px rgba(0,0,0,0.85),inset 0 -1px 0 rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:center;pointer-events:none}
+.glvlring{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.glvlring path{fill:none;stroke-width:4px;stroke-linecap:round}
+.glvltrack{stroke:#2c2340}
+.glvlfill{stroke:#ffc93c;filter:drop-shadow(0 0 3px rgba(255,201,60,0.7));transition:stroke-dasharray .25s linear}
 /* Dev → Presets (ui/auto/presetlib.js) */
 .apltiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:7px;margin-bottom:10px}
 .apltile{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 4px 4px;border-radius:10px;background:#2c1f45;border:2px solid #ffc93c88;color:#f1ecff;touch-action:pan-y}
