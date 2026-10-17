@@ -44,7 +44,7 @@ require('../tests/build')();
     await page.waitForTimeout(1200);
     for (const n of ['1', '2', '3']) { await save('g-fly' + n, 'the preview mid-flight, frame ' + n + ' (about 1/12 s apart: the wingbeat bob)', clip); await page.waitForTimeout(80); }
     await page.waitForTimeout(20000);
-    await save('j-refilled', 'the preview 20 s on: the roosts filled again, one bat a slot', clip);
+    await save('j-refilled', 'the preview 20 s on: the roosts filled again', clip);
     await browser.close(); console.log(said.join(String.fromCharCode(10))); return;
   }
   // (C4 round 3) the bats are targets: the level played on (darkness lifted for the shots) till the players have hit a bat on screen

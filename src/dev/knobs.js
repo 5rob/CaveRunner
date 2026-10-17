@@ -513,7 +513,7 @@ DEV_GROUPS.push(['coal', 'Coal Seams']);
 Object.assign(DEV_DEFAULTS, { batRoosts: 1.5, batsPerRoost: 14, batSlotSpacing: 8, batTakeoff: 0.02, batFlightMin: 4, batFlightMax: 10, batMaxSpeed: 140, batMaxForce: 700,
   batPerception: 55, batSepDist: 16, batSep: 1.8, batAli: 0.08, batCoh: 0.5, batWander: 1.2, batZonePull: 2, batWallAvoid: 3, batScareR: 90, batClearMult: 1.6,
   batScare: 1, batDebug: 0, batBite: 0, batSize: 1, batHp: 3, batPanic: 3,
-  batDrag: 3, batJinkRate: 1.5, batJinkStr: 70, batFlapRate: 6, batFlapLift: 22, batGravity: 110, batLookAhead: 0.25 });
+  batDrag: 3, batJinkRate: 1.5, batJinkStr: 70, batFlapRate: 6, batFlapLift: 22, batGravity: 132, batLookAhead: 0.25, batOpen: 1.5 });
 DEV_META.push(
   { k: 'batRoosts',      g: 'bats', label: 'Bat roosts: about this many a screen (under the roof, under boulders)', step: 0.1 },
   { k: 'batsPerRoost',   g: 'bats', label: 'Bats per roost', step: 1 },
@@ -545,6 +545,7 @@ DEV_META.push(
   { k: 'batFlapRate',    g: 'bats', label: 'Flight: wingbeats a second', step: 0.5 },
   { k: 'batFlapLift',    g: 'bats', label: 'Flight: lift each wingbeat (the bob)', step: 1 },
   { k: 'batGravity',     g: 'bats', label: 'Flight: gravity between wingbeats', step: 5 },
+  { k: 'batOpen',        g: 'bats', label: 'Flight: pull out into the open air (the middle of the space round it)', step: 0.1 },
   { k: 'batLookAhead',   g: 'bats', label: 'Flight: looks ahead for rock (s of its speed, on top of 18 units)', step: 0.05 });
 DEV_GROUPS.push(['bats', 'Bats']);
 // (C5a) Coal Seams' glow worms (creatures/glowworm.js, the owner's spec): the body and the inchworm gait

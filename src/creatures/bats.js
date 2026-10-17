@@ -7,17 +7,18 @@
 
 import { DEV } from '../dev/knobs.js';
 
-/** @typedef {{ x: number, y: number, x0: number, x1: number, y0: number, y1: number, n: number, hy: (number | undefined)[], bad?: Set<number> }} BatRoost */
-/** @typedef {{ x: number, y: number, vx: number, vy: number, ro: BatRoost, slot: number, st: 'roost' | 'fly' | 'return', t: number, scared: boolean, wa: number, ph: number, bite: number, placed: boolean, gone?: boolean, panic?: number, f?: any, hpSeen?: number, rt?: number, jt?: number, fp?: number }} Bat */
+/** @typedef {{ x: number, y: number, x0: number, x1: number, y0: number, y1: number, n: number, hy: (number | undefined)[] }} BatRoost */
+/** @typedef {{ x: number, y: number, vx: number, vy: number, ro: BatRoost, slot: number, st: 'roost' | 'fly' | 'return', t: number, scared: boolean, wa: number, ph: number, bite: number, placed: boolean, gone?: boolean, panic?: number, f?: any, hpSeen?: number, rt?: number, jt?: number, fp?: number, ot?: number, ox?: number, oy?: number }} Bat */
 /** @typedef {{ roosts: BatRoost[], list: Bat[], hits?: number }} Bats */
 /** @typedef {(x: number, y: number) => boolean} BatSolid */
 
 // the Dev panel's buttons (ui/devpanel.js): read and cleared by the next stepBats
 export const BAT_CMD = { reset: false, scare: false };
 const LOOK = 18;      // look this far ahead for rock
-const ZONE_W = 70;    // a roost's rectangle: this far each side of the anchor…
-const ZONE_H = 80;    // … and this far down from it
-const RETURN_T = 4;   // homing longer than this: another free slot, or off again (never stuck trying to land)
+const ZONE_W = 110;    // a roost's rectangle: this far each side of the anchor…
+const ZONE_H = 140;    // … and this far down from it
+const RETURN_T = 3;   // homing longer than this: the snap reach grows (never stuck trying to land)
+const OPEN_R = 80;    // how far a flying bat looks for the open air round it
 const WHISKERS = [[0, 1], [0.5, 0.7], [-0.5, 0.7], [1.1, 0.35], [-1.1, 0.35]];   // (angle off its heading, weight)
 
 /** @returns {Bats} */
@@ -60,27 +61,9 @@ function takeOff(b, rnd, scared) {
   b.vy += 30 + rnd() * 20; b.vx += (rnd() - 0.5) * 40;   // (a small downward kick)
 }
 
-// home: claim the nearest free slot of its roost (none hanging there, none homing to it; its own counts as free). again: not the
-// one it has. False: none free
-/** @param {Bats} B @param {Bat} b @param {BatSolid} solid @param {boolean} [again] */
-function startReturn(B, b, solid, again) {
-  const ro = b.ro, used = new Set();
-  for (const o of B.list) if (o !== b && o.ro === ro && !o.gone && (o.st === 'roost' || o.st === 'return')) used.add(o.slot);
-  let best = -1, bd = Infinity;
-  if (again) (ro.bad ||= new Set()).add(b.slot);   // (a slot it couldn't reach: not tried again)
-  for (let i = 0; i < ro.n; i++) {
-    if (used.has(i) || ro.bad?.has(i)) continue;
-    const p = slotPos(ro, i, solid);
-    if (isNaN(p.y) || solid(p.x, p.y + 0.5)) continue;
-    const q = Math.hypot(p.x - b.x, p.y - b.y);
-    if (q < bd) { bd = q; best = i; }
-  }
-  // none free: a fresh slot further out along the rock (the roost grows a little)
-  for (let k = 0; best < 0 && k < 12; k++) { const i = ro.n++, p = slotPos(ro, i, solid); if (!isNaN(p.y) && !solid(p.x, p.y + 0.01)) best = i; }
-  if (best < 0) return false;
-  b.slot = best; b.st = 'return'; b.rt = 0;
-  return true;
-}
+// home (owner, round 5: no free-slot or spacing rules): back to its own spot; roosting bats may overlap
+/** @param {Bat} b */
+function startReturn(b) { b.st = 'return'; b.rt = 0; }
 
 // a steering force toward a heading: (unit(d) × maxSpeed − v), or nothing
 /** @param {Bat} b @param {number} dx @param {number} dy @param {number[]} out */
@@ -98,7 +81,7 @@ export function stepBats(B, dt, preds, solid, rnd, onBite) {
   if (BAT_CMD.reset) {   // (each to a slot of its own, nearest first)
     BAT_CMD.reset = false;
     for (const b of B.list) b.st = 'fly';
-    for (const b of B.list) if (b.placed && !b.gone && startReturn(B, b, solid)) { const p = slotPos(b.ro, b.slot, solid); b.x = p.x; b.y = p.y; b.vx = b.vy = 0; b.st = 'roost'; b.scared = false; b.panic = 0; }
+    for (const b of B.list) if (b.placed && !b.gone) { const p = slotPos(b.ro, b.slot, solid); b.x = p.x; b.y = p.y; b.vx = b.vy = 0; b.st = 'roost'; b.scared = false; b.panic = 0; }
   }
   if (BAT_CMD.scare) { BAT_CMD.scare = false; for (const b of B.list) if (b.st !== 'fly' || !b.scared) { if (b.st === 'fly') b.scared = true; else takeOff(b, rnd, true); } }
   const fly = B.list.filter(b => b.st === 'fly'), f = [0, 0];
@@ -122,7 +105,7 @@ export function stepBats(B, dt, preds, solid, rnd, onBite) {
       if (rnd() < D.batTakeoff * dt) takeOff(b, rnd, false);
       continue;
     }
-    if (b.st === 'fly' && !b.scared && (b.t -= dt) <= 0) startReturn(B, b, solid);   // 4. the timer runs down only while calm, then home
+    if (b.st === 'fly' && !b.scared && (b.t -= dt) <= 0) startReturn(b);   // 4. the timer runs down only while calm, then home
     let ax = 0, ay = 0, lim = Infinity;
     if (b.st === 'fly') {
       // flocking with the flying bats within perception
@@ -147,11 +130,23 @@ export function stepBats(B, dt, preds, solid, rnd, onBite) {
       // back inside the roost's rectangle
       const R = b.ro, zx = Math.max(R.x0, Math.min(R.x1, b.x)), zy = Math.max(R.y0 + 4, Math.min(R.y1, b.y));
       if (zx !== b.x || zy !== b.y) { steer(b, zx - b.x, zy - b.y, f); ax += f[0] * D.batZonePull; ay += f[1] * D.batZonePull; }
+      // (owner, round 5: out into the open cave) toward the middle of the open air round it: between the rock above and below, and
+      // either side (looked for every 0.25 s, up to OPEN_R away)
+      if ((b.ot = (b.ot ?? rnd() * 0.25) - dt) <= 0) {
+        b.ot = 0.25;
+        const ray = (/** @type {number} */ dx, /** @type {number} */ dy) => { let k = 4; while (k < OPEN_R && !solid(b.x + dx * k, b.y + dy * k)) k += 4; return k; };
+        b.ox = b.x + (ray(1, 0) - ray(-1, 0)) / 2; b.oy = b.y + (ray(0, 1) - ray(0, -1)) / 2;
+      }
+      if (b.ox != null && b.oy != null) { steer(b, b.ox - b.x, b.oy - b.y, f); const w = D.batOpen * Math.min(1, Math.hypot(b.ox - b.x, b.oy - b.y) / 20); ax += f[0] * w; ay += f[1] * w; }
     } else {
-      // 5. home to its claimed slot: arrive (speed = min(maxSpeed, distance × 2.5)); within 3 snap; too long at it, another slot or off again
-      const goal = slotPos(b.ro, b.slot, solid), gx = goal.x - b.x, gy = goal.y - b.y, q = Math.hypot(gx, gy);
-      if (isNaN(q) || (b.rt = (b.rt || 0) + dt) > RETURN_T) { b.rt = 0; if (!startReturn(B, b, solid, true)) takeOff(b, rnd, false); continue; }
-      if (q < 3) { b.x = goal.x; b.y = goal.y; b.vx = b.vy = 0; b.st = 'roost'; continue; }
+      // 5. home to its spot: arrive (speed = min(maxSpeed, distance × 2.5)); within 3 it snaps on, and past RETURN_T homing the snap
+      // reach grows (6 units a second more), so it always lands; wings beating all the way
+      let goal = slotPos(b.ro, b.slot, solid);
+      if (isNaN(goal.y)) goal = { x: b.ro.x, y: b.ro.y };
+      const gx = goal.x - b.x, gy = goal.y - b.y, q = Math.hypot(gx, gy);
+      b.rt = (b.rt || 0) + dt;
+      b.fp = ((b.fp ?? 0) + dt * D.batFlapRate) % 1;
+      if (q < 3 + Math.max(0, b.rt - RETURN_T) * 6) { b.x = goal.x; b.y = goal.y; b.vx = b.vy = 0; b.st = 'roost'; continue; }
       lim = q - 2;   // (its slot is on the rock: rock no nearer than the slot counts)
       const sp = Math.min(D.batMaxSpeed, q * 2.5);
       ax += (gx / q * sp - b.vx) * 8; ay += (gy / q * sp - b.vy) * 8;

@@ -1405,8 +1405,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     batJinkStr: 70,
     batFlapRate: 6,
     batFlapLift: 22,
-    batGravity: 110,
-    batLookAhead: 0.25
+    batGravity: 132,
+    batLookAhead: 0.25,
+    batOpen: 1.5
   });
   DEV_META.push(
     { k: "batRoosts", g: "bats", label: "Bat roosts: about this many a screen (under the roof, under boulders)", step: 0.1 },
@@ -1439,6 +1440,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "batFlapRate", g: "bats", label: "Flight: wingbeats a second", step: 0.5 },
     { k: "batFlapLift", g: "bats", label: "Flight: lift each wingbeat (the bob)", step: 1 },
     { k: "batGravity", g: "bats", label: "Flight: gravity between wingbeats", step: 5 },
+    { k: "batOpen", g: "bats", label: "Flight: pull out into the open air (the middle of the space round it)", step: 0.1 },
     { k: "batLookAhead", g: "bats", label: "Flight: looks ahead for rock (s of its speed, on top of 18 units)", step: 0.05 }
   );
   DEV_GROUPS.push(["bats", "Bats"]);
@@ -7508,9 +7510,10 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   // src/creatures/bats.js
   var BAT_CMD = { reset: false, scare: false };
   var LOOK = 18;
-  var ZONE_W = 70;
-  var ZONE_H = 80;
-  var RETURN_T = 4;
+  var ZONE_W = 110;
+  var ZONE_H = 140;
+  var RETURN_T = 3;
+  var OPEN_R = 80;
   var WHISKERS = [[0, 1], [0.5, 0.7], [-0.5, 0.7], [1.1, 0.35], [-1.1, 0.35]];
   var newBats = () => ({ roosts: [], list: [] });
   var slotOff = (i) => Math.ceil(i / 2) * (i % 2 ? 1 : -1);
@@ -7547,30 +7550,9 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     b.vy += 30 + rnd2() * 20;
     b.vx += (rnd2() - 0.5) * 40;
   }
-  function startReturn(B, b, solid, again) {
-    const ro = b.ro, used = /* @__PURE__ */ new Set();
-    for (const o of B.list) if (o !== b && o.ro === ro && !o.gone && (o.st === "roost" || o.st === "return")) used.add(o.slot);
-    let best = -1, bd = Infinity;
-    if (again) (ro.bad ||= /* @__PURE__ */ new Set()).add(b.slot);
-    for (let i = 0; i < ro.n; i++) {
-      if (used.has(i) || ro.bad?.has(i)) continue;
-      const p = slotPos(ro, i, solid);
-      if (isNaN(p.y) || solid(p.x, p.y + 0.5)) continue;
-      const q = Math.hypot(p.x - b.x, p.y - b.y);
-      if (q < bd) {
-        bd = q;
-        best = i;
-      }
-    }
-    for (let k = 0; best < 0 && k < 12; k++) {
-      const i = ro.n++, p = slotPos(ro, i, solid);
-      if (!isNaN(p.y) && !solid(p.x, p.y + 0.01)) best = i;
-    }
-    if (best < 0) return false;
-    b.slot = best;
+  function startReturn(b) {
     b.st = "return";
     b.rt = 0;
-    return true;
   }
   function steer(b, dx, dy, out2) {
     const m = Math.hypot(dx, dy);
@@ -7587,7 +7569,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     if (BAT_CMD.reset) {
       BAT_CMD.reset = false;
       for (const b of B.list) b.st = "fly";
-      for (const b of B.list) if (b.placed && !b.gone && startReturn(B, b, solid)) {
+      for (const b of B.list) if (b.placed && !b.gone) {
         const p = slotPos(b.ro, b.slot, solid);
         b.x = p.x;
         b.y = p.y;
@@ -7640,7 +7622,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
         if (rnd2() < D.batTakeoff * dt) takeOff(b, rnd2, false);
         continue;
       }
-      if (b.st === "fly" && !b.scared && (b.t -= dt) <= 0) startReturn(B, b, solid);
+      if (b.st === "fly" && !b.scared && (b.t -= dt) <= 0) startReturn(b);
       let ax = 0, ay = 0, lim = Infinity;
       if (b.st === "fly") {
         let n = 0, sx = 0, sy = 0, avx = 0, avy = 0, cx = 0, cy = 0, ns = 0;
@@ -7687,14 +7669,29 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
           ax += f[0] * D.batZonePull;
           ay += f[1] * D.batZonePull;
         }
-      } else {
-        const goal = slotPos(b.ro, b.slot, solid), gx = goal.x - b.x, gy = goal.y - b.y, q = Math.hypot(gx, gy);
-        if (isNaN(q) || (b.rt = (b.rt || 0) + dt) > RETURN_T) {
-          b.rt = 0;
-          if (!startReturn(B, b, solid, true)) takeOff(b, rnd2, false);
-          continue;
+        if ((b.ot = (b.ot ?? rnd2() * 0.25) - dt) <= 0) {
+          b.ot = 0.25;
+          const ray = (dx, dy) => {
+            let k = 4;
+            while (k < OPEN_R && !solid(b.x + dx * k, b.y + dy * k)) k += 4;
+            return k;
+          };
+          b.ox = b.x + (ray(1, 0) - ray(-1, 0)) / 2;
+          b.oy = b.y + (ray(0, 1) - ray(0, -1)) / 2;
         }
-        if (q < 3) {
+        if (b.ox != null && b.oy != null) {
+          steer(b, b.ox - b.x, b.oy - b.y, f);
+          const w = D.batOpen * Math.min(1, Math.hypot(b.ox - b.x, b.oy - b.y) / 20);
+          ax += f[0] * w;
+          ay += f[1] * w;
+        }
+      } else {
+        let goal = slotPos(b.ro, b.slot, solid);
+        if (isNaN(goal.y)) goal = { x: b.ro.x, y: b.ro.y };
+        const gx = goal.x - b.x, gy = goal.y - b.y, q = Math.hypot(gx, gy);
+        b.rt = (b.rt || 0) + dt;
+        b.fp = ((b.fp ?? 0) + dt * D.batFlapRate) % 1;
+        if (q < 3 + Math.max(0, b.rt - RETURN_T) * 6) {
           b.x = goal.x;
           b.y = goal.y;
           b.vx = b.vy = 0;

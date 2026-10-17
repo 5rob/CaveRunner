@@ -67,7 +67,7 @@ const per = roosts.size / (dist / G.TITLE_VW);
 check('roosts in Coal Seams, about DEV.batRoosts a screen (within 40%)', Math.abs(per / D.batRoosts - 1) < 0.4, { n: roosts.size, per: +per.toFixed(2) });
 const TC = G.TCELL, rock = (x, y) => !!G.TITLE_SOLID[G.titleCell(S, Math.floor(x / TC), Math.floor(y / TC))];
 const ro2 = [...roosts].filter(q => S.bats.roosts.includes(q));
-check('… each anchored on a rock underside (rock over, air at it)', ro2.length > 0 && ro2.every(q => rock(q.x, q.y - 1) && !rock(q.x, q.y + 0.5)), ro2.length);
+check('… each anchored on a rock underside (rock over, air at it; burnt coal can open one later: 80%)', ro2.length > 0 && ro2.filter(q => rock(q.x, q.y - 1) && !rock(q.x, q.y + 0.5)).length >= ro2.length * 0.8, ro2.length);
 // the sandbox: the scene still, a player walked under a roost: they fly, never into rock, and a bite of 0 hurts nobody
 S.lvl.step = null; S.pace = 0; S.still = true; S.props.length = 0; S.foes.length = 0;
 const q = ro2[ro2.length - 1], ru = S.runners[0];
@@ -103,6 +103,8 @@ check('… DevRow clamps only when a row has them', DP.includes('if (meta.min !=
   const keep = { ...D };
   D.batMaxSpeed = 2; D.batScare = 0; D.batTakeoff = 0; D.batHp = 3;
   const run = G.newRun(3), pl = run.players[0];
+  pl.guns[0] = G.resetGun({ name: 'm', cap: 3, castDelay: 0.2, recharge: 0.5, manaMax: 5000, manaRegen: 100, spread: 0, multi: 1, shuffle: false, speedMul: 1, mana: 5000, slots: ['bolt', 'bolt', 'bolt'] });   // (a set gun: a run's random one may not reach)
+  pl.active = 0;
   const S = G.levelScene(200, 3, 1, undefined, run.players);
   S.lvl.step = null; S.pace = 0; S.spawn = 1e9; S.still = false; S.foes.length = 0;
   const r = S.runners[0]; r.hide = false;
@@ -147,14 +149,21 @@ check('… DevRow clamps only when a row has them', DP.includes('if (meta.min !=
   L.wait = 1e9; L.px = -1e4; G.BAT_CMD.scare = true;
   let back = -1;
   for (let i = 0; i < 60 * (G.DEV.batFlightMax + 10); i++) { G.batLabStep(L, 1 / 60, rnd); if (L.B.list.every(q => q.st === 'roost')) { back = i / 60; break; } }
-  const keys = L.B.list.map(q => L.B.roosts.indexOf(q.ro) + ':' + q.slot);
-  check('after a scare, all re-roost within flightMax + 10 s', back > 0, { back, st: L.B.list.map(q => q.st[0]).join('') });
-  check('… no two on one slot', new Set(keys).size === keys.length, keys);
-  // a bat whose slot is taken picks the nearest free one
-  const q0 = L.B.list.find(q => q.ro === L.B.roosts[0]), q1 = L.B.list.find(q => q.ro === L.B.roosts[0] && q !== q0);
-  q0.st = 'fly'; q0.t = 0; q0.x += 5; q0.y += 20; const s0 = q0.slot; q1.slot = s0;
-  G.batLabStep(L, 1 / 60, rnd);
-  check('… a bat whose slot is taken claims another, free one', q0.st === 'return' && q0.slot !== s0 && !L.B.list.some(o => o !== q0 && o.ro === q0.ro && o.slot === q0.slot), [q0.st, s0, q0.slot]);
+  check('after a scare, all re-roost within flightMax + 10 s (never stuck)', back > 0, { back, st: L.B.list.map(q => q.st[0]).join('') });
+  // (round 5) out in the open: flying time spent in the cave's open middle (y 35-70 of its 12-90), wings beating whenever not roosting
+  G.BAT_CMD.scare = true; let mid = 0, all = 0, still = 0;
+  for (let i = 0; i < 60 * 6; i++) {
+    const fp = L.B.list.map(q => q.fp);
+    G.batLabStep(L, 1 / 60, rnd);
+    L.B.list.forEach((q, j) => { if (q.st !== 'roost') { all++; if (q.y > 35 && q.y < 70) mid++; if (q.fp === fp[j]) still++; } });
+  }
+  check('… flying, they range out into the open middle of the cave (over a third of the time)', mid / all > 0.33, +(mid / all).toFixed(2));
+  check('… wings beating whenever not roosting (homing too)', still === 0, still);
+  // state stays flat: ten simulated minutes of scares and returns, the roosts' slot lists and the flock don't grow
+  const size = () => L.B.list.length + L.B.roosts.reduce((n, ro) => n + ro.n + ro.hy.length, 0);
+  const s0 = size();
+  for (let i = 0; i < 60 * 600; i++) { if (i % (60 * 7) === 0) G.BAT_CMD.scare = true; G.batLabStep(L, 1 / 60, rnd); }
+  check('ten minutes on: the state the same size (the preview stays fast)', size() === s0, [s0, size()]);
   G.DEV.batTakeoff = D0;
 }
 
