@@ -586,7 +586,7 @@ DEV_META.push(
   { k: 'glowAmbient',   g: 'glow', label: 'Green spores drifting round a cluster (a second)', min: 0, max: 30, step: 0.5 });
 // (C5b) their behaviour: agro, the strike, and the blast when one is killed
 Object.assign(DEV_DEFAULTS, { glowAgroR: 60, glowStrikeR: 14, glowStrikeT: 0.3, glowStrikeCd: 0.9, glowStrikeDmg: 12, glowVib: 0.35, glowVibSpd: 70, glowMouthSpd: 18,
-  glowBlastR: 16, glowBlastDmg: 6, glowHole: 10, glowTeam: 0.5, glowHp: 4 });
+  glowBlastR: 16, glowBlastDmg: 6, glowHole: 10, glowTeam: 0.5, glowHp: 4, glowDebug: 0 });
 DEV_META.push(
   { k: 'glowHp',        g: 'glow', label: 'Health (the players shoot them)', min: 0.5, max: 40, step: 0.5 },
   { k: 'glowAgroR',     g: 'glow', label: 'Agro: stands up at a player within (units)', min: 0, max: 200, step: 1 },
@@ -600,7 +600,8 @@ DEV_META.push(
   { k: 'glowBlastR',    g: 'glow', label: 'Killed: blast radius (hurts creatures, other worms: a chain)', min: 0, max: 80, step: 1 },
   { k: 'glowBlastDmg',  g: 'glow', label: 'Killed: blast damage', min: 0, max: 60, step: 0.5 },
   { k: 'glowHole',      g: 'glow', label: 'Killed: hole blasted in the rock (radius)', min: 0, max: 40, step: 0.5 },
-  { k: 'glowTeam',      g: 'glow', label: 'Killed: the team takes this share of the blast damage', min: 0, max: 1, step: 0.05 });
+  { k: 'glowTeam',      g: 'glow', label: 'Killed: the team takes this share of the blast damage', min: 0, max: 1, step: 0.05 },
+  { k: 'glowDebug',     g: 'glow', label: 'Debug draw: agro and strike reach (preview; 1 on)', min: 0, max: 1, step: 1 });
 // (C5c) their look: the glow behind each, the green light they cast, the effects layer drifting across them
 Object.assign(DEV_DEFAULTS, { glowSize: 14, glowGlow: 0.55, glowFlicker: 0.25, glowLightR: 34, glowLight: 0.7, glowTint: 0.22,
   glowFx: 0.55, glowFxR: 40, glowFxSizeC: 26, glowFxSizeA: 9, glowFxSpdC: 0.35, glowFxSpdA: 2.2, glowFxSharpC: 1, glowFxSharpA: 2.6 });
@@ -1003,7 +1004,7 @@ DEV_GROUPS.push(['trajorbit', 'Trajectory: Orbiting Arc'], ['trajspiral', 'Traje
 // the Level side's drop-down shows them as "1 · Mossy Caves"
 /** @type {[string, number, string][]} */
 export const DEV_LEVELS = [['caves', 1, 'Mossy Caves'], ['coal', 2, 'Coal Seams']];
-/** @typedef {{ id: string, side: 'global' | 'level', lv?: string, name: string, groups: string[], pin?: 'fire' | 'zones' | 'bats', page?: string }} DevPlace */
+/** @typedef {{ id: string, side: 'global' | 'level', lv?: string, name: string, groups: string[], pin?: 'fire' | 'zones' | 'bats' | 'glow', page?: string }} DevPlace */
 /** @type {DevPlace[]} */
 export const DEV_PLACES = [
   { id: 'grem', side: 'global', name: 'Grem', groups: ['grem'], page: 'grem' },
@@ -1025,7 +1026,7 @@ export const DEV_PLACES = [
   { id: 'coalstal', side: 'level', lv: 'coal', name: 'Stalactites', groups: [] },
   { id: 'coaltimber', side: 'level', lv: 'coal', name: 'Timber & ladders', groups: [] },
   { id: 'bats', side: 'level', lv: 'coal', name: 'Bats', groups: ['bats'], pin: 'bats' },
-  { id: 'glow', side: 'level', lv: 'coal', name: 'Glow worms', groups: ['glow'] },
+  { id: 'glow', side: 'level', lv: 'coal', name: 'Glow worms', groups: ['glow'], pin: 'glow' },
 ];
 /** @type {[RegExp, string][]} a knob's own place, over its group's (first match wins) */
 export const DEV_KNOB_PLACE = [

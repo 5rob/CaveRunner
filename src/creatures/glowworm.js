@@ -322,3 +322,80 @@ export function wormFxFill(out, W, H, o) {
   }
   return any;
 }
+
+// ---- Dev → Glow worms: the live preview's lab (ui/glowpreview.js) ----
+// a small cave room (floor, walls, roof, a pillar) with GLOW_LAB_N worms on its floor, roof and walls, stepped by the real
+// stepWorm with the live DEV knobs; a stand-in player walks across and back, so they stand up, strike, and now and then the
+// nearest one in agro is "shot" and blows up (a burst of particles). Worms gone are put back after a moment. Everything it
+// keeps is capped (the particles at GLOW_LAB_PARTS), so it never slows down over time. GLOW_CMD.reset (the Dev button) starts it afresh
+export const GLOW_LAB_W = 180, GLOW_LAB_H = 100, GLOW_LAB_N = 6, GLOW_LAB_PARTS = 240;
+export const GLOW_CMD = { reset: false };
+/** @typedef {{ x: number, y: number, vx: number, vy: number, life: number, max: number, col: string, r: number }} GlowPart */
+/** @typedef {{ worms: GlowWorm[], parts: GlowPart[], booms: { x: number, y: number, t: number }[], solid: WormSolid, floor: number, px: number, dir: number, wait: number, shot: number, back: number, key: string, t: number, strikes: number, kills: number }} GlowLab */
+/** @returns {GlowLab} */
+export function glowLab() {
+  const floor = GLOW_LAB_H - 12;
+  /** @type {WormSolid} */
+  const solid = (x, y) => x < 8 || x >= GLOW_LAB_W - 8 || y < 10 + 4 * Math.sin(x * 0.08) || y >= floor || (Math.abs(x - 112) < 6 && y > floor - 34);
+  return { worms: [], parts: [], booms: [], solid, floor, px: -20, dir: 1, wait: 1, shot: 4, back: 0, key: '', t: 0, strikes: 0, kills: 0 };
+}
+// the spots the lab's worms start on: the floor, the roof, both walls, the pillar's top
+const LAB_SPOTS = [[30, 1], [70, 1], [150, 1], [50, -1], [130, -1], [9, 0], [171, 0], [112, 2]];
+/** @param {GlowLab} L @param {() => number} rnd */
+function labFill(L, rnd) {
+  const order = LAB_SPOTS.map(q => ({ q, k: rnd() })).sort((p, q) => p.k - q.k).map(p => p.q);   // (every spot once, in a random order)
+  for (let i = 0; L.worms.length < GLOW_LAB_N && i < order.length; i++) {
+    const [x, k] = order[i];
+    let px = x, py = 0;
+    if (k === 1) py = L.floor - 0.5;
+    else if (k === -1) { py = 20; while (L.solid(px, py) && py < L.floor) py++; py += 0.5; }
+    else if (k === 0) { py = 50; px = x < 90 ? 8.5 : GLOW_LAB_W - 8.5; }
+    else { py = 20; while (!L.solid(px, py + 1) && py < L.floor) py++; py += 0.5; }
+    if (L.worms.some(w => Math.hypot(w.r.x - px, w.r.y - py) < 12)) continue;
+    const w = newWorm(px, py, rnd() < 0.5 ? 1 : -1, L.solid, rnd);
+    if (w) L.worms.push(w);
+  }
+}
+// a lab worm blown up: a burst of green particles (capped), a flash
+/** @param {GlowLab} L @param {GlowWorm} w @param {() => number} rnd */
+function labBlast(L, w, rnd) {
+  const m = w.pts[2] || w.r;
+  L.booms.push({ x: m.x, y: m.y, t: 0 });
+  for (let i = 0; i < 40; i++) {
+    const a = rnd() * 6.283, v = 30 + rnd() * 120, l = 0.4 + rnd() * 0.6;
+    L.parts.push({ x: m.x, y: m.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: l, max: l, col: i % 3 ? '#7dff3a' : '#eaffd8', r: 0.6 + rnd() * 0.8 });
+  }
+  L.worms = L.worms.filter(q => q !== w); L.kills++; L.back = 1.5;
+}
+/** @param {GlowLab} L @param {number} dt @param {() => number} [rnd] */
+export function glowLabStep(L, dt, rnd = Math.random) {
+  L.t += dt;
+  const key = DEV.glowSizeMin + ',' + DEV.glowSizeMax + ',' + DEV.glowLen + ',' + DEV.glowW;
+  if (GLOW_CMD.reset || key !== L.key) { GLOW_CMD.reset = false; L.key = key; L.worms = []; L.parts = []; L.booms = []; labFill(L, rnd); }
+  // the player: waits off one side, walks across, waits off the other, walks back
+  if (L.wait > 0) L.wait -= dt;
+  else { L.px += L.dir * 26 * dt; if (L.px > GLOW_LAB_W + 20 || L.px < -20) { L.dir = -L.dir; L.wait = 1.5; } }
+  const tgt = { x: L.px, y: L.floor - 6 };
+  for (const w of L.worms) {
+    const ev = stepWorm(w, dt, L.solid, rnd, L.px > 0 && L.px < GLOW_LAB_W ? tgt : null);
+    if (ev === 'strike') L.strikes++;
+    if (ev === 'plant' && L.parts.length < GLOW_LAB_PARTS) {   // (the spores' puff)
+      const m = w.pts[2], a0 = Math.atan2(w.r.ny + w.f.ny, w.r.nx + w.f.nx);
+      for (let i = 0; i < Math.round(DEV.glowSpores); i++) {
+        const a = a0 + (rnd() * 2 - 1) * DEV.glowSporeSpread * Math.PI / 180, v = DEV.glowSporeSpd * (0.6 + 0.4 * rnd()), l = 2 + rnd() * 2;
+        L.parts.push({ x: m.x, y: m.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: l, max: l, col: '#7dff3a', r: 0.7 });
+      }
+    }
+  }
+  // now and then the nearest worm in agro is shot and blows up; gone ones are put back after a moment
+  if ((L.shot -= dt) <= 0) {
+    L.shot = 3 + rnd() * 3;
+    const up = L.worms.filter(w => w.st !== 'roam').sort((a, b) => Math.abs(a.r.x - L.px) - Math.abs(b.r.x - L.px))[0];
+    if (up) labBlast(L, up, rnd);
+  }
+  if (L.back > 0 && (L.back -= dt) <= 0) labFill(L, rnd);
+  for (const p of L.parts) { const k = Math.exp(-3 * dt); p.vx *= k; p.vy *= k; p.vy -= 4 * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; }
+  L.parts = L.parts.filter(p => p.life > 0).slice(-GLOW_LAB_PARTS);
+  for (const b of L.booms) b.t += dt;
+  L.booms = L.booms.filter(b => b.t < 0.5);
+}

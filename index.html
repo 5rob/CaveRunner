@@ -1504,7 +1504,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     glowBlastDmg: 6,
     glowHole: 10,
     glowTeam: 0.5,
-    glowHp: 4
+    glowHp: 4,
+    glowDebug: 0
   });
   DEV_META.push(
     { k: "glowHp", g: "glow", label: "Health (the players shoot them)", min: 0.5, max: 40, step: 0.5 },
@@ -1519,7 +1520,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { k: "glowBlastR", g: "glow", label: "Killed: blast radius (hurts creatures, other worms: a chain)", min: 0, max: 80, step: 1 },
     { k: "glowBlastDmg", g: "glow", label: "Killed: blast damage", min: 0, max: 60, step: 0.5 },
     { k: "glowHole", g: "glow", label: "Killed: hole blasted in the rock (radius)", min: 0, max: 40, step: 0.5 },
-    { k: "glowTeam", g: "glow", label: "Killed: the team takes this share of the blast damage", min: 0, max: 1, step: 0.05 }
+    { k: "glowTeam", g: "glow", label: "Killed: the team takes this share of the blast damage", min: 0, max: 1, step: 0.05 },
+    { k: "glowDebug", g: "glow", label: "Debug draw: agro and strike reach (preview; 1 on)", min: 0, max: 1, step: 1 }
   );
   Object.assign(DEV_DEFAULTS, {
     glowSize: 14,
@@ -1978,7 +1980,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     { id: "coalstal", side: "level", lv: "coal", name: "Stalactites", groups: [] },
     { id: "coaltimber", side: "level", lv: "coal", name: "Timber & ladders", groups: [] },
     { id: "bats", side: "level", lv: "coal", name: "Bats", groups: ["bats"], pin: "bats" },
-    { id: "glow", side: "level", lv: "coal", name: "Glow worms", groups: ["glow"] }
+    { id: "glow", side: "level", lv: "coal", name: "Glow worms", groups: ["glow"], pin: "glow" }
   ];
   var DEV_KNOB_PLACE = [
     [/^coalGas/, "coalgas"],
@@ -8223,6 +8225,98 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       }
     }
     return any;
+  }
+  var GLOW_LAB_W = 180, GLOW_LAB_H = 100, GLOW_LAB_N = 6, GLOW_LAB_PARTS = 240;
+  var GLOW_CMD = { reset: false };
+  function glowLab() {
+    const floor = GLOW_LAB_H - 12;
+    const solid = (x, y) => x < 8 || x >= GLOW_LAB_W - 8 || y < 10 + 4 * Math.sin(x * 0.08) || y >= floor || Math.abs(x - 112) < 6 && y > floor - 34;
+    return { worms: [], parts: [], booms: [], solid, floor, px: -20, dir: 1, wait: 1, shot: 4, back: 0, key: "", t: 0, strikes: 0, kills: 0 };
+  }
+  var LAB_SPOTS = [[30, 1], [70, 1], [150, 1], [50, -1], [130, -1], [9, 0], [171, 0], [112, 2]];
+  function labFill(L, rnd2) {
+    const order = LAB_SPOTS.map((q) => ({ q, k: rnd2() })).sort((p, q) => p.k - q.k).map((p) => p.q);
+    for (let i = 0; L.worms.length < GLOW_LAB_N && i < order.length; i++) {
+      const [x, k] = order[i];
+      let px = x, py = 0;
+      if (k === 1) py = L.floor - 0.5;
+      else if (k === -1) {
+        py = 20;
+        while (L.solid(px, py) && py < L.floor) py++;
+        py += 0.5;
+      } else if (k === 0) {
+        py = 50;
+        px = x < 90 ? 8.5 : GLOW_LAB_W - 8.5;
+      } else {
+        py = 20;
+        while (!L.solid(px, py + 1) && py < L.floor) py++;
+        py += 0.5;
+      }
+      if (L.worms.some((w2) => Math.hypot(w2.r.x - px, w2.r.y - py) < 12)) continue;
+      const w = newWorm(px, py, rnd2() < 0.5 ? 1 : -1, L.solid, rnd2);
+      if (w) L.worms.push(w);
+    }
+  }
+  function labBlast(L, w, rnd2) {
+    const m = w.pts[2] || w.r;
+    L.booms.push({ x: m.x, y: m.y, t: 0 });
+    for (let i = 0; i < 40; i++) {
+      const a = rnd2() * 6.283, v = 30 + rnd2() * 120, l = 0.4 + rnd2() * 0.6;
+      L.parts.push({ x: m.x, y: m.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: l, max: l, col: i % 3 ? "#7dff3a" : "#eaffd8", r: 0.6 + rnd2() * 0.8 });
+    }
+    L.worms = L.worms.filter((q) => q !== w);
+    L.kills++;
+    L.back = 1.5;
+  }
+  function glowLabStep(L, dt, rnd2 = Math.random) {
+    L.t += dt;
+    const key = DEV.glowSizeMin + "," + DEV.glowSizeMax + "," + DEV.glowLen + "," + DEV.glowW;
+    if (GLOW_CMD.reset || key !== L.key) {
+      GLOW_CMD.reset = false;
+      L.key = key;
+      L.worms = [];
+      L.parts = [];
+      L.booms = [];
+      labFill(L, rnd2);
+    }
+    if (L.wait > 0) L.wait -= dt;
+    else {
+      L.px += L.dir * 26 * dt;
+      if (L.px > GLOW_LAB_W + 20 || L.px < -20) {
+        L.dir = -L.dir;
+        L.wait = 1.5;
+      }
+    }
+    const tgt = { x: L.px, y: L.floor - 6 };
+    for (const w of L.worms) {
+      const ev = stepWorm(w, dt, L.solid, rnd2, L.px > 0 && L.px < GLOW_LAB_W ? tgt : null);
+      if (ev === "strike") L.strikes++;
+      if (ev === "plant" && L.parts.length < GLOW_LAB_PARTS) {
+        const m = w.pts[2], a0 = Math.atan2(w.r.ny + w.f.ny, w.r.nx + w.f.nx);
+        for (let i = 0; i < Math.round(DEV.glowSpores); i++) {
+          const a = a0 + (rnd2() * 2 - 1) * DEV.glowSporeSpread * Math.PI / 180, v = DEV.glowSporeSpd * (0.6 + 0.4 * rnd2()), l = 2 + rnd2() * 2;
+          L.parts.push({ x: m.x, y: m.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: l, max: l, col: "#7dff3a", r: 0.7 });
+        }
+      }
+    }
+    if ((L.shot -= dt) <= 0) {
+      L.shot = 3 + rnd2() * 3;
+      const up = L.worms.filter((w) => w.st !== "roam").sort((a, b) => Math.abs(a.r.x - L.px) - Math.abs(b.r.x - L.px))[0];
+      if (up) labBlast(L, up, rnd2);
+    }
+    if (L.back > 0 && (L.back -= dt) <= 0) labFill(L, rnd2);
+    for (const p of L.parts) {
+      const k = Math.exp(-3 * dt);
+      p.vx *= k;
+      p.vy *= k;
+      p.vy -= 4 * dt;
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.life -= dt;
+    }
+    L.parts = L.parts.filter((p) => p.life > 0).slice(-GLOW_LAB_PARTS);
+    for (const b of L.booms) b.t += dt;
+    L.booms = L.booms.filter((b) => b.t < 0.5);
   }
 
   // src/world/fire.js
@@ -24994,7 +25088,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
   var LAB_IN = 0.1;
   var EDGE3 = 40;
   var LAB_KINDS = ["vines", "webs", "timber", "moss", "grass"];
-  var LAB_SPOTS = LAB_KINDS.map((kind, i) => ({ kind, x0: EDGE3 + i * (LAB_SPOT + LAB_GAP) }));
+  var LAB_SPOTS2 = LAB_KINDS.map((kind, i) => ({ kind, x0: EDGE3 + i * (LAB_SPOT + LAB_GAP) }));
   var LAB_W = EDGE3 * 2 + LAB_KINDS.length * LAB_SPOT + (LAB_KINDS.length - 1) * LAB_GAP;
   var MINE_H = 46;
   function labScene(vh, seed) {
@@ -25005,7 +25099,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
     const webs = [];
     const arches = [];
     const lamps = [];
-    for (const { kind, x0: s0 } of LAB_SPOTS) {
+    for (const { kind, x0: s0 } of LAB_SPOTS2) {
       const x0 = s0 + LAB_SPOT * LAB_IN, x1 = s0 + LAB_SPOT * (1 - LAB_IN), SP3 = x1 - x0;
       if (kind === "vines") {
         for (let x = x0 + 3; x < x1 - 3; x += 3 + R() * 5) if (R() < 0.65) vines.push({ x, y: roof, len: room * (0.12 + R() * 0.62), st: "vine" });
@@ -25200,7 +25294,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       ctx.fillStyle = "rgba(15,10,8,0.7)";
       for (let i = 0; i < 7; i++) ctx.fillRect(tx - 7 + hash5(tx, i) * 14 - sx, cy - 9 + hash5(i, tx) * 18, 1, 1);
     }
-    for (const { kind, x0: x02 } of LAB_SPOTS) {
+    for (const { kind, x0: x02 } of LAB_SPOTS2) {
       if (x02 + LAB_SPOT < sx - 10 || x02 > sx + TITLE_VW + 10) continue;
       ctx.fillStyle = "rgba(230,200,120,0.5)";
       pixText(ctx, kind.toUpperCase(), x02 + 6 - sx, y1 - 10, 1, 1, 1);
@@ -25342,6 +25436,98 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
       return () => cancelAnimationFrame(raf);
     }, []);
     return h("canvas", { ref, className: "jellyprev batprev" });
+  }
+
+  // src/ui/glowpreview.js
+  function GlowPreview() {
+    const ref = useRef(null);
+    useEffect(() => {
+      const c = ref.current;
+      if (!c || !c.getContext) return;
+      const ctx = c.getContext("2d");
+      const L = glowLab();
+      const rock = document.createElement("canvas");
+      rock.width = GLOW_LAB_W;
+      rock.height = GLOW_LAB_H;
+      const rc = rock.getContext("2d");
+      if (rc) {
+        rc.fillStyle = "#34343c";
+        for (let x = 0; x < GLOW_LAB_W; x += 2) for (let y = 0; y < GLOW_LAB_H; y += 2) if (L.solid(x + 1, y + 1)) rc.fillRect(x, y, 2, 2);
+      }
+      const fx = document.createElement("canvas"), FW2 = GLOW_LAB_W / 2, FH2 = GLOW_LAB_H / 2;
+      fx.width = FW2;
+      fx.height = FH2;
+      const fc = fx.getContext("2d");
+      let raf, last = performance.now();
+      const tick = (now) => {
+        raf = requestAnimationFrame(tick);
+        const dt = Math.min(0.05, (now - last) / 1e3);
+        last = now;
+        glowLabStep(L, dt);
+        window.__glowLab = L;
+        const dpr = window.devicePixelRatio || 1, cw = Math.round(c.clientWidth * dpr), ch2 = Math.round(c.clientHeight * dpr);
+        if (!cw || !ch2 || !ctx) return;
+        if (c.width !== cw || c.height !== ch2) {
+          c.width = cw;
+          c.height = ch2;
+        }
+        const sc = Math.min(cw / GLOW_LAB_W, ch2 / GLOW_LAB_H);
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.fillStyle = "#07080b";
+        ctx.fillRect(0, 0, cw, ch2);
+        ctx.setTransform(sc, 0, 0, sc, (cw - GLOW_LAB_W * sc) / 2, (ch2 - GLOW_LAB_H * sc) / 2);
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(rock, 0, 0);
+        const px = L.px, fy = L.floor;
+        ctx.fillStyle = "#d9d2c0";
+        ctx.fillRect(px - 2, fy - 9, 4, 5);
+        ctx.fillStyle = "#6a8fd0";
+        ctx.fillRect(px - 2, fy - 4, 4, 4);
+        for (const w of L.worms) {
+          const b = wormBox(w, 0);
+          pixelSprite(ctx, b.x, b.y, b.w, b.h, 1, false, (q) => drawGlowWorm(q, w, 0));
+          drawGlowFace(ctx, w, 0, L.t);
+        }
+        ctx.globalCompositeOperation = "lighter";
+        if (fc && L.worms.length) {
+          const im = new ImageData(FW2, FH2);
+          if (wormFxFill(im.data, FW2, FH2, { ox: 0, oy: 0, px: 2, t: L.t, worms: L.worms })) {
+            fc.putImageData(im, 0, 0);
+            ctx.imageSmoothingEnabled = true;
+            ctx.drawImage(fx, 0, 0, GLOW_LAB_W, GLOW_LAB_H);
+          }
+        }
+        for (const w of L.worms) {
+          const m = w.pts[2];
+          glowAt(ctx, m.x, m.y, DEV.glowLightR, DEV.glowLight * 0.35 * wormFlicker(w, L.t), String(wormCol(w, 0.3)));
+          drawWormGlow(ctx, w, 0, L.t);
+        }
+        for (const p of L.parts) {
+          ctx.globalAlpha = Math.max(0, p.life / p.max);
+          ctx.fillStyle = p.col;
+          ctx.fillRect(p.x - p.r / 2, p.y - p.r / 2, p.r, p.r);
+        }
+        ctx.globalAlpha = 1;
+        for (const o of L.booms) glowAt(ctx, o.x, o.y, DEV.glowBlastR * (0.6 + o.t * 2), 0.9 * (1 - o.t / 0.5), "125,255,58");
+        ctx.globalCompositeOperation = "source-over";
+        if (DEV.glowDebug > 0.5) {
+          ctx.lineWidth = 0.4;
+          for (const w of L.worms) {
+            ctx.strokeStyle = "rgba(255,200,80,0.5)";
+            ctx.beginPath();
+            ctx.arc(w.r.x, w.r.y, DEV.glowAgroR, 0, 6.29);
+            ctx.stroke();
+            ctx.strokeStyle = "rgba(255,70,70,0.7)";
+            ctx.beginPath();
+            ctx.arc(w.r.x, w.r.y, DEV.glowStrikeR, 0, 6.29);
+            ctx.stroke();
+          }
+        }
+      };
+      raf = requestAnimationFrame(tick);
+      return () => cancelAnimationFrame(raf);
+    }, []);
+    return h("canvas", { ref, className: "jellyprev glowprev" });
   }
 
   // src/version.js
@@ -26606,6 +26792,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
               BAT_CMD.scare = true;
             })
           ) : null
+        ) : null,
+        pin === "glow" ? h(
+          "div",
+          { className: "devpin" },
+          h(GlowPreview, null),
+          // (C5) a cave room of glow worms, a player walking past (ui/glowpreview.js)
+          h("div", { className: "devbtns devpinbtns" }, act("glowreset", "Reset worms", () => {
+            GLOW_CMD.reset = true;
+          }))
         ) : null,
         h(
           "div",

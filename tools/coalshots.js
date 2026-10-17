@@ -27,6 +27,22 @@ require('../tests/build')();
   const save = async (n, what, clip) => { await page.screenshot({ path: path.join(OUT, PRE + '-' + n + '.png'), clip }); said.push(`${PRE}-${n}.png  ${what}`); };
   const zone = () => page.evaluate(() => { const S = window.__gremScene; return S ? titleZoneSpan(S.scroll + 110, S).z : '?'; });
   // (C4) Dev → Grem → Bats: the live preview (a cave of bats, a player walking past); then the player under a roost, scaring it
+  // (C5) Dev → Coal Seams → Glow worms: the live preview pinned over the knobs, calm, then the player close (agro / strike)
+  if (ONLY === 'glowdev') {
+    await page.waitForTimeout(600);
+    await page.locator('.grem .adevbtn').dispatchEvent('pointerdown');
+    await page.waitForTimeout(500);
+    await page.locator('.devside[data-s=level]').click();
+    await page.locator('select.devlv').selectOption('coal');
+    await page.waitForTimeout(200);
+    await page.locator('.devtab[data-t=glow]').click();
+    await page.waitForFunction(() => { const L = window.__glowLab; return !!L && L.px < -5 && L.worms.every(w => w.st === 'roam' && w.ag === 0); }, undefined, { polling: 'raf', timeout: 30000 });
+    await save('calm', 'Dev → Coal Seams → Glow worms: the live preview pinned over the knobs, the worms calm (player off to the side)');
+    await page.evaluate(() => { DEV.glowDebug = 1; });
+    await page.waitForFunction(() => { const L = window.__glowLab; return !!L && L.worms.some(w => w.st === 'strike' && w.sk > 0.1); }, undefined, { polling: 'raf', timeout: 30000 });
+    await save('close', 'the player close: worms stood up in agro, one mid-strike (debug on: agro reach yellow, strike reach red)');
+    await browser.close(); console.log(said.join(String.fromCharCode(10))); return;
+  }
   if (ONLY === 'batdev') {
     await page.waitForTimeout(600);
     await page.locator('.grem .adevbtn').dispatchEvent('pointerdown');   // (dev mode is on by default on the test page)

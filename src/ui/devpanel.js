@@ -21,6 +21,8 @@ import { devCopyText } from '../auto/devcopy.js';
 import { BAT_CMD } from '../creatures/bats.js';
 import { FireSim } from './firesim.js';
 import { BatPreview } from './batpreview.js';
+import { GlowPreview } from './glowpreview.js';
+import { GLOW_CMD } from '../creatures/glowworm.js';
 import { ZoneSim } from './zonesim.js';
 import { h, useEffect, useRef, useState } from './h.js';
 
@@ -658,6 +660,8 @@ export function DevPanel({ close, pages, bats }) {
         bats ? h('div', { className: 'devbtns devpinbtns' },
           act('batreset', 'Reset bats', () => { BAT_CMD.reset = true; }),   // (C4, creatures/bats.js: Grem's panel only, prop bats)
           act('batscare', 'Scare all bats', () => { BAT_CMD.scare = true; })) : null) : null,
+      pin === 'glow' ? h('div', { className: 'devpin' }, h(GlowPreview, null),   // (C5) a cave room of glow worms, a player walking past (ui/glowpreview.js)
+        h('div', { className: 'devbtns devpinbtns' }, act('glowreset', 'Reset worms', () => { GLOW_CMD.reset = true; }))) : null,
       h('div', { className: 'devbody' + (pin === 'zones' ? ' zonesmode' : '') },
         // (Dev → Level → Caves → Zones) the zone preview, sticky at the top of the scroll, and its zone cards
         pin === 'zones' ? h(ZoneSim, { Row: DevRow }) : null,
