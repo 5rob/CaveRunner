@@ -40,14 +40,29 @@ fs.mkdirSync(OUT, { recursive: true });
   await page.waitForTimeout(500);
   check('the ⚙️ opens the Dev panel', !!(await page.$('.devtab')));
   check('… with its Presets and Grem tabs', !!(await page.$('.devtab[data-t="presets"]')) && !!(await page.$('.devtab[data-t="grem"]')));
-  // (v1.0.109) only what Grem plays with: no old-game Level 2 tab; the Auto tab without the hub, maps, bag, throw or prices
+  // (Dev menu rebuild) full screen; Global's tabs; Level → Coal Seams' tabs; the Bats page's preview pinned while its knobs scroll
   const tabsShown = await page.evaluate(() => [...document.querySelectorAll('.devtab')].map(b => b.getAttribute('data-t')));
-  check('Grem Mode tabs: no old game Level 2, the creatures, zones, fire and trajectories there', !tabsShown.includes('level2') && ['creatures', 'zones', 'firesim', 'traj', 'auto'].every(t => tabsShown.includes(t)), tabsShown);
-  await page.locator('.devtab[data-t="auto"]').click();
+  check('Global tabs: Grem, Players, Guns, Presets, Creatures, Fire, Trajectory', ['grem', 'players', 'guns', 'presets', 'creatures', 'firesim', 'traj'].every(t => tabsShown.includes(t)), tabsShown);
+  const full = await page.evaluate(() => { const r = document.querySelector('.devpanel').getBoundingClientRect(); return r.width >= innerWidth - 1 && r.height >= innerHeight - 1; });
+  check('… the menu fills the screen', full);
+  await page.locator('.devside[data-s=level]').click();
+  await page.locator('.devlv[data-lv=coal]').click();
   await page.waitForTimeout(200);
-  const autoGroups = await page.evaluate(() => [...document.querySelectorAll('.devgroup')].map(g => g.textContent || ''));
-  check('… the Auto tab: level, enemies, chests; no hub, maps, bag, throw or economy', autoGroups.some(t => /Auto: level/.test(t)) && autoGroups.some(t => /Auto: enemies/.test(t))
-    && !autoGroups.some(t => /Auto: (hub|maps|bag|throw|economy|blocks)/.test(t)), autoGroups.map(t => t.slice(0, 24)));
+  const coalTabs = await page.evaluate(() => [...document.querySelectorAll('.devtab')].map(b => b.getAttribute('data-t')));
+  check('Level → Coal Seams: coal, props, gas, stalactites, timber, bats, glow worms', ['coal', 'coalprops', 'coalgas', 'coalstal', 'coaltimber', 'bats', 'glow'].every(t => coalTabs.includes(t)), coalTabs);
+  await page.locator('.devtab[data-t=bats]').click();
+  await page.waitForTimeout(300);
+  const y0 = await page.evaluate(() => document.querySelector('.devpin .batprev').getBoundingClientRect().top);
+  await page.evaluate(() => { document.querySelector('.devbody').scrollTop = 600; });
+  await page.waitForTimeout(200);
+  const pinned = await page.evaluate(y => ({ y: document.querySelector('.devpin .batprev').getBoundingClientRect().top, s: document.querySelector('.devbody').scrollTop, y0: y }), y0);
+  check('… the bat preview stays put while the knobs scroll', pinned.s > 100 && Math.abs(pinned.y - pinned.y0) < 1, pinned);
+  await page.locator('.devside[data-s=global]').click();
+  await page.locator('.devtab[data-t=creatures]').click();
+  await page.waitForTimeout(200);
+  const groups = await page.evaluate(() => [...document.querySelectorAll('.devgroup')].map(g => g.textContent || ''));
+  check('… Global → Creatures: Auto: enemies, spider; no hub, maps, bag, throw or economy', groups.some(t => /Auto: enemies/.test(t)) && groups.some(t => /Spider/.test(t))
+    && !groups.some(t => /Auto: (hub|maps|bag|throw|economy|blocks)/.test(t)), groups.map(t => t.slice(0, 24)));
   await page.screenshot({ path: path.join(OUT, 'grem-dev-panel.png') });
   await browser.close();
   console.log(fails ? fails + ' FAILED' : 'all passed');

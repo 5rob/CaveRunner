@@ -324,6 +324,33 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:h
 .devtab.on{color:var(--text);border-bottom-color:var(--acc)}
 .devdot{display:inline-block;width:6px;height:6px;border-radius:3px;background:#ff8a1f;margin-left:5px;vertical-align:2px}
 .devbody{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:8px 10px 14px}
+/* (Dev menu rebuild) full screen: the header, sides, level chips and tabs fixed on top; a page's preview pinned under them;
+   only .devbody scrolls */
+.devwrap{padding:0;align-items:stretch}
+.devwrap .devpanel{max-width:none;max-height:none;height:100%;border:0;border-radius:0;box-shadow:none;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.devpanel .devtop{padding:8px 12px 0}
+.devpanel .devhead{gap:8px;margin-bottom:8px}
+.devpanel .devhead h2{flex:1 1 auto}
+.devhead .dbg.devcopy{height:38px;padding:0 12px;border-radius:10px;font:700 12px system-ui,sans-serif;
+  background:#1f6fb8;border:1px solid #1f6fb8;color:#fff}
+.devsides{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:3px;margin-bottom:8px;border-radius:12px;background:rgba(0,0,0,0.35)}
+.devside{height:36px;border:0;border-radius:9px;background:none;color:var(--muted);font:800 13px system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase}
+.devside.on{background:#2a3442;color:var(--text)}
+.devlvls{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:0 -12px 4px;padding:0 12px}
+.devlvls::-webkit-scrollbar{display:none}
+.devlv{flex:0 0 auto;height:32px;padding:0 14px;border-radius:16px;border:1px solid var(--ring);background:var(--pad);
+  color:var(--muted);font:700 12px system-ui,sans-serif;white-space:nowrap}
+.devlv.on{background:var(--acc);border-color:var(--acc);color:#0b1220}
+.devpanel .devtabs{margin:0 -12px}
+.devpanel .devtab{flex:0 0 auto}
+.devpin{flex:0 0 auto;padding:8px 10px 6px;border-bottom:1px solid var(--ring);background:#11151c}
+.devpin .jellyprev{position:static;margin:0}
+.devpin .firesimcvs{height:min(300px,32vh)}
+.devpinbtns{grid-template-columns:1fr 1fr;margin:6px 0 0}
+.devbody.zonesmode{padding-top:0}
+.devbody.zonesmode .zonesimtop{position:sticky;top:0;z-index:5;margin:0 -10px;background:#11151c}
+.devbody.zonesmode .zonesimcvs{height:min(300px,30vh)}
 .devgroup{margin:0 0 6px;border:1px solid var(--ring);border-radius:12px;background:var(--pad)}
 .devgroup.open{background:rgba(255,255,255,0.035)}
 .devghead{display:flex;align-items:center;gap:8px;width:100%;min-height:48px;padding:0 12px;border:0;background:none;

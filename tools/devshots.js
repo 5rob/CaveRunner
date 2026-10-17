@@ -1,5 +1,6 @@
-// Screenshot for the owner (CaveRunner Auto feedback round 2): the Dev panel on the auto screen (⏸ held 5 s turns dev
-// mode on; the ⚙️ beside ⏸ opens it). a: the ⚙️ beside ⏸; b: the panel open on its Auto tab.
+// Screenshots for the owner (Dev menu rebuild, grem): Grem started, dev mode on, the ⚙️ opens the full-screen Dev menu.
+// a: Global's first tab (Grem); b: Level → Coal Seams (its Coal page); c: Level → Coal Seams → Bats, the preview pinned with the
+// knobs scrolled down; d: Global → Fire, the fire sim pinned.
 //   node tools/devshots.js [outdir]      (default tests/build/autoshots)
 const { launch } = require('../tests/chromium');
 const path = require('path');
@@ -12,43 +13,30 @@ require('../tests/build')();
 
 (async () => {
   const browser = await launch();
-  const ctx = await browser.newContext({ viewport: { width: 412, height: 880 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2.625 });
-  await ctx.addInitScript(() => { window.__TEST_TITLE = true; localStorage.removeItem('caverunner-auto-run'); localStorage.setItem('caverunner-devshow', '1'); localStorage.setItem('caverunner-devtab', 'auto'); });
+  const ctx = await browser.newContext({ viewport: { width: 412, height: 880 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 });
+  await ctx.addInitScript(() => { window.__TEST_TITLE = true; localStorage.setItem('caverunner-devshow', '1'); localStorage.removeItem('caverunner-devtab'); });
   const page = await ctx.newPage();
   page.on('pageerror', e => console.log('PAGEERROR', e.message));
   await page.goto('file://' + path.join(__dirname, '..', 'tests', 'build', 'test.html'));
   await page.waitForTimeout(400);
   await page.locator('.tstart').dispatchEvent('pointerdown');
-  await page.waitForTimeout(4000);
-  await page.screenshot({ path: path.join(OUT, 'dev-a-gear.png') });
+  await page.waitForTimeout(2500);
   await page.locator('.adevbtn').dispatchEvent('pointerdown');
-  await page.waitForTimeout(400);
-  await page.screenshot({ path: path.join(OUT, 'dev-b-panel.png') });
-  // c: (v1.0.57) the Creatures tab, Spider open: green bars on the knobs Auto reads, dimmed ones only the old game's
-  await page.locator('.devtab[data-t=creatures]').click();
-  await page.waitForTimeout(200);
-  await page.locator('.devghead[data-g=spider]').click();
-  await page.waitForTimeout(200);
-  await page.locator('.devghead[data-g=spider]').evaluate(e => e.scrollIntoView({ block: 'start' }));
-  await page.waitForTimeout(200);
-  await page.screenshot({ path: path.join(OUT, 'dev-c-auto.png') });
-  // d: the Creatures tab's groups shut: each count coloured (green all, amber some, grey none in Auto)
-  await page.locator('.devghead[data-g=spider]').click();
-  await page.waitForTimeout(200);
-  await page.locator('.devbody').evaluate(e => { e.scrollTop = 0; });
-  await page.waitForTimeout(200);
-  await page.screenshot({ path: path.join(OUT, 'dev-d-groups.png') });
-  // e: (v1.0.64) +1 red ×3 and +1 green ×1, then the panel shut: the crystals in the bag
-  await page.locator('.gemred').dispatchEvent('pointerdown');
-  await page.locator('.gemred').dispatchEvent('pointerdown');
-  await page.locator('.gemred').dispatchEvent('pointerdown');
-  await page.locator('.gemgreen').dispatchEvent('pointerdown');
-  await page.waitForTimeout(200);
-  await page.screenshot({ path: path.join(OUT, 'dev-e-gems.png') });
-  await page.locator('.devpanel .done').dispatchEvent('pointerdown');
   await page.waitForTimeout(500);
-  await page.screenshot({ path: path.join(OUT, 'dev-f-bag.png') });
-  console.log('dev-e-gems.png  the crystal buttons\ndev-f-bag.png  3 red + 1 green in the bag');
-  console.log('dev-a-gear.png  the Dev ⚙️ beside ⏸ (dev mode on)\ndev-b-panel.png  the Dev panel open, Auto tab\ndev-c-auto.png  Spider open, coloured\ndev-d-groups.png  Creatures groups');
+  await page.screenshot({ path: path.join(OUT, 'dev-a-global.png') });
+  await page.locator('.devside[data-s=level]').click();
+  await page.locator('.devlv[data-lv=coal]').click();
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: path.join(OUT, 'dev-b-coal.png') });
+  await page.locator('.devtab[data-t=bats]').click();
+  await page.waitForTimeout(1500);
+  await page.evaluate(() => { document.querySelector('.devbody').scrollTop = 500; });
+  await page.waitForTimeout(500);
+  await page.screenshot({ path: path.join(OUT, 'dev-c-bats.png') });
+  await page.locator('.devside[data-s=global]').click();
+  await page.locator('.devtab[data-t=firesim]').click();
+  await page.waitForTimeout(1500);
+  await page.screenshot({ path: path.join(OUT, 'dev-d-fire.png') });
   await browser.close();
-})().catch(e => { console.log(e); process.exit(1); });
+  console.log('shots in', OUT);
+})();

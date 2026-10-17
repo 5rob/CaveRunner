@@ -986,6 +986,48 @@ DEV_TABS.splice(DEV_TABS.length - 1, 0, ['zones', 'Zones', ['autozones', 'autoor
 // (Grem Mode) the gun presets library and Grem's own page (ui/auto/presetlib.js, gremkit.js; DevPanel's pages)
 DEV_TABS.splice(DEV_TABS.length - 1, 0, ['presets', 'Presets', []], ['grem', 'Grem', ['grem', 'coal', 'bats', 'glow']]);
 DEV_TABS.splice(DEV_TABS.length - 1, 0, ['auto', 'Auto', ['autolevel', 'autoguns', 'autoperks', 'autofoes', 'autodeath', 'autoloot', 'autochests']]);
+// (Dev menu rebuild) where every knob sits in the full-screen Dev menu: a side (Global, or Level with one entry per level), then a
+// tab along the top. A group lands on its place's page (groups); a knob matching a DEV_KNOB_PLACE rule goes to that place instead
+// (a big group split over tabs: Coal Seams). pin: the live preview pinned over the page's scrolling controls; page: DevPanel's
+// own page (pages prop). Every DEV_META row lands in exactly one place (tests/logic/dev-layout.test.js).
+/** @type {[string, string][]} */
+export const DEV_LEVELS = [['caves', 'Caves (level 1)'], ['coal', 'Coal Seams']];
+/** @typedef {{ id: string, side: 'global' | 'level', lv?: string, name: string, groups: string[], pin?: 'fire' | 'zones' | 'bats', page?: string }} DevPlace */
+/** @type {DevPlace[]} */
+export const DEV_PLACES = [
+  { id: 'grem', side: 'global', name: 'Grem', groups: ['grem'], page: 'grem' },
+  { id: 'players', side: 'global', name: 'Players', groups: ['player', 'autodeath', 'bh'] },
+  { id: 'guns', side: 'global', name: 'Guns', groups: ['autoguns', 'autoperks'] },
+  { id: 'presets', side: 'global', name: 'Presets', groups: [], page: 'presets' },
+  { id: 'traj', side: 'global', name: 'Trajectory', groups: ['trajorbit', 'trajspiral', 'trajboomer', 'trajpong', 'trajhoming', 'trajseeker', 'trajnear', 'trajaim', 'trajgrav', 'trajfloat', 'trajflat'] },
+  { id: 'creatures', side: 'global', name: 'Creatures', groups: ['enemy', 'autofoes', 'elite', 'elitefx', 'spider', 'rat', 'jelly', 'jellycol'] },
+  { id: 'loot', side: 'global', name: 'Loot', groups: ['autoloot', 'autochests', 'level'] },
+  { id: 'pace', side: 'global', name: 'Level pace', groups: ['autolevel'] },
+  { id: 'view', side: 'global', name: 'View & light', groups: ['view', 'light'] },
+  { id: 'firesim', side: 'global', name: 'Fire', groups: ['firelab', 'firefx', 'autofire', 'firesilk', 'fire'], pin: 'fire' },
+  { id: 'sound', side: 'global', name: 'Sound', groups: ['sound'] },
+  { id: 'zones', side: 'level', lv: 'caves', name: 'Zones', groups: ['autozones', 'autoorb', 'zone_moss', 'zone_webs', 'zone_timber', 'zone_paved', 'zone_grove', 'zone_winding', 'zone_spider'], pin: 'zones' },
+  { id: 'vines', side: 'level', lv: 'caves', name: 'Vines & webs', groups: ['arch', 'sway'] },
+  { id: 'coal', side: 'level', lv: 'coal', name: 'Coal', groups: ['coal'] },
+  { id: 'coalprops', side: 'level', lv: 'coal', name: 'Props', groups: [] },
+  { id: 'coalgas', side: 'level', lv: 'coal', name: 'Gas', groups: [] },
+  { id: 'coalstal', side: 'level', lv: 'coal', name: 'Stalactites', groups: [] },
+  { id: 'coaltimber', side: 'level', lv: 'coal', name: 'Timber & ladders', groups: [] },
+  { id: 'bats', side: 'level', lv: 'coal', name: 'Bats', groups: ['bats'], pin: 'bats' },
+  { id: 'glow', side: 'level', lv: 'coal', name: 'Glow worms', groups: ['glow'] },
+];
+/** @type {[RegExp, string][]} a knob's own place, over its group's (first match wins) */
+export const DEV_KNOB_PLACE = [
+  [/^coalGas/, 'coalgas'], [/^coal(Stal|Mite)/, 'coalstal'], [/^coal(Sup|Lad|Cav)/, 'coaltimber'],
+  [/^coal(Lamps|Carts|Picks|Soot|CartR|CartDmg|LampLight|Rails|Piles|Chutes|Spill)$/, 'coalprops'], [/^autoZone/, 'zones'],
+];
+/** @param {{ k: string, g: string }} m @returns {string} the id of the DEV_PLACES page the knob sits on ('' = none) */
+export function devPlaceOf(m) {
+  const r = DEV_KNOB_PLACE.find(([re]) => re.test(m.k));
+  if (r) return r[1];
+  const p = DEV_PLACES.find(x => x.groups.includes(m.g));
+  return p ? p.id : '';
+}
 export const DEV_KEY = 'caverunner-dev';
 /** @type {DevKnobs} */
 export const DEV = Object.assign({}, DEV_DEFAULTS);

@@ -15,7 +15,7 @@ import {
 import { enemyFor } from '../data/creatures.js';
 import { themeFor } from '../data/themes.js';
 import {
-  CURVES, DEV, DEV_DEFAULTS, DEV_GROUPS, DEV_META, DEV_TABS, devSet, devTabOf, kr, kru
+  CURVES, DEV, DEV_DEFAULTS, DEV_GROUPS, DEV_LEVELS, DEV_META, DEV_PLACES, devPlaceOf, devSet, kr, kru
 } from '../dev/knobs.js';
 import { devCopyText } from '../auto/devcopy.js';
 import { BAT_CMD } from '../creatures/bats.js';
@@ -529,7 +529,6 @@ export function DevGroupHead({ g, name, shut, toggle, n, changed, tab }) {
 /** @param {string} g */
 const groupExtras = g => [
   g === 'jellycol' ? h(JellyPreview, { key: 'jp' }) : null,
-  g === 'bats' ? h(BatPreview, { key: 'bp' }) : null,             // (C4) a cave of bats, a player walking past (ui/batpreview.js)        // the live jelly its colours paint
   g === 'holoflash' ? h(FadeCurve, { key: 'fc' }) : null,
   ...CURVES.filter(c => c.g === g).map(c => h(CurveEdit, { key: c.p, p: c.p, label: c.label, lo: c.lo, hi: c.hi })),
   ...(g === 'elitefx' ? [h(FlamePreview, { key: 'fp' }), h('p', { key: 'gl', className: 'devlbl' }, 'Colour over life'), h(GradEditor, { key: 'ge' }),
@@ -550,32 +549,45 @@ const blurBox = () => {
   if (document.activeElement && document.activeElement.blur) document.activeElement.blur();   // commit a half-typed box
 };
 
-// The dev window: it pauses the run but the game keeps drawing behind a light backdrop,
-// so the look-of-it knobs (zoom, torch, fog) preview live as you type. On top: the actions
-// ("All mods" is the old DEBUG shelf) and Copy report; then a search box and the tabs
-// (DEV_TABS), each a page of collapsible groups of the saved, persisted variables.
-// pages: a tab's own page over its knobs, by tab id (Presets: the gun presets library; Grem: player 1's kit)
+// The Dev menu (rebuilt, not released): full screen. On top: Dev, Copy Dev settings, Done; the search (over every knob);
+// the two sides, Global and Level (then one chip per level, DEV_LEVELS); the side's tabs along the top (DEV_PLACES,
+// scrolling sideways). A page with a live preview (place.pin) has it pinned under the tabs; the controls scroll
+// below in .devbody. Each knob sits on one page (dev/knobs.js devPlaceOf); a group split over pages shows its part
+// under the page's name. pages: a page's own panel by DEV_PLACES page (Presets: the gun presets library; Grem: player 1's kit)
 // (grem branch) the tables hold only what Grem Mode uses (dev/knobs.js), so every group and row shows
+const PLACE_OF = new Map(DEV_META.map(m => [m.k, devPlaceOf(m)]));
+/** @param {string} id */
+const placeById = id => DEV_PLACES.find(p => p.id === id) || DEV_PLACES[0];
+/** @param {import('../dev/knobs.js').DevPlace} p */
+const placePath = p => (p.side === 'global' ? 'Global' : (DEV_LEVELS.find(l => l[0] === p.lv) || ['', ''])[1]) + ' · ' + p.name;
+// the groups (each cut to this page's rows) a page shows; a group split over pages takes the page's name
+/** @param {string} id */
+const pageGroups = id => DEV_GROUPS.filter(([g]) => !g.startsWith('zone_')).map(([g, name]) => {   // (a zone's own group: in its card, ui/zonesim.js)
+  const all = DEV_META.filter(m => m.g === g), rows = all.filter(m => PLACE_OF.get(m.k) === id);
+  const split = rows.length > 0 && rows.length < all.length;
+  return { g, key: split ? g + '@' + id : g, name: split ? placeById(id).name : name, rows, place: id };
+}).filter(x => x.rows.length);
 /** @param {{ close: () => void, pages?: Record<string, () => any>, bats?: boolean }} props */
 export function DevPanel({ close, pages, bats }) {
-  const tabs = DEV_TABS;
   const [copied, setCopied] = useState(null);     // null, or the text + whether it copied
   const [q, setQ] = useState('');
-  // which groups are open: remembered on this device only, all shut the first time
+  // which groups are open: remembered on this device only, all shut the first time (a page of one group, and Fire: open)
   const [openG, setOpenG] = useState(() => lsGet('caverunner-devgroups') || {});
-  // the tab: the last one used, else the first with an open group, else the first
-  const [tab, setTabS] = useState(() => {
-    const t = lsGet('caverunner-devtab');
-    if (tabs.some(x => x[0] === t)) return t;
-    const o = DEV_GROUPS.find(([g]) => openG[g]);
-    return o ? devTabOf(o[0]) : tabs[0][0];
-  });
-  const setTab = t => { blurBox(); setTabS(t); lsSet('caverunner-devtab', t); };
-  // (Fire sim: its groups open until shut)
-  const isOpen = g => openG[g] ?? devTabOf(g) === 'firesim';
-  const toggleG = g => {
+  // the page: the last one used, else the first
+  const [tab, setTabS] = useState(() => { const t = lsGet('caverunner-devtab'); return DEV_PLACES.some(x => x.id === t) ? t : DEV_PLACES[0].id; });
+  /** @param {string} t */
+  const setTab = t => { blurBox(); setTabS(t); lsSet('caverunner-devtab', t); const b = document.querySelector('.devbody'); if (b) b.scrollTop = 0; };   // a new page starts at its top
+  const place = placeById(tab);
+  const tabs = DEV_PLACES.filter(p => p.side === place.side && (p.side === 'global' || p.lv === place.lv));
+  // a side or level chip: its first page
+  /** @param {'global' | 'level'} side @param {string} [lv] */
+  const goTo = (side, lv) => setTab((DEV_PLACES.find(p => p.side === side && (!lv || p.lv === lv)) || DEV_PLACES[0]).id);
+  /** @param {string} key @param {string} id */
+  const isOpen = (key, id) => openG[key] ?? (id === 'firesim' || pageGroups(id).length === 1);
+  /** @param {string} key @param {string} id */
+  const toggleG = (key, id) => {
     blurBox();
-    const o = Object.assign({}, openG, { [g]: !isOpen(g) });
+    const o = Object.assign({}, openG, { [key]: !isOpen(key, id) });
     setOpenG(o);
     lsSet('caverunner-devgroups', o);
   };
@@ -601,55 +613,59 @@ export function DevPanel({ close, pages, bats }) {
   const act = (/** @type {string} */ cls, /** @type {string} */ label, /** @type {() => void} */ fn) =>
     h('button', { className: 'dbg ' + cls, onPointerDown: e => { e.preventDefault(); fn(); } }, label);
   const needle = q.trim().toLowerCase();
-  const tabName = t => (DEV_TABS.find(x => x[0] === t) || DEV_TABS[0])[1];
-  // the groups to show: this tab's, or with a search, every group holding a match (opened, matches only)
-  const shown = DEV_GROUPS.filter(([g]) => needle || (devTabOf(g) === tab && !g.startsWith('zone_'))).map(   // (a zone's own group: in its card, ui/zonesim.js)
-    ([g, name]) => {
-    const rows = DEV_META.filter(m => m.g === g);
-    const nameHit = needle && name.toLowerCase().includes(needle);
-    const hits = needle && !nameHit ? rows.filter(m => (m.label + ' ' + m.k).toLowerCase().includes(needle)) : rows;
-    return { g, name, rows, hits, nameHit };
+  // the groups to show: this page's, or with a search, every group part on every page holding a match (opened, matches only)
+  const shown = (needle ? DEV_PLACES.flatMap(p => pageGroups(p.id)) : pageGroups(tab)).map(x => {
+    const nameHit = !!needle && x.name.toLowerCase().includes(needle);
+    const hits = needle && !nameHit ? x.rows.filter(m => (m.label + ' ' + m.k).toLowerCase().includes(needle)) : x.rows;
+    return Object.assign({}, x, { hits, nameHit });
   }).filter(x => !needle || x.nameHit || x.hits.length);
+  /** @param {string} id */
+  const chgOf = id => DEV_META.some(m => PLACE_OF.get(m.k) === id && DEV[m.k] !== DEV_DEFAULTS[m.k]);
+  const pin = needle ? '' : place.pin || '';
+  /** @param {string} cls @param {boolean} on @param {any} attrs @param {string} label @param {() => void} fn @param {boolean} dot */
+  const btn = (cls, on, attrs, label, fn, dot) =>
+    h('button', Object.assign({ className: cls + (on ? ' on' : ''), onClick: fn }, attrs), label, dot ? h('i', { className: 'devdot' }) : null);
   return h('div', { className: 'devwrap' },
-    h('div', { className: 'devback', onPointerDown: e => { e.preventDefault(); close(); } }),
-    // (v1.0.62) the Fire sim tab: the whole panel scrolls, the header going up out of the way, the sim window sticking at the top
-    h('div', { className: 'devpanel scroll' + (!needle && (tab === 'firesim' || tab === 'zones') ? ' fsmode' : '') },
+    h('div', { className: 'devpanel' },
       h('div', { className: 'devtop' },
         h('div', { className: 'devhead' },
           h('h2', null, 'Dev'),
+          act('devcopy', 'Copy Dev settings', () => copyText(devCopyText)),   // (v1.0.94) everything Dev keeps: auto/devcopy.js
           h('button', { className: 'done', onPointerDown: e => { e.preventDefault(); close(); } }, 'Done')),
-        h('div', { className: 'devbtns' },
-          act('devcopy', 'Copy Dev settings', () => copyText(devCopyText)),
-          bats ? act('batreset', 'Reset bats', () => { BAT_CMD.reset = true; }) : null,   // (C4, creatures/bats.js: Grem's panel only, prop bats)
-          bats ? act('batscare', 'Scare all bats', () => { BAT_CMD.scare = true; }) : null),   // (v1.0.94) everything Dev keeps: auto/devcopy.js
         copied ? h('p', { className: 'devnote devcopied' + (copied.ok ? ' ok' : '') }, copied.empty
           ? 'Nothing audited yet — pin, trash or give feedback on a mod or perk card first.'
           : copied.ok ? (copied.what === 'audit' ? 'Audit copied — paste it into Claude Code.' : 'Copied — paste it to Claude.')
           : 'Could not reach the clipboard — press and hold the text below to copy it.') : null,
         copied && !copied.ok && !copied.empty ? h('textarea', { className: 'devcopytext', readOnly: true, value: copied.text }) : null,
         h('div', { className: 'devsearchw' },
-          h('input', { className: 'devsearch', type: 'search', placeholder: 'Search knobs…', value: q,
+          h('input', { className: 'devsearch', type: 'search', placeholder: 'Search every knob…', value: q,
             onChange: e => setQ(e.target.value) }),
           q ? h('button', { className: 'devclear', 'aria-label': 'Clear search', onPointerDown: e => { e.preventDefault(); setQ(''); } }, '×') : null),
+        needle ? null : h('div', { className: 'devsides' },
+          btn('devside', place.side === 'global', { 'data-s': 'global' }, 'Global', () => goTo('global'), false),
+          btn('devside', place.side === 'level', { 'data-s': 'level' }, 'Level', () => goTo('level', place.lv || DEV_LEVELS[0][0]), false)),
+        needle || place.side !== 'level' ? null : h('div', { className: 'devlvls' },
+          DEV_LEVELS.map(([lv, name]) => btn('devlv', place.lv === lv, { key: lv, 'data-lv': lv }, name, () => goTo('level', lv),
+            DEV_PLACES.some(p => p.lv === lv && chgOf(p.id))))),
         needle ? null : h('div', { className: 'devtabs', role: 'tablist' },
-          tabs.map(([t, name, gs]) => {
-            const chg = DEV_META.filter(m => gs.includes(m.g) && DEV[m.k] !== DEV_DEFAULTS[m.k]).length;
-            return h('button', { key: t, className: 'devtab' + (t === tab ? ' on' : ''), 'data-t': t, role: 'tab',
-              'aria-selected': t === tab, onClick: () => setTab(t) }, name, chg ? h('i', { className: 'devdot' }) : null);
-          }))),
-      // (v1.0.62) the fire sim's window and buttons stay put over the knobs, which scroll under them
-      !needle && tab === 'firesim' ? h('div', { className: 'firesimtop' }, h(FireSim, null)) : null,
-      // (Dev → Zones) the zone preview, sticky like the fire sim's, and its zone cards
-      !needle && tab === 'zones' ? h(ZoneSim, { Row: DevRow }) : null,
-      h('div', { className: 'devbody' },
-        !needle && pages && pages[tab] ? pages[tab]() : null,
-        shown.length || (!needle && pages && pages[tab]) ? null : h('p', { className: 'devnote' }, 'No knob matches “' + q.trim() + '”.'),
-        shown.map(({ g, name, rows, hits, nameHit }) => {
-          const shut = needle ? false : !isOpen(g);
+          tabs.map(p => btn('devtab', p.id === tab, { key: p.id, 'data-t': p.id, role: 'tab', 'aria-selected': p.id === tab }, p.name, () => setTab(p.id), chgOf(p.id))))),
+      // the page's live preview: pinned here, the controls scroll under it
+      pin === 'fire' ? h('div', { className: 'devpin firesimtop' }, h(FireSim, null)) : null,
+      pin === 'bats' ? h('div', { className: 'devpin' }, h(BatPreview, null),   // (C4) a cave of bats, a player walking past (ui/batpreview.js)
+        bats ? h('div', { className: 'devbtns devpinbtns' },
+          act('batreset', 'Reset bats', () => { BAT_CMD.reset = true; }),   // (C4, creatures/bats.js: Grem's panel only, prop bats)
+          act('batscare', 'Scare all bats', () => { BAT_CMD.scare = true; })) : null) : null,
+      h('div', { className: 'devbody' + (pin === 'zones' ? ' zonesmode' : '') },
+        // (Dev → Level → Caves → Zones) the zone preview, sticky at the top of the scroll, and its zone cards
+        pin === 'zones' ? h(ZoneSim, { Row: DevRow }) : null,
+        !needle && pages && place.page && pages[place.page] ? pages[place.page]() : null,
+        shown.length || !needle ? null : h('p', { className: 'devnote' }, 'No knob matches “' + q.trim() + '”.'),
+        shown.map(({ g, key, name, rows, hits, nameHit, place: pid }) => {
+          const shut = needle ? false : !isOpen(key, pid);
           const changed = rows.filter(m => DEV[m.k] !== DEV_DEFAULTS[m.k]).length;
-          return h('div', { key: g, className: 'devgroup' + (shut ? '' : ' open') },
-            h(DevGroupHead, { g, name, shut, toggle: toggleG, n: rows.filter(m => m.type !== 'curve').length, changed,
-              tab: needle ? tabName(devTabOf(g)) : '' }),
+          return h('div', { key: pid + key, className: 'devgroup' + (shut ? '' : ' open') },
+            h(DevGroupHead, { g: key, name, shut, toggle: k => toggleG(k, pid), n: rows.filter(m => m.type !== 'curve').length, changed,
+              tab: needle ? placePath(placeById(pid)) : '' }),
             shut ? null : h('div', { className: 'devvars' },
               !needle || nameHit ? groupExtras(g) : null,
               hits.map(m => h(DevRow, { key: m.k, meta: m }))));
@@ -659,4 +675,3 @@ export function DevPanel({ close, pages, bats }) {
     )
   );
 }
-
